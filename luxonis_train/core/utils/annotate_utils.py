@@ -83,7 +83,7 @@ def annotated_dataset_generator(
 
     for imgs, metas in loader:
         with torch.no_grad():
-            batch_out = lt_module(imgs).outputs
+            batch_out = lt_module.full_forward(imgs).outputs
 
         for head_name, head_output in batch_out.items():
             img_paths = [Path(p) for p in metas["/metadata/path"]]

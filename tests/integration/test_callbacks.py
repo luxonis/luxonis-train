@@ -56,6 +56,8 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
+        # AIMET fails when determinism is enabled
+        "exporter.aimet.active": False,
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, allow_empty_dataset=True)

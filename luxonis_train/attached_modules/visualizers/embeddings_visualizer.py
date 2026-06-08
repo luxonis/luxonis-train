@@ -3,7 +3,6 @@ from collections.abc import Callable
 import numpy as np
 import seaborn as sns
 from loguru import logger
-from luxonis_ml.data.utils import ColorMap
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
@@ -25,11 +24,10 @@ class EmbeddingsVisualizer(BaseVisualizer):
             outliers.
         """
         super().__init__(**kwargs)
-        self.colors = ColorMap()
         self.z_score_threshold = z_score_threshold
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
-        r, g, b = self.colors[label]
+        r, g, b = self.colormap[label]
         return r / 255, g / 255, b / 255
 
     def forward(
@@ -53,6 +51,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         @return: An embedding space projection.
         """
         embeddings_np = predictions.detach().cpu().numpy()
+        embeddings_np[np.isnan(embeddings_np) | np.isinf(embeddings_np)] = 0.0
         ids_np = target.detach().cpu().numpy().astype(int)
 
         pca = PCA(n_components=2, random_state=42)
@@ -92,8 +91,9 @@ class EmbeddingsVisualizer(BaseVisualizer):
         plot_func: Callable[[plt.Axes, np.ndarray, np.ndarray], None],
     ) -> Tensor:
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
-        ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
+        if embeddings_2d.size > 0:
+            ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
+            ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
 
         plot_func(ax, embeddings_2d, ids_np)
         ax.axis("off")

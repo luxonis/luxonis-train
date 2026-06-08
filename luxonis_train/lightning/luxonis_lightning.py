@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -19,7 +20,7 @@ from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import (
@@ -29,6 +30,8 @@ from luxonis_train.attached_modules.visualizers import (
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.checkpoint import (
@@ -101,7 +104,7 @@ class LuxonisLightningModule(pl.LightningModule):
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
 
-    __call__: Callable[..., LuxonisOutput]
+    __call__: Callable[..., tuple[Tensor, ...]]
 
     def __init__(
         self,
@@ -237,8 +240,43 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def forward(
+        self, inputs: dict[str, Tensor] | Tensor
+    ) -> tuple[Tensor, ...]:
+        """Forward pass of the model.
+
+        @type inputs: L{Tensor}
+        @param inputs: Input tensors.
+        @rtype: dict[str, L{Packet}[L{Tensor}]]
+        @return: Output of the model.
+        """
+        outputs = self.full_forward(
+            inputs,
+            compute_loss=False,
+            compute_metrics=False,
+            compute_visualizations=False,
+        ).outputs
+
+        output_order = sorted(
+            [
+                (node_name, output_name, i)
+                for node_name, outs in outputs.items()
+                for output_name, out in outs.items()
+                for i in range(len(out))
+            ]
+        )
+        new_outputs = []
+        for node_name, output_name, i in output_order:
+            node_output = outputs[node_name][output_name]
+            if isinstance(node_output, Tensor):
+                new_outputs.append(node_output)
+            else:
+                new_outputs.append(node_output[i])
+
+        return tuple(new_outputs)
+
+    def full_forward(
         self,
-        inputs: dict[str, Tensor],
+        inputs: dict[str, Tensor] | Tensor,
         labels: Labels | None = None,
         images: Tensor | None = None,
         *,
@@ -272,6 +310,12 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
+        if isinstance(inputs, Tensor):
+            inputs = {self.image_source: inputs}
+
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        if labels is not None:
+            labels = {k: v.to(self.device) for k, v in labels.items()}
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
         ] = defaultdict(dict)
@@ -298,10 +342,14 @@ class LuxonisLightningModule(pl.LightningModule):
 
             if compute_loss and node.losses and labels is not None:
                 for loss_name, loss in node.losses.items():
+                    loss.to(self.device)
+                    if self.training:
+                        loss.train()
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
             if compute_metrics and node.metrics and labels is not None:
                 for metric in node.metrics.values():
+                    metric.to(self.device)
                     metric.run_update(outputs, labels)
 
             if (
@@ -310,6 +358,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 and images is not None
             ):
                 for viz_name, visualizer in node.visualizers.items():
+                    visualizer.to(self.device)
                     viz = combine_visualizations(
                         visualizer.run(images, images, outputs, labels),
                     )
@@ -334,10 +383,24 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
-    def set_export_mode(self, *, mode: bool) -> None:
+    @override
+    def train(self, mode: bool = True) -> Self:
+        super().train(mode)
+        for node in self.nodes.values():
+            node.train(mode)
+        return self
+
+    def set_export_mode(self, mode: bool) -> Self:
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
+        return self
+
+    def reparametrize(self) -> Self:
+        for module in self.modules():
+            if isinstance(module, Reparametrizable):
+                module.reparametrize()
+        return self
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Export the model to ONNX format.
@@ -350,7 +413,7 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: Path
         @return: Path to the exported model.
         """
-        device_before = self.device
+        device = self.device
 
         self.eval()
         self.to("cpu")  # move to CPU to support deterministic .to_onnx()
@@ -360,88 +423,13 @@ class LuxonisLightningModule(pl.LightningModule):
             for shapes in self.nodes.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
-
-        inputs_deep_clone = {
-            k: torch.zeros(elem.shape).to(self.device)
-            for k, elem in inputs.items()
-        }
-
-        inputs_for_onnx = {"inputs": inputs_deep_clone}
+        if "input_names" not in kwargs:
+            kwargs["input_names"] = list(inputs.keys())
 
         self.set_export_mode(mode=True)
 
-        outputs = self.forward(inputs_deep_clone).outputs
-        output_order = sorted(
-            [
-                (node_name, output_name, i)
-                for node_name, outs in outputs.items()
-                for output_name, out in outs.items()
-                for i in range(len(out))
-            ]
-        )
+        output_names = self._get_output_onnx_names(deepcopy(inputs))
 
-        output_counts = defaultdict(int)
-        for node_name, outs in outputs.items():
-            output_counts[node_name] = sum(len(out) for out in outs.values())
-
-        export_output_names_dict = {}
-        for node_name, node in self.nodes.items():
-            if node.module.export_output_names is not None:
-                if (
-                    len(node.module.export_output_names)
-                    != output_counts[node_name]
-                ):
-                    logger.warning(
-                        f"Number of provided output names for node {node_name} "
-                        f"({len(node.module.export_output_names)}) does not match "
-                        f"number of outputs ({output_counts[node_name]}). "
-                        f"Using default names."
-                    )
-                else:
-                    export_output_names_dict[node_name] = (
-                        node.module.export_output_names
-                    )
-
-        output_names = []
-        # For cases where export_output_names should be used but
-        # output node's output is split into multiple subnodes
-        running_i = {}
-        for node_name, output_name, i in output_order:
-            if node_name in export_output_names_dict:
-                running_i[node_name] = (
-                    running_i.get(node_name, -1) + 1
-                )  # if not present default to 0 otherwise add 1
-                output_names.append(
-                    export_output_names_dict[node_name][running_i[node_name]]
-                )
-            else:
-                output_names.append(
-                    f"{self.nodes[node_name].task_name}/{node_name}/{output_name}/{i}"
-                )
-
-        old_forward = self.forward
-
-        def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
-            old_outputs = old_forward(
-                inputs,
-                None,
-                compute_loss=False,
-                compute_metrics=False,
-                compute_visualizations=False,
-            ).outputs
-            outputs = []
-            for node_name, output_name, i in output_order:
-                node_output = old_outputs[node_name][output_name]
-                if isinstance(node_output, Tensor):
-                    outputs.append(node_output)
-                else:
-                    outputs.append(node_output[i])
-            return tuple(outputs)
-
-        self.forward = export_forward  # type: ignore
-
-        if "input_names" not in kwargs:
-            kwargs["input_names"] = list(inputs.keys())
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
@@ -449,23 +437,22 @@ class LuxonisLightningModule(pl.LightningModule):
             # PyTorch 2.9 introduces a breaking change that
             # sets the default value to True
             kwargs.setdefault("dynamo", False)
-        self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
-        self.forward = old_forward  # type: ignore
+        self.to_onnx(save_path, {"inputs": inputs}, **kwargs)
 
         logger.info(f"Model exported to {save_path}")
 
         self.set_export_mode(mode=False)
         self.train()
-        self.to(device_before)  # reset device after export
+        self.to(device)  # reset device after export
 
         return Path(save_path)
 
     @override
     def training_step(
-        self, train_batch: tuple[dict[str, Tensor], Labels]
+        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> Tensor:
-        outputs = self.forward(*train_batch)
+        outputs = self.full_forward(*train_batch)
         if not outputs.losses:
             raise ValueError("Losses are empty, check if you defined any loss")
 
@@ -525,23 +512,26 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def validation_step(
-        self, val_batch: tuple[dict[str, Tensor], Labels]
+        self, val_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> dict[str, Tensor]:
         return self._evaluation_step("val", *val_batch)
 
     @override
     def test_step(
-        self, test_batch: tuple[dict[str, Tensor], Labels]
+        self, test_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> dict[str, Tensor]:
         return self._evaluation_step("test", *test_batch)
 
     @override
     def predict_step(
-        self, batch: tuple[dict[str, Tensor], Labels]
+        self, batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> LuxonisOutput:
         inputs, labels = batch
-        images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        return self.forward(
+        images = get_denormalized_images(
+            self.cfg,
+            inputs[self.image_source] if isinstance(inputs, dict) else inputs,
+        )
+        return self.full_forward(
             inputs,
             labels,
             images=images,
@@ -791,6 +781,14 @@ class LuxonisLightningModule(pl.LightningModule):
                                 sub_state_dict, strict=False
                             )
 
+    def detach(self) -> None:
+        """Detaches the model from the trainer.
+
+        This is useful when the model needs to be used outside of the
+        training loop, for example for inference or exporting.
+        """
+        self.trainer = None
+
     def _check_valid_epoch_counts(self, ckpt_config: dict) -> None:
         previous_trainer_cfg = ckpt_config.get("trainer", {})
         previous_epochs = previous_trainer_cfg.get("epochs", None)
@@ -808,10 +806,12 @@ class LuxonisLightningModule(pl.LightningModule):
     def _evaluation_step(
         self,
         mode: Literal["test", "val"],
-        inputs: dict[str, Tensor],
+        inputs: dict[str, Tensor] | Tensor,
         labels: Labels,
     ) -> dict[str, Tensor]:
         max_log_images = self.cfg.trainer.n_log_images
+        if isinstance(inputs, Tensor):
+            inputs = {self.image_source: inputs}
         input_image = inputs[self.image_source]
 
         # Smart logging is decided based on the classification task keys that are merged for all tasks
@@ -822,7 +822,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
 
-        outputs = self.forward(
+        outputs = self.full_forward(
             inputs,
             labels,
             images=images,
@@ -1082,25 +1082,22 @@ class LuxonisLightningModule(pl.LightningModule):
                     )
 
         for callback in self.cfg.trainer.callbacks:
+            model_name = self.cfg.exporter.name or self.cfg.model.name
             if callback.name == "UploadCheckpoint":
                 artifact_keys.update(
                     {"best_val_metric.ckpt", "min_val_loss.ckpt"}
                 )
             elif callback.name == "ExportOnTrainEnd":
-                artifact_keys.add(
-                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx"
-                )
+                artifact_keys.add(f"{model_name}.onnx")
             elif callback.name == "ArchiveOnTrainEnd":
-                artifact_keys.add(
-                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
-                )
+                artifact_keys.add(f"{model_name}.onnx.tar.xz")
             elif callback.name == "ConvertOnTrainEnd":
-                artifact_keys.add(
-                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx"
-                )
-                artifact_keys.add(
-                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
-                )
+                artifact_keys.add(f"{model_name}.onnx")
+                artifact_keys.add(f"{model_name}.onnx.tar.xz")
+            elif callback.name == "AIMETCallback":
+                artifact_keys.add(f"{model_name}.onnx")
+                artifact_keys.add(f"{model_name}.onnx.data")
+                artifact_keys.add(f"{model_name}.encodings")
             elif callback.name == "TrainingProgressCallback":
                 metric_keys.update(
                     {
@@ -1131,6 +1128,20 @@ class LuxonisLightningModule(pl.LightningModule):
             "metrics": sorted(metric_keys),
             "artifacts": sorted(artifact_keys),
         }
+
+    @override
+    def __getstate__(self):
+        state = super().__getstate__()
+        state["_core"] = None
+        _INTERNAL["trainer"] = self._trainer
+        _INTERNAL["core"] = self._core
+        return state
+
+    @override
+    def __setstate__(self, state: Any):
+        super().__setstate__(state)
+        self._trainer = _INTERNAL.get("trainer")  # type: ignore
+        self._core = _INTERNAL.get("core")
 
     def _get_node_order_mapping(
         self, node_name: str, old_order: list[str], new_order: list[str]
@@ -1175,6 +1186,57 @@ class LuxonisLightningModule(pl.LightningModule):
                 f"Using optimizer: '{optimizer_name}' with scheduler: '{scheduler_name}'"
             )
             logger.info(optimizer)
+
+    def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
+        outputs = self.full_forward(inputs).outputs
+        output_order = sorted(
+            [
+                (node_name, output_name, i)
+                for node_name, outs in outputs.items()
+                for output_name, out in outs.items()
+                for i in range(len(out))
+            ]
+        )
+
+        output_counts = defaultdict(int)
+        for node_name, outs in outputs.items():
+            output_counts[node_name] = sum(len(out) for out in outs.values())
+
+        export_output_names_dict = {}
+        for node_name, node in self.nodes.items():
+            if node.module.export_output_names is not None:
+                if (
+                    len(node.module.export_output_names)
+                    != output_counts[node_name]
+                ):
+                    logger.warning(
+                        f"Number of provided output names for node {node_name} "
+                        f"({len(node.module.export_output_names)}) does not match "
+                        f"number of outputs ({output_counts[node_name]}). "
+                        f"Using default names."
+                    )
+                else:
+                    export_output_names_dict[node_name] = (
+                        node.module.export_output_names
+                    )
+
+        output_names = []
+        # For cases where export_output_names should be used but
+        # output node's output is split into multiple subnodes
+        running_i = {}
+        for node_name, output_name, i in output_order:
+            if node_name in export_output_names_dict:
+                running_i[node_name] = (
+                    running_i.get(node_name, -1) + 1
+                )  # if not present default to 0 otherwise add 1
+                output_names.append(
+                    export_output_names_dict[node_name][running_i[node_name]]
+                )
+            else:
+                output_names.append(
+                    f"{self.nodes[node_name].task_name}/{node_name}/{output_name}/{i}"
+                )
+        return output_names
 
     def _add_custom_data_to_checkpoint(
         self, checkpoint: dict[str, Any]

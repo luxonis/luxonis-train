@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from luxonis_ml.utils.registry import Registry
 
@@ -30,6 +30,8 @@ STRATEGIES: Registry[type["lxt.BaseTrainingStrategy"]] = Registry(
 )
 
 VISUALIZERS: Registry[type["lxt.BaseVisualizer"]] = Registry("visualizers")
+
+_INTERNAL: dict[str, Any] = {}
 
 
 T = TypeVar("T")
