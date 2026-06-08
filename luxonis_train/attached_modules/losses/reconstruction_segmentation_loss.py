@@ -96,7 +96,7 @@ class SSIM(nn.Module):
 
             (_, channel, _, _) = img1.size()
             if channel == self.channel and self.window.dtype == img1.dtype:
-                window = self.window.to(device)
+                window = self.window.to(device).clone()
             else:
                 window = (
                     create_window(self.window_size, channel)

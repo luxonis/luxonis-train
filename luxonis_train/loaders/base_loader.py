@@ -16,7 +16,7 @@ from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
+LuxonisLoaderTorchOutput = tuple[dict[str, Tensor] | Tensor, Labels]
 
 
 class BaseLoaderTorch(
@@ -219,27 +219,16 @@ class BaseLoaderTorch(
         """
         return self.input_shapes[self.image_source]
 
-    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
+    def augment_test_image(self, img: dict[str, Tensor] | Tensor) -> Tensor:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not expose interface "
             "for test-time augmentation. Implement "
             "`augment_test_image` method to expose this functionality."
         )
 
+    @abstractmethod
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.get(idx)
-        if isinstance(img, Tensor):
-            img = {self.image_source: img}
-        return img, labels
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """Get the length of the dataset."""
-        ...
-
-    @abstractmethod
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
-        """Load sample from dataset.
+        """Load a sample from the dataset.
 
         @type idx: int
         @param idx: Sample index.
@@ -247,6 +236,9 @@ class BaseLoaderTorch(
         @return: Sample's data in L{LuxonisLoaderTorchOutput} format.
         """
         ...
+
+    @abstractmethod
+    def __len__(self) -> int: ...
 
     @abstractmethod
     def get_classes(self) -> dict[str, dict[str, int]]:
@@ -336,7 +328,7 @@ class BaseLoaderTorch(
     def collate_fn(
         self,
         batch: list[LuxonisLoaderTorchOutput],
-    ) -> tuple[dict[str, Tensor], Labels]:
+    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
         """Default collate function used for training.
 
         @type batch: list[LuxonisLoaderTorchOutput]
@@ -347,13 +339,20 @@ class BaseLoaderTorch(
         @return: Tuple of inputs and annotations in the format expected
             by the model.
         """
-        inputs: tuple[dict[str, Tensor], ...]
+        inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...]
         labels: tuple[Labels, ...]
         inputs, labels = zip(*batch, strict=True)
 
-        out_inputs = {
-            k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]
-        }
+        if isinstance(inputs[0], dict):
+            out_inputs = {
+                k: torch.stack(
+                    [i[k] for i in inputs],  # type: ignore
+                    0,
+                )
+                for k in inputs[0]
+            }
+        else:
+            out_inputs = torch.stack(inputs, 0)  # type: ignore
 
         out_labels: Labels = {}
 

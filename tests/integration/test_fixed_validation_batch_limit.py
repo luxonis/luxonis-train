@@ -27,7 +27,9 @@ class SplitLengthLoader(BaseLoaderTorch):
         return self.LENGTHS[tuple(self.view)]
 
     @override
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[Tensor | dict[str, Tensor], Labels]:
         image = torch.zeros(3, self.height, self.width)
         labels = {"vehicles/boundingbox": torch.zeros(1, 5)}
         return image, labels

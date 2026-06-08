@@ -111,6 +111,15 @@ pip install luxonis-train
 
 This will also install the `luxonis_train` CLI. For more information on how to use it, see [CLI Usage](#cli).
 
+### AIMET Quantization Support
+
+To enable support for AIMET quantization, install the `luxonis-train[aimet]` extra:
+
+```bash
+pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu130
+
+```
+
 <a name="usage"></a>
 
 ## 📝 Usage
@@ -135,6 +144,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 - `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
+- `quantize` - Quantize the model using `AIMET` quantization techniques
 
 **To get help on any command:**
 

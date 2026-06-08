@@ -16,6 +16,7 @@ from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -23,6 +24,7 @@ from luxonis_train.attached_modules.base_attached_module import (
     BaseAttachedModule,
 )
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
+from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.config.config import NodeConfig
 from luxonis_train.nodes import BaseNode
@@ -51,7 +53,7 @@ class MainMetric(NamedTuple):
 
 
 class LossAccumulator(defaultdict[str, float]):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(float)
         self.counts = defaultdict(int)
 
@@ -82,9 +84,9 @@ class NodeWrapper(nn.Module):
         super().__init__()
         self.name = name
         self.module = module
-        self.losses = _to_module_dict(losses)
-        self.metrics = _to_module_dict(metrics)
-        self.visualizers = _to_module_dict(visualizers)
+        self.losses = losses
+        self.metrics = metrics
+        self.visualizers = visualizers
         self.unfreeze_after = unfreeze_after
         self.lr_after_unfreeze = lr_after_unfreeze
         self.inputs = inputs or []
@@ -92,6 +94,17 @@ class NodeWrapper(nn.Module):
     @property
     def task_name(self) -> str:
         return self.module.task_name
+
+    @override
+    def train(self, mode: bool = True) -> "NodeWrapper":
+        self.module.train(mode)
+        for loss in self.losses.values():
+            loss.train(mode)
+        for metric in self.metrics.values():
+            metric.train(mode)
+        for visualizer in self.visualizers.values():
+            visualizer.train(mode)
+        return self
 
 
 class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
@@ -493,6 +506,9 @@ def build_callbacks(
                 "in the callbacks list. The `accumulate_grad_batches` "
                 "parameter in the config will be ignored."
             )
+    if cfg.exporter.aimet.active:
+        callbacks.append(AIMETCallback())
+
     if main_metric is not None:
         node_name, metric_name = main_metric
         formatted_node = nodes.formatted_name(node_name)
@@ -564,10 +580,6 @@ def _init_attached_module(
 
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
-
-
-def _to_module_dict(modules: dict[str, A]) -> dict[str, A]:
-    return nn.ModuleDict(modules)  # type: ignore
 
 
 def log_balanced_class_images(

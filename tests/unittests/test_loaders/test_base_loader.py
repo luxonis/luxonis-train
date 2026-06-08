@@ -9,7 +9,7 @@ from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 class DummyLoader(BaseLoaderTorch):
     def __len__(self) -> int: ...
 
-    def get(self, idx: int) -> LuxonisLoaderTorchOutput: ...
+    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput: ...
 
     def get_classes(self) -> dict[str, dict[str, int]]: ...
 
@@ -68,6 +68,7 @@ def test_collate_fn(
     inputs, annotations = loader.collate_fn(batch)
 
     with subtests.test("inputs"):
+        assert isinstance(inputs, dict)
         assert inputs["features"].shape == (batch_size, 3, 224, 224)
         assert inputs["features"].dtype == torch.float32
 

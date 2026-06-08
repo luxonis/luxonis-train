@@ -68,7 +68,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e .[dev]
+        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install dev version of LuxonisML
         if: startsWith(github.head_ref, 'release/') == false
@@ -147,7 +147,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e .[dev]
+        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install dev version of LuxonisML
         if: startsWith(github.head_ref, 'release/') == false

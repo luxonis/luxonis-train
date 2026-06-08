@@ -18,6 +18,7 @@ from luxonis_train.__main__ import (
     convert,
     export,
     inspect,
+    quantize,
     train,
     tune,
 )
@@ -44,6 +45,7 @@ def test_cli_command_success(
         (_yield_visualizations, {}),
         (archive, {"executable": tmp_path / "export.onnx"}),
         (convert, {"save_dir": tmp_path / "convert_output"}),
+        (quantize, {}),
     ]:
         with subtests.test(command.__name__):
             res = command(
