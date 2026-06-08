@@ -374,15 +374,20 @@ class LuxonisModel:
         )
 
         if weights is not None:
-            weights = LuxonisFileSystem.download(
-                str(weights), self.run_save_dir
-            )
+            if isinstance(weights, dict):
+                if "state_dict" not in weights:
+                    weights = {"state_dict": weights}
+                ckpt = weights
+            else:
+                ckpt = LuxonisFileSystem.download(
+                    str(weights), self.run_save_dir
+                )
             if self.cfg.model.weights is not None:
                 logger.warning(
                     "Weights provided in the command line, but config weights are set. "
                     "Ignoring weights provided in config."
                 )
-            self.lightning_module.load_checkpoint(weights)
+            self.lightning_module.load_checkpoint(ckpt)
         self._exported_models: dict[str, Path] = {}
 
     @property
