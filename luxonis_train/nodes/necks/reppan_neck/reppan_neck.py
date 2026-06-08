@@ -206,7 +206,7 @@ class RepPANNeck(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        return "{github}/reppanneck_{variant}_coco.ckpt"
+        return f"{{github}}/reppanneck_{self.variant[0]}_coco.ckpt"
 
     @override
     @staticmethod
