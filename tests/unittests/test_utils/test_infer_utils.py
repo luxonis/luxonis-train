@@ -16,7 +16,7 @@ class _MockTrainer:
         self.callbacks = callbacks
 
     def predict(
-        self, lightning_module: object, loader: list[object]
+        self, lightning_module: object, loader: list[object], **_
     ) -> list[LuxonisOutput] | None:
 
         for batch_idx, _ in enumerate(loader):
