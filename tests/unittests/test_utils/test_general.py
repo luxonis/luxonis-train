@@ -1,11 +1,25 @@
+from pathlib import Path
+from typing import Any, NoReturn
+
+import numpy as np
 import pytest
 import torch
 from pytest_subtests import SubTests
 
+from luxonis_train import __version__
 from luxonis_train.utils.general import (
+    clean_url,
+    decode_text_metadata_labels,
+    get_attribute_check_none,
+    get_batch_instances,
+    get_signature,
+    get_with_default,
     infer_upscale_factor,
     instances_from_batch,
+    make_divisible,
     safe_download,
+    to_shape_packet,
+    url2file,
 )
 
 
@@ -51,14 +65,85 @@ def test_infer_upscale_factor_fail(
         infer_upscale_factor(in_size, orig_size)
 
 
-def test_safe_download():
-    url = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientrep_n_coco.ckpt"
-    local_path = safe_download(
-        url=url, file="test.ckpt", cache_dir=".", force=True
+def test_safe_download(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def fake_download(_url: str, file: str, progress: bool) -> None:
+        assert progress is True
+        Path(file).write_bytes(b"downloaded")
+
+    monkeypatch.setattr(
+        "luxonis_train.utils.general.torch.hub.download_url_to_file",
+        fake_download,
     )
-    if local_path is not None:
-        assert local_path.is_file()
-        local_path.unlink()
+
+    url = "https://example.com/efficientrep_n_coco.ckpt"
+    local_path = safe_download(
+        url=url, file="test.ckpt", cache_dir=tmp_path, force=True
+    )
+
+    assert local_path is not None
+    assert local_path.read_bytes() == b"downloaded"
+
+
+def test_safe_download_local_and_cached_paths(tmp_path: Path) -> None:
+    local_path = tmp_path / "local.bin"
+    local_path.touch()
+
+    assert safe_download(None) is None
+    assert safe_download(local_path) == local_path
+    assert safe_download(str(local_path)) == local_path
+
+    cache_dir = tmp_path / "cache"
+    cached_file = cache_dir / __version__ / "weights.bin"
+    cached_file.parent.mkdir(parents=True)
+    cached_file.write_bytes(b"cached")
+
+    assert (
+        safe_download(
+            "https://example.com/weights.bin",
+            file="weights.bin",
+            cache_dir=cache_dir,
+        )
+        == cached_file
+    )
+
+
+def test_safe_download_remote_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[tuple[str, Path]] = []
+
+    def fake_download(url: str, dest: Path) -> Path:
+        calls.append((url, dest))
+        dest.write_bytes(b"remote")
+        return dest
+
+    monkeypatch.setattr(
+        "luxonis_train.utils.general.LuxonisFileSystem.download",
+        fake_download,
+    )
+    remote_path = safe_download("s3://bucket/model.bin", cache_dir=tmp_path)
+    assert remote_path is not None
+    assert remote_path.is_file()
+    assert calls[0][0] == "s3://bucket/model.bin"
+
+    def fail_download(*_args: Any, **_kwargs: Any) -> NoReturn:
+        raise RuntimeError("download failed")
+
+    monkeypatch.setattr(
+        "luxonis_train.utils.general.torch.hub.download_url_to_file",
+        fail_download,
+    )
+    assert (
+        safe_download(
+            "https://example.com/missing.bin",
+            cache_dir=tmp_path,
+            retry=0,
+            force=True,
+        )
+        is None
+    )
 
 
 def test_instances_from_batch(subtests: SubTests):
@@ -113,3 +198,93 @@ def test_instances_from_batch(subtests: SubTests):
                 torch.tensor([[10], [20]]),
             )
         )
+
+
+def test_general_small_helpers() -> None:
+    assert make_divisible(17, 8) == 24
+    assert clean_url(
+        "https://example.com/a%2Fb/file.txt?token=secret"
+    ).endswith("/a/b/file.txt")
+    assert (
+        url2file("https://example.com/path/file.txt?token=secret")
+        == "file.txt"
+    )
+
+    packet = {
+        "one": torch.zeros(2, 3),
+        "many": [torch.zeros(1), torch.zeros(4, 5)],
+    }
+    assert to_shape_packet(packet) == {
+        "one": torch.Size([2, 3]),
+        "many": [torch.Size([1]), torch.Size([4, 5])],
+    }
+
+    assert get_with_default("value", "action", default="fallback") == "value"
+    assert (
+        get_with_default(None, "action", "caller", default="fallback")
+        == "fallback"
+    )
+
+    def func(
+        self: object, keep: str, drop: str, **kwargs: Any
+    ) -> tuple[str, str, dict[str, Any]]:
+        return keep, drop, kwargs
+
+    assert list(get_signature(func, exclude={"drop"})) == ["keep"]
+
+    class Holder:
+        def __init__(self, value: int | None) -> None:
+            self._value = value
+
+    assert get_attribute_check_none(Holder(1), "value") == 1
+    with pytest.raises(ValueError, match="attribute 'value' was not set"):
+        get_attribute_check_none(Holder(None), "value")
+
+    bboxes = torch.tensor([[0, 1], [1, 2], [0, 3]])
+    payload = torch.tensor([[10], [20], [30]])
+    assert get_batch_instances(0, bboxes).tolist() == [[1], [3]]
+    assert get_batch_instances(1, bboxes, payload).tolist() == [[20]]
+
+    empty = torch.empty((0, 2))
+    empty_payload = torch.empty((0, 1))
+    instances = list(instances_from_batch(empty, empty_payload, batch_size=2))
+    assert len(instances) == 2
+    assert all(
+        b.shape == empty.shape and p.shape == empty.shape for b, p in instances
+    )
+
+
+def test_decode_text_metadata_labels():
+    labels = {
+        "category": np.array([1, 2]),
+        "already_text": np.array(["ok"]),
+        "codes": np.array([[65, 66, 0], [67, 0, 68]]),
+        "float_codes": np.array([[65.0, 0.0]]),
+        "bad_float": np.array([[65.5]]),
+        "bad_negative": np.array([[-1]]),
+        "bad_complex": np.array([[1 + 2j]]),
+        "bad_object": np.array([[object()]], dtype=object),
+        "empty": np.array([]),
+    }
+    metadata_types = {
+        "already_text": str,
+        "codes": str,
+        "float_codes": str,
+        "bad_float": str,
+        "bad_negative": str,
+        "bad_complex": str,
+        "bad_object": str,
+        "empty": str,
+    }
+
+    decoded = decode_text_metadata_labels(labels, metadata_types)
+
+    assert decoded["category"] is labels["category"]
+    assert decoded["already_text"].tolist() == ["ok"]
+    assert decoded["codes"].tolist() == ["AB", "C"]
+    assert decoded["float_codes"].tolist() == ["A"]
+    assert decoded["bad_float"] is labels["bad_float"]
+    assert decoded["bad_negative"] is labels["bad_negative"]
+    assert decoded["bad_complex"] is labels["bad_complex"]
+    assert decoded["bad_object"] is labels["bad_object"]
+    assert decoded["empty"].size == 0
