@@ -173,7 +173,7 @@ def hubai_export(
     from hubai_sdk import HubAIClient
 
     hubai_token = os.environ.get("HUBAI_API_KEY")
-    if not hubai_token:
+    if not hubai_token:  # pragma: no cover
         raise ValueError(
             "HUBAI_API_KEY environment variable is not set. "
             "Please set it to use HubAI SDK for model conversion. "

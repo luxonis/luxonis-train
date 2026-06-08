@@ -26,7 +26,7 @@ from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
 
 
 def check_aimet_available() -> None:
-    if not find_spec("aimet_torch"):
+    if not find_spec("aimet_torch"):  # pragma: no cover
         raise ImportError(
             "AIMET library is not installed. Please install "
             "`luxonis-train` with the `aimet` extra enabled "

@@ -158,6 +158,9 @@ omit = [
   "luxonis_train/callbacks/gpu_stats_monitor.py",
   "**/.cache/**",
   "tests/work/*",
+  "tests/integration/test_bump_opset_version.py",
+  "tests/integration/test_overfit_convergence.py",
+  "upgrade.py",
   "**/_remote_module_non_scriptable.py",
   # These are not related to our `config.py`,
   # see https://github.com/nedbat/coveragepy/issues/1653
