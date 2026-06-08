@@ -500,7 +500,7 @@ def quantize(
     @param opts: A list of optional CLI overrides of the config file.
     """
     model = create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config, opts, weights=weights, allow_empty_dataset=False
     )
     model.quantize()
 
