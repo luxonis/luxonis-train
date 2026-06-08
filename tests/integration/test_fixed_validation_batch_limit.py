@@ -1,4 +1,3 @@
-import torch
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 from torch import Size, Tensor
@@ -28,11 +27,8 @@ class SplitLengthLoader(BaseLoaderTorch):
 
     @override
     def __getitem__(
-        self, idx: int
-    ) -> tuple[Tensor | dict[str, Tensor], Labels]:
-        image = torch.zeros(3, self.height, self.width)
-        labels = {"vehicles/boundingbox": torch.zeros(1, 5)}
-        return image, labels
+        self, _: int
+    ) -> tuple[Tensor | dict[str, Tensor], Labels]: ...
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:

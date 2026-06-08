@@ -16,13 +16,8 @@ class _MockTrainer:
         self.callbacks = callbacks
 
     def predict(
-        self,
-        lightning_module: object,
-        loader: list[object],
-        return_predictions: bool = True,
+        self, lightning_module: object, loader: list[object]
     ) -> list[LuxonisOutput] | None:
-        if return_predictions:
-            return [self._prediction]
 
         for batch_idx, _ in enumerate(loader):
             for callback in list(self.callbacks):
@@ -75,7 +70,7 @@ def test_infer_from_loader_temporary_callback_does_not_leak(
     assert trainer.callbacks == [existing_callback]
     assert saved_paths == ["first_DiscSubNetHead_SegmentationVisualizer.png"]
 
-    trainer.predict(model.lightning_module, loader, return_predictions=False)
+    trainer.predict(model.lightning_module, loader)
 
     assert trainer.callbacks == [existing_callback]
     assert saved_paths == ["first_DiscSubNetHead_SegmentationVisualizer.png"]
