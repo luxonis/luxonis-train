@@ -1,6 +1,6 @@
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from io import StringIO
 from typing import Any
 
@@ -56,6 +56,25 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         @type matrices: Mapping[str, Mapping[str, Mapping[str, Any]]]
         @param matrices: Matrices in format {table_name: {name:
             matrix}}.
+        """
+        ...
+
+    @abstractmethod
+    def print_table(
+        self,
+        title: str,
+        table: Iterable[tuple[str | int | float, ...]],
+        column_names: list[str],
+    ) -> None:
+        """Print a table to the console.
+
+        @type title: str
+        @param title: Title of the table
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each
+            row is a tuple of values.
+        @type column_names: list[str]
+        @param column_names: Names of the columns in the table
         """
         ...
 
@@ -130,7 +149,9 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         logger.info(f"Loss: {loss}")
         logger.info("Metrics:")
         for table_name, table in metrics.items():
-            self._print_table(table_name, table)
+            self.print_table(
+                table_name, list(table.items()), ["Name", "Value"]
+            )
             for matrix_name, matrix in matrices.get(table_name, {}).items():
                 self._print_matrix(
                     self._format_matrix_title(matrix_name), matrix
@@ -151,29 +172,27 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         else:
             logger.info("-----------------")
 
-    def _print_table(
+    @override
+    def print_table(
         self,
         title: str,
-        table: Mapping[str, int | str | float],
-        key_name: str = "Name",
-        value_name: str = "Value",
+        table: Iterable[tuple[str | int | float, ...]],
+        column_names: list[str],
     ) -> None:
         """Print a table to the console using tabulate.
 
         @type title: str
         @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
-            C{"Value"}.
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each
+            row is a tuple of values.
+        @type column_names: list[str]
+        @param column_names: Names of the columns in the table
         """
         self._rule(title)
         formatted = tabulate(
-            table.items(),
-            headers=[key_name, value_name],
+            table,
+            headers=column_names,
             tablefmt="fancy_grid",
             numalign="right",
         )
@@ -252,7 +271,9 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         )
         self.console.print("[bold magenta]Metrics:[/bold magenta]")
         for table_name, table in metrics.items():
-            self._print_table(table_name, table)
+            self.print_table(
+                table_name, list(table.items()), ["Name", "Value"]
+            )
             for matrix_name, matrix in matrices.get(table_name, {}).items():
                 self._print_matrix(
                     self._format_matrix_title(matrix_name), matrix
@@ -272,7 +293,12 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         self._log_console.print(f"Loss: {loss}")
         self._log_console.print("Metrics:")
         for table_name, table in metrics.items():
-            self._print_table(table_name, table, console=self._log_console)
+            self.print_table(
+                table_name,
+                list(table.items()),
+                ["Name", "Value"],
+                console=self._log_console,
+            )
             for matrix_name, matrix in matrices.get(table_name, {}).items():
                 self._print_matrix(
                     self._format_matrix_title(matrix_name),
@@ -295,25 +321,23 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         self._log_buffer.seek(0)
         self._log_buffer.truncate(0)
 
-    def _print_table(
+    @override
+    def print_table(
         self,
         title: str,
-        table: Mapping[str, int | str | float],
-        key_name: str = "Name",
-        value_name: str = "Value",
+        table: Iterable[tuple[str | int | float, ...]],
+        column_names: list[str],
         console: Console | None = None,
     ) -> None:
         """Print a table to the console using rich text.
 
         @type title: str
         @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
-            C{"Value"}.
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each
+            row is a tuple of values.
+        @type column_names: list[str]
+        @param column_names: Names of the columns in the table
         @param console: Console instance to use, if None use default
             console. Defaults to None.
         @type console: Console | None
@@ -325,10 +349,18 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             header_style="bold magenta",
             title_style="bold",
         )
-        rich_table.add_column(key_name, style="magenta")
-        rich_table.add_column(value_name, style="white")
-        for name, value in table.items():
-            rich_table.add_row(name, f"{value:.5f}")
+        for i, column_name in enumerate(column_names):
+            rich_table.add_column(
+                column_name, style="magenta" if i == 0 else "white"
+            )
+        for name, *values in table:
+            rich_table.add_row(
+                str(name),
+                *[
+                    f"{value:.5f}" if isinstance(value, float) else str(value)
+                    for value in values
+                ],
+            )
         console.print(rich_table)
 
     def _print_matrix(

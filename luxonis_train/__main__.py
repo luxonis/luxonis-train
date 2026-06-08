@@ -154,6 +154,8 @@ def _yield_visualizations(
             return np_images, np_labels
 
         images, labels = loader[idx]
+        if not isinstance(images, dict):
+            images = {loader.image_source: images}
         return (
             {
                 name: image.numpy().transpose(1, 2, 0)
@@ -478,6 +480,29 @@ def convert(
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
     ).convert(save_dir=save_dir, weights=weights)
+
+
+@app.command(group=export_group, sort_key=1)
+def quantize(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    weights: str | None = None,
+):
+    """Quantize the model using AIMET.
+
+    @type config: str
+    @param config: Path to the configuration file.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    model = create_model(
+        config, opts, weights=weights, allow_empty_dataset=False
+    )
+    model.quantize()
 
 
 @upgrade_app.command()

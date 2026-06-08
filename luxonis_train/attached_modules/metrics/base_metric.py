@@ -165,6 +165,12 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """
         return super().compute()
 
+    def __eq__(self, other: object) -> bool:
+        return self is other
+
+    def __hash__(self) -> int:
+        return id(self)
+
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
         return get_signature(self.update)

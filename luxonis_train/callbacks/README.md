@@ -21,6 +21,7 @@ List of all supported callbacks.
 - [`UploadCheckpoint`](#uploadcheckpoint)
 - [`GradCamCallback`](#gradcamcallback)
 - [`EMACallback`](#emacallback)
+- [`AIMETCallback`](#aimetcallback)
 - [`TrainingProgressCallback`](#trainingprogresscallback)
 
 ## `PytorchLightning` Callbacks
@@ -185,6 +186,20 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 | `decay`             | `float` | `0.5`         | The decay factor for updating the EMA. Higher values yield slower updates.         |
 | `use_dynamic_decay` | `bool`  | `True`        | If enabled, adjusts the decay factor dynamically based on the training iteration.  |
 | `decay_tau`         | `float` | `2000`        | The time constant (tau) for dynamic decay, influencing how quickly the EMA adapts. |
+
+## `AIMETCallback`
+
+Callback to perform AIMET quantization at the end of the training.
+
+This callback runs AIMET post-training static quantization using the best checkpoint (by default based on the main metric) at the end of training.
+
+Quantization options are configured in the `exporter.aimet` section of the config file. Advanced PTQ techniques such as Adaround can be time-intensive, potentially taking from 40 minutes to several hours depending on dataset and model size. See the [config documentation](../../configs/README.md) for available AIMET configuration options.
+
+**Parameters:**
+
+| Key                    | Type                        | Default value | Description                                                                                                                                                     |
+| ---------------------- | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preferred_checkpoint` | `Literal["metric", "loss"]` | `"metric"`    | Which checkpoint should the callback use. If the preferred checkpoint is not available, the other option is used. If none is available, the callback is skipped |
 
 ## `TrainingProgressCallback`
 

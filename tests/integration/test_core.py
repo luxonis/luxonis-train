@@ -66,8 +66,12 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
 
     model = LuxonisModel(config_file, opts)
     test_results = model.test(finalize_tracker=False)
-    assert test_results == model.test(
-        weights={"state_dict": model.lightning_module.state_dict()}
+    assert (
+        test_results
+        == model.test(
+            weights={"state_dict": model.lightning_module.state_dict()}
+        )
+        == model.test(weights=model.lightning_module.state_dict())
     )
 
 

@@ -2,7 +2,6 @@ from functools import cached_property
 
 import torch
 from loguru import logger
-from luxonis_ml.data.utils.visualizations import ColorMap
 from torch import Tensor
 from typing_extensions import override
 
@@ -50,7 +49,6 @@ class SegmentationVisualizer(BaseVisualizer):
         self.background_class = background_class
         self.background_color = background_color
         self.alpha = alpha
-        self.colormap = ColorMap()
 
         self._warn_colors = True
 

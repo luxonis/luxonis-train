@@ -512,6 +512,7 @@ Here you can define configuration for exporting.
 | `onnx`                   | `dict`                | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
 | `hubai`                  | `dict`                | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
 | `blobconverter`          | `dict`                | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
+| `aimet`                  | `dict`                | `{}`              | Options for AIMET quantization. See [AIMET](#aimet)                                            |
 
 ### `ONNX`
 
@@ -572,6 +573,41 @@ exporter:
     active: true
     shaves: 8
 ```
+
+### `AIMET`
+
+The [AIMET](https://quic.github.io/aimet-pages/releases/latest/index.html) (AI Model Efficiency Toolkit) provides quantization and model export tools.
+
+| Key                        | Type                                              | Default value                                                  | Description                                                                                                                                                                                                                                          |
+| -------------------------- | ------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `active`                   | `bool`                                            | `False`                                                        | Whether to use AIMET for quantization and export                                                                                                                                                                                                     |
+| `epochs`                   | `int`                                             | `20`                                                           | Number of epochs to use for quantization-aware training                                                                                                                                                                                              |
+| `default_output_bw`        | `int`                                             | `8`                                                            | Default bitwidth for quantized activations and weights                                                                                                                                                                                               |
+| `default_param_bw`         | `int`                                             | `8`                                                            | Default bitwidth for quantized parameters                                                                                                                                                                                                            |
+| `default_data_type`        | `Literal["int", "float"]`                         | `int`                                                          | Default data type for quantized values                                                                                                                                                                                                               |
+| `quant_scheme`             | `Literal["min_max", "post_training_tf_enhanced"]` | `min_max`                                                      | Quantization scheme to use                                                                                                                                                                                                                           |
+| `config`                   | `dict \| str`                                     | `{}`                                                           | Additional configuration for AIMET. Can be a dictionary or a path to a JSON config file. Refer to the [AIMET documentation](https://quic.github.io/aimet-pages/releases/latest/techniques/runtime_config.html) for details on the available options. |
+| `fold_batch_norms`         | `bool`                                            | `False`                                                        | Whether to fold batch normalization layers before quantization                                                                                                                                                                                       |
+| `cross_layer_equalization` | `bool`                                            | `False`                                                        | Whether to perform cross-layer equalization before quantization                                                                                                                                                                                      |
+| `batch_norm_reestimation`  | `bool`                                            | `False`                                                        | Whether to perform batch norm re-estimation after quantization                                                                                                                                                                                       |
+| `sequential_mse`           | `bool`                                            | `False`                                                        | Whether to perform sequential MSE optimization.                                                                                                                                                                                                      |
+| `optimizer`                | `dict`                                            | `{"name": "SGD", "params": {"lr": 1e-5}}`                      | Optimizer configuration for quantization-aware training. See [Optimizer](#optimizer) section for details and examples.                                                                                                                               |
+| `scheduler`                | `dict`                                            | `{"name": "StepLR", "params": {"step_size": 5, "gamma": 0.1}}` | Scheduler configuration for quantization-aware training. See [Scheduler](#scheduler) section for details and examples..                                                                                                                              |
+| `adaround`                 | `dict`                                            | `{}`                                                           | Configuration for Adaround weight rounding. See [Adaround](#adaround) for more details.                                                                                                                                                              |
+
+#### Adaround
+
+Adaptive rounding (AdaRound) is a rounding mechanism for model weights designed to adapt to the data to improve the accuracy of the quantized model.
+
+By default, AIMET uses nearest rounding for quantization, in which weight values are quantized to the nearest integer value. AdaRound, however, uses training data to determine how to round quantized weights. This technique often improves the accuracy of the quantized model.
+
+| Key                      | Type              | Default value | Description                                                                                                                                                              |
+| ------------------------ | ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `active`                 | `bool`            | `False`       | Whether to use AdaRound for weight rounding during quantization                                                                                                          |
+| `default_num_iterations` | `int \| None`     | `None`        | Number of iterations for the AdaRound optimization. The default value is 10K for models with 8- or higher bit weights, and 15K for models with lower than 8 bit weights. |
+| `default_reg_param`      | `float`           | `0.01`        | Regularization parameter, trading off between rounding loss vs reconstruction loss.                                                                                      |
+| `default_beta_range`     | `tuple[int, int]` | `(20, 2)`     | Start and stop beta parameter for annealing of rounding loss (start_beta, end_beta).                                                                                     |
+| `default_warm_start`     | `float`           | `0.2`         | The warm up period, during which rounding loss has zero effect.                                                                                                          |
 
 ## Tuner
 

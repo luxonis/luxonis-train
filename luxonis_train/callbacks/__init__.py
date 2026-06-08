@@ -11,6 +11,7 @@ from lightning.pytorch.callbacks import (
 
 from luxonis_train.registry import CALLBACKS
 
+from .aimet_callback import AIMETCallback
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .convert_on_train_end import ConvertOnTrainEnd
 from .ema import EMACallback
@@ -50,6 +51,7 @@ CALLBACKS.register(module=FailOnNoTrainBatches)
 
 
 __all__ = [
+    "AIMETCallback",
     "ArchiveOnTrainEnd",
     "BaseLuxonisProgressBar",
     "ConvertOnTrainEnd",
