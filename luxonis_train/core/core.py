@@ -1634,6 +1634,8 @@ class LuxonisModel:
         self, weights: PathType | dict[str, Any] | None
     ) -> PathType | dict[str, Any] | None:
         if isinstance(weights, dict):
+            if "state_dict" not in weights:
+                weights = {"state_dict": weights}
             return weights
 
         if weights is None:
