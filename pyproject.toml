@@ -147,9 +147,10 @@ reportMatchNotExhaustive = "error"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--disable-warnings -vv --basetemp=tests/tmp/"
-markers = [
-  "unit: mark a test as a unit test",
-  "integration: mark a test as an integration test",
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+  "ignore::FutureWarning",
 ]
 
 [tool.coverage.run]
