@@ -177,7 +177,17 @@ class AdaptiveDetectionLoss(BaseLoss):
         return loss, sub_losses
 
     def _init_parameters(self, features: list[Tensor]) -> None:
-        if not hasattr(self, "anchors"):
+        needs_refresh = not hasattr(self, "anchors") or any(
+            tensor.is_inference()
+            for tensor in (
+                self.anchors,
+                self.anchor_points,
+                self.stride_tensor,
+                self.anchor_points_strided,
+            )
+            if isinstance(tensor, Tensor)
+        )
+        if needs_refresh:
             (
                 anchors,
                 anchor_points,
