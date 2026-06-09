@@ -257,7 +257,9 @@ class LuxonisLightningModule(pl.LightningModule):
                 (node_name, output_name, i)
                 for node_name, outs in outputs.items()
                 for output_name, out in outs.items()
-                for i in range(len(out))
+                for i in range(
+                    out.size(0) if isinstance(out, Tensor) else len(out)
+                )
             ]
         )
         new_outputs = []
