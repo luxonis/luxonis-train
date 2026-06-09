@@ -72,4 +72,8 @@ class BCEWithLogitsLoss(BaseLoss):
                 f"Target tensor dimension ({target.shape}) and preds tensor "
                 f"dimension ({predictions.shape}) should be the same."
             )
+        if predictions.is_inference():
+            predictions = predictions.clone()
+        if target.is_inference():
+            target = target.clone()
         return self.criterion(predictions, target)
