@@ -483,7 +483,13 @@ def test_convert_callback_deactivates_export_and_archive(
     cfg = Config.get_config(
         cast(
             Params,
-            BASE_MODEL_CFG | {"trainer": {"callbacks": callbacks_input}},
+            BASE_MODEL_CFG
+            | {
+                "trainer": {
+                    "smart_cfg_auto_populate": False,
+                    "callbacks": callbacks_input,
+                }
+            },
         )
     )
 
