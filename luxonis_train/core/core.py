@@ -1477,9 +1477,6 @@ class LuxonisModel:
         )
         model = cast(LuxonisLightningModule, sim.model)
 
-        model.eval()
-        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
-
         if optimizer is None:
             optimizer = from_registry(
                 OPTIMIZERS,
@@ -1507,8 +1504,11 @@ class LuxonisModel:
                 fold_batch_norms,
                 batch_norm_reestimation,
             ).eval()
+            ptq_test = {key: float("nan") for key in pre_quant_test}
             qat_test = self.pl_trainer.test(model, self.val_loader)[0]
         else:
+            model.eval()
+            ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
             qat_test = ptq_test
 
         model.set_export_mode(mode=True)
