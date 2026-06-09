@@ -1495,18 +1495,21 @@ class LuxonisModel:
                 **cfg.scheduler.params,
             )
 
-        model = quantization_aware_training(
-            sim,
-            dummy_inputs,
-            self.train_loader,
-            optimizer,
-            scheduler,
-            epochs if epochs is not None else cfg.epochs,
-            fold_batch_norms,
-            batch_norm_reestimation,
-        ).eval()
-
-        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+        qat_epochs = epochs if epochs is not None else cfg.epochs
+        if qat_epochs > 0:
+            model = quantization_aware_training(
+                sim,
+                dummy_inputs,
+                self.train_loader,
+                optimizer,
+                scheduler,
+                qat_epochs,
+                fold_batch_norms,
+                batch_norm_reestimation,
+            ).eval()
+            qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+        else:
+            qat_test = ptq_test
 
         model.set_export_mode(mode=True)
 
