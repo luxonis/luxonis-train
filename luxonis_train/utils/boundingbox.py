@@ -254,10 +254,11 @@ def non_max_suppression(
         torch.zeros((0, preds.size(-1)), device=preds.device)
     ] * preds.size(0)
 
-    for i, x in enumerate(preds):
+    for i in range(preds.shape[0]):
+        x = preds[i]
         curr_out = x[candidate_mask[i]]
 
-        if curr_out.size(0) == 0:
+        if curr_out.shape[0] == 0:
             continue
 
         if predicts_objectness:
@@ -356,8 +357,8 @@ def anchors_for_fpn_features(
     anchor_points: list[Tensor] = []
     n_anchors_list: list[int] = []
     stride_tensor: list[Tensor] = []
-    # FIXME: strict=True
-    for feature, stride in zip(features, strides, strict=False):
+    for i, feature in enumerate(features):
+        stride = strides[i]
         _, _, h, w = feature.shape
         cell_half_size = grid_cell_size * stride * 0.5
         shift_x = torch.arange(end=w) + grid_cell_offset
@@ -389,7 +390,7 @@ def anchors_for_fpn_features(
         )
         anchor_points.append(anchor_point)
 
-        curr_n_anchors = len(anchor)
+        curr_n_anchors = anchor.shape[0]
         n_anchors_list.append(curr_n_anchors)
         stride_tensor.append(
             torch.full((curr_n_anchors, 1), stride.item(), dtype=feature.dtype)
