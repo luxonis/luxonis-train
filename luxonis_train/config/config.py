@@ -752,7 +752,7 @@ class AIMETConfig(BaseModelExtraForbid):
     sequential_mse: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
 
-    epochs: PositiveInt = 20
+    epochs: NonNegativeInt = 20
     optimizer: ConfigItem = Field(
         default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
     )
