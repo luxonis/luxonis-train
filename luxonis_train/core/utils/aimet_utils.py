@@ -230,13 +230,12 @@ def quantization_aware_training(
             model, train_loader, forward_fn=_patched_forward_pass
         )
 
-        if fold_batch_norms:
-            logger.info("Folding batch norms into preceding layers")
-            fold_all_batch_norms(
-                model,
-                input_shapes=dummy_inputs.shape,
-                dummy_input=dummy_inputs,
-            )
+        # fold_all_batch_norms cannot be called on the quantized sim model:
+        # AIMET's graph tracer (ConnectedGraph) uses torch.jit.trace, which
+        # breaks on quantization-wrapped modules whose input count differs from
+        # the original (e.g. DFL gets 5 inputs instead of 1 once wrapped).
+        # BNs with updated stats are exported correctly via sim.onnx.export(),
+        # and onnxsim folds them at the ONNX level.
 
     model.automatic_optimization = True
     return model
