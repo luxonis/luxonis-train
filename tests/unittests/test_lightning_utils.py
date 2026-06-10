@@ -45,3 +45,14 @@ def test_translate_predefined_metric_params_segmentation_iou():
     )
 
     assert params == {"num_classes": 3, "per_class": True}
+
+
+def test_translate_predefined_metric_params_segmentation_iou_false():
+    params = _translate_predefined_metric_params(
+        DummyNode(Tasks.SEGMENTATION),
+        "MIoU",
+        MIoU,
+        {"num_classes": 3, "per_class_metrics": False},
+    )
+
+    assert params == {"num_classes": 3, "per_class": False}

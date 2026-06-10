@@ -579,7 +579,7 @@ def _translate_predefined_metric_params(
         return params
 
     per_class_metrics = params.pop("per_class_metrics")
-    if not per_class_metrics:
+    if per_class_metrics is None:
         return params
 
     task = None
