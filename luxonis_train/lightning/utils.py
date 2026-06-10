@@ -84,9 +84,11 @@ class NodeWrapper(nn.Module):
         super().__init__()
         self.name = name
         self.module = module
-        self.losses = losses
-        self.metrics = metrics
-        self.visualizers = visualizers
+        # Use ModuleDict so that model.modules() / model.parameters() /
+        # model.to(device) all reach these attached modules automatically.
+        self.losses = nn.ModuleDict(losses)
+        self.metrics = nn.ModuleDict(metrics)
+        self.visualizers = nn.ModuleDict(visualizers)
         self.unfreeze_after = unfreeze_after
         self.lr_after_unfreeze = lr_after_unfreeze
         self.inputs = inputs or []
