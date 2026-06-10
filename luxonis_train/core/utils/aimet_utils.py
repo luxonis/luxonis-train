@@ -211,12 +211,12 @@ def quantization_aware_training(
         model.cuda()
     model.automatic_optimization = False
 
-    for _ in track(
-        range(epochs),
-        description="Running Quantization-Aware Training",
-        total=epochs,
-    ):
-        for imgs, labels in train_loader:
+    for epoch in range(epochs):
+        for imgs, labels in track(
+            train_loader,
+            description=f"QAT epoch {epoch + 1}/{epochs}",
+            total=len(train_loader),
+        ):
             optimizer.zero_grad()
             loss = model.training_step((imgs, labels))
             loss.backward()
