@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
 
@@ -10,7 +11,7 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
 )
 from loguru import logger
-from luxonis_ml.typing import ConfigItem, check_type
+from luxonis_ml.typing import ConfigItem, Params, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
@@ -557,10 +558,47 @@ def _init_attached_module(
 ) -> tuple[str, T]:
     Module = registry.get(cfg.name)
     module_name = cfg.identifier
-    module = Module(**cfg.params, node=node, **kwargs)
+    params = dict(cfg.params)
+    if registry is METRICS:
+        params = _translate_predefined_metric_params(
+            node, cfg.name, Module, params
+        )
+    module = Module(**params, node=node, **kwargs)
     if module_name == "ConfusionMatrix":
         module_name = "mcc"
     return module_name, module
+
+
+def _translate_predefined_metric_params(
+    node: BaseNode,
+    metric_name: str,
+    Module: type[Any],
+    params: Params,
+) -> Params:
+    if "per_class_metrics" not in params:
+        return params
+
+    per_class_metrics = params.pop("per_class_metrics")
+    if not per_class_metrics:
+        return params
+
+    task = None
+    with suppress(RuntimeError):
+        task = node.task
+
+    aliases = Module.get_predefined_model_params_aliases(task)
+    param_name = aliases.get("per_class_metrics")
+    if param_name is None:
+        task_name = task.name if task is not None else "unknown"
+        logger.warning(
+            "Ignoring `per_class_metrics` for metric "
+            f"'{metric_name}' on task '{task_name}' because it does not "
+            "support a per-class override."
+        )
+        return params
+
+    params[param_name] = per_class_metrics
+    return params
 
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)

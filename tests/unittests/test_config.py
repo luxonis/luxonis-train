@@ -825,7 +825,8 @@ def test_simple_predefined_model_branches():
     assert nodes[1].freezing.active is True
     assert nodes[2].freezing.lr_after_unfreeze == 0.1
     assert nodes[2].task_name == "task"
-    assert nodes[2].metrics[0].params["class_metrics"] is True
+    assert nodes[2].metrics[0].params["per_class_metrics"] is True
+    assert nodes[2].metrics[1].params["per_class_metrics"] is True
     assert nodes[2].metrics[1].params["torchmetrics_task"] == "multiclass"
     assert nodes[2].metrics[1].is_main_metric is True
     assert nodes[2].metrics[2].name == "ConfusionMatrix"
@@ -866,18 +867,6 @@ def test_simple_predefined_model_branches():
         ConcreteSimplePredefinedModel._get_freezing({"freezing": "bad"})
 
     assert ConcreteSimplePredefinedModel._get_freezing({}).active is False
-
-
-def test_simple_predefined_model_per_class_no_override():
-    model = ConcreteSimplePredefinedModel(
-        backbone="Backbone",
-        head="Head",
-        loss="Loss",
-        metrics="Accuracy",
-        per_class_metrics=True,
-    )
-
-    assert model.nodes[-1].metrics[0].params == {}
 
 
 def test_ocr_recognition_model_alphabets_and_overrides():

@@ -1,7 +1,6 @@
 from abc import abstractmethod
-from typing import Final, Literal
+from typing import Literal
 
-from loguru import logger
 from luxonis_ml.typing import Kwargs, Params, check_type
 from typeguard import typechecked
 from typing_extensions import override
@@ -15,10 +14,6 @@ from luxonis_train.config import (
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
 from luxonis_train.variants import VariantBase
-
-PER_CLASS_OVERRIDES: Final[dict[str, dict[str, str]]] = {
-    "MeanAveragePrecision": {"per_class_metrics": "class_metrics"},
-}
 
 
 class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
@@ -212,26 +207,11 @@ class SimplePredefinedModel(BasePredefinedModel):
         return nodes
 
     def _generate_metrics(self) -> list[MetricModuleConfig]:
-        if self._per_class_metrics is None:
-            return [
-                MetricModuleConfig(
-                    name=metric,
-                    params=self._metrics_params,
-                    is_main_metric=metric == self._main_metric,
-                )
-                for metric in self._metrics
-            ]
-
         metrics = []
-        applied_per_class_override = False
-
         for metric in self._metrics:
             metric_params = dict(self._metrics_params)
-            aliases = PER_CLASS_OVERRIDES.get(metric, {})
-            param_name = aliases.get("per_class_metrics")
-            if param_name is not None:
-                metric_params[param_name] = self._per_class_metrics
-                applied_per_class_override = True
+            if self._per_class_metrics is not None:
+                metric_params["per_class_metrics"] = self._per_class_metrics
 
             metrics.append(
                 MetricModuleConfig(
@@ -239,13 +219,6 @@ class SimplePredefinedModel(BasePredefinedModel):
                     params=metric_params,
                     is_main_metric=metric == self._main_metric,
                 )
-            )
-
-        if self._metrics and not applied_per_class_override:
-            logger.warning(
-                "Ignoring `per_class_metrics` for predefined model metrics "
-                f"{self._metrics} because none of them support a per-class "
-                "override."
             )
 
         return metrics
