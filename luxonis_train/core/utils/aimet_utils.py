@@ -146,8 +146,19 @@ def _clear_inference_tensors(model: nn.Module) -> None:
     stride_tensor in loss modules) becomes an inference tensor.  These
     cannot be saved for backward, which breaks QAT.  Cloning them
     outside inference_mode produces normal, autograd-compatible tensors.
+
+    Loss/metric/visualizer modules are stored as plain Python dicts in
+    NodeWrapper (not nn.ModuleDict) so model.modules() does not reach
+    them. This function therefore also recurses into nn.Module instances
+    found inside plain dict attributes.
     """
-    for module in model.modules():
+    visited: set[int] = set()
+
+    def _visit(module: nn.Module) -> None:
+        if id(module) in visited:
+            return
+        visited.add(id(module))
+
         for name, buf in list(module._buffers.items()):
             if buf is not None and buf.is_inference():
                 module._buffers[name] = buf.clone()
@@ -159,6 +170,22 @@ def _clear_inference_tensors(model: nn.Module) -> None:
                 and val.is_inference()
             ):
                 module.__dict__[name] = val.clone()
+
+        for child in module.children():
+            _visit(child)
+
+        # Recurse into nn.Module instances stored in plain dict attributes
+        # (e.g. NodeWrapper.losses / .metrics / .visualizers).  These are
+        # invisible to model.modules() but still hold inference tensors.
+        for attr_val in module.__dict__.values():
+            if isinstance(attr_val, dict) and not isinstance(
+                attr_val, nn.ModuleDict
+            ):
+                for item in attr_val.values():
+                    if isinstance(item, nn.Module):
+                        _visit(item)
+
+    _visit(model)
 
 
 def quantization_aware_training(
