@@ -138,6 +138,29 @@ def post_training_quantization(
     return sim
 
 
+def _clear_inference_tensors(model: nn.Module) -> None:
+    """Clone inference-mode tensors in all modules to normal tensors.
+
+    Lightning's trainer.test() runs under torch.inference_mode(), so any
+    tensor lazily created inside a module's forward during testing (e.g.
+    stride_tensor in loss modules) becomes an inference tensor.  These
+    cannot be saved for backward, which breaks QAT.  Cloning them
+    outside inference_mode produces normal, autograd-compatible tensors.
+    """
+    for module in model.modules():
+        for name, buf in list(module._buffers.items()):
+            if buf is not None and buf.is_inference():
+                module._buffers[name] = buf.clone()
+        for name, val in list(module.__dict__.items()):
+            if (
+                isinstance(val, Tensor)
+                and name not in module._buffers
+                and name not in module._parameters
+                and val.is_inference()
+            ):
+                module.__dict__[name] = val.clone()
+
+
 def quantization_aware_training(
     sim: QuantizationSimModel,
     dummy_inputs: Tensor,
@@ -150,6 +173,11 @@ def quantization_aware_training(
 ) -> LuxonisLightningModule:
 
     model = cast(LuxonisLightningModule, sim.model)
+
+    # Tensors lazily created during trainer.test() (which runs under
+    # torch.inference_mode()) cannot participate in autograd.  Clone them now,
+    # before training begins, so backward passes work correctly.
+    _clear_inference_tensors(model)
 
     model.train()
     if CUDAAccelerator.is_available():
