@@ -753,6 +753,7 @@ class AIMETConfig(BaseModelExtraForbid):
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
 
     epochs: NonNegativeInt = 20
+    validation_interval: NonNegativeInt = 0
     optimizer: ConfigItem = Field(
         default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
     )

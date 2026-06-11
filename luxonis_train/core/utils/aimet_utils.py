@@ -3,6 +3,7 @@ from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, cast
 
+import torch
 from aimet_torch import QuantizationSimModel
 from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
 from aimet_torch.batch_norm_fold import fold_all_batch_norms
@@ -197,6 +198,14 @@ def quantization_aware_training(
     epochs: int,
     fold_batch_norms: bool = False,
     batch_norm_reestimation: bool = False,
+    *,
+    val_loader: DataLoader | None = None,
+    pl_trainer: Any = None,
+    pre_quant_test: dict[str, float] | None = None,
+    ptq_test: dict[str, float] | None = None,
+    save_dir: Path | None = None,
+    main_metric_key: str | None = None,
+    validation_interval: int = 0,
 ) -> LuxonisLightningModule:
 
     model = cast(LuxonisLightningModule, sim.model)
@@ -211,6 +220,9 @@ def quantization_aware_training(
         model.cuda()
     model.automatic_optimization = False
 
+    best_metric: float | None = None
+    best_state_dict: dict[str, Any] | None = None
+
     for epoch in range(epochs):
         for imgs, labels in track(
             train_loader,
@@ -222,6 +234,64 @@ def quantization_aware_training(
             loss.backward()
             optimizer.step()
         scheduler.step()
+
+        if (
+            validation_interval > 0
+            and val_loader is not None
+            and pl_trainer is not None
+            and (epoch + 1) % validation_interval == 0
+        ):
+            model.eval()
+            qat_test = pl_trainer.test(model, val_loader)[0]
+            _clear_inference_tensors(model)
+            model.train()
+
+            if pre_quant_test is not None and ptq_test is not None:
+                table = [
+                    (
+                        key.replace("test/metric/", "").replace(
+                            "test/loss/", ""
+                        ),
+                        value,
+                        ptq_test[key],
+                        qat_test[key],
+                    )
+                    for key, value in pre_quant_test.items()
+                    if key in qat_test and key in ptq_test
+                ]
+                model.progress_bar.print_table(
+                    f"Quantization results (epoch {epoch + 1}/{epochs})",
+                    table,
+                    ["Name", "Pre-Quant", "PTQ", "QAT"],
+                )
+
+            if main_metric_key is not None and save_dir is not None:
+                current_metric = qat_test.get(main_metric_key)
+                if current_metric is not None and (
+                    best_metric is None or current_metric > best_metric
+                ):
+                    best_metric = current_metric
+                    best_state_dict = {
+                        k: v.detach().clone()
+                        for k, v in model.state_dict().items()
+                    }
+                    ckpt_path = save_dir / "best_qat.pt"
+                    torch.save(
+                        {
+                            "state_dict": {
+                                k: v.cpu() for k, v in best_state_dict.items()
+                            }
+                        },
+                        ckpt_path,
+                    )
+                    logger.info(
+                        f"New best QAT model (metric={current_metric:.6f}) "
+                        f"saved to {ckpt_path}"
+                    )
+
+    if best_state_dict is not None:
+        model.load_state_dict(best_state_dict)
+        logger.info("Restored best QAT model weights for final export")
 
     if batch_norm_reestimation:
         logger.info("Reestimating batch norm statistics")

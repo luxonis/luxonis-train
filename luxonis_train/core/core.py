@@ -1553,15 +1553,32 @@ class LuxonisModel:
                 **cfg.scheduler.params,
             )
 
+        main_metric = model.nodes.main_metric
+        main_metric_key: str | None = None
+        if main_metric is not None:
+            formatted = model.nodes.formatted_name(main_metric.node_name)
+            main_metric_key = (
+                f"test/metric/{formatted}/{main_metric.metric_name}"
+            )
+
+        epochs_to_run = epochs if epochs is not None else cfg.epochs
+
         model = quantization_aware_training(
             sim,
             dummy_inputs,
             self.train_loader,
             optimizer,
             scheduler,
-            epochs if epochs is not None else cfg.epochs,
+            epochs_to_run,
             fold_batch_norms,
             batch_norm_reestimation,
+            val_loader=self.val_loader,
+            pl_trainer=self.pl_trainer,
+            pre_quant_test=pre_quant_test,
+            ptq_test=ptq_test,
+            save_dir=save_dir,
+            main_metric_key=main_metric_key,
+            validation_interval=cfg.validation_interval,
         ).eval()
 
         qat_test = self.pl_trainer.test(model, self.val_loader)[0]
@@ -1584,6 +1601,10 @@ class LuxonisModel:
             table,
             ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
+
+        if epochs_to_run > 0:
+            logger.info(f"Quantized model saved to {save_dir}")
+
         return save_dir
 
     @property
