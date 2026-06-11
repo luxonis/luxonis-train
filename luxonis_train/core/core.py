@@ -52,6 +52,7 @@ from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
+    get_tracker_init_params,
     setup_logging,
 )
 from luxonis_train.utils.general import safe_download
@@ -172,7 +173,7 @@ class LuxonisModel:
             rank=rank_zero_only.rank,
             mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
-            **self.cfg.tracker.model_dump(),
+            **get_tracker_init_params(self.cfg.tracker),
         )
 
         self.run_save_dir = (
@@ -874,7 +875,7 @@ class LuxonisModel:
         def _objective(trial: optuna.trial.Trial) -> float:
             """Objective function used to optimize Optuna study."""
             cfg_tracker = self.cfg.tracker
-            tracker_params = cfg_tracker.model_dump()
+            tracker_params = get_tracker_init_params(cfg_tracker)
             tracker_params["run_name"] = (
                 tracker_params["run_name"] or self.tracker.run_name
             )
@@ -1015,7 +1016,7 @@ class LuxonisModel:
         all_augs = [a.name for a in self.cfg_preprocessing.augmentations]
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
-        tracker_params = cfg_tracker.model_dump()
+        tracker_params = get_tracker_init_params(cfg_tracker)
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["is_wandb"] = False
         tracker_params["run_name"] = (
@@ -1088,7 +1089,7 @@ class LuxonisModel:
                 rank=rank_zero_only.rank,
                 _auto_finalize=True,
                 **(
-                    self.cfg.tracker.model_dump()
+                    get_tracker_init_params(self.cfg.tracker)
                     | {"run_name": self.parent_tracker.run_name}
                 ),
             )

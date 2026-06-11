@@ -2,6 +2,7 @@ import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Literal
+from uuid import uuid4
 
 import pytest
 import torch
@@ -135,3 +136,27 @@ def test_precision_fallback_to_bf16_on_cpu(
 
     model = LuxonisModel("configs/classification_light_model.yaml", opts)
     model.test()
+
+
+def test_custom_tracker_save_directory_does_not_create_default_output_dir(
+    tmp_path: Path, opts: Params
+):
+    run_name = f"save-dir-regression-{uuid4().hex}"
+    custom_save_dir = tmp_path / "custom-save-directory"
+
+    model = LuxonisModel(
+        "configs/complex_model.yaml",
+        opts
+        | {
+            "loader.params.dataset_name": "invalid_dataset_name",
+            "model.nodes.6.name": "ClassificationHead",
+            "tracker.save_directory": str(custom_save_dir),
+            "tracker.run_name": run_name,
+        },
+        allow_empty_dataset=True,
+    )
+
+    assert model.tracker.save_directory == custom_save_dir
+    assert model.run_save_dir == custom_save_dir / run_name
+    assert model.run_save_dir.exists()
+    assert not (Path("output") / run_name).exists()
