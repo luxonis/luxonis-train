@@ -43,7 +43,7 @@ from .spatial_transforms import (
     transform_keypoints,
     transform_masks,
 )
-from .tracker import LuxonisTrackerPL
+from .tracker import LuxonisTrackerPL, get_tracker_init_params
 
 __all__ = [
     "CHECKPOINT_FILTERED_STATE_DICT_PATTERN",
@@ -67,6 +67,7 @@ __all__ = [
     "get_center_keypoints",
     "get_sigmas",
     "get_signature",
+    "get_tracker_init_params",
     "get_with_default",
     "infer_upscale_factor",
     "insert_class",

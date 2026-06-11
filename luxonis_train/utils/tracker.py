@@ -1,3 +1,5 @@
+from typing import Any
+
 from lightning.pytorch.loggers.logger import Logger
 from lightning.pytorch.utilities import rank_zero_only
 from luxonis_ml.tracker import LuxonisTracker
@@ -38,3 +40,9 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
         if self.is_wandb:
             wandb_status = 0 if status == "success" else 1
             self.experiment["wandb"].finish(wandb_status)
+
+
+def get_tracker_init_params(cfg_tracker: Any) -> dict[str, Any]:
+    tracker_params = cfg_tracker.model_dump()
+    tracker_params["save_directory"] = cfg_tracker.save_directory
+    return tracker_params
