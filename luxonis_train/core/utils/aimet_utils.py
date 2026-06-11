@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, cast
@@ -273,13 +274,16 @@ def quantization_aware_training(
                     best_metric = current_metric
                     best_state_dict = {
                         k: v.detach().clone()
+                        if isinstance(v, Tensor)
+                        else deepcopy(v)
                         for k, v in model.state_dict().items()
                     }
                     ckpt_path = save_dir / "best_qat.pt"
                     torch.save(
                         {
                             "state_dict": {
-                                k: v.cpu() for k, v in best_state_dict.items()
+                                k: v.cpu() if isinstance(v, Tensor) else v
+                                for k, v in best_state_dict.items()
                             }
                         },
                         ckpt_path,
