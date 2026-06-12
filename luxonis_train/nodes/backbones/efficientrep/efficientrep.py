@@ -137,7 +137,7 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        return "{github}/efficientrep_{variant}_coco.ckpt"
+        return f"{{github}}/efficientrep_{self.variant[0]}_coco.ckpt"
 
     @staticmethod
     @override

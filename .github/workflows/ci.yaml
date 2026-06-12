@@ -115,14 +115,21 @@ jobs:
         run: |
           pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
 
+      - name: Install dependencies for config test
+        run: |
+          pip install pytest-cov semver~=3.0
+          pip install -e . --no-deps
+
       - name: Test config without dependencies
         run: |
-          pip install semver~=3.0 pydantic-extra-types~=2.10
-          pip install -e . --no-deps
-          python -c 'from luxonis_train.config import Config; \
-                     from pathlib import Path; \
-                     [Config.get_config(p)
-                       for p in Path("configs").rglob("*.yaml")]'
+          pytest -x tests/unittests/test_config.py \
+            --confcutdir=tests/unittests \
+            --cov=luxonis_train/config \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=100 \
+            --junitxml=junit.xml \
+            -o junit_family=legacy
 
   tests:
     needs:
