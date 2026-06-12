@@ -55,6 +55,8 @@ def post_training_quantization(
     cross_layer_equalization: bool = False,
     batch_norm_reestimation: bool = False,
     sequential_mse: bool = False,
+    high_precision_patterns: list[str] | None = None,
+    high_precision_bw: int = 16,
 ) -> QuantizationSimModel:
 
     def pass_calibration_data(model: nn.Module) -> None:
@@ -121,6 +123,14 @@ def post_training_quantization(
         default_data_type=default_data_type,
         in_place=True,
     )
+
+    # Raise quantization-sensitive branches to higher precision *before*
+    # encodings are computed (seq_mse / compute_encodings below).
+    if high_precision_patterns:
+        _raise_module_precision(
+            sim, high_precision_patterns, high_precision_bw
+        )
+
     if sequential_mse:
         logger.info("Applying sequential MSE")
 
@@ -138,6 +148,52 @@ def post_training_quantization(
 
     sim.compute_encodings(pass_calibration_data)
     return sim
+
+
+def _raise_module_precision(
+    sim: QuantizationSimModel, patterns: list[str], bitwidth: int
+) -> None:
+    """Set output/param quantizers of matching modules to ``bitwidth``.
+
+    A module matches if any string in ``patterns`` is a substring of its
+    fully-qualified name in ``sim.model``. This is used to keep
+    quantization-sensitive branches (e.g. direct keypoint coordinate
+    regression, whose decode amplifies activation error by ``2 *
+    stride``) at higher precision than the rest of the network.
+
+    Must be called *before* encodings are computed so the chosen
+    bitwidth is reflected in the calibrated min/max ranges.
+    """
+    matched = 0
+    for name, module in sim.model.named_modules():
+        if not any(p in name for p in patterns):
+            continue
+        quantizers = []
+        for attr in ("output_quantizers", "param_quantizers"):
+            container = getattr(module, attr, None)
+            if container is None:
+                continue
+            values = (
+                container.values()
+                if isinstance(container, dict)
+                else container
+            )
+            quantizers.extend(q for q in values if q is not None)
+        if not quantizers:
+            continue
+        for quantizer in quantizers:
+            if hasattr(quantizer, "bitwidth"):
+                quantizer.bitwidth = bitwidth
+        matched += 1
+        logger.info(
+            f"Raised quantizers of '{name}' to {bitwidth}-bit precision"
+        )
+
+    if matched == 0:
+        logger.warning(
+            "high_precision_patterns matched no quantized modules "
+            f"(patterns={patterns}); precision override had no effect"
+        )
 
 
 def _clear_inference_tensors(model: nn.Module) -> None:

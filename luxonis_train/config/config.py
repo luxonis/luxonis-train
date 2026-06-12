@@ -752,6 +752,15 @@ class AIMETConfig(BaseModelExtraForbid):
     sequential_mse: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
 
+    # Modules whose (sub)module name contains any of these substrings keep
+    # their activation/param quantizers at ``high_precision_bw`` instead of
+    # ``default_output_bw``/``default_param_bw``. Useful for quantization
+    # -sensitive branches such as direct keypoint coordinate regression,
+    # where the decode amplifies activation quantization error by
+    # ``2 * stride``.
+    high_precision_patterns: list[str] = Field(default_factory=list)
+    high_precision_bw: Literal[8, 16] = 16
+
     epochs: NonNegativeInt = 20
     validation_interval: NonNegativeInt = 0
     optimizer: ConfigItem = Field(

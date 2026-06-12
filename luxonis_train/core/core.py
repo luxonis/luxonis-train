@@ -1532,6 +1532,8 @@ class LuxonisModel:
             cross_layer_equalization,
             batch_norm_reestimation,
             sequential_mse,
+            high_precision_patterns=cfg.high_precision_patterns,
+            high_precision_bw=cfg.high_precision_bw,
         )
         model = cast(LuxonisLightningModule, sim.model)
 
