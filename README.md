@@ -298,12 +298,17 @@ The easiest way to load data is to use a directory with the dataset in one of th
   - **Supported URL protocols:**
     - `s3://bucket/path/to/directory` fo **AWS S3**
     - `gs://buclet/path/to/directory` for **Google Cloud Storage**
-    - `roboflow://workspace/project/version/format` for **RoboFlow**
+    - `roboflow://{workspace}/{project}/{version}/{format}` for **RoboFlow**
       - `workspace` - name of the workspace the dataset belongs to
       - `project` - name of the project the dataset belongs to
       - `version` - version of the dataset
       - `format` - one of `coco`, `darknet`, `voc`, `yolov4pytorch`, `mt-yolov6`, `createml`, `tensorflow`, `folder`, `png-mask-semantic`
       - **example:** `roboflow://team-roboflow/coco-128/2/coco`
+    - `ultralytics://{username}/datasets/{slug}` for **Ultralytics**
+      - `username` - name of the dataset author
+      - `slug` - name of the dataset
+      - Optional `?v={version}` attached at the end for specific version of the dataset
+      - **example:** `ultralytics://ultralytics/datasets/coco8`
 
 **Example:**
 
