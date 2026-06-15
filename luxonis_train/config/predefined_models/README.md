@@ -161,8 +161,6 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                                      |
 | `per_class_metrics`      | `bool`                                | `False`          | Whether to calculate and display class-specific keypoint `kpt_map`, `kpt_mar`, and derived `kpt_f1` metrics |
 
-When `per_class_metrics: true` is set on `KeypointDetectionModel`, it is forwarded to `MeanAveragePrecisionKeypoints` as `class_metrics: true`.
-
 ## `ClassificationModel`
 
 The `ClassificationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.

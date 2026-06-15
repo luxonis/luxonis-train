@@ -113,10 +113,10 @@ See [Mean Average Precision](https://lightning.ai/docs/torchmetrics/stable/detec
 | `box_fotmat`    | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                                                                                                |
 | `class_metrics` | `bool`                              | `False`       | Enables per-class keypoint metrics. When enabled, `MeanAveragePrecisionKeypoints` logs per-class `kpt_map`, `kpt_mar`, and derived `kpt_f1` |
 
-Per-class keypoint metrics can be enabled either:
+Per-class metrics can be enabled either:
 
 - at the predefined model level with `predefined_model.per_class_metrics: true`
-- at the metric level with `metrics[].params.class_metrics: true` when using `MeanAveragePrecisionKeypoints`
+- at the metric level with `metrics[].params.class_metrics: true` when using `MeanAveragePrecision` or subclasses of `MeanAveragePrecision`
 
 > [!NOTE]
 > **Important:** Mean Average Precision Keypoints metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
