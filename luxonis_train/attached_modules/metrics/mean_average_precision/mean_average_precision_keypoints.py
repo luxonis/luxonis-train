@@ -162,12 +162,18 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         if self.class_metrics:
             metrics.update(self._compute_class_metrics())
+            return postprocess_metrics(
+                metrics,
+                self.classes.inverse,
+                "kpt_map",
+                self.device,
+            )
 
-        return postprocess_metrics(
-            add_f1_metrics(metrics),
-            self.classes.inverse,
-            "kpt_map",
-            self.device,
+        metrics = add_f1_metrics(metrics)
+        main_metric_value = metrics.pop("kpt_map", stats[0])
+        return (
+            main_metric_value,
+            metrics,
         )
 
     def _compute_class_metrics(self) -> dict[str, Tensor]:

@@ -16,10 +16,8 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
         Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
     ]
 
-    def __init__(self, class_metrics: bool = False, **kwargs):
-        super().__init__(
-            iou_type="bbox", class_metrics=class_metrics, **kwargs
-        )
+    def __init__(self, **kwargs):
+        super().__init__(iou_type="bbox", **kwargs)
 
     @override
     def update(
