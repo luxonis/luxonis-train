@@ -20,7 +20,12 @@ class MeanAveragePrecision:
     def get_predefined_model_params_aliases(
         cls, task: Task | None = None
     ) -> dict[str, str]:
-        if task in {Tasks.BOUNDINGBOX, Tasks.INSTANCE_SEGMENTATION}:
+        if task in {
+            Tasks.BOUNDINGBOX,
+            Tasks.INSTANCE_KEYPOINTS,
+            Tasks.INSTANCE_SEGMENTATION,
+            Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
+        }:
             return {"per_class_metrics": "class_metrics"}
         return {}
 

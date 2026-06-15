@@ -33,7 +33,7 @@ def test_translate_predefined_metric_params_keypoint_map():
         {"per_class_metrics": True},
     )
 
-    assert params == {}
+    assert params == {"class_metrics": True}
 
 
 def test_translate_predefined_metric_params_segmentation_iou():
