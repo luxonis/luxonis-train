@@ -134,15 +134,15 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 **Components:**
 
-| Name                                                                                                      | Alias                        | Function                                                                                                 |
-| --------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [`EfficientRep`](../../nodes/README.md#efficientrep)                                                      | `"kpt_detection_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`) and `"heavy"` (`EfficientRep-L`) |
-| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                          | `"kpt_detection_neck"`       | Neck of the model                                                                                        |
-| [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)                            | `"kpt_detection_head"`       | Head of the model                                                                                        |
-| [`EfficientKeypointBBoxLoss`](../../attached_modules/losses/README.md#efficientkeypointbboxloss)          | `"kpt_detection_loss"`       | Loss of the model                                                                                        |
-| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecisionkeypoints) | `"kpt_detection_map"`        | Main metric of the model                                                                                 |
-| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)           | `"kpt_detection_oks"`        | Secondary metric of the model                                                                            |
-| [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)                   | `"kpt_detection_visualizer"` | Visualizer for keypoints.                                                                                |
+| Name                                                                                             | Alias                        | Function                                                                                                 |
+| ------------------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [`EfficientRep`](../../nodes/README.md#efficientrep)                                             | `"kpt_detection_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`) and `"heavy"` (`EfficientRep-L`) |
+| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                 | `"kpt_detection_neck"`       | Neck of the model                                                                                        |
+| [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)                   | `"kpt_detection_head"`       | Head of the model                                                                                        |
+| [`EfficientKeypointBBoxLoss`](../../attached_modules/losses/README.md#efficientkeypointbboxloss) | `"kpt_detection_loss"`       | Loss of the model                                                                                        |
+| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecision) | `"kpt_detection_map"`        | Main metric of the model                                                                                 |
+| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)  | `"kpt_detection_oks"`        | Secondary metric of the model                                                                            |
+| [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)          | `"kpt_detection_visualizer"` | Visualizer for keypoints.                                                                                |
 
 **Parameters:**
 
