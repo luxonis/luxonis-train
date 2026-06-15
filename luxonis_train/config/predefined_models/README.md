@@ -140,25 +140,28 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                          | `"kpt_detection_neck"`       | Neck of the model                                                                                        |
 | [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)                            | `"kpt_detection_head"`       | Head of the model                                                                                        |
 | [`EfficientKeypointBBoxLoss`](../../attached_modules/losses/README.md#efficientkeypointbboxloss)          | `"kpt_detection_loss"`       | Loss of the model                                                                                        |
-| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)           | `"kpt_detection_oks"`        | Main metric of the model                                                                                 |
-| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecisionkeypoints) | `"kpt_detection_map"`        | Secondary metric of the model                                                                            |
+| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecisionkeypoints) | `"kpt_detection_map"`        | Main metric of the model                                                                                 |
+| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)           | `"kpt_detection_oks"`        | Secondary metric of the model                                                                            |
 | [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)                   | `"kpt_detection_visualizer"` | Visualizer for keypoints.                                                                                |
 
 **Parameters:**
 
-| Key                      | Type                                  | Default value    | Description                                                                                        |
-| ------------------------ | ------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
-| `variant`                | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
-| `use_neck`               | `bool`                                | `True`           | Whether to include the neck in the model                                                           |
-| `backbone`               | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
-| `backbone_params`        | `dict`                                | `{}`             | Additional parameters to the backbone                                                              |
-| `neck_params`            | `dict`                                | `{}`             | Additional parameters to the neck                                                                  |
-| `head_params`            | `dict`                                | `{}`             | Additional parameters to the head                                                                  |
-| `loss_params`            | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
-| `kpt_visualizer_params`  | `dict`                                | `{}`             | Additional parameters to the keypoint visualizer                                                   |
-| `bbox_visualizer_params` | `dict`                                | `{}`             | Additional parameters to the bounding box visualizer                                               |
-| `bbox_task_name`         | `str \| None`                         | `None`           | Custom task name for the detection head                                                            |
-| `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                             |
+| Key                      | Type                                  | Default value    | Description                                                                                                 |
+| ------------------------ | ------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `variant`                | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L`          |
+| `use_neck`               | `bool`                                | `True`           | Whether to include the neck in the model                                                                    |
+| `backbone`               | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                                   |
+| `backbone_params`        | `dict`                                | `{}`             | Additional parameters to the backbone                                                                       |
+| `neck_params`            | `dict`                                | `{}`             | Additional parameters to the neck                                                                           |
+| `head_params`            | `dict`                                | `{}`             | Additional parameters to the head                                                                           |
+| `loss_params`            | `dict`                                | `{}`             | Additional parameters to the loss                                                                           |
+| `kpt_visualizer_params`  | `dict`                                | `{}`             | Additional parameters to the keypoint visualizer                                                            |
+| `bbox_visualizer_params` | `dict`                                | `{}`             | Additional parameters to the bounding box visualizer                                                        |
+| `bbox_task_name`         | `str \| None`                         | `None`           | Custom task name for the detection head                                                                     |
+| `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                                      |
+| `per_class_metrics`      | `bool`                                | `False`          | Whether to calculate and display class-specific keypoint `kpt_map`, `kpt_mar`, and derived `kpt_f1` metrics |
+
+When `per_class_metrics: true` is set on `KeypointDetectionModel`, it is forwarded to `MeanAveragePrecisionKeypoints` as `class_metrics: true`.
 
 ## `ClassificationModel`
 

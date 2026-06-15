@@ -105,12 +105,18 @@ See [Mean Average Precision](https://lightning.ai/docs/torchmetrics/stable/detec
 
 **Instance Keypoint Params**
 
-| Key           | Type                                | Default value | Description                                                           |
-| ------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
-| `sigmas`      | `list[float] \| None`               | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used |
-| `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
-| `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
-| `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+| Key             | Type                                | Default value | Description                                                                                                                                 |
+| --------------- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sigmas`        | `list[float] \| None`               | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used                                                                       |
+| `area_factor`   | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                                                                                           |
+| `max_dets`      | `int`                               | `20`          | Maximum number of detections per image                                                                                                      |
+| `box_fotmat`    | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                                                                                                |
+| `class_metrics` | `bool`                              | `False`       | Enables per-class keypoint metrics. When enabled, `MeanAveragePrecisionKeypoints` logs per-class `kpt_map`, `kpt_mar`, and derived `kpt_f1` |
+
+Per-class keypoint metrics can be enabled either:
+
+- at the predefined model level with `predefined_model.per_class_metrics: true`
+- at the metric level with `metrics[].params.class_metrics: true` when using `MeanAveragePrecisionKeypoints`
 
 > [!NOTE]
 > **Important:** Mean Average Precision Keypoints metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.

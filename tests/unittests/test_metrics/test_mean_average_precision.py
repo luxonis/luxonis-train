@@ -3,6 +3,7 @@ import torch
 from torch import Size, Tensor
 
 from luxonis_train.attached_modules.metrics.mean_average_precision import (
+    MeanAveragePrecision,
     MeanAveragePrecisionBBox,
     MeanAveragePrecisionKeypoints,
 )
@@ -605,3 +606,97 @@ def test_compute_mean_average_precision_keypoints(
     metric.update(keypoints, boundingbox, target_keypoints, target_boundingbox)
     result = metric.compute()[0]
     assert torch.isclose(result, expected, atol=5e-3)
+
+
+def test_compute_mean_average_precision_keypoints_per_class_metrics():
+    class DummyNodeKeypoints(BaseNode, register=False):
+        task = Tasks.INSTANCE_KEYPOINTS
+
+        def forward(self, _: Tensor) -> Tensor: ...
+
+    image_size = Size([3, 200, 200])
+    metric = MeanAveragePrecisionKeypoints(
+        sigmas=[0.04, 0.04, 0.04, 0.04],
+        area_factor=0.53,
+        class_metrics=True,
+        node=DummyNodeKeypoints(
+            n_classes=2,
+            n_keypoints=4,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"class1": 0, "class2": 1}}
+            ),
+            original_in_shape=image_size,
+        ),
+    )
+
+    keypoints = [
+        torch.tensor(
+            [
+                [[10, 10, 1], [20, 20, 1], [30, 30, 1], [40, 40, 1]],
+                [[60, 60, 1], [70, 70, 1], [80, 80, 1], [90, 90, 1]],
+            ]
+        )
+    ]
+    boundingbox = [
+        torch.tensor(
+            [
+                [10, 10, 50, 50, 1.0, 0],
+                [60, 60, 100, 100, 1.0, 1],
+            ]
+        )
+    ]
+    target_keypoints = normalize_kpts(
+        torch.tensor(
+            [
+                [0, 10, 10, 1, 20, 20, 1, 30, 30, 1, 40, 40, 1],
+                [0, 60, 60, 1, 70, 70, 1, 80, 80, 1, 90, 90, 1],
+            ]
+        ),
+        image_size,
+    )
+    target_boundingbox = convert_bboxes_to_xyxy_and_normalize(
+        torch.tensor(
+            [
+                [0, 0, 10, 10, 50, 50],
+                [0, 1, 60, 60, 100, 100],
+            ]
+        ),
+        image_size,
+    )
+
+    metric.update(keypoints, boundingbox, target_keypoints, target_boundingbox)
+    result, submetrics = metric.compute()
+
+    assert torch.isclose(result, torch.tensor(1.0), atol=5e-3)
+    assert torch.isclose(submetrics["kpt_mar"], torch.tensor(1.0), atol=5e-3)
+    assert torch.isclose(submetrics["kpt_f1"], torch.tensor(1.0), atol=5e-3)
+    assert torch.isclose(
+        submetrics["kpt_map_per_class_class1"], torch.tensor(1.0), atol=5e-3
+    )
+    assert torch.isclose(
+        submetrics["kpt_map_per_class_class2"], torch.tensor(1.0), atol=5e-3
+    )
+    assert torch.isclose(
+        submetrics["kpt_mar_per_class_class1"], torch.tensor(1.0), atol=5e-3
+    )
+    assert torch.isclose(
+        submetrics["kpt_mar_per_class_class2"], torch.tensor(1.0), atol=5e-3
+    )
+    assert torch.isclose(
+        submetrics["kpt_f1_per_class_class1"], torch.tensor(1.0), atol=5e-3
+    )
+    assert torch.isclose(
+        submetrics["kpt_f1_per_class_class2"], torch.tensor(1.0), atol=5e-3
+    )
+
+
+@pytest.mark.parametrize(
+    "task",
+    [Tasks.INSTANCE_KEYPOINTS, Tasks.INSTANCE_SEGMENTATION_KEYPOINTS],
+)
+def test_mean_average_precision_aliases_per_class_metrics_for_keypoint_tasks(
+    task: Tasks,
+):
+    assert MeanAveragePrecision.get_predefined_model_params_aliases(task) == {
+        "per_class_metrics": "class_metrics"
+    }
