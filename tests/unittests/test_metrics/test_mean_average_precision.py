@@ -8,7 +8,7 @@ from luxonis_train.attached_modules.metrics.mean_average_precision import (
     MeanAveragePrecisionKeypoints,
 )
 from luxonis_train.nodes import BaseNode
-from luxonis_train.tasks import Tasks
+from luxonis_train.tasks import Task, Tasks
 from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
 from .test_utils import convert_bboxes_to_xyxy_and_normalize, normalize_kpts
@@ -695,7 +695,7 @@ def test_compute_mean_average_precision_keypoints_per_class_metrics():
     [Tasks.INSTANCE_KEYPOINTS, Tasks.INSTANCE_SEGMENTATION_KEYPOINTS],
 )
 def test_mean_average_precision_aliases_per_class_metrics_for_keypoint_tasks(
-    task: Tasks,
+    task: Task,
 ):
     assert MeanAveragePrecision.get_predefined_model_params_aliases(task) == {
         "per_class_metrics": "class_metrics"
