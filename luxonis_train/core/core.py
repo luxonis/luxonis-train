@@ -1441,11 +1441,17 @@ class LuxonisModel:
             memory but will overwrite the original model's weights and
             structure.
         """
-        from aimet_torch.common.defs import QuantizationDataType, QuantScheme
-
         from .utils.aimet_utils import (
+            check_aimet_available,
             post_training_quantization,
             quantization_aware_training,
+        )
+
+        check_aimet_available()
+
+        from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
+            QuantizationDataType,
+            QuantScheme,
         )
 
         save_dir = self.run_save_dir / "aimet"
