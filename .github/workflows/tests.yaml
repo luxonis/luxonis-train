@@ -63,7 +63,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: luxonis-train
-        run: pip install -e .[dev]
+        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install specified luxonis-ml
         shell: bash
