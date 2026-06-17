@@ -1,4 +1,5 @@
 import sys
+from enum import Enum
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
@@ -18,6 +19,7 @@ from luxonis_train.config import (
     TrainerConfig,
 )
 from luxonis_train.config.config import (
+    AIMETConfig,
     ArchiveConfig,
     AugmentationConfig,
     BlobconverterExportConfig,
@@ -522,6 +524,52 @@ def test_export_config_validation():
 
     with pytest.raises(NotImplementedError, match="Hailo"):
         HubAIExportConfig(platform="hailo")
+
+
+def test_aimet_config_path_loading_and_serialization(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import luxonis_train.config.config as config_module
+
+    class FakeFileSystem:
+        def __init__(self, path: str):
+            self.path = path
+
+        def read_text(self, _: str) -> str:
+            assert self.path == "memory://aimet.json"
+            return '{"ops": {"is_output_quantized": "True"}}'
+
+    monkeypatch.setattr(config_module, "LuxonisFileSystem", FakeFileSystem)
+
+    cfg = ExportConfig.model_validate(
+        {"aimet": {"config": "memory://aimet.json"}}
+    )
+    assert cfg.aimet.config == {"ops": {"is_output_quantized": "True"}}
+
+    class FakeEnum(Enum):
+        VALUE = "value"
+
+    aimet = AIMETConfig.model_construct(
+        default_data_type=FakeEnum.VALUE, quant_scheme=FakeEnum.VALUE
+    )
+    assert aimet.model_dump()["default_data_type"] == "VALUE"
+    assert aimet.model_dump()["quant_scheme"] == "VALUE"
+
+
+def test_aimet_config_path_loading_failure(monkeypatch: pytest.MonkeyPatch):
+    import luxonis_train.config.config as config_module
+
+    class FailingFileSystem:
+        def __init__(self, path: str):
+            self.path = path
+
+        def read_text(self, _: str) -> str:
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(config_module, "LuxonisFileSystem", FailingFileSystem)
+
+    with pytest.raises(ValueError, match="Failed to load AIMET config"):
+        ExportConfig.model_validate({"aimet": {"config": "memory://bad.json"}})
 
 
 def test_config_validators_and_storage(monkeypatch: pytest.MonkeyPatch):
