@@ -23,6 +23,14 @@ from luxonis_train.__main__ import (
     tune,
 )
 from luxonis_train.__main__ import test as _test
+from luxonis_train.core.utils.aimet_utils import check_aimet_available
+
+
+def skip_if_no_aimet() -> None:
+    try:
+        check_aimet_available()
+    except ImportError:
+        pytest.skip("AIMET is not installed")
 
 
 def test_cli_command_success(
@@ -48,6 +56,8 @@ def test_cli_command_success(
         (quantize, {}),
     ]:
         with subtests.test(command.__name__):
+            if command is quantize:
+                skip_if_no_aimet()
             res = command(
                 [
                     "loader.params.dataset_name",
