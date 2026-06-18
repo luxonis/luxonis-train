@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sized
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -47,7 +47,7 @@ def get_ptq_calibration_loader(
 ) -> DataLoader:
     loader: torch_data.Dataset[LuxonisLoaderTorchOutput] = val_dataset
     if max_calibration_images is not None:
-        dataset_size = len(loader)
+        dataset_size = len(cast(Sized, loader))
         subset_size = min(max_calibration_images, dataset_size)
         if max_calibration_images > dataset_size:
             logger.warning(
