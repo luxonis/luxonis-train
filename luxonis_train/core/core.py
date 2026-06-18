@@ -1529,7 +1529,7 @@ class LuxonisModel:
             batch_size=self.cfg.trainer.batch_size,
             num_workers=self.cfg.trainer.n_workers,
             pin_memory=self.cfg.trainer.pin_memory,
-            calibration_num_images=cfg.calibration_num_images,
+            max_calibration_images=cfg.max_calibration_images,
         )
 
         sim = post_training_quantization(

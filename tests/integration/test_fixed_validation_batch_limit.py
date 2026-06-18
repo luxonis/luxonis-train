@@ -117,7 +117,7 @@ def test_ptq_calibration_loader_is_independent_from_validation_batch_limit():
                 "batch_size": 1,
                 "n_validation_batches": 1,
             },
-            "exporter": {"aimet": {"calibration_num_images": 2}},
+            "exporter": {"aimet": {"max_calibration_images": 2}},
         }
     )
 
@@ -130,7 +130,7 @@ def test_ptq_calibration_loader_is_independent_from_validation_batch_limit():
                 batch_size=model.cfg.trainer.batch_size,
                 num_workers=model.cfg.trainer.n_workers,
                 pin_memory=model.cfg.trainer.pin_memory,
-                calibration_num_images=None,
+                max_calibration_images=None,
             )
         )
         == 3
@@ -143,7 +143,7 @@ def test_ptq_calibration_loader_is_independent_from_validation_batch_limit():
                 batch_size=model.cfg.trainer.batch_size,
                 num_workers=model.cfg.trainer.n_workers,
                 pin_memory=model.cfg.trainer.pin_memory,
-                calibration_num_images=2,
+                max_calibration_images=2,
             )
         )
         == 2
