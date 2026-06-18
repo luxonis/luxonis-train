@@ -1,8 +1,10 @@
 import math
+from collections.abc import Callable
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, cast
 
+import torch.utils.data as torch_data
 from aimet_torch import QuantizationSimModel
 from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
 from aimet_torch.batch_norm_fold import fold_all_batch_norms
@@ -32,6 +34,36 @@ def check_aimet_available() -> None:
             "`luxonis-train` with the `aimet` extra enabled "
             "(pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu126)"
         )
+
+
+def get_ptq_calibration_loader(
+    val_dataset: torch_data.Dataset[LuxonisLoaderTorchOutput],
+    collate_fn: Callable[[list[LuxonisLoaderTorchOutput]], Any],
+    batch_size: int,
+    num_workers: int,
+    pin_memory: bool,
+    calibration_num_images: int | None,
+) -> DataLoader:
+    loader: torch_data.Dataset[LuxonisLoaderTorchOutput] = val_dataset
+    if calibration_num_images is not None:
+        subset_size = min(calibration_num_images, len(loader))
+        if subset_size < len(loader):
+            logger.info(
+                "Limiting PTQ calibration to the first "
+                f"{subset_size} / {len(loader)} validation samples because "
+                f"`exporter.aimet.calibration_num_images={calibration_num_images}`."
+            )
+        loader = torch_data.Subset(loader, range(subset_size))
+
+    return torch_data.DataLoader(
+        loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=pin_memory,
+    )
 
 
 def post_training_quantization(

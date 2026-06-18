@@ -1444,6 +1444,7 @@ class LuxonisModel:
         from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 
         from .utils.aimet_utils import (
+            get_ptq_calibration_loader,
             post_training_quantization,
             quantization_aware_training,
         )
@@ -1522,11 +1523,19 @@ class LuxonisModel:
         input_names = list(dummy_inputs.keys())
         output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
         dummy_inputs = next(iter(dummy_inputs.values()))
+        ptq_loader = get_ptq_calibration_loader(
+            val_dataset=self.loaders["val"],
+            collate_fn=self.loaders["val"].collate_fn,
+            batch_size=self.cfg.trainer.batch_size,
+            num_workers=self.cfg.trainer.n_workers,
+            pin_memory=self.cfg.trainer.pin_memory,
+            calibration_num_images=cfg.calibration_num_images,
+        )
 
         sim = post_training_quantization(
             model,
             dummy_inputs,
-            self.val_loader,
+            ptq_loader,
             save_dir,
             QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
             default_output_bw or cfg.default_output_bw,

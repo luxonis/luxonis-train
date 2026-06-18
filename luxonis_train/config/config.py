@@ -745,6 +745,7 @@ class AIMETConfig(BaseModelExtraForbid):
     default_data_type: Literal["int", "float"] = "int"
     quant_scheme: Literal["min_max", "tf", "tf_enhanced"] = "min_max"
     config: Params | None = None
+    calibration_num_images: PositiveInt | None = None
 
     fold_batch_norms: bool = False
     cross_layer_equalization: bool = False
