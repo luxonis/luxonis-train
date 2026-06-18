@@ -1491,7 +1491,22 @@ class LuxonisModel:
         if weights is not None:
             model.load_checkpoint(weights)
 
-        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
+        # Lightning test loops use inference mode by default, which can
+        # leak inference tensors into lazily initialized loss buffers that
+        # are later reused by QAT under autograd.
+        quant_eval_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=[
+                LuxonisRichProgressBar()
+                if self.cfg.rich_logging
+                else LuxonisTQDMProgressBar()
+            ],
+            precision=self.cfg.trainer.precision,
+            inference_mode=False,
+        )
+
+        pre_quant_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         dummy_inputs = {
             input_name: torch.randn([1, *shape]).to(model.device)
@@ -1537,7 +1552,7 @@ class LuxonisModel:
         model = cast(LuxonisLightningModule, sim.model)
 
         model.eval()
-        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
+        ptq_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         if optimizer is None:
             optimizer = from_registry(
@@ -1565,7 +1580,7 @@ class LuxonisModel:
             batch_norm_reestimation,
         ).eval()
 
-        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+        qat_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         model.set_export_mode(mode=True)
 
