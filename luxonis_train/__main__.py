@@ -289,9 +289,12 @@ def test(
         valid dataset by setting `allow_empty_dataset` to True. This can
         be useful for quick testing of the evaluation loop.
     """
-    create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
-    ).test(view=view, weights=weights)
+    # NOTE: temporary — weights intentionally NOT passed to the constructor
+    # so the CLI mirrors mlcloud-services, which builds dataset_metadata from
+    # the loader instead of the checkpoint. Revert after confirming metrics match.
+    create_model(config, opts, allow_empty_dataset=debug).test(
+        view=view, weights=weights
+    )
 
 
 @app.command(group=evaluation_group, sort_key=2)
