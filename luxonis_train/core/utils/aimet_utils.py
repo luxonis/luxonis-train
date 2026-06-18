@@ -46,11 +46,18 @@ def get_ptq_calibration_loader(
 ) -> DataLoader:
     loader: torch_data.Dataset[LuxonisLoaderTorchOutput] = val_dataset
     if calibration_num_images is not None:
-        subset_size = min(calibration_num_images, len(loader))
-        if subset_size < len(loader):
+        dataset_size = len(loader)
+        subset_size = min(calibration_num_images, dataset_size)
+        if calibration_num_images > dataset_size:
+            logger.warning(
+                "PTQ calibration requested "
+                f"{calibration_num_images} images, but the validation dataset "
+                f"only has {dataset_size}. Using the available {dataset_size}."
+            )
+        elif subset_size < dataset_size:
             logger.info(
                 "Limiting PTQ calibration to the first "
-                f"{subset_size} / {len(loader)} validation samples because "
+                f"{subset_size} / {dataset_size} validation samples because "
                 f"`exporter.aimet.calibration_num_images={calibration_num_images}`."
             )
         loader = torch_data.Subset(loader, range(subset_size))
