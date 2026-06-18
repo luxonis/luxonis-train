@@ -1609,6 +1609,7 @@ class LuxonisModel:
             table,
             ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
+        logger.info(f"AIMET artifacts saved in: {save_dir}")
         return save_dir
 
     @property
