@@ -165,7 +165,7 @@ def quantization_aware_training(
             train_loader,
             description=(
                 "Running Quantization-Aware Training "
-                f"[epoch {epoch + 1}/{epochs}]"
+                f"(epoch {epoch + 1}/{epochs})"
             ),
             total=len(train_loader),
         ):
