@@ -223,14 +223,29 @@ def quantization_aware_training(
 
         if fold_batch_norms:
             logger.info("Folding batch norms into preceding layers")
-            fold_all_batch_norms(
-                model,
-                input_shapes=dummy_inputs.shape,
-                dummy_input=dummy_inputs,
-            )
+            try:
+                fold_all_batch_norms(
+                    model,
+                    input_shapes=dummy_inputs.shape,
+                    dummy_input=dummy_inputs,
+                )
+            except Exception as e:
+                if not _is_aimet_graph_trace_error(e):
+                    raise
+                logger.warning(
+                    "Skipping post-QAT batch norm folding because AIMET "
+                    "failed to trace the quantized model graph. "
+                    f"Error: {e}"
+                )
 
     model.automatic_optimization = True
     return model
+
+
+def _is_aimet_graph_trace_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "_UnsafeGraphError" or (
+        "Failed to trace computation graph" in str(exc)
+    )
 
 
 def _patched_forward_pass(
