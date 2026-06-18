@@ -8,11 +8,19 @@ from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.core.utils.aimet_utils import check_aimet_available
 from tests.conftest import LuxonisTestDatasets
 from tests.integration.backbone_model_utils import (
     PREDEFINED_MODELS,
     prepare_predefined_model_config,
 )
+
+
+def skip_if_no_aimet() -> None:
+    try:
+        check_aimet_available()
+    except ImportError:
+        pytest.skip("AIMET is not installed")
 
 
 def test_model_construction():
@@ -66,6 +74,7 @@ def test_predefined_models(
         ).exists()
 
     with subtests.test("quantize"):
+        skip_if_no_aimet()
         save_dir = model.quantize()
         assert (save_dir / f"{config_name}.encodings").exists()
         assert (save_dir / f"{config_name}.onnx").exists()
