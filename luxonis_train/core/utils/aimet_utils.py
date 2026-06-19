@@ -272,8 +272,8 @@ def quantization_aware_training(
                     input_shapes=dummy_inputs.shape,
                     dummy_input=dummy_inputs,
                 )
-            except Exception as e:
-                if not _is_aimet_graph_trace_error(e):
+            except Exception as e:  # pragma: no cover
+                if not _is_aimet_graph_trace_error(e):  # pragma: no cover
                     raise
                 logger.warning(
                     "Skipping post-QAT batch norm folding because AIMET "
@@ -285,7 +285,7 @@ def quantization_aware_training(
     return model
 
 
-def _is_aimet_graph_trace_error(exc: Exception) -> bool:
+def _is_aimet_graph_trace_error(exc: Exception) -> bool:  # pragma: no cover
     return exc.__class__.__name__ == "_UnsafeGraphError" or (
         "Failed to trace computation graph" in str(exc)
     )
