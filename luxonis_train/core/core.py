@@ -1139,6 +1139,11 @@ class LuxonisModel:
             path = self._exported_models["onnx"]
 
         path = Path(path)
+        executable_paths = [str(path)]
+
+        external_data_path = path.with_name(f"{path.name}.data")
+        if external_data_path.exists():
+            executable_paths.append(str(external_data_path))
 
         executable_fname = path.name
         archive_name += path.suffix
@@ -1199,7 +1204,7 @@ class LuxonisModel:
             archive_name=archive_name,
             save_path=str(archive_save_directory),
             cfg_dict=cfg_dict,
-            executables_paths=[str(path)],  # TODO: what if more executables?
+            executables_paths=executable_paths,
         ).make_archive()
 
         logger.info(f"NN Archive saved to {archive_path}")
@@ -1604,6 +1609,10 @@ class LuxonisModel:
             (save_dir / self.cfg.model.name).with_suffix(".onnx"),
             input_names=input_names,
             output_names=output_names,
+        )
+        self._archive(
+            path=(save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            save_dir=save_dir,
         )
 
         table = []

@@ -1,3 +1,4 @@
+import tarfile
 from pathlib import Path
 
 import cv2
@@ -79,6 +80,13 @@ def test_predefined_models(
         assert (save_dir / f"{config_name}.encodings").exists()
         assert (save_dir / f"{config_name}.onnx").exists()
         assert (save_dir / f"{config_name}.onnx.data").exists()
+        archive_path = save_dir / f"{config_name}.onnx.tar.xz"
+        assert archive_path.exists()
+        with tarfile.open(archive_path) as tar:
+            archive_entries = set(tar.getnames())
+        assert "config.json" in archive_entries
+        assert f"{config_name}.onnx" in archive_entries
+        assert f"{config_name}.onnx.data" in archive_entries
 
     if config_name != "embeddings_model":
         with subtests.test("infer"):
