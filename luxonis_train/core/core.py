@@ -1139,7 +1139,7 @@ class LuxonisModel:
             path = self._exported_models["onnx"]
 
         path = Path(path)
-        executable_paths = [path]
+        executable_paths: list[PathType] = [path]
 
         external_data_path = path.with_name(f"{path.name}.data")
         if external_data_path.exists():
