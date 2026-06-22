@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sized
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import torch.utils.data as torch_data
 from lightning.pytorch.accelerators import CUDAAccelerator
 from loguru import logger
 from rich.progress import track
@@ -33,6 +35,43 @@ def check_aimet_available() -> None:
             "`luxonis-train` with the `aimet` extra enabled "
             "(pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu130)"
         )
+
+
+def get_ptq_calibration_loader(
+    val_dataset: torch_data.Dataset[LuxonisLoaderTorchOutput],
+    collate_fn: Callable[[list[LuxonisLoaderTorchOutput]], Any],
+    batch_size: int,
+    num_workers: int,
+    pin_memory: bool,
+    max_calibration_images: int | None,
+) -> DataLoader:
+    loader: torch_data.Dataset[LuxonisLoaderTorchOutput] = val_dataset
+    if max_calibration_images is not None:
+        dataset_size = len(cast(Sized, loader))
+        subset_size = min(max_calibration_images, dataset_size)
+        if max_calibration_images > dataset_size:
+            logger.warning(
+                "PTQ calibration requested "
+                f"{max_calibration_images} images, but the validation dataset "
+                f"only has {dataset_size}. Using the available {dataset_size}."
+            )
+        elif subset_size < dataset_size:
+            logger.info(
+                "Limiting PTQ calibration to the first "
+                f"{subset_size} / {dataset_size} validation samples because "
+                f"`exporter.aimet.max_calibration_images={max_calibration_images}`."
+            )
+        loader = torch_data.Subset(loader, range(subset_size))
+
+    return torch_data.DataLoader(
+        loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=pin_memory,
+    )
 
 
 def post_training_quantization(
@@ -199,12 +238,19 @@ def quantization_aware_training(
         model.cuda()
     model.automatic_optimization = False
 
-    for _ in track(
-        range(epochs),
-        description="Running Quantization-Aware Training",
-        total=epochs,
-    ):
-        for imgs, labels in train_loader:
+    assert len(train_loader) > 0, (
+        "Training loader must have at least one batch"
+    )
+
+    for epoch in range(epochs):
+        for imgs, labels in track(
+            train_loader,
+            description=(
+                "Running Quantization-Aware Training "
+                f"(epoch {epoch + 1}/{epochs})"
+            ),
+            total=len(train_loader),
+        ):
             optimizer.zero_grad()
             loss = model.training_step((imgs, labels))
             loss.backward()
@@ -220,14 +266,29 @@ def quantization_aware_training(
 
         if fold_batch_norms:
             logger.info("Folding batch norms into preceding layers")
-            fold_all_batch_norms(
-                model,
-                input_shapes=dummy_inputs.shape,
-                dummy_input=dummy_inputs,
-            )
+            try:
+                fold_all_batch_norms(
+                    model,
+                    input_shapes=dummy_inputs.shape,
+                    dummy_input=dummy_inputs,
+                )
+            except Exception as e:  # pragma: no cover
+                if not _is_aimet_graph_trace_error(e):  # pragma: no cover
+                    raise
+                logger.warning(
+                    "Skipping post-QAT batch norm folding because AIMET "
+                    "failed to trace the quantized model graph. "
+                    f"Error: {e}"
+                )
 
     model.automatic_optimization = True
     return model
+
+
+def _is_aimet_graph_trace_error(exc: Exception) -> bool:  # pragma: no cover
+    return exc.__class__.__name__ == "_UnsafeGraphError" or (
+        "Failed to trace computation graph" in str(exc)
+    )
 
 
 def _patched_forward_pass(

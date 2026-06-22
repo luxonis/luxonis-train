@@ -1443,6 +1443,7 @@ class LuxonisModel:
         """
         from .utils.aimet_utils import (
             check_aimet_available,
+            get_ptq_calibration_loader,
             post_training_quantization,
             quantization_aware_training,
         )
@@ -1497,7 +1498,22 @@ class LuxonisModel:
         if weights is not None:
             model.load_checkpoint(weights)
 
-        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
+        # Lightning test loops use inference mode by default, which can
+        # leak inference tensors into lazily initialized loss buffers that
+        # are later reused by QAT under autograd.
+        quant_eval_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=[
+                LuxonisRichProgressBar()
+                if self.cfg.rich_logging
+                else LuxonisTQDMProgressBar()
+            ],
+            precision=self.cfg.trainer.precision,
+            inference_mode=False,
+        )
+
+        pre_quant_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         dummy_inputs = {
             input_name: torch.randn([1, *shape]).to(model.device)
@@ -1513,11 +1529,19 @@ class LuxonisModel:
         input_names = list(dummy_inputs.keys())
         output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
         dummy_inputs = next(iter(dummy_inputs.values()))
+        ptq_loader = get_ptq_calibration_loader(
+            val_dataset=self.loaders["val"],
+            collate_fn=self.loaders["val"].collate_fn,
+            batch_size=self.cfg.trainer.batch_size,
+            num_workers=self.cfg.trainer.n_workers,
+            pin_memory=self.cfg.trainer.pin_memory,
+            max_calibration_images=cfg.max_calibration_images,
+        )
 
         sim = post_training_quantization(
             model,
             dummy_inputs,
-            self.val_loader,
+            ptq_loader,
             save_dir,
             QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
             default_output_bw or cfg.default_output_bw,
@@ -1543,7 +1567,7 @@ class LuxonisModel:
         model = cast(LuxonisLightningModule, sim.model)
 
         model.eval()
-        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
+        ptq_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         if optimizer is None:
             optimizer = from_registry(
@@ -1571,7 +1595,7 @@ class LuxonisModel:
             batch_norm_reestimation,
         ).eval()
 
-        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+        qat_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         model.set_export_mode(mode=True)
 
@@ -1591,6 +1615,7 @@ class LuxonisModel:
             table,
             ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
+        logger.info(f"AIMET artifacts saved in: {save_dir}")
         return save_dir
 
     @property
