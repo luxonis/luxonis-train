@@ -62,7 +62,7 @@ def test_tune(
 def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
     config_file = "configs/classification_light_model.yaml"
     opts |= {
-        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+        "loader.params.dataset_name": cifar10_dataset.identifier,
     }
 
     model = LuxonisModel(config_file, opts)
@@ -129,7 +129,7 @@ def test_precision_fallback_to_bf16_on_cpu(
     cifar10_dataset: LuxonisDataset, opts: Params
 ):
     opts |= {
-        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+        "loader.params.dataset_name": cifar10_dataset.identifier,
         "trainer.precision": "16-mixed",
         "trainer.accelerator": "cpu",
     }
