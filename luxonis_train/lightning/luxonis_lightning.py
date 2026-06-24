@@ -1018,6 +1018,7 @@ class LuxonisLightningModule(pl.LightningModule):
             elif callback.name == "AIMETCallback":
                 artifact_keys.add(f"{model_name}.onnx")
                 artifact_keys.add(f"{model_name}.onnx.data")
+                artifact_keys.add(f"{model_name}.onnx.tar.xz")
                 artifact_keys.add(f"{model_name}.encodings")
             elif callback.name == "TrainingProgressCallback":
                 metric_keys.update(
