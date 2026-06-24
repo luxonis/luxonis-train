@@ -74,7 +74,7 @@ jobs:
         if: startsWith(github.head_ref, 'release/') == false
         run: |
           pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@fix/package-pins"
 
       - name: Pyright check
         uses: jakebailey/pyright-action@8ec14b5cfe41f26e5f41686a31eb6012758217ef
@@ -113,7 +113,7 @@ jobs:
       - name: Install dev version of LuxonisML
         if: startsWith(github.head_ref, 'release/') == false
         run: |
-          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@fix/package-pins"
 
       - name: Install dependencies for config test
         run: |
@@ -160,7 +160,7 @@ jobs:
         if: startsWith(github.head_ref, 'release/') == false
         run: |
           pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@fix/package-pins"
 
       - name: Authenticate to Google Cloud
         id: google-auth
