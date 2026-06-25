@@ -68,6 +68,7 @@ from .utils.export_utils import (
     get_preprocessing,
     hubai_export,
     make_initializers_unique,
+    rename_onnx_outputs,
     replace_weights,
     try_onnx_simplify,
 )
@@ -1609,6 +1610,10 @@ class LuxonisModel:
             (save_dir / self.cfg.model.name).with_suffix(".onnx"),
             input_names=input_names,
             output_names=output_names,
+        )
+        rename_onnx_outputs(
+            (save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            output_names,
         )
         self._archive(
             path=(save_dir / self.cfg.model.name).with_suffix(".onnx"),
