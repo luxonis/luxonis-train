@@ -71,8 +71,21 @@ def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
             f"{len(model.graph.output)}."
         )
 
-    for output, new_name in zip(model.graph.output, output_names, strict=True):
-        output.name = new_name
+    old_to_new = {
+        output.name: new_name
+        for output, new_name in zip(
+            model.graph.output, output_names, strict=True
+        )
+    }
+
+    for node in model.graph.node:
+        for i, name in enumerate(node.output):
+            if name in old_to_new:
+                node.output[i] = old_to_new[name]
+
+    for output in model.graph.output:
+        if output.name in old_to_new:
+            output.name = old_to_new[output.name]
 
     external_data_path = onnx_path.with_name(f"{onnx_path.name}.data")
     if external_data_path.exists():
@@ -88,6 +101,8 @@ def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
         )
     else:
         onnx.save(model, str(onnx_path))
+
+    onnx.checker.check_model(str(onnx_path))
 
 
 def get_preprocessing(
