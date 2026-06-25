@@ -1521,20 +1521,19 @@ class LuxonisModel:
 
         pre_quant_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
-        dummy_inputs = {
+        dummy_inputs_dict = {
             input_name: torch.randn([1, *shape]).to(model.device)
             for shapes in model.nodes.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
 
-        if len(dummy_inputs) > 1:
+        if len(dummy_inputs_dict) > 1:
             raise NotImplementedError(
                 "Quantization is not yet supported for models "
                 "with multiple inputs."
             )
-        input_names = list(dummy_inputs.keys())
-        output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
-        dummy_inputs = next(iter(dummy_inputs.values()))
+        input_names = list(dummy_inputs_dict.keys())
+        dummy_inputs = next(iter(dummy_inputs_dict.values()))
         ptq_loader = get_ptq_calibration_loader(
             val_dataset=self.loaders["val"],
             collate_fn=self.loaders["val"].collate_fn,
@@ -1604,6 +1603,9 @@ class LuxonisModel:
         qat_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         model.set_export_mode(mode=True)
+        output_names = model._get_output_onnx_names(
+            deepcopy(dummy_inputs_dict)
+        )
 
         sim.onnx.export(
             dummy_inputs,
