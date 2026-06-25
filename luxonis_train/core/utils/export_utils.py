@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 from collections.abc import Generator
@@ -64,41 +63,13 @@ def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
 
     onnx_path = Path(onnx_path)
     model = onnx.load(str(onnx_path))
-    actual_outputs = []
-    for output in model.graph.output:
-        shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
-        actual_outputs.append(
-            {
-                "name": output.name,
-                "shape": shape,
-                "dtype": onnx.TensorProto.DataType.Name(
-                    output.type.tensor_type.elem_type
-                ),
-            }
-        )
-
-    logger.info(f"Requested ONNX output names: {output_names}")
-    logger.info(f"Actual exported ONNX outputs: {actual_outputs}")
-
-    debug_path = onnx_path.with_suffix(".output_debug.json")
-    debug_path.write_text(
-        json.dumps(
-            {
-                "requested_output_names": output_names,
-                "actual_outputs": actual_outputs,
-            },
-            indent=2,
-        )
-    )
-    logger.info(f"Wrote ONNX output debug info to {debug_path}")
 
     if len(model.graph.output) != len(output_names):
-        logger.error(
+        raise ValueError(
             "Number of requested output names does not match the number "
             f"of ONNX graph outputs: {len(output_names)} != "
-            f"{len(model.graph.output)}. Skipping output rename."
+            f"{len(model.graph.output)}."
         )
-        return
 
     for output, new_name in zip(model.graph.output, output_names, strict=True):
         output.name = new_name
