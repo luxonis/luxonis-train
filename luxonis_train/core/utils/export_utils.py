@@ -58,6 +58,53 @@ def try_onnx_simplify(onnx_path: PathType) -> None:
     logger.info(f"ONNX model saved to {onnx_path}")
 
 
+def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
+    import onnx
+
+    onnx_path = Path(onnx_path)
+    model = onnx.load(str(onnx_path))
+
+    if len(model.graph.output) != len(output_names):
+        raise ValueError(
+            "Number of requested output names does not match the number "
+            f"of ONNX graph outputs: {len(output_names)} != "
+            f"{len(model.graph.output)}."
+        )
+
+    old_to_new = {
+        output.name: new_name
+        for output, new_name in zip(
+            model.graph.output, output_names, strict=True
+        )
+    }
+
+    for node in model.graph.node:
+        for i, name in enumerate(node.output):
+            if name in old_to_new:
+                node.output[i] = old_to_new[name]
+
+    for output in model.graph.output:
+        if output.name in old_to_new:
+            output.name = old_to_new[output.name]
+
+    external_data_path = onnx_path.with_name(f"{onnx_path.name}.data")
+    if external_data_path.exists():
+        external_data_path.unlink()
+        onnx.save(
+            model,
+            str(onnx_path),
+            save_as_external_data=True,
+            all_tensors_to_one_file=True,
+            location=external_data_path.name,
+            size_threshold=0,
+            convert_attribute=False,
+        )
+    else:
+        onnx.save(model, str(onnx_path))
+
+    onnx.checker.check_model(str(onnx_path))
+
+
 def get_preprocessing(
     cfg: PreprocessingConfig, log_label: str | None = None
 ) -> tuple[
