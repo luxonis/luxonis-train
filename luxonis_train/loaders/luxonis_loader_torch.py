@@ -203,7 +203,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return self.dataset.get_classes()
+        return self.loader._classes
 
     @override
     def get_n_keypoints(self) -> dict[str, int]:
