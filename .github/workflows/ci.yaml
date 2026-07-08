@@ -58,7 +58,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          repository: ${{ inputs.train_ref != '' && 'Luxonis/luxonis-train' || github.repository }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
 
       - name: Install pre-commit
@@ -75,7 +75,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          repository: ${{ inputs.train_ref != '' && 'Luxonis/luxonis-train' || github.repository }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
 
       - name: Install dependencies
@@ -92,7 +92,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          repository: ${{ inputs.train_ref != '' && 'Luxonis/luxonis-train' || github.repository }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
 
       - name: Set up Python
@@ -105,7 +105,7 @@ jobs:
         run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install source version of LuxonisML
-        if: ${{ inputs.ml_ref != '' || startsWith(github.head_ref, 'release/') == false }}
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
@@ -134,7 +134,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          repository: ${{ inputs.train_ref != '' && 'Luxonis/luxonis-train' || github.repository }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
 
       - name: Set up Python
@@ -144,11 +144,11 @@ jobs:
           cache: pip
 
       - name: Install released version of LuxonisML
-        if: ${{ inputs.ml_ref == '' && startsWith(github.head_ref, 'release/') == true }}
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
         run: pip install luxonis-ml[utils]
 
       - name: Install source version of LuxonisML
-        if: ${{ inputs.ml_ref != '' || startsWith(github.head_ref, 'release/') == false }}
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
@@ -184,7 +184,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          repository: ${{ inputs.train_ref != '' && 'Luxonis/luxonis-train' || github.repository }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
 
       - name: Set up Python
@@ -197,7 +197,7 @@ jobs:
         run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install source version of LuxonisML
-        if: ${{ inputs.ml_ref != '' || startsWith(github.head_ref, 'release/') == false }}
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
