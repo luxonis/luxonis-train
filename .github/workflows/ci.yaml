@@ -2,6 +2,37 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      ml_ref:
+        description: "luxonis-ml version (branch/tag/SHA)"
+        required: false
+        default: main
+      train_ref:
+        description: "luxonis-train version (branch/tag/SHA)"
+        required: false
+        default: main
+  workflow_call:
+    inputs:
+      ml_ref:
+        description: "luxonis-ml version (branch/tag/SHA)"
+        required: false
+        type: string
+        default: main
+      train_ref:
+        description: "luxonis-train version (branch/tag/SHA)"
+        required: false
+        type: string
+        default: main
+    secrets:
+      GOOGLE_APPLICATION_CREDENTIALS:
+        description: "GCP service-account JSON"
+        required: true
+      CODECOV_TOKEN:
+        description: "Codecov upload token"
+        required: true
+      HUBAI_API_KEY:
+        description: "HubAI API key"
+        required: true
   pull_request:
     paths:
       - "requirements.txt"
@@ -27,7 +58,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Install pre-commit
         run: python -m pip install 'pre-commit<4.0.0'
@@ -43,7 +76,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Install dependencies
         run: pip install pydoctor
@@ -59,7 +94,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -70,11 +107,13 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
           pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Pyright check
         uses: jakebailey/pyright-action@8ec14b5cfe41f26e5f41686a31eb6012758217ef
@@ -98,7 +137,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -107,13 +148,15 @@ jobs:
           cache: pip
 
       - name: Install released version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == true
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
         run: pip install luxonis-ml[utils]
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Install dependencies for config test
         run: |
@@ -145,7 +188,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -156,11 +201,13 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
           pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Authenticate to Google Cloud
         id: google-auth
