@@ -67,6 +67,10 @@ jobs:
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
+        env:
+          # CI can run from a checked-out protected branch via workflow_call.
+          # Keep this hook for local commits, but skip it for full CI lint runs.
+          SKIP: no-commit-to-branch
 
   docs:
     needs:
