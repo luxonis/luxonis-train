@@ -23,14 +23,18 @@ from luxonis_train.config.config import (
     ArchiveConfig,
     AugmentationConfig,
     BlobconverterExportConfig,
+    FinetuningConfig,
     FreezingConfig,
     HubAIExportConfig,
     LoaderConfig,
     ModelConfig,
     NormalizeAugmentationConfig,
     OnnxExportConfig,
+    OptimizerConfig,
+    ParameterPattern,
     PredefinedModelConfig,
     PreprocessingConfig,
+    SchedulerConfig,
     StorageConfig,
     TrackerConfig,
     TunerConfig,
@@ -87,6 +91,71 @@ def test_complex_model_conv2d_finetuning_uses_module_type_selector():
 
     assert pattern.name is None
     assert pattern.module_type == "Conv2d"
+
+
+def test_parameter_pattern_helpers_and_validation():
+    with pytest.raises(ValueError, match="At least one"):
+        ParameterPattern()
+    with pytest.raises(ValueError, match=r"name.*empty"):
+        ParameterPattern(name="")
+    with pytest.raises(ValueError, match=r"module_type.*empty"):
+        ParameterPattern(module_type="")
+
+    invalid_pattern = ParameterPattern.model_construct(
+        name=None, module_type=None
+    )
+    with pytest.raises(ValueError, match="At least one"):
+        invalid_pattern.identifier()
+
+    pattern = ParameterPattern(name="fc", module_type="Linear")
+    assert pattern.identifier() == "fc"
+    assert pattern.matches("Linear", "classifier.fc.weight") is True
+    assert pattern.matches("Linear", "classifier.conv.weight") is False
+    assert pattern.matches("Conv2d", "classifier.fc.weight") is False
+
+
+def test_optimizer_scheduler_and_finetuning_config_helpers():
+    scheduler = SchedulerConfig(
+        name="SequentialLR",
+        params={
+            "schedulers": [{"name": "LinearLR", "params": {"total_iters": 2}}],
+            "milestones": [1],
+        },
+    )
+    sequential_params = scheduler.get_sequential_lr_params()
+
+    assert sequential_params.schedulers[0].name == "LinearLR"
+    assert sequential_params.milestones == [1]
+    assert scheduler.to_finetuning().name == "SequentialLR"
+    assert OptimizerConfig(name="SGD").to_finetuning().name == "SGD"
+
+    with pytest.raises(RuntimeError, match="not 'SequentialLR'"):
+        SchedulerConfig(name="StepLR").get_sequential_lr_params()
+    with pytest.raises(ValueError, match="requires 'schedulers'"):
+        SchedulerConfig(name="SequentialLR").get_sequential_lr_params()
+
+
+def test_finetuning_config_parameter_normalization_and_regex():
+    existing = ParameterPattern(module_type="Linear")
+    cfg = FinetuningConfig(
+        parameters=cast(Any, ["fc", {"name": "head"}, existing])
+    )
+
+    assert [pattern.identifier() for pattern in cfg.parameters or []] == [
+        "fc",
+        "head",
+        "Linear",
+    ]
+    assert cfg.parameter_regex.search("HEAD") is not None
+    assert cfg.parameter_regex.search("linear") is not None
+    assert FinetuningConfig().parameter_regex.search("anything") is not None
+
+    with pytest.raises(ValidationError):
+        FinetuningConfig(parameters=cast(Any, 1))
+    with pytest.raises(ValueError, match="at least one parameter pattern"):
+        FinetuningConfig(parameters=[])
+    with pytest.raises(TypeError, match="Parameter patterns must be"):
+        FinetuningConfig(parameters=cast(Any, [object()]))
 
 
 def test_public_config_exports_are_importable():
