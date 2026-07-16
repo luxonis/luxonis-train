@@ -4,7 +4,10 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
-from luxonis_train.strategies.triple_lr_sgd import TripleLRSGDStrategy
+from luxonis_train.strategies.triple_lr_sgd import (
+    TripleLRSGD,
+    TripleLRSGDStrategy,
+)
 
 
 class _Core:
@@ -80,3 +83,43 @@ def test_triple_lr_sgd():
             assert value == expected
         else:
             assert abs(value - expected) < tol
+
+
+def test_triple_lr_sgd_ignores_non_trainable_parameters():
+    model = torch.nn.Sequential(
+        torch.nn.BatchNorm2d(3),
+        torch.nn.Conv2d(3, 4, 1),
+        torch.nn.Linear(4, 2),
+    )
+    batch_norm = model[0]
+    convolution = model[1]
+    linear = model[2]
+    assert isinstance(batch_norm, torch.nn.BatchNorm2d)
+    assert isinstance(convolution, torch.nn.Conv2d)
+    assert isinstance(linear, torch.nn.Linear)
+    assert batch_norm.weight is not None
+    assert convolution.bias is not None
+
+    batch_norm.weight.requires_grad_(False)
+    convolution.bias.requires_grad_(False)
+    linear.weight.requires_grad_(False)
+
+    optimizer_builder = TripleLRSGD(
+        model=model,
+        lr=0.02,
+        momentum=0.937,
+        weight_decay=0.0005,
+        nesterov=True,
+    )
+    parameter_ids = {
+        id(param)
+        for group in optimizer_builder.parameter_groups()
+        for param in group
+    }
+
+    assert id(batch_norm.weight) not in parameter_ids
+    assert id(convolution.bias) not in parameter_ids
+    assert id(linear.weight) not in parameter_ids
+    assert id(batch_norm.bias) in parameter_ids
+    assert id(convolution.weight) in parameter_ids
+    assert id(linear.bias) in parameter_ids

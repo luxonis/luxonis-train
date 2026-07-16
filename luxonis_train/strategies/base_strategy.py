@@ -32,3 +32,9 @@ class BaseTrainingStrategy(
 
     @abstractmethod
     def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]: ...
+
+    def estimate_optimizer_count(
+        self, excluded_params: set[int] | None = None
+    ) -> int:
+        _ = excluded_params
+        return 1

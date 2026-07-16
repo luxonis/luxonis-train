@@ -73,6 +73,22 @@ def test_config_load(path: Path):
     assert cfg.loader is not None
 
 
+def test_complex_model_conv2d_finetuning_uses_module_type_selector():
+    cfg = Config.get_config(Path("configs/complex_model.yaml"))
+    node = next(
+        node
+        for node in cfg.model.nodes
+        if node.name == "EfficientKeypointBBoxHead"
+    )
+
+    parameters = node.finetuning[1].parameters
+    assert parameters is not None
+    pattern = parameters[0]
+
+    assert pattern.name is None
+    assert pattern.module_type == "Conv2d"
+
+
 def test_public_config_exports_are_importable():
     assert AttachedModuleConfig(name="Metric", alias="alias").identifier == (
         "alias"

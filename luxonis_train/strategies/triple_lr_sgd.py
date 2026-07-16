@@ -80,7 +80,9 @@ class TripleLRSGD:
     nesterov: bool
     excluded_params: set[int] | None = None
 
-    def create_optimizer(self) -> Optimizer:
+    def parameter_groups(
+        self,
+    ) -> tuple[list[nn.Parameter], list[nn.Parameter], list[nn.Parameter]]:
         batch_norm_weights, regular_weights, biases = [], [], []
         excluded_params = self.excluded_params or set()
 
@@ -88,18 +90,32 @@ class TripleLRSGD:
             if (
                 hasattr(module, "bias")
                 and isinstance(module.bias, nn.Parameter)
+                and module.bias.requires_grad
                 and id(module.bias) not in excluded_params
             ):
                 biases.append(module.bias)
             if isinstance(module, nn.BatchNorm2d):
-                if id(module.weight) not in excluded_params:
+                if (
+                    isinstance(module.weight, nn.Parameter)
+                    and module.weight.requires_grad
+                    and id(module.weight) not in excluded_params
+                ):
                     batch_norm_weights.append(module.weight)
             elif (
                 hasattr(module, "weight")
                 and isinstance(module.weight, nn.Parameter)
+                and module.weight.requires_grad
                 and id(module.weight) not in excluded_params
             ):
                 regular_weights.append(module.weight)
+
+        return batch_norm_weights, regular_weights, biases
+
+    def has_parameters(self) -> bool:
+        return any(self.parameter_groups())
+
+    def create_optimizer(self) -> Optimizer:
+        batch_norm_weights, regular_weights, biases = self.parameter_groups()
 
         return SGD(
             [
@@ -226,6 +242,20 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         if all(not group["params"] for group in self.optimizer.param_groups):
             return [], []
         return [self.optimizer], [self.scheduler.create_scheduler()]
+
+    @override
+    def estimate_optimizer_count(
+        self, excluded_params: set[int] | None = None
+    ) -> int:
+        optimizer = TripleLRSGD(
+            model=self.model,
+            lr=self.lr,
+            momentum=self.momentum,
+            weight_decay=self.weight_decay,
+            nesterov=self.nesterov,
+            excluded_params=set(excluded_params or set()),
+        )
+        return 1 if optimizer.has_parameters() else 0
 
     @override
     def update_parameters(self) -> None:

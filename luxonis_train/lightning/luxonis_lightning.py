@@ -29,6 +29,7 @@ from luxonis_train.attached_modules.visualizers import (
 )
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
+from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import _INTERNAL
@@ -167,6 +168,9 @@ class LuxonisLightningModule(pl.LightningModule):
         )
         self._restore_validation_interval_after_first_epoch = False
         self._original_check_val_every_n_epoch: int | None = None
+        self._training_strategy_base_configs: (
+            tuple[OptimizerConfig, SchedulerConfig] | None
+        ) = None
 
     @override
     def load_state_dict(
@@ -460,13 +464,22 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators["train"].update(losses)
         if self.automatic_optimization:
             return loss
-        optimizers = self.optimizers()
+        optimizers = self.optimizers(use_pl_optimizer=False)
         schedulers = self.lr_schedulers()
         assert isinstance(optimizers, list)
         assert isinstance(schedulers, list)
         for optimizer in optimizers:
             optimizer.zero_grad()
         self.manual_backward(loss)
+        if self.cfg.trainer.gradient_clip_val is not None:
+            for optimizer in optimizers:
+                self.clip_gradients(
+                    optimizer,
+                    gradient_clip_val=self.cfg.trainer.gradient_clip_val,
+                    gradient_clip_algorithm=(
+                        self.cfg.trainer.gradient_clip_algorithm or "norm"
+                    ),
+                )
         for optimizer in optimizers:
             optimizer.step()
         if self.trainer.is_last_batch:
@@ -631,8 +644,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        optimizers, _ = self.configure_optimizers()
-        return self.nodes.build_callbacks(self.save_dir, len(optimizers))
+        return self.nodes.build_callbacks(
+            self.save_dir, self._expected_optimizer_count()
+        )
 
     @override
     def configure_optimizers(
@@ -642,7 +656,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ]:
         if self.training_strategy is not None:
             base_optimizer_cfg, base_scheduler_cfg = (
-                self.training_strategy.get_base_configs()
+                self._get_training_strategy_base_configs()
             )
             optimizers, schedulers = self.nodes.build_optimizers(
                 base_optimizer_cfg,
@@ -668,6 +682,34 @@ class LuxonisLightningModule(pl.LightningModule):
         self._log_optimizer_scheduler_info(optimizers, schedulers)
 
         return optimizers, schedulers
+
+    def _get_training_strategy_base_configs(
+        self,
+    ) -> tuple[OptimizerConfig, SchedulerConfig]:
+        if self.training_strategy is None:
+            raise RuntimeError("Training strategy is not configured.")
+        if self._training_strategy_base_configs is None:
+            self._training_strategy_base_configs = (
+                self.training_strategy.get_base_configs()
+            )
+        return self._training_strategy_base_configs
+
+    def _expected_optimizer_count(self) -> int:
+        if self.training_strategy is None:
+            count, _ = self.nodes.count_optimizers()
+            return count
+
+        base_optimizer_cfg, base_scheduler_cfg = (
+            self._get_training_strategy_base_configs()
+        )
+        count, used_params = self.nodes.count_optimizers(
+            base_optimizer_cfg,
+            base_scheduler_cfg,
+            include_default=False,
+        )
+        return count + self.training_strategy.estimate_optimizer_count(
+            used_params
+        )
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Load checkpoint weights from provided path.

@@ -1,7 +1,10 @@
 from collections.abc import Sequence
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
+import torch
+from lightning.pytorch.callbacks import GradientAccumulationScheduler
 from lightning.pytorch.utilities.types import (
     LRSchedulerConfig,
     LRSchedulerTypeUnion,
@@ -13,6 +16,7 @@ from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
+from luxonis_train.lightning import luxonis_lightning
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 
 from ._helpers import (
@@ -98,6 +102,167 @@ def _capturing_strategy(
     strategy = snapshot.model.lightning_module.training_strategy
     assert isinstance(strategy, CapturingFinetuningStrategy)
     return cast(CapturingFinetuningStrategy, strategy)
+
+
+def _build_model(cfg: Params, opts: Params) -> lxt.LuxonisModel:
+    return lxt.LuxonisModel(
+        cfg,
+        opts | {"loader.params.n_classes": 10},
+        allow_empty_dataset=True,
+    )
+
+
+def _has_gradient_accumulation_callback(model: lxt.LuxonisModel) -> bool:
+    return any(
+        isinstance(callback, GradientAccumulationScheduler)
+        for callback in model.lightning_module.configure_callbacks()
+    )
+
+
+def test_configure_callbacks_does_not_build_strategy_optimizers(opts: Params):
+    model = _build_model(
+        config(
+            [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
+            trainer={
+                "accumulate_grad_batches": 2,
+                "training_strategy": {
+                    "name": "CapturingFinetuningStrategy",
+                    "params": {"lr": 0.07},
+                },
+            },
+        ),
+        opts,
+    )
+    strategy = model.lightning_module.training_strategy
+    assert isinstance(strategy, CapturingFinetuningStrategy)
+
+    assert not _has_gradient_accumulation_callback(model)
+    assert strategy.base_config_calls == 1
+    assert strategy.configure_calls == 0
+
+    model.lightning_module.configure_optimizers()
+
+    assert strategy.base_config_calls == 1
+    assert strategy.configure_calls == 1
+
+
+def test_gradient_accumulation_callback_uses_optimizer_count(opts: Params):
+    single_optimizer = _build_model(
+        config(
+            [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
+            trainer={"accumulate_grad_batches": 2},
+        ),
+        opts,
+    )
+    multiple_optimizers = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "parameters": [{"module_type": "Linear"}],
+                        "optimizer": {"name": "SGD"},
+                    }
+                )
+            ],
+            trainer={"accumulate_grad_batches": 2},
+        ),
+        opts,
+    )
+
+    assert _has_gradient_accumulation_callback(single_optimizer)
+    assert not _has_gradient_accumulation_callback(multiple_optimizers)
+    assert single_optimizer.lightning_module.automatic_optimization is True
+    assert multiple_optimizers.lightning_module.automatic_optimization is True
+
+
+def test_triple_lr_optimizer_count_omits_strategy_when_finetuning_claims_all(
+    opts: Params,
+):
+    model = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "optimizer": {
+                            "name": "AdamW",
+                            "params": {"lr": 0.005},
+                        }
+                    }
+                )
+            ],
+            trainer={
+                "accumulate_grad_batches": 2,
+                "training_strategy": {
+                    "name": "TripleLRSGDStrategy",
+                    "params": {"lr": 0.02},
+                },
+            },
+        ),
+        opts,
+    )
+
+    assert _has_gradient_accumulation_callback(model)
+
+
+def test_manual_multi_optimizer_training_step_clips_gradients(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    model = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "parameters": [{"module_type": "Linear"}],
+                        "optimizer": {"name": "SGD"},
+                    }
+                )
+            ],
+            trainer={
+                "gradient_clip_val": 1.5,
+                "gradient_clip_algorithm": "value",
+            },
+        ),
+        opts,
+    )
+    module = model.lightning_module
+    optimizers, _ = module.configure_optimizers()
+    calls: list[tuple[Optimizer, float, str]] = []
+
+    monkeypatch.setattr(
+        module,
+        "full_forward",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
+        ),
+    )
+    monkeypatch.setattr(
+        luxonis_lightning,
+        "compute_losses",
+        lambda *_args, **_kwargs: (
+            torch.tensor(1.0, requires_grad=True),
+            {"loss": torch.tensor(1.0)},
+        ),
+    )
+    monkeypatch.setattr(
+        module, "optimizers", lambda *_args, **_kwargs: list(optimizers)
+    )
+    monkeypatch.setattr(module, "lr_schedulers", list)
+    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
+    monkeypatch.setattr(
+        module,
+        "clip_gradients",
+        lambda optimizer, gradient_clip_val, gradient_clip_algorithm: (
+            calls.append(
+                (optimizer, gradient_clip_val, gradient_clip_algorithm)
+            )
+        ),
+    )
+    module._trainer = SimpleNamespace(is_last_batch=False)  # type: ignore[assignment]
+
+    module.training_step((torch.empty(0), {}))
+
+    assert module.automatic_optimization is False
+    assert calls == [(optimizer, 1.5, "value") for optimizer in optimizers]
 
 
 def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):

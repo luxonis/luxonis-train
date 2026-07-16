@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Hashable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -73,6 +73,9 @@ from luxonis_train.utils.general import to_shape_packet
 class MainMetric(NamedTuple):
     node_name: str
     metric_name: str
+
+
+OptimizerSchedulerConfig = tuple[OptimizerConfig, SchedulerConfig]
 
 
 def _freeze_config_value(value: Any) -> Hashable:
@@ -340,9 +343,10 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         cfg_base_scheduler: SchedulerConfig | None,
         used_params: set[int] | None = None,
         include_default: bool = True,
-    ) -> Iterable[tuple[OptimizerConfig, SchedulerConfig]]:
+    ) -> tuple[list[OptimizerSchedulerConfig], set[int]]:
         cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
         cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
+        optimizer_configs: list[OptimizerSchedulerConfig] = []
         groups: dict[
             tuple[str, str, Hashable],
             tuple[list[Kwargs], SchedulerConfig],
@@ -363,22 +367,24 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                                 used_params.add(id(p))
 
             if params:
-                yield (
-                    OptimizerConfig(
-                        name=cfg_base_optimizer.name,
-                        params=cast(
-                            Params,
-                            {
-                                "params": [
-                                    {"params": params}
-                                    | cfg_base_optimizer.params
-                                ]
-                            },
+                optimizer_configs.append(
+                    (
+                        OptimizerConfig(
+                            name=cfg_base_optimizer.name,
+                            params=cast(
+                                Params,
+                                {
+                                    "params": [
+                                        {"params": params}
+                                        | cfg_base_optimizer.params
+                                    ]
+                                },
+                            ),
                         ),
+                        cfg_base_scheduler,
                     ),
-                    cfg_base_scheduler,
                 )
-            return
+            return optimizer_configs, used_params
 
         for node in self.values():
             finetunings = [
@@ -453,13 +459,16 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             optimizer_params,
             scheduler,
         ) in groups.items():
-            yield (
-                OptimizerConfig(
-                    name=optimizer_name,
-                    params={"params": optimizer_params},  # type: ignore
-                ),
-                scheduler,
+            optimizer_configs.append(
+                (
+                    OptimizerConfig(
+                        name=optimizer_name,
+                        params={"params": optimizer_params},  # type: ignore
+                    ),
+                    scheduler,
+                )
             )
+        return optimizer_configs, used_params
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
@@ -543,12 +552,13 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 f"val/metric/{formatted_node}/{self.main_metric.metric_name}"
             )
 
-        for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params(
+        optimizer_configs, _ = self._extract_optimizer_params(
             base_optimizer,
             base_scheduler,
             used_params=used_params,
             include_default=include_default,
-        ):
+        )
+        for cfg_optimizer, cfg_scheduler in optimizer_configs:
             optimizer, scheduler = build_optimizer_scheduler(
                 self.cfg,
                 main_metric_monitor,
@@ -559,6 +569,21 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             schedulers.append(scheduler)
 
         return optimizers, schedulers
+
+    def count_optimizers(
+        self,
+        base_optimizer: OptimizerConfig | None = None,
+        base_scheduler: SchedulerConfig | None = None,
+        used_params: set[int] | None = None,
+        include_default: bool = True,
+    ) -> tuple[int, set[int]]:
+        optimizer_configs, used_params = self._extract_optimizer_params(
+            base_optimizer,
+            base_scheduler,
+            used_params=used_params,
+            include_default=include_default,
+        )
+        return len(optimizer_configs), used_params
 
     def build_callbacks(
         self, save_dir: Path, n_optimizers: int

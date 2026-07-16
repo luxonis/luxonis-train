@@ -36,7 +36,8 @@ model:
             name: ReduceLROnPlateau
             params:
               mode: max
-        - parameters: Conv2d
+        - parameters:
+            module_type: Conv2d
           optimizer:
             params:
               weight_decay: 0.0001
