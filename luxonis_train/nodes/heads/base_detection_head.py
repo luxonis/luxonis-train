@@ -74,6 +74,7 @@ class BaseDetectionHead(BaseHead):
             "iou_threshold": self.iou_thres,
             "conf_threshold": self.conf_thres,
             "max_det": self.max_det,
+            "strides": self.stride.tolist(),
         }
 
     def get_output_names(self, default: list[str]) -> list[str]:

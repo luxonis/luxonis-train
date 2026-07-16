@@ -378,6 +378,32 @@ def test_same_scheduler_name_with_different_params_uses_distinct_optimizers(
     assert_all_trainable_parameters_assigned(snapshot)
 
 
+def test_cosine_annealing_lr_t_max_is_supplied_without_mutating_config(
+    opts: Params,
+):
+    snapshot = build_snapshot(
+        config(
+            [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
+            trainer={
+                "epochs": 7,
+                "scheduler": {"name": "CosineAnnealingLR"},
+            },
+        ),
+        opts,
+    )
+
+    scheduler_cfg = scheduler(snapshot.schedulers[0])
+
+    assert isinstance(scheduler_cfg, CosineAnnealingLR)
+    assert (
+        scheduler_cfg.T_max
+        == snapshot.model.lightning_module.cfg.trainer.epochs
+    )
+    assert snapshot.model.lightning_module.cfg.trainer.scheduler.params == {}
+    assert_no_duplicate_parameters(snapshot)
+    assert_all_trainable_parameters_assigned(snapshot)
+
+
 def test_reduce_on_plateau_monitor_uses_formatted_main_metric_name(
     opts: Params,
 ):

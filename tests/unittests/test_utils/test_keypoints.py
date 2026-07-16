@@ -6,7 +6,7 @@ from luxonis_train.utils.keypoints import compute_pose_oks, get_sigmas
 
 def test_get_sigmas():
     sigmas = [0.1, 0.2, 0.3]
-    pytest.approx(get_sigmas(sigmas, 3).tolist(), sigmas)
+    assert get_sigmas(sigmas, 3).tolist() == pytest.approx(sigmas)
     with pytest.raises(ValueError, match="length of the sigmas list"):
         get_sigmas(sigmas, 2)
     with pytest.raises(ValueError, match="test-caller-name"):

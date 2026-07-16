@@ -52,6 +52,7 @@ from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
+    get_tracker_init_params,
     setup_logging,
 )
 from luxonis_train.utils.general import safe_download
@@ -67,6 +68,7 @@ from .utils.export_utils import (
     get_preprocessing,
     hubai_export,
     make_initializers_unique,
+    rename_onnx_outputs,
     replace_weights,
     try_onnx_simplify,
 )
@@ -172,7 +174,7 @@ class LuxonisModel:
             rank=rank_zero_only.rank,
             mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
-            **self.cfg.tracker.model_dump(),
+            **get_tracker_init_params(self.cfg.tracker),
         )
 
         self.run_save_dir = (
@@ -874,7 +876,7 @@ class LuxonisModel:
         def _objective(trial: optuna.trial.Trial) -> float:
             """Objective function used to optimize Optuna study."""
             cfg_tracker = self.cfg.tracker
-            tracker_params = cfg_tracker.model_dump()
+            tracker_params = get_tracker_init_params(cfg_tracker)
             tracker_params["run_name"] = (
                 tracker_params["run_name"] or self.tracker.run_name
             )
@@ -1015,7 +1017,7 @@ class LuxonisModel:
         all_augs = [a.name for a in self.cfg_preprocessing.augmentations]
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
-        tracker_params = cfg_tracker.model_dump()
+        tracker_params = get_tracker_init_params(cfg_tracker)
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["is_wandb"] = False
         tracker_params["run_name"] = (
@@ -1088,7 +1090,7 @@ class LuxonisModel:
                 rank=rank_zero_only.rank,
                 _auto_finalize=True,
                 **(
-                    self.cfg.tracker.model_dump()
+                    get_tracker_init_params(self.cfg.tracker)
                     | {"run_name": self.parent_tracker.run_name}
                 ),
             )
@@ -1138,6 +1140,11 @@ class LuxonisModel:
             path = self._exported_models["onnx"]
 
         path = Path(path)
+        executable_paths: list[PathType] = [path]
+
+        external_data_path = path.with_name(f"{path.name}.data")
+        if external_data_path.exists():
+            executable_paths.append(external_data_path)
 
         executable_fname = path.name
         archive_name += path.suffix
@@ -1198,7 +1205,7 @@ class LuxonisModel:
             archive_name=archive_name,
             save_path=str(archive_save_directory),
             cfg_dict=cfg_dict,
-            executables_paths=[str(path)],  # TODO: what if more executables?
+            executables_paths=executable_paths,
         ).make_archive()
 
         logger.info(f"NN Archive saved to {archive_path}")
@@ -1440,11 +1447,18 @@ class LuxonisModel:
             memory but will overwrite the original model's weights and
             structure.
         """
-        from aimet_torch.common.defs import QuantizationDataType, QuantScheme
-
         from .utils.aimet_utils import (
+            check_aimet_available,
+            get_ptq_calibration_loader,
             post_training_quantization,
             quantization_aware_training,
+        )
+
+        check_aimet_available()
+
+        from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
+            QuantizationDataType,
+            QuantScheme,
         )
 
         save_dir = self.run_save_dir / "aimet"
@@ -1490,27 +1504,49 @@ class LuxonisModel:
         if weights is not None:
             model.load_checkpoint(weights)
 
-        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
+        # Lightning test loops use inference mode by default, which can
+        # leak inference tensors into lazily initialized loss buffers that
+        # are later reused by QAT under autograd.
+        quant_eval_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=[
+                LuxonisRichProgressBar()
+                if self.cfg.rich_logging
+                else LuxonisTQDMProgressBar()
+            ],
+            precision=self.cfg.trainer.precision,
+            inference_mode=False,
+        )
 
-        dummy_inputs = {
+        pre_quant_test = quant_eval_trainer.test(model, self.val_loader)[0]
+
+        dummy_inputs_dict = {
             input_name: torch.randn([1, *shape]).to(model.device)
             for shapes in model.nodes.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
 
-        if len(dummy_inputs) > 1:
+        if len(dummy_inputs_dict) > 1:
             raise NotImplementedError(
                 "Quantization is not yet supported for models "
                 "with multiple inputs."
             )
-        input_names = list(dummy_inputs.keys())
-        output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
-        dummy_inputs = next(iter(dummy_inputs.values()))
+        input_names = list(dummy_inputs_dict.keys())
+        dummy_inputs = next(iter(dummy_inputs_dict.values()))
+        ptq_loader = get_ptq_calibration_loader(
+            val_dataset=self.loaders["val"],
+            collate_fn=self.loaders["val"].collate_fn,
+            batch_size=self.cfg.trainer.batch_size,
+            num_workers=self.cfg.trainer.n_workers,
+            pin_memory=self.cfg.trainer.pin_memory,
+            max_calibration_images=cfg.max_calibration_images,
+        )
 
         sim = post_training_quantization(
             model,
             dummy_inputs,
-            self.val_loader,
+            ptq_loader,
             save_dir,
             QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
             default_output_bw or cfg.default_output_bw,
@@ -1536,7 +1572,7 @@ class LuxonisModel:
         model = cast(LuxonisLightningModule, sim.model)
 
         model.eval()
-        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
+        ptq_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         if optimizer is None:
             optimizer = from_registry(
@@ -1564,15 +1600,26 @@ class LuxonisModel:
             batch_norm_reestimation,
         ).eval()
 
-        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+        qat_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         model.set_export_mode(mode=True)
+        output_names = model._get_output_onnx_names(
+            deepcopy(dummy_inputs_dict)
+        )
 
         sim.onnx.export(
             dummy_inputs,
             (save_dir / self.cfg.model.name).with_suffix(".onnx"),
             input_names=input_names,
             output_names=output_names,
+        )
+        rename_onnx_outputs(
+            (save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            output_names,
+        )
+        self._archive(
+            path=(save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            save_dir=save_dir,
         )
 
         table = []
@@ -1584,6 +1631,7 @@ class LuxonisModel:
             table,
             ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
+        logger.info(f"AIMET artifacts saved in: {save_dir}")
         return save_dir
 
     @property

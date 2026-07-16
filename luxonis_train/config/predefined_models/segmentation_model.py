@@ -38,7 +38,7 @@ class SegmentationModel(SimplePredefinedModel):
         if not isinstance(remove_aux_on_export, bool):
             raise TypeError(
                 "The `aux_head_params.remove_on_export` parameter "
-                f"must be a boolean. Got `{self._remove_aux_on_export}`."
+                f"must be a boolean. Got `{remove_aux_on_export}`."
             )
         self._remove_aux_on_export = remove_aux_on_export
 

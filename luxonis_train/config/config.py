@@ -174,7 +174,7 @@ class FinetuningConfig(BaseModelExtraForbid):
     @classmethod
     def validate_parameters(cls, value: Any) -> Any:
         parsed_patterns = []
-        if isinstance(value, str):
+        if isinstance(value, str | dict | ParameterPattern):
             value = [value]
         if not isinstance(value, list):
             return value
@@ -851,6 +851,7 @@ class AIMETConfig(BaseModelExtraForbid):
     default_data_type: Literal["int", "float"] = "int"
     quant_scheme: Literal["min_max", "tf", "tf_enhanced"] = "min_max"
     config: Params | None = None
+    max_calibration_images: PositiveInt | None = None
 
     fold_batch_norms: bool = False
     cross_layer_equalization: bool = False
@@ -858,7 +859,7 @@ class AIMETConfig(BaseModelExtraForbid):
     sequential_mse: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
 
-    epochs: PositiveInt = 20
+    epochs: NonNegativeInt = 20
     optimizer: ConfigItem = Field(
         default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
     )
@@ -1014,7 +1015,7 @@ class Config(LuxonisConfig):
                 "Expected a boolean."
             )
 
-        with suppress(ModuleNotFoundError):
+        with suppress(ImportError):
             from luxonis_train.utils import setup_logging
 
             setup_logging(use_rich=use_rich)

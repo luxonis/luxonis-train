@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Hashable, Iterable, Iterator, Mapping, Sequence
+from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
 from typing import (
@@ -155,6 +156,7 @@ class NodeWrapper(nn.Module):
 
     @override
     def train(self, mode: bool = True) -> "NodeWrapper":
+        super().train(mode)
         self.module.train(mode)
         for loss in self.losses.values():
             loss.train(mode)
@@ -735,10 +737,47 @@ def _init_attached_module(
 ) -> tuple[str, T]:
     Module = registry.get(cfg.name)
     module_name = cfg.identifier
-    module = Module(**cfg.params, node=node, **kwargs)
+    params = dict(cfg.params)
+    if registry is METRICS:
+        params = _translate_predefined_metric_params(
+            node, cfg.name, Module, params
+        )
+    module = Module(**params, node=node, **kwargs)
     if module_name == "ConfusionMatrix":
         module_name = "mcc"
     return module_name, module
+
+
+def _translate_predefined_metric_params(
+    node: BaseNode,
+    metric_name: str,
+    Module: type[Any],
+    params: Params,
+) -> Params:
+    if "per_class_metrics" not in params:
+        return params
+
+    per_class_metrics = params.pop("per_class_metrics")
+    if per_class_metrics is None:
+        return params
+
+    task = None
+    with suppress(RuntimeError):
+        task = node.task
+
+    aliases = Module.get_predefined_model_params_aliases(task)
+    param_name = aliases.get("per_class_metrics")
+    if param_name is None:
+        task_name = task.name if task is not None else "unknown"
+        logger.warning(
+            "Ignoring `per_class_metrics` for metric "
+            f"'{metric_name}' on task '{task_name}' because it does not "
+            "support a per-class override."
+        )
+        return params
+
+    params[param_name] = per_class_metrics
+    return params
 
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)

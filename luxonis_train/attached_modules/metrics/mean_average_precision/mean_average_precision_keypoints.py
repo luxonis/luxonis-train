@@ -10,6 +10,7 @@ from typing_extensions import override
 from luxonis_train.attached_modules.metrics import BaseMetric, MetricState
 from luxonis_train.attached_modules.metrics.mean_average_precision.utils import (
     add_f1_metrics,
+    postprocess_metrics,
 )
 from luxonis_train.attached_modules.metrics.utils import (
     fix_empty_tensor,
@@ -51,6 +52,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         area_factor: float | None = None,
         max_dets: int = 20,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
+        class_metrics: bool = False,
         **kwargs,
     ):
         """
@@ -65,6 +67,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bounding box format. Defaults to C{"xyxy"}.
+        @type class_metrics: bool
+        @param class_metrics: Whether to calculate per-class keypoint metrics.
+            Defaults to C{False}.
         """
         super().__init__(**kwargs)
 
@@ -74,6 +79,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         )
         self.max_dets = max_dets
         self.box_format = box_format
+        self.class_metrics = class_metrics
 
     @override
     def update(
@@ -141,18 +147,71 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             self.coco_eval.stats, dtype=torch.float32, device=self.device
         )
 
-        return stats[0], add_f1_metrics(
-            {
-                "kpt_map_50": stats[1],
-                "kpt_map_75": stats[2],
-                "kpt_map_medium": stats[3],
-                "kpt_map_large": stats[4],
-                "kpt_mar": stats[5],
-                "kpt_mar_50": stats[6],
-                "kpt_mar_75": stats[7],
-                "kpt_mar_medium": stats[8],
-                "kpt_mar_large": stats[9],
-            }
+        metrics = {
+            "kpt_map": stats[0],
+            "kpt_map_50": stats[1],
+            "kpt_map_75": stats[2],
+            "kpt_map_medium": stats[3],
+            "kpt_map_large": stats[4],
+            "kpt_mar": stats[5],
+            "kpt_mar_50": stats[6],
+            "kpt_mar_75": stats[7],
+            "kpt_mar_medium": stats[8],
+            "kpt_mar_large": stats[9],
+        }
+
+        if self.class_metrics:
+            metrics.update(self._compute_class_metrics())
+            return postprocess_metrics(
+                metrics,
+                self.classes.inverse,
+                "kpt_map",
+                self.device,
+            )
+
+        metrics = add_f1_metrics(metrics)
+        main_metric_value = metrics.pop("kpt_map", stats[0])
+        return (
+            main_metric_value,
+            metrics,
+        )
+
+    def _compute_class_metrics(self) -> dict[str, Tensor]:
+        eval_metrics = self.coco_eval.eval
+        precision = torch.as_tensor(
+            eval_metrics["precision"], dtype=torch.float32, device=self.device
+        )
+        recall = torch.as_tensor(
+            eval_metrics["recall"], dtype=torch.float32, device=self.device
+        )
+        classes = torch.as_tensor(
+            self.coco_eval.params.catIds,
+            dtype=torch.int64,
+            device=self.device,
+        )
+
+        precision = precision[..., 0, 0]
+        recall = recall[..., 0, 0]
+
+        kpt_map_per_class = self._mean_valid(precision, dim=(0, 1))
+        kpt_mar_per_class = self._mean_valid(recall, dim=0)
+
+        return {
+            "classes": classes,
+            "kpt_map_per_class": kpt_map_per_class,
+            "kpt_mar_per_class": kpt_mar_per_class,
+        }
+
+    def _mean_valid(
+        self, values: Tensor, dim: int | tuple[int, ...]
+    ) -> Tensor:
+        valid = values > -1
+        counts = valid.sum(dim=dim)
+        summed = values.masked_fill(~valid, 0).sum(dim=dim)
+        return torch.where(
+            counts > 0,
+            summed / counts.clamp_min(1),
+            torch.zeros_like(summed),
         )
 
     def _get_coco(

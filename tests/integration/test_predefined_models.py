@@ -1,3 +1,4 @@
+import tarfile
 from pathlib import Path
 
 import cv2
@@ -8,11 +9,19 @@ from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.core.utils.aimet_utils import check_aimet_available
 from tests.conftest import LuxonisTestDatasets
 from tests.integration.backbone_model_utils import (
     PREDEFINED_MODELS,
     prepare_predefined_model_config,
 )
+
+
+def skip_if_no_aimet() -> None:
+    try:
+        check_aimet_available()
+    except ImportError:
+        pytest.skip("AIMET is not installed")
 
 
 def test_model_construction():
@@ -66,10 +75,18 @@ def test_predefined_models(
         ).exists()
 
     with subtests.test("quantize"):
+        skip_if_no_aimet()
         save_dir = model.quantize()
         assert (save_dir / f"{config_name}.encodings").exists()
         assert (save_dir / f"{config_name}.onnx").exists()
         assert (save_dir / f"{config_name}.onnx.data").exists()
+        archive_path = save_dir / f"{config_name}.onnx.tar.xz"
+        assert archive_path.exists()
+        with tarfile.open(archive_path) as tar:
+            archive_entries = set(tar.getnames())
+        assert "config.json" in archive_entries
+        assert f"{config_name}.onnx" in archive_entries
+        assert f"{config_name}.onnx.data" in archive_entries
 
     if config_name != "embeddings_model":
         with subtests.test("infer"):

@@ -27,6 +27,8 @@ from ._helpers import (
         ([{"name": "branch1\\.0"}, {"name": "fc"}], ("branch1.0", "fc")),
         ("BRANCH1", ("branch1",)),
         ([{"module_type": "linear"}], ("Head.Linear.fc",)),
+        ({"module_type": "Linear"}, ("Head.Linear.fc",)),
+        (ParameterPattern(name="fc"), ("Head.Linear.fc",)),
     ],
 )
 def test_valid_parameter_selectors(

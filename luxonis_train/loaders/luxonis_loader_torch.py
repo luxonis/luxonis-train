@@ -203,7 +203,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return self.dataset.get_classes()
+        return self.loader._classes
 
     @override
     def get_n_keypoints(self) -> dict[str, int]:
@@ -228,10 +228,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if isinstance(img, Tensor):
             img = {self.image_source: img}
 
-        if self.loader.augmentations is None:
+        if self.loader._augmentations is None:
             return img[self.image_source]
         img_arr = {k: v.numpy() for k, v in img.items()}
-        augmented_dict = self.loader.augmentations.apply([(img_arr, {})])[0]
+        augmented_dict = self.loader._augmentations.apply([(img_arr, {})])[0]
         return torch.tensor(next(iter(augmented_dict.values())))
 
     def _parse_dataset(
