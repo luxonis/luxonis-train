@@ -24,6 +24,18 @@ def skip_if_no_aimet() -> None:
         pytest.skip("AIMET is not installed")
 
 
+def get_external_data_locations(onnx_path: Path) -> set[str]:
+    import onnx
+
+    model = onnx.load_model(str(onnx_path), load_external_data=False)
+    return {
+        entry.value
+        for tensor in model.graph.initializer
+        for entry in tensor.external_data
+        if entry.key == "location"
+    }
+
+
 def test_model_construction():
     cfg = "configs/detection_light_model.yaml"
     model = LuxonisModel(
@@ -77,16 +89,27 @@ def test_predefined_models(
     with subtests.test("quantize"):
         skip_if_no_aimet()
         save_dir = model.quantize()
+        onnx_path = save_dir / f"{config_name}.onnx"
+        assert onnx_path.exists()
+
+        external_data_paths = {
+            save_dir / location
+            for location in get_external_data_locations(onnx_path)
+        }
+
         assert (save_dir / f"{config_name}.encodings").exists()
-        assert (save_dir / f"{config_name}.onnx").exists()
-        assert (save_dir / f"{config_name}.onnx.data").exists()
+        for external_data_path in external_data_paths:
+            assert external_data_path.exists()
+
         archive_path = save_dir / f"{config_name}.onnx.tar.xz"
         assert archive_path.exists()
         with tarfile.open(archive_path) as tar:
             archive_entries = set(tar.getnames())
-        assert "config.json" in archive_entries
-        assert f"{config_name}.onnx" in archive_entries
-        assert f"{config_name}.onnx.data" in archive_entries
+        assert {
+            "config.json",
+            f"{config_name}.onnx",
+            *(path.name for path in external_data_paths),
+        } <= archive_entries
 
     if config_name != "embeddings_model":
         with subtests.test("infer"):
