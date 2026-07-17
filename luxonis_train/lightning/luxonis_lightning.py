@@ -452,8 +452,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return Path(save_path)
 
-    @override
-    def training_step(
+    def compute_training_loss(
         self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> Tensor:
         outputs = self.full_forward(*train_batch)
@@ -462,12 +461,25 @@ class LuxonisLightningModule(pl.LightningModule):
 
         loss, losses = compute_losses(self.cfg, outputs.losses, self.device)
         self._loss_accumulators["train"].update(losses)
+        return loss
+
+    @override
+    def training_step(
+        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+    ) -> Tensor:
+        loss = self.compute_training_loss(train_batch)
         if self.automatic_optimization:
             return loss
         optimizers = self.optimizers(use_pl_optimizer=False)
+        if optimizers is None:
+            optimizers = []
+        elif not isinstance(optimizers, list):
+            optimizers = [optimizers]
         schedulers = self.lr_schedulers()
-        assert isinstance(optimizers, list)
-        assert isinstance(schedulers, list)
+        if schedulers is None:
+            schedulers = []
+        elif not isinstance(schedulers, list):
+            schedulers = [schedulers]
         for optimizer in optimizers:
             optimizer.zero_grad()
         self.manual_backward(loss)

@@ -265,6 +265,44 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     assert calls == [(optimizer, 1.5, "value") for optimizer in optimizers]
 
 
+def test_manual_training_step_accepts_single_optimizer_and_scheduler(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    optimizers, _ = module.configure_optimizers()
+    optimizer = next(iter(optimizers))
+    scheduler = ConstantLR(optimizer, factor=1.0)
+    initial_epoch = scheduler.last_epoch
+
+    monkeypatch.setattr(
+        module,
+        "full_forward",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
+        ),
+    )
+    monkeypatch.setattr(
+        luxonis_lightning,
+        "compute_losses",
+        lambda *_args, **_kwargs: (
+            torch.tensor(1.0, requires_grad=True),
+            {"loss": torch.tensor(1.0)},
+        ),
+    )
+    monkeypatch.setattr(
+        module, "optimizers", lambda *_args, **_kwargs: optimizer
+    )
+    monkeypatch.setattr(module, "lr_schedulers", lambda: scheduler)
+    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
+    module._trainer = SimpleNamespace(is_last_batch=True)  # type: ignore[assignment]
+    module.automatic_optimization = False
+
+    module.training_step((torch.empty(0), {}))
+
+    assert scheduler.last_epoch == initial_epoch + 1
+
+
 def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):
     snapshot = build_snapshot(
         config(
