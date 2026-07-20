@@ -109,7 +109,8 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
+        run: |
+          pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
