@@ -4,7 +4,6 @@ from torch import Tensor, nn
 
 from luxonis_train import BaseNode
 from luxonis_train.attached_modules.metrics import MeanAveragePrecision, MIoU
-from luxonis_train.config import NodeConfig
 from luxonis_train.lightning.utils import (
     NodeWrapper,
     _translate_predefined_metric_params,
@@ -77,7 +76,7 @@ def test_node_wrapper_train_updates_self_and_attached_modules():
         visualizers=cast(Any, {"visualizer": visualizer}),
         unfreeze_after=None,
         lr_after_unfreeze=None,
-        cfg=NodeConfig(name="DummyNode"),
+        finetuning=[],
     )
 
     wrapper.eval()

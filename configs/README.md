@@ -128,6 +128,13 @@ This section allows you to specify advanced finetuning configurations for each n
 | `optimizer`  | `dict \| None`                                                     | `None`        | Overrides the main optimizer for the specified parameter set. If left empty, the main optimizer from the trainer is used. See [Optimizer](#optimizer) for more details. If the `name` field is left empty it is set to the main optimizer's name.                                                                                  |
 | `scheduler`  | `dict \| None`                                                     | `None`        | Overrides the main scheduler for the specified parameter set. If left empty, the main scheduler from the trainer is used. See [Scheduler](#scheduler) for more details. If the `name` field is left empty, it is set to the main scheduler's name.                                                                                 |
 
+Behavior notes:
+
+- **Case-insensitive matching.** Both `name` and `module_type` patterns are matched with `re.IGNORECASE`, so `module_type: linear` matches `Linear`.
+- **First match wins.** Finetuning entries are evaluated in order; each parameter is claimed by the first entry whose pattern matches it. Put the most specific rules first and general fallbacks last (see `configs/complex_model.yaml` — `keypoint_heads` before generic `Conv2d`).
+- **Cross-family overrides drop base params.** When the override's `optimizer.name` (or `scheduler.name`) differs from the trainer-level one, the trainer-level `params` are not inherited — only the override's `params` apply. Same-family overrides (or omitted `name`) inherit and shallow-merge the base `params`.
+- **Grouping.** Entries that share the same optimizer name, scheduler name, and scheduler `params` are collapsed into a single optimizer with one `param_group` per entry — different `lr` / `weight_decay` between entries is still honored via PyTorch parameter groups. Any difference in optimizer name or scheduler config produces a separate optimizer, which switches the trainer into Lightning's manual-optimization mode.
+
 **Example:**
 
 ```yaml

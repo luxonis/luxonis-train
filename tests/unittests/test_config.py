@@ -101,14 +101,7 @@ def test_parameter_pattern_helpers_and_validation():
     with pytest.raises(ValueError, match=r"module_type.*empty"):
         ParameterPattern(module_type="")
 
-    invalid_pattern = ParameterPattern.model_construct(
-        name=None, module_type=None
-    )
-    with pytest.raises(ValueError, match="At least one"):
-        invalid_pattern.identifier()
-
     pattern = ParameterPattern(name="fc", module_type="Linear")
-    assert pattern.identifier() == "fc"
     assert pattern.matches("Linear", "classifier.fc.weight") is True
     assert pattern.matches("Linear", "classifier.conv.weight") is False
     assert pattern.matches("Conv2d", "classifier.fc.weight") is False
@@ -135,20 +128,18 @@ def test_optimizer_scheduler_and_finetuning_config_helpers():
         SchedulerConfig(name="SequentialLR").get_sequential_lr_params()
 
 
-def test_finetuning_config_parameter_normalization_and_regex():
+def test_finetuning_config_parameter_normalization():
     existing = ParameterPattern(module_type="Linear")
     cfg = FinetuningConfig(
         parameters=cast(Any, ["fc", {"name": "head"}, existing])
     )
 
-    assert [pattern.identifier() for pattern in cfg.parameters or []] == [
-        "fc",
-        "head",
-        "Linear",
+    assert cfg.parameters is not None
+    assert [(p.name, p.module_type) for p in cfg.parameters] == [
+        ("fc", None),
+        ("head", None),
+        (None, "Linear"),
     ]
-    assert cfg.parameter_regex.search("HEAD") is not None
-    assert cfg.parameter_regex.search("linear") is not None
-    assert FinetuningConfig().parameter_regex.search("anything") is not None
 
     with pytest.raises(ValidationError):
         FinetuningConfig(parameters=cast(Any, 1))

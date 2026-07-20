@@ -134,7 +134,7 @@ class NodeWrapper(nn.Module):
         visualizers: dict[str, BaseVisualizer],
         unfreeze_after: int | None,
         lr_after_unfreeze: float | None,
-        cfg: NodeConfig,
+        finetuning: list[FinetuningConfig],
         inputs: list[str] | None = None,
     ):
         super().__init__()
@@ -145,7 +145,7 @@ class NodeWrapper(nn.Module):
         self.visualizers = visualizers
         self.unfreeze_after = unfreeze_after
         self.lr_after_unfreeze = lr_after_unfreeze
-        self.cfg = cfg
+        self.finetuning = finetuning
         self.inputs = inputs or []
 
     @property
@@ -254,7 +254,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     _init_attached_module(node_module, v_cfg, VISUALIZERS)
                     for v_cfg in node_cfg.visualizers
                 ),
-                cfg=node_cfg,
+                finetuning=node_cfg.finetuning,
                 inputs=node_input_names,
             )
             node_outputs = node.module.run(node_dummy_inputs)
@@ -353,7 +353,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         ] = {}
         used_params = set(used_params or set())
         if include_default and not any(
-            node.cfg.finetuning for node in self.values()
+            node.finetuning for node in self.values()
         ):
             params = []
             for node in self.values():
@@ -388,7 +388,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         for node in self.values():
             finetunings = [
-                (finetuning, False) for finetuning in node.cfg.finetuning
+                (finetuning, False) for finetuning in node.finetuning
             ]
             if include_default:
                 finetunings.append(
@@ -439,7 +439,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     if not is_default:
                         raise ValueError(
                             "Finetuning parameters for node "
-                            f"'{node.cfg.identifier}' did not match any "
+                            f"'{node.name}' did not match any "
                             "available trainable parameters."
                         )
                     continue
@@ -999,14 +999,14 @@ def check_tensor_device(
 @overload
 def merge_config_items(
     base: OptimizerConfig,
-    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
+    override: FinetuningOptimizerConfig | None,
 ) -> OptimizerConfig: ...
 
 
 @overload
 def merge_config_items(
     base: SchedulerConfig,
-    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
+    override: FinetuningSchedulerConfig | None,
 ) -> SchedulerConfig: ...
 
 

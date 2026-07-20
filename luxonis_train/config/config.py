@@ -4,7 +4,6 @@ import sys
 from collections.abc import Mapping
 from contextlib import suppress
 from enum import Enum
-from functools import cached_property
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -104,13 +103,6 @@ class ParameterPattern(BaseModelExtraForbid):
             )
         return self
 
-    def identifier(self) -> str:
-        if self.name is None and self.module_type is None:
-            raise ValueError(
-                "At least one of `name` or `module_type` must be specified for parameter pattern."
-            )
-        return self.name or self.module_type  # type: ignore
-
     def matches(self, module_type: str, parameter_name: str) -> bool:
         if self.name is not None and not re.search(
             self.name, parameter_name, flags=re.IGNORECASE
@@ -195,15 +187,6 @@ class FinetuningConfig(BaseModelExtraForbid):
                     "or ParameterPattern instances."
                 )
         return parsed_patterns
-
-    @cached_property
-    def parameter_regex(self) -> re.Pattern:
-        if not self.parameters:
-            return re.compile(".*")
-        return re.compile(
-            "|".join(f"(?:{p.identifier()})" for p in self.parameters),
-            flags=re.IGNORECASE,
-        )
 
 
 class NodeConfig(ConfigItem):
