@@ -1336,6 +1336,9 @@ class LuxonisModel:
                     LuxonisFileSystem.upload(
                         hubai_archive_path, self.cfg.archiver.upload_url
                     )
+            except ImportError:
+                logger.exception("Unable to import `hubai_sdk`, skipping HubAI conversion.")
+                
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
