@@ -1340,7 +1340,6 @@ class LuxonisModel:
                 logger.exception(
                     "Unable to import `hubai_sdk`, skipping HubAI conversion."
                 )
-                
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
