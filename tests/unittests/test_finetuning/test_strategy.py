@@ -11,12 +11,18 @@ from lightning.pytorch.utilities.types import (
 )
 from luxonis_ml.typing import Params
 from torch.optim import SGD, AdamW, Optimizer
-from torch.optim.lr_scheduler import ConstantLR, LambdaLR, StepLR
+from torch.optim.lr_scheduler import (
+    ConstantLR,
+    LambdaLR,
+    ReduceLROnPlateau,
+    StepLR,
+)
 from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 from luxonis_train.lightning import luxonis_lightning
+from luxonis_train.lightning.utils import MainMetric
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 
 from ._helpers import (
@@ -486,3 +492,309 @@ def test_triple_lr_strategy_optimizer_is_omitted_when_finetuning_claims_all(
     assert optimizer_names(snapshot, snapshot.optimizers[0]) == all_names
     assert_no_duplicate_parameters(snapshot)
     assert_all_trainable_parameters_assigned(snapshot)
+
+
+def test_reduce_on_plateau_min_mode_steps_with_validation_loss(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """Under manual optimization Lightning does not auto-step
+    ReduceLROnPlateau, so `_step_reduce_lr_on_plateau_schedulers` drives
+    it from the validation epoch end.
+
+    In ``min`` mode the scheduler tracks the validation loss, so the
+    helper must feed the loss directly to ``scheduler.step`` — bypassing
+    the main-metric lookup entirely (a bug there would still consume
+    plateau ticks with the wrong signal).
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    module.automatic_optimization = False
+
+    optim = SGD([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    plateau = ReduceLROnPlateau(optim, mode="min")
+    step_calls: list[float] = []
+    monkeypatch.setattr(plateau, "step", step_calls.append)
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+
+    module._step_reduce_lr_on_plateau_schedulers(
+        loss=0.42, metrics={"Head": {"Accuracy": 0.9}}
+    )
+
+    assert step_calls == [0.42]
+
+
+def test_reduce_on_plateau_max_mode_steps_with_main_metric_value(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """In ``max`` mode ReduceLROnPlateau watches a monotonically-
+    increasing metric.
+
+    The helper must resolve ``nodes.main_metric`` into the correct
+    scalar from the logged metrics table and pass *that* (not the loss)
+    to ``scheduler.step``. Getting this wrong would cause plateau
+    detection to fire on the wrong signal.
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    module.automatic_optimization = False
+    module.nodes.main_metric = MainMetric("Head", "Accuracy")
+
+    optim = SGD([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    plateau = ReduceLROnPlateau(optim, mode="max")
+    step_calls: list[float] = []
+    monkeypatch.setattr(plateau, "step", step_calls.append)
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+
+    module._step_reduce_lr_on_plateau_schedulers(
+        loss=0.42, metrics={"Head": {"Accuracy": 0.87}}
+    )
+
+    assert step_calls == [0.87]
+
+
+def test_reduce_on_plateau_max_mode_without_main_metric_raises(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """``max`` mode is nonsensical without a metric to watch.
+
+    Silently falling back to the loss would mask a misconfiguration, so
+    the helper surfaces the mismatch as a ``RuntimeError`` at the first
+    validation epoch end.
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    module.automatic_optimization = False
+    module.nodes.main_metric = None
+
+    optim = SGD([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    plateau = ReduceLROnPlateau(optim, mode="max")
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+
+    with pytest.raises(RuntimeError, match="without a main metric"):
+        module._step_reduce_lr_on_plateau_schedulers(
+            loss=0.1, metrics={"Head": {"Accuracy": 0.9}}
+        )
+
+
+def test_reduce_on_plateau_max_mode_missing_metric_value_raises(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """Main metrics that don't reduce to a plain scalar reachable via
+    ``metrics[node][name]`` (multi-value returns, custom aggregation, or
+    metrics that weren't logged) manifest here as a ``KeyError``.
+
+    The helper converts this into a ``ValueError`` with a message
+    pointing at the underlying misconfiguration instead of a bare
+    ``KeyError`` escaping from Lightning's validation epoch end.
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    module.automatic_optimization = False
+    module.nodes.main_metric = MainMetric("Head", "Accuracy")
+
+    optim = SGD([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    plateau = ReduceLROnPlateau(optim, mode="max")
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+
+    with pytest.raises(ValueError, match="not a logged scalar"):
+        module._step_reduce_lr_on_plateau_schedulers(
+            loss=0.1, metrics={"Head": {}}
+        )
+
+
+def test_reduce_on_plateau_step_is_noop_under_automatic_optimization(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """Under automatic optimization Lightning already steps schedulers
+    itself.
+
+    Running our manual helper would step the scheduler twice per
+    validation epoch — the early-return guard prevents that. Regressions
+    here are silent (LR decays too fast) so a direct assertion is worth
+    the cost.
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    module.automatic_optimization = True
+
+    optim = SGD([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    plateau = ReduceLROnPlateau(optim, mode="min")
+    step_calls: list[float] = []
+    monkeypatch.setattr(plateau, "step", step_calls.append)
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+
+    module._step_reduce_lr_on_plateau_schedulers(
+        loss=0.42, metrics={"Head": {"Accuracy": 0.9}}
+    )
+
+    assert step_calls == []
+
+
+def test_manual_training_step_skips_scheduler_step_when_not_last_batch(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """Non-plateau schedulers should step exactly once per epoch — at
+    the last training batch, matching Lightning's automatic behaviour.
+
+    Any other batch during the epoch must leave them untouched;
+    otherwise LRs would decay per-step rather than per-epoch and
+    completely undo the configured schedule.
+    """
+    model = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "parameters": [{"module_type": "Linear"}],
+                        "optimizer": {"name": "SGD"},
+                    }
+                )
+            ]
+        ),
+        opts,
+    )
+    module = model.lightning_module
+    optimizers, schedulers = module.configure_optimizers()
+    scheduler_objects = [scheduler(s) for s in schedulers]
+    step_calls: list[int] = []
+    for i, sched in enumerate(scheduler_objects):
+        monkeypatch.setattr(sched, "step", lambda i=i: step_calls.append(i))
+
+    monkeypatch.setattr(
+        module,
+        "full_forward",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
+        ),
+    )
+    monkeypatch.setattr(
+        luxonis_lightning,
+        "compute_losses",
+        lambda *_args, **_kwargs: (
+            torch.tensor(1.0, requires_grad=True),
+            {"loss": torch.tensor(1.0)},
+        ),
+    )
+    monkeypatch.setattr(
+        module, "optimizers", lambda *_args, **_kwargs: list(optimizers)
+    )
+    monkeypatch.setattr(
+        module, "lr_schedulers", lambda: list(scheduler_objects)
+    )
+    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
+    module._trainer = SimpleNamespace(is_last_batch=False)  # type: ignore[assignment]
+
+    module.training_step((torch.empty(0), {}))
+
+    assert step_calls == []
+
+
+def test_manual_training_step_skips_clipping_when_gradient_clip_val_none(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """When the user has not set ``gradient_clip_val`` the manual path
+    must not call ``clip_gradients`` at all.
+
+    ``clip_gradients`` has non-trivial cost (an extra pass over every
+    parameter) and, for exotic optimizers, may error on parameters it
+    doesn't understand — so the ``is not None`` guard is load-bearing.
+    """
+    model = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "parameters": [{"module_type": "Linear"}],
+                        "optimizer": {"name": "SGD"},
+                    }
+                )
+            ]
+        ),
+        opts,
+    )
+    module = model.lightning_module
+    optimizers, _ = module.configure_optimizers()
+    clip_calls: list[object] = []
+
+    assert module.cfg.trainer.gradient_clip_val is None
+
+    monkeypatch.setattr(
+        module,
+        "full_forward",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
+        ),
+    )
+    monkeypatch.setattr(
+        luxonis_lightning,
+        "compute_losses",
+        lambda *_args, **_kwargs: (
+            torch.tensor(1.0, requires_grad=True),
+            {"loss": torch.tensor(1.0)},
+        ),
+    )
+    monkeypatch.setattr(
+        module, "optimizers", lambda *_args, **_kwargs: list(optimizers)
+    )
+    monkeypatch.setattr(module, "lr_schedulers", list)
+    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
+    monkeypatch.setattr(
+        module,
+        "clip_gradients",
+        lambda *args, **kwargs: clip_calls.append(args),
+    )
+    module._trainer = SimpleNamespace(is_last_batch=False)  # type: ignore[assignment]
+
+    module.training_step((torch.empty(0), {}))
+
+    assert clip_calls == []
+
+
+def test_manual_training_step_does_not_step_reduce_lr_on_plateau_scheduler(
+    opts: Params, monkeypatch: pytest.MonkeyPatch
+):
+    """``ReduceLROnPlateau`` is driven exclusively from the validation
+    epoch end via ``_step_reduce_lr_on_plateau_schedulers`` — the
+    training step's ``is_last_batch`` branch must skip it.
+
+    Stepping it here would consume a "no-improvement" tick per training
+    epoch before the validation metrics are even computed, which drives
+    the LR down long before the plateau it's meant to detect actually
+    occurs.
+    """
+    model = _build_model(config([tiny_head_node()]), opts)
+    module = model.lightning_module
+    optimizers, _ = module.configure_optimizers()
+
+    plateau = ReduceLROnPlateau(optimizers[0], mode="min")
+    step_calls: list[object] = []
+    monkeypatch.setattr(
+        plateau, "step", lambda *args, **kwargs: step_calls.append(args)
+    )
+
+    monkeypatch.setattr(
+        module,
+        "full_forward",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
+        ),
+    )
+    monkeypatch.setattr(
+        luxonis_lightning,
+        "compute_losses",
+        lambda *_args, **_kwargs: (
+            torch.tensor(1.0, requires_grad=True),
+            {"loss": torch.tensor(1.0)},
+        ),
+    )
+    monkeypatch.setattr(
+        module, "optimizers", lambda *_args, **_kwargs: list(optimizers)
+    )
+    monkeypatch.setattr(module, "lr_schedulers", lambda: plateau)
+    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
+    module._trainer = SimpleNamespace(is_last_batch=True)  # type: ignore[assignment]
+    module.automatic_optimization = False
+
+    module.training_step((torch.empty(0), {}))
+
+    assert step_calls == []
