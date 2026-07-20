@@ -285,7 +285,6 @@ def hubai_export(
             )
         else:
             response = client.convert.RVC2(**base_kwargs)
-        logger.info(response)
 
         variant_id = str(response.instance.model_version_id)
         downloaded_path = Path(response.downloaded_path)
