@@ -48,6 +48,29 @@ def test_optimizer_inheritance_and_override(
     expected_group_options: dict[str, float],
     opts: Params,
 ):
+    """Trainer base optimizer is Adam(lr=0.001, weight_decay=0.1).
+
+    The single Head rule targets Linear modules and varies its optimizer
+    block. The merge semantics come from
+    ``merge_config_items``: when the override omits ``name`` or matches
+    the base name, params are merged (override wins per-key). When
+    ``name`` differs, the override *replaces* both name and params —
+    the new optimizer's own class defaults fill any remaining slots.
+
+    Cases (in the order listed above):
+        1. ``None`` — no override at all → inherits Adam(lr=0.001,
+           wd=0.1) unchanged.
+        2. Params-only override (``lr=0.002``) → same Adam, lr
+           replaced, wd inherited from base.
+        3. Same name + params override → Adam(lr=0.003, wd=0.1);
+           behaves identically to case 2 because ``name`` matches.
+        4. Different name (SGD) → SGD(lr=0.03); base's ``wd=0.1`` is
+           discarded and SGD has no weight_decay default → the group
+           reports ``weight_decay=0`` (the extra assertion at the
+           bottom).
+        5. Different name (AdamW) → AdamW(lr=0.04); base's wd is
+           discarded but AdamW's class default of 0.01 fills in.
+    """
     finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
         finetuning["optimizer"] = override
@@ -100,6 +123,20 @@ def test_scheduler_inheritance_and_override(
     expected_attrs: dict[str, Any],
     opts: Params,
 ):
+    """Same merge rules as optimizers, applied to the scheduler.
+
+    Trainer base scheduler is ``StepLR(step_size=5, gamma=0.5)``.
+
+    Cases (in the order listed above):
+        1. ``None`` — inherits StepLR(5, 0.5) unchanged.
+        2. Params-only (``gamma=0.1``) → StepLR(5, 0.1); step_size
+           inherited from base.
+        3. Same name + params override (``gamma=0.2``) → StepLR(5,
+           0.2); merges per-key.
+        4. Different name (ConstantLR) → the base StepLR params are
+           discarded and only the override's params
+           (``factor=1.0, total_iters=2``) apply.
+    """
     finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
         finetuning["scheduler"] = override
@@ -157,6 +194,20 @@ def test_optimizer_and_scheduler_inheritance_together(
     expected_scheduler_type: type,
     opts: Params,
 ):
+    """Sanity-check that optimizer and scheduler inheritance stay
+    independent when both are involved in a single rule. Base is
+    Adam(lr=0.001, wd=0.1) + StepLR(step_size=5, gamma=0.5).
+
+    Cases (in the order listed above):
+        1. Empty override — everything inherited: Adam(lr=0.001,
+           wd=0.1) + StepLR(5, 0.5).
+        2. Params-only overrides on both → Adam(lr=0.002, wd=0.1) +
+           StepLR(5, gamma=0.1). Merging happens independently on each
+           side.
+        3. Different name on both → SGD(lr=0.03) (base's wd dropped,
+           SGD default weight_decay=0) + ConstantLR(1.0, total_iters=2)
+           (base's StepLR params dropped entirely).
+    """
     finetuning = {
         "parameters": [{"module_type": "Linear"}],
         **finetuning,

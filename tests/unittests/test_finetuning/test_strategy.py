@@ -126,6 +126,23 @@ def _has_gradient_accumulation_callback(model: lxt.LuxonisModel) -> bool:
 
 
 def test_configure_callbacks_does_not_build_strategy_optimizers(opts: Params):
+    """Callback wiring must ask the strategy only for its
+    *base configuration* (used to decide optimizer counts for
+    accumulation), not to actually build the optimizers — building
+    them here would double-instantiate optimizers on every
+    ``configure_callbacks`` call, wasting memory and losing state.
+
+    Setup:
+        Head Linear rule + ``CapturingFinetuningStrategy`` (counts
+        each of its own method invocations).
+
+    Expected result:
+        After model construction: ``get_base_configs`` was called once
+        (for callback wiring), ``configure_optimizers`` was not called
+        yet. After the explicit ``configure_optimizers`` call: both
+        counters are exactly 1. Also, the accumulation callback is
+        omitted because the finetuning rule forces >1 optimizer.
+    """
     model = _build_model(
         config(
             [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
@@ -153,6 +170,26 @@ def test_configure_callbacks_does_not_build_strategy_optimizers(opts: Params):
 
 
 def test_gradient_accumulation_callback_uses_optimizer_count(opts: Params):
+    """``GradientAccumulationScheduler`` only makes sense with a single
+    optimizer — Lightning does not support it under manual optimization
+    with multiple optimizers.
+
+    Setup:
+        Both models set ``accumulate_grad_batches=2`` on the trainer.
+        - ``single_optimizer``: rule with no optimizer override → all
+          rules share one Adam+ConstantLR key → one optimizer overall
+          (default rule collapses into it).
+        - ``multiple_optimizers``: rule overrides optimizer to SGD →
+          two distinct optimizers (SGD for Linear, Adam default for
+          the rest).
+
+    Expected result:
+        The callback is present only in the single-optimizer model.
+        Both models still report ``automatic_optimization=True``
+        immediately after construction — the switch to manual
+        optimization happens later, inside ``configure_optimizers``,
+        which this test does not invoke.
+    """
     single_optimizer = _build_model(
         config(
             [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
@@ -184,6 +221,22 @@ def test_gradient_accumulation_callback_uses_optimizer_count(opts: Params):
 def test_triple_lr_optimizer_count_omits_strategy_when_finetuning_claims_all(
     opts: Params,
 ):
+    """When a finetuning rule claims *every* trainable parameter, the
+    strategy has nothing left to optimize and drops out — that collapses
+    the total optimizer count back to 1, which re-enables the
+    ``GradientAccumulationScheduler`` callback.
+
+    Setup:
+        Head rule with no ``parameters`` (matches everything) using
+        AdamW, plus TripleLRSGDStrategy and
+        ``accumulate_grad_batches=2``.
+
+    Expected result:
+        The accumulation callback is installed because only one
+        optimizer (the AdamW from the rule) is present — the
+        strategy's SGD would have been the second, but it received no
+        parameters and was skipped.
+    """
     model = _build_model(
         config(
             [
@@ -213,6 +266,21 @@ def test_triple_lr_optimizer_count_omits_strategy_when_finetuning_claims_all(
 def test_manual_multi_optimizer_training_step_clips_gradients(
     opts: Params, monkeypatch: pytest.MonkeyPatch
 ):
+    """Under manual optimization (multi-optimizer path) Lightning
+    doesn't clip gradients for us — the training step must call
+    ``clip_gradients`` once per optimizer with the configured value and
+    algorithm.
+
+    Setup:
+        Head rule targeting Linear with SGD (forces two optimizers →
+        manual mode) and ``gradient_clip_val=1.5``,
+        ``gradient_clip_algorithm='value'``.
+
+    Expected result:
+        ``automatic_optimization`` flipped to ``False`` and
+        ``clip_gradients`` was invoked once for each configured
+        optimizer with the exact ``(1.5, 'value')`` arguments.
+    """
     model = _build_model(
         config(
             [
@@ -274,6 +342,20 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
 def test_manual_training_step_accepts_single_optimizer_and_scheduler(
     opts: Params, monkeypatch: pytest.MonkeyPatch
 ):
+    """``training_step`` must tolerate ``optimizers``/``lr_schedulers``
+    returning a single object (not a list) when there's exactly one of
+    each — Lightning returns them that way in single-optimizer mode.
+
+    Setup:
+        Head with no finetuning → one optimizer, one scheduler.
+        Manual optimization is forced on so the scheduler stepping
+        code path actually runs on the last batch.
+
+    Expected result:
+        The scheduler's ``last_epoch`` advances by 1 — proving the
+        single-scheduler branch reached ``scheduler.step()`` without
+        tripping on the non-list return type.
+    """
     model = _build_model(config([tiny_head_node()]), opts)
     module = model.lightning_module
     optimizers, _ = module.configure_optimizers()
@@ -310,6 +392,31 @@ def test_manual_training_step_accepts_single_optimizer_and_scheduler(
 
 
 def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):
+    """When a training strategy is active, its ``get_base_configs()``
+    supplies the *base* optimizer/scheduler seen by all finetuning rules
+    — overriding whatever the user set in ``trainer.optimizer`` /
+    ``trainer.scheduler``.
+
+    Setup:
+        - Trainer sets Adam(lr=0.9) + ConstantLR(factor=0.5) — these
+          should end up unused as bases.
+        - ``CapturingFinetuningStrategy`` returns SGD(lr=0.031,
+          momentum=0.25) + StepLR(step_size=11, gamma=0.6) as its base
+          configs, and its own ``configure_optimizers`` builds an
+          AdamW for whatever's left.
+        - The Head Linear rule inherits from those strategy bases
+          without overriding anything.
+
+    Expected result:
+        Two optimizers: a first SGD from the finetuning rule
+        (inheriting the strategy base's lr=0.031 and momentum=0.25)
+        with a StepLR(step_size=11, gamma=0.6), and a second AdamW
+        from the strategy carrying every remaining trainable
+        parameter. The strategy is called exactly once for base
+        configs and once to build its optimizer, and it receives the
+        Linear.fc param ids as ``excluded_params`` so they don't
+        appear in both optimizers.
+    """
     snapshot = build_snapshot(
         config(
             [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
@@ -361,6 +468,27 @@ def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):
 def test_strategy_receives_exact_ids_claimed_by_overlapping_finetuning_rules(
     opts: Params,
 ):
+    """The bookkeeping between overlapping finetuning rules and the
+    strategy must agree: the strategy sees exactly the set of
+    parameter ids the finetuning pass claimed — no more, no less.
+
+    Setup:
+        - Head has two rules that would overlap:
+          ``name='branch1'`` (lr=0.001) then ``module_type='Conv2d'``
+          (lr=0.002). Rule 1 claims branch1 first; rule 2 picks up
+          the remaining Conv2d.
+        - ``CapturingFinetuningStrategy`` handles what's left (Linear).
+
+    Expected result:
+        - Two optimizers: a first SGD (from the strategy base config)
+          holding both Conv2d groups, and a second AdamW (from the
+          strategy) holding just the Linear params.
+        - Strategy's ``excluded_params`` equals the union of both
+          Conv2d rules' claims (i.e. every Conv2d id in the Head, not
+          just branch1) — confirming that overlapping rules feed a
+          single accurate "already claimed" set to the strategy
+          rather than leaking the shadowed rule-2 matches.
+    """
     snapshot = build_snapshot(
         config(
             [
@@ -423,6 +551,24 @@ def test_strategy_receives_exact_ids_claimed_by_overlapping_finetuning_rules(
 def test_triple_lr_strategy_optimizer_contains_only_remaining_trainable_params(
     opts: Params,
 ):
+    """Real-world strategy variant of the "strategy + finetuning"
+    interaction using the production ``TripleLRSGDStrategy``.
+
+    Setup:
+        - Head Linear rule (no optimizer override, so it uses the
+          strategy's SGD base).
+        - ``TripleLRSGDStrategy`` builds an SGD with three
+          conventional groups (bn, weight, bias) plus LambdaLR
+          scheduling.
+
+    Expected result:
+        Two SGD optimizers with LambdaLR schedulers:
+        1. The finetuning-built SGD holding the Linear.fc params.
+        2. The strategy-built SGD with its three-group layout
+           (empty bn group in this tiny model, weights, biases).
+        The strategy's optimizer holds *only* the params not already
+        claimed by finetuning — i.e. everything but Linear.fc.
+    """
     snapshot = build_snapshot(
         config(
             [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
@@ -462,6 +608,21 @@ def test_triple_lr_strategy_optimizer_contains_only_remaining_trainable_params(
 def test_triple_lr_strategy_optimizer_is_omitted_when_finetuning_claims_all(
     opts: Params,
 ):
+    """Mirror of the callback test above, verified at the optimizer
+    level. When finetuning consumes every trainable parameter, the
+    strategy's ``configure_optimizers`` receives an empty set and must
+    return no optimizer at all — the finetuning optimizer is the only
+    one built.
+
+    Setup:
+        Head rule with no ``parameters`` selector (matches everything)
+        overriding to AdamW, plus TripleLRSGDStrategy.
+
+    Expected result:
+        One optimizer, an AdamW from the finetuning rule, with the
+        strategy's LambdaLR scheduling applied. The strategy's SGD
+        drops out because it has zero parameters to optimize.
+    """
     snapshot = build_snapshot(
         config(
             [
