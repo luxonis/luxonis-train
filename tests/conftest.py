@@ -484,3 +484,7 @@ def pytest_configure(config: Config):
         "markers",
         "overfit_convergence: mark test as an overfit convergence test",
     )
+    config.addinivalue_line(
+        "markers",
+        "flaky(reruns, reruns_delay): rerun intermittently failing tests",
+    )

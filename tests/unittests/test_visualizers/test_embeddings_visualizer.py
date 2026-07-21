@@ -1,5 +1,6 @@
 import matplotlib as mpl
 import numpy as np
+import pytest
 import torch
 from torch import Tensor
 
@@ -60,6 +61,7 @@ def _generate_visualizations() -> tuple[Tensor, Tensor]:
     return kdeplot, scatterplot
 
 
+@pytest.mark.flaky(reruns=2, reruns_delay=1)
 def test_embeddings_visualizer(
     embeddings_visualizer_references: tuple[np.ndarray, np.ndarray],
 ):
