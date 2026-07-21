@@ -1337,10 +1337,8 @@ class LuxonisModel:
                         hubai_archive_path, self.cfg.archiver.upload_url
                     )
             except ImportError:
-                logger.error("Failed to import `hubai_sdk`")
-                logger.warning(
-                    "`hubai-sdk` not installed. Skipping HubAI conversion. "
-                    "Ensure `hubai-sdk` is installed in your environment."
+                logger.exception(
+                    "Unable to import `hubai_sdk`, skipping HubAI conversion."
                 )
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
