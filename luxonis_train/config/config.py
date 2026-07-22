@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple, cast
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
@@ -46,6 +46,9 @@ from typing_extensions import Self, override
 import luxonis_train as lxt
 from luxonis_train.registry import NODES
 from luxonis_train.upgrade import upgrade_config
+
+if TYPE_CHECKING:
+    from luxonis_train.config.predefined_models import BasePredefinedModel
 
 
 class ImageSize(NamedTuple):
@@ -183,10 +186,10 @@ class ModelConfig(BaseModelExtraForbid):
             logger.info(
                 f"Using predefined model: `{self.predefined_model.name}`"
             )
-        kwargs = dict(self.predefined_model.params or {})
+        kwargs: dict[str, Any] = dict(self.predefined_model.params or {})
         if not kwargs.get("variant"):
             kwargs["variant"] = self.predefined_model.variant
-        model = cls(**kwargs)
+        model = cast("BasePredefinedModel", cls(**kwargs))
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
             include_metrics=self.predefined_model.include_metrics,
