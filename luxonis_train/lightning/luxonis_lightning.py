@@ -656,9 +656,17 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        return self.nodes.build_callbacks(
-            self.save_dir, self._expected_optimizer_count()
+        try:
+            trainer = self.trainer
+        except RuntimeError:
+            trainer = None
+        trainer_fn = getattr(getattr(trainer, "state", None), "fn", None)
+        n_optimizers = (
+            self._expected_optimizer_count()
+            if trainer_fn is None or trainer_fn == "fit"
+            else 1
         )
+        return self.nodes.build_callbacks(self.save_dir, n_optimizers)
 
     @override
     def configure_optimizers(
