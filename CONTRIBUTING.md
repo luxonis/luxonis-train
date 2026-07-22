@@ -23,22 +23,27 @@ git clone git@github.com:luxonis/luxonis-train.git
 cd luxonis-train
 ```
 
-Install the development dependencies by running `pip install -r requirements-dev.txt` or install the package with the `dev` extra flag:
+Install [uv](https://docs.astral.sh/uv/) and sync the development environment:
 
 ```bash
-pip install -e .[dev]
+uv sync
 ```
 
 > [!NOTE]
-> This will install the package in editable mode (`-e`),
-> so you can make changes to the code and run them immediately.
+> This creates `.venv`, installs the package in editable mode,
+> and installs the default `dev` dependency group.
+
+To include AIMET support locally, run:
+
+```bash
+uv sync --extra aimet
+```
 
 ## Pre-commit Hooks
 
 We use pre-commit hooks to ensure code quality and consistency:
 
-1. Install `pre-commit` (see [pre-commit.com](https://pre-commit.com/#install)).
-1. Clone the repository and run `pre-commit install` in the root directory.
+1. Clone the repository and run `uv run pre-commit install` in the root directory.
 1. The `pre-commit` hook will now run automatically on `git commit`.
    - If the hook fails, it will print an error message and abort the commit.
    - Some hooks will also modify the files in-place to fix found issues.
@@ -49,7 +54,7 @@ We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup languag
 To verify that your documentation is formatted correctly, run the following command:
 
 ```bash
-pydoctor --docformat=epytext luxonis_train
+uv run --only-group docs pydoctor --docformat=epytext luxonis_train
 ```
 
 **Editor Support:**
@@ -63,7 +68,7 @@ pydoctor --docformat=epytext luxonis_train
 The codebase is type-checked using [pyright](https://github.com/microsoft/pyright) `v1.1.380`. To run type checking, use the following command in the root project directory:
 
 ```bash
-pyright --warnings --level warning --pythonversion 3.10 luxonis_train
+uv run pyright --warnings --project pyproject.toml
 ```
 
 **Editor Support:**
@@ -78,7 +83,7 @@ We use [pytest](https://docs.pytest.org/en/stable/) for testing.
 The tests are located in the `tests` directory. To run the tests with coverage, use the following command:
 
 ```bash
-pytest --cov=luxonis_train --cov-report=html
+uv run pytest --cov=luxonis_train --cov-report=html
 ```
 
 This command will run all tests and generate HTML coverage report.

@@ -1,14 +1,41 @@
 [project]
 name = "luxonis-train"
+version = "0.4.6"
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license-files = ["LICENSE"]
 license = "Apache-2.0"
 authors = [{ name = "Luxonis", email = "support@luxonis.com" }]
 maintainers = [{ name = "Luxonis", email = "support@luxonis.com" }]
 keywords = ["ml", "training", "luxonis", "oak"]
-dynamic = ["dependencies", "optional-dependencies", "version"]
+dependencies = [
+  "blobconverter~=1.4",
+  "cyclopts~=4.2",
+  "faster-coco-eval~=1.7",
+  "grad-cam~=1.5",
+  "hubai-sdk>=0.3.1",
+  "lightning~=2.5",
+  "luxonis-ml[data,gcs,roboflow,s3,tracker]>=0.8.6",
+  "mlflow~=3.6",
+  "onnx~=1.19",
+  "onnxruntime>=1.23,<1.24",
+  "onnxscript~=0.5",
+  "onnxsim~=0.4",
+  "optuna-integration~=4.6",
+  "optuna~=4.6",
+  "psutil~=7.1",
+  "pynvim~=0.6",
+  "pytorch-metric-learning~=2.9",
+  "seaborn~=0.13",
+  "semver~=3.0",
+  "tabulate~=0.9",
+  "tensorboard~=2.20",
+  "termcolor~=3.2",
+  "torch>=2.9,<2.12",
+  "torchmetrics~=1.8",
+  "torchvision>=0.24,<0.27",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3.10",
@@ -26,19 +53,49 @@ luxonis_train = "luxonis_train.__main__:app.meta"
 repository = "https://github.com/luxonis/luxonis-train"
 issues = "https://github.com/luxonis/luxonis-train/issues"
 
+[project.optional-dependencies]
+aimet = ["aimet-torch~=2.31", "torch==2.11", "torchvision~=0.26"]
+
+[dependency-groups]
+config-test = [
+  "luxonis-ml[data,utils]>=0.8.6",
+  "pytest-cov>=4.1.0",
+  "semver~=3.0",
+]
+dev = [
+  "gdown>=4.2.0",
+  "opencv-stubs>=0.0.8",
+  "pre-commit>=3.2.1,<4.0.0",
+  "pyright>=1.1.380",
+  "pytest-cov>=4.1.0",
+  "pytest-order>=1.3.0",
+  "pytest-rerunfailures>=14.0",
+  "pytest-subtests>=0.12.1",
+  "pytest-timeout>=2.4.0",
+  "pytest-sugar>=1.1.0",
+]
+docs = ["pydoctor"]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
 [tool.setuptools.packages.find]
 where = ["."]
-
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-version = { attr = "luxonis_train.__version__" }
-[tool.setuptools.dynamic.optional-dependencies]
-aimet = { file = ["requirements-aimet.txt"] }
-dev = { file = ["requirements-dev.txt"] }
+include = ["luxonis_train*"]
 
 [tool.ruff]
 target-version = "py310"
@@ -135,6 +192,7 @@ wrap-summaries = 72
 wrap-descriptions = 72
 
 [tool.pyright]
+pythonVersion = "3.10"
 typeCheckingMode = "basic"
 reportMissingTypeStubs = "none"
 reportPrivateImportUsage = "none"
