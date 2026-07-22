@@ -16,14 +16,8 @@ def _model_family_name(cls: type[BasePredefinedModel]) -> str:
     """Return the stable registry family for a predefined model class.
 
     Breaking versions are named ``FamilyV2``, ``FamilyV3``, and so on,
-    while users continue to address them as ``Family``. ``_FAMILY`` can
-    be set on a model class for a family that cannot use that
-    convention.
+    while users continue to address them as ``Family``.
     """
-    family = getattr(cls, "_FAMILY", None)
-    if family is not None:
-        return family
-
     version_suffix = f"V{cls._VERSION}"
     if cls.__name__.endswith(version_suffix):
         return cls.__name__[: -len(version_suffix)]
