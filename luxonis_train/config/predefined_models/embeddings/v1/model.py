@@ -30,6 +30,7 @@ class EmbeddingsModel(BasePredefinedModel):
             NodeConfig(name="GhostFaceNet"),
             NodeConfig(
                 name="GhostFaceNetHead",
+                inputs=["GhostFaceNet"],
                 alias="color-embeddings",
                 metadata_task_override="color",
                 params={"embedding_size": self._embedding_size},
