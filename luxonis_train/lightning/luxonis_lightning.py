@@ -749,8 +749,11 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if ckpt_predefined_model is None:
-            ckpt_predefined_model = ckpt_config.get("model", {}).get(
-                "predefined_model"
+            model_config = ckpt_config.get("model")
+            ckpt_predefined_model = (
+                model_config.get("predefined_model")
+                if isinstance(model_config, dict)
+                else None
             )
         warn_on_predefined_model_mismatch(
             self.cfg.model.predefined_model,
