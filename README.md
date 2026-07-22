@@ -42,12 +42,12 @@ Get started with `LuxonisTrain` in just a few steps:
 
    This will create the `luxonis_train` executable in your `PATH`.
 
-1. **Use the provided `configs/detection_light_model.yaml` configuration file**
+1. **Pick a bundled model preset**
 
-   You can download the file by executing the following command:
+   Every predefined model ships with the wheel — no file download needed. List the presets with:
 
    ```bash
-   wget https://raw.githubusercontent.com/luxonis/luxonis-train/main/configs/detection_light_model.yaml
+   luxonis_train list-models
    ```
 
 1. **Find a suitable dataset for your task**
@@ -57,10 +57,12 @@ Get started with `LuxonisTrain` in just a few steps:
 1. **Start training**
 
    ```bash
-   luxonis_train train                   \
-     --config detection_light_model.yaml \
+   luxonis_train train                  \
+     --model detection --variant light  \
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
+
+   The `--model` / `--variant` combo above is equivalent to `--config configs/detection_light_model.yaml`; either style works and the packaged YAML is used as the source of truth.
 
 1. **Monitor progress with `TensorBoard`**
 
@@ -145,6 +147,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 - `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
 - `quantize` - Quantize the model using `AIMET` quantization techniques
+- `list-models` - List packaged predefined models along with their variants and available versions
 
 **To get help on any command:**
 
@@ -153,6 +156,20 @@ luxonis_train <command> --help
 ```
 
 Specific usage examples can be found in the respective sections below.
+
+**Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`) as a shortcut to one of the packaged presets. For example:
+
+```bash
+# Equivalent to --config configs/detection_light_model.yaml
+luxonis_train train --model detection --variant light
+
+# Same, but pin the predefined-model version explicitly
+luxonis_train train --model detection:v1 --variant light
+```
+
+`--config` and `--model` are mutually exclusive. Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers.
+
+**Predefined-model versioning.** The `model.predefined_model` block accepts an optional `version` field (default `"latest"`). When we ship a breaking architecture change to, say, `DetectionModel`, it will land as `DetectionModelV2` alongside the current class; existing configs pinned to `version: 1` keep resolving to the old architecture, and loading a checkpoint whose training-time version differs from the current-config version prints a clear warning telling you which `version` to pin. The equivalent CLI form is `--model detection:v1`, `--model detection:v2`, or `--model detection:latest`.
 
 > [!NOTE]
 > CLI commands `train`, `test`, and `tune` can be run with `--debug`
@@ -172,6 +189,10 @@ model:
   # the model architecture manually
   predefined_model:
     name: DetectionModel
+    # Optional: pin an explicit architecture version. Defaults to
+    # "latest". Pin to an integer (e.g. `version: 1`) to reproduce an
+    # older checkpoint after a breaking change.
+    version: latest
     params:
       variant: light
 
@@ -342,8 +363,10 @@ loader:
 > To inspect the loader output, use the `luxonis_train inspect` command:
 >
 > ```bash
-> luxonis_train inspect --config configs/detection_light_model.yaml
+> luxonis_train inspect --model detection --variant light
 > ```
+>
+> `--config configs/detection_light_model.yaml` works the same.
 >
 > **The `inspect` command is currently only available in the CLI**
 
@@ -358,15 +381,17 @@ Once your configuration file and dataset are ready, start the training process.
 **CLI:**
 
 ```bash
-luxonis_train train --config configs/detection_light_model.yaml
+luxonis_train train --model detection --variant light
 ```
+
+`--config configs/detection_light_model.yaml` is equivalent and still supported.
 
 > [!TIP]
 > To change a configuration parameter from the command line, use the following syntax:
 >
 > ```bash
-> luxonis_train train                           \
->   --config configs/detection_light_model.yaml \
+> luxonis_train train                  \
+>   --model detection --variant light  \
 >   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
 > ```
 
@@ -414,8 +439,8 @@ Evaluate your trained model on a specific dataset view (`train`, `val`, or `test
 **CLI:**
 
 ```bash
-luxonis_train test --config configs/detection_light_model.yaml \
-                   --view val                                  \
+luxonis_train test --model detection --variant light \
+                   --view val                        \
                    --weights path/to/checkpoint.ckpt
 ```
 
@@ -444,25 +469,25 @@ Run inference on images, datasets, or videos.
 - **Inference on a Dataset View:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --view val                                  \
+luxonis_train infer --model detection --variant light \
+                    --view val                        \
                     --weights path/to/checkpoint.ckpt
 ```
 
 - **Inference on a Video File:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --weights path/to/checkpoint.ckpt           \
+luxonis_train infer --model detection --variant light \
+                    --weights path/to/checkpoint.ckpt \
                     --source-path path/to/video.mp4
 ```
 
 - **Inference on an Image Directory:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --weights path/to/checkpoint.ckpt           \
-                    --source-path path/to/images                \
+luxonis_train infer --model detection --variant light \
+                    --weights path/to/checkpoint.ckpt \
+                    --source-path path/to/images      \
                     --save-dir path/to/save_directory
 ```
 
@@ -527,8 +552,8 @@ The archive contains the exported model together with all the metadata needed fo
 **CLI:**
 
 ```bash
-luxonis_train archive                         \
-  --config configs/detection_light_model.yaml \
+luxonis_train archive                \
+  --model detection --variant light  \
   --weights path/to/checkpoint.ckpt
 ```
 
@@ -558,7 +583,7 @@ Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train
 **CLI:**
 
 ```bash
-luxonis_train convert --config configs/detection_light_model.yaml --weights path/to/checkpoint.ckpt
+luxonis_train convert --model detection --variant light --weights path/to/checkpoint.ckpt
 ```
 
 **Python API:**
