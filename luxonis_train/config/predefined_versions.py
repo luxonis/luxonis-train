@@ -33,26 +33,35 @@ def _split_family_version(key_or_name: str) -> tuple[str, int | None]:
     return match.group("family"), int(match.group("version"))
 
 
+def _plain_key_version(registered: Any) -> int | None:
+    version = getattr(registered, "_VERSION", None)
+    if isinstance(version, int):
+        return version
+    return None
+
+
 def list_versions(family: str) -> dict[int, str]:
-    """Enumerate ``{version: registered_key}`` for one family."""
+    """Enumerate ``{version: registered_key}`` for one family.
+
+    Shipped presets are registered under versioned keys. Custom presets
+    loaded after startup may still be registered under their plain class
+    name, so expose that plain key as its class' ``_VERSION``.
+    """
     versions: dict[int, str] = {}
-    for registered_key in MODELS._module_dict:
+    for registered_key, registered in MODELS._module_dict.items():
         f, v = _split_family_version(registered_key)
-        if f == family and v is not None:
+        if f != family:
+            continue
+        if v is not None:
             versions[v] = registered_key
+            continue
+        plain_version = _plain_key_version(registered)
+        if plain_version is not None:
+            versions.setdefault(plain_version, registered_key)
     return dict(sorted(versions.items()))
 
 
-def resolve_predefined_class(
-    name: str, version: int | str = "latest"
-) -> type["BasePredefinedModel"]:
-    """Look up a predefined-model class by ``(name, version)``.
-
-    ``name`` may be a family (``DetectionModel``) or an explicit key
-    with the ``:vN`` suffix (``DetectionModel:v1``). When the explicit
-    form is used, ``version`` must be ``"latest"`` or match the pinned
-    version, else a ``ValueError`` is raised.
-    """
+def _resolve_predefined_key(name: str, version: int | str = "latest") -> str:
     explicit_family, explicit_version = _split_family_version(name)
     versions = list_versions(explicit_family)
     if not versions:
@@ -83,23 +92,24 @@ def resolve_predefined_class(
             f"Version {chosen} of predefined model '{explicit_family}' "
             f"is not available. Available versions: {sorted(versions)}."
         )
-    return MODELS.get(versions[chosen])
+    return versions[chosen]
+
+
+def resolve_predefined_class(
+    name: str, version: int | str = "latest"
+) -> type["BasePredefinedModel"]:
+    """Look up a predefined-model class by ``(name, version)``.
+
+    ``name`` may be a family (``DetectionModel``) or an explicit key
+    with the ``:vN`` suffix (``DetectionModel:v1``). When the explicit
+    form is used, ``version`` must be ``"latest"`` or match the pinned
+    version, else a ``ValueError`` is raised.
+    """
+    return MODELS.get(_resolve_predefined_key(name, version))
 
 
 def resolved_class_name(name: str, version: int | str = "latest") -> str:
-    explicit_family, _ = _split_family_version(name)
-    versions = list_versions(explicit_family)
-    if not versions:
-        # Delegate to resolve_predefined_class for a rich error.
-        resolve_predefined_class(name, version)
-    # Reuse the existing resolver's version-selection logic, then look
-    # up the registry key that corresponds to the chosen class.
-    cls = resolve_predefined_class(name, version)
-    for key, registered in MODELS._module_dict.items():
-        if registered is cls:
-            return key
-    # Should be unreachable — the class came from the registry.
-    return f"{cls.__name__}:v{cls._VERSION}"
+    return _resolve_predefined_key(name, version)
 
 
 def warn_on_predefined_model_mismatch(

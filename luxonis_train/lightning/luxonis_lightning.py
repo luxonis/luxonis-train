@@ -50,6 +50,13 @@ from .utils import (
 )
 
 
+def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
+    predefined_model = cfg.model.predefined_model
+    if predefined_model is None:
+        return None
+    return predefined_model.model_dump()
+
+
 class LuxonisLightningModule(pl.LightningModule):
     """Class representing the entire model.
 
@@ -619,7 +626,9 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
         if isinstance(previous_cfg, dict):
-            self._warn_on_predefined_model_mismatch(previous_cfg)
+            self._warn_on_predefined_model_mismatch(
+                previous_cfg, ckpt.get("predefined_model")
+            )
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
@@ -730,14 +739,22 @@ class LuxonisLightningModule(pl.LightningModule):
                 "Please set a number of epochs that is higher than the previously-trained epoch number."
             )
 
-    def _warn_on_predefined_model_mismatch(self, ckpt_config: dict) -> None:
+    def _warn_on_predefined_model_mismatch(
+        self,
+        ckpt_config: dict,
+        ckpt_predefined_model: Any | None = None,
+    ) -> None:
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
         )
 
+        if ckpt_predefined_model is None:
+            ckpt_predefined_model = ckpt_config.get("model", {}).get(
+                "predefined_model"
+            )
         warn_on_predefined_model_mismatch(
             self.cfg.model.predefined_model,
-            ckpt_config.get("model", {}).get("predefined_model"),
+            ckpt_predefined_model,
         )
 
     def _evaluation_step(
@@ -1161,9 +1178,14 @@ class LuxonisLightningModule(pl.LightningModule):
         checkpoint["state_dict"] = filter_checkpoint_state_dict(
             checkpoint["state_dict"]
         )
+        predefined_model = _checkpoint_predefined_model(self.cfg)
         checkpoint |= {
             "version": luxonis_train.__version__,
             "execution_order": get_model_execution_order(self),
             "config": self.cfg.model_dump(),
             "dataset_metadata": self.dataset_metadata.dump(),
         }
+        if predefined_model is None:
+            checkpoint.pop("predefined_model", None)
+        else:
+            checkpoint["predefined_model"] = predefined_model

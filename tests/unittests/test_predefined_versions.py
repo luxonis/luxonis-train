@@ -1,10 +1,13 @@
 from collections.abc import Iterator
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
 from loguru import logger
 
-from luxonis_train.config.config import PredefinedModelConfig
+from luxonis_train.config import predefined_models
+from luxonis_train.config.config import Config, PredefinedModelConfig
 from luxonis_train.config.predefined_models import DetectionModel
 from luxonis_train.config.predefined_versions import (
     _split_family_version,
@@ -12,6 +15,10 @@ from luxonis_train.config.predefined_versions import (
     resolve_predefined_class,
     resolved_class_name,
     warn_on_predefined_model_mismatch,
+)
+from luxonis_train.lightning.luxonis_lightning import (
+    LuxonisLightningModule,
+    _checkpoint_predefined_model,
 )
 from luxonis_train.registry import MODELS
 
@@ -33,6 +40,19 @@ def fake_v2_model() -> Iterator[type[DetectionModel]]:
         yield DetectionModel_V2
     finally:
         MODELS._module_dict.pop("DetectionModel:v2", None)
+
+
+@pytest.fixture
+def plain_key_custom_model() -> Iterator[type[DetectionModel]]:
+    class PlainKeyCustomModel(DetectionModel):
+        _VERSION = 7
+
+    MODELS._module_dict.pop("PlainKeyCustomModel:v7", None)
+    try:
+        yield PlainKeyCustomModel
+    finally:
+        MODELS._module_dict.pop("PlainKeyCustomModel", None)
+        MODELS._module_dict.pop("PlainKeyCustomModel:v7", None)
 
 
 def test_split_family_version():
@@ -102,6 +122,21 @@ def test_list_versions_returns_registered_keys(
     }
 
 
+def test_resolve_plain_key_custom_predefined_model(
+    plain_key_custom_model: type[DetectionModel],
+):
+    assert list_versions("PlainKeyCustomModel") == {7: "PlainKeyCustomModel"}
+    assert (
+        resolve_predefined_class("PlainKeyCustomModel")
+        is plain_key_custom_model
+    )
+    assert (
+        resolve_predefined_class("PlainKeyCustomModel", 7)
+        is plain_key_custom_model
+    )
+    assert resolved_class_name("PlainKeyCustomModel") == "PlainKeyCustomModel"
+
+
 def test_resolved_class_name_uses_colon_format(
     fake_v2_model: type[DetectionModel],
 ):
@@ -118,7 +153,9 @@ def test_predefined_model_config_defaults_version_to_latest():
 
 def test_predefined_model_config_rejects_invalid_version():
     with pytest.raises(ValueError, match="version"):
-        PredefinedModelConfig(name="DetectionModel", version="not-a-version")
+        PredefinedModelConfig(
+            name="DetectionModel", version=cast(Any, "not-a-version")
+        )
 
 
 def test_predefined_model_config_accepts_int_and_latest():
@@ -163,11 +200,57 @@ def test_warn_silent_when_no_current_predefined_model():
     assert warn.call_count == 0
 
 
+def test_checkpoint_metadata_includes_excluded_predefined_model():
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "version": 1,
+                }
+            },
+            "trainer": {"smart_cfg_auto_populate": False},
+        }
+    )
+
+    assert "predefined_model" not in cfg.model_dump()["model"]
+    ckpt_predefined_model = _checkpoint_predefined_model(cfg)
+    assert ckpt_predefined_model is not None
+    assert ckpt_predefined_model["name"] == "DetectionModel"
+    assert ckpt_predefined_model["version"] == 1
+
+
+def test_lightning_warn_uses_checkpoint_predefined_model_metadata(
+    fake_v2_model: type[DetectionModel],
+):
+    module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
+    module.cfg = SimpleNamespace(
+        model=SimpleNamespace(
+            predefined_model=PredefinedModelConfig(
+                name="DetectionModel", version=2
+            )
+        )
+    )
+
+    with patch.object(logger, "warning") as warn:
+        module._warn_on_predefined_model_mismatch(
+            {"model": {}}, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 1
+
+
 def test_all_shipped_predefined_models_use_colon_key():
     """Every registered predefined model uses the `Family:vN` key
     format.
     """
-    for key in MODELS._module_dict:
+    for name in predefined_models.__all__:
+        if name == "BasePredefinedModel":
+            continue
+        cls = getattr(predefined_models, name)
+        key = f"{cls.__name__}:v{cls._VERSION}"
+        assert MODELS._module_dict.get(key) is cls
+        assert cls.__name__ not in MODELS._module_dict
+
         family, _, version_part = key.partition(":")
         assert family, f"empty family in registry key: {key!r}"
         assert version_part.startswith("v"), (
