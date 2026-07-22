@@ -1,31 +1,7 @@
 model:
   name: reid_test
-  nodes:
-    - name: GhostFaceNet
-
-    - name: GhostFaceNetHead
-      alias: color-embeddings
-      metadata_task_override: color
-      params:
-        embedding_size: 16
-
-      losses:
-        - name: SupConLoss
-          params:
-            miner: MultiSimilarityMiner
-            distance: CosineSimilarity
-            reducer: ThresholdReducer
-            reducer_params:
-              high: 0.3
-            regularizer: LpRegularizer
-
-      metrics:
-        - name: ClosestIsPositiveAccuracy
-
-        - name: MedianDistances
-
-      visualizers:
-        - name: EmbeddingsVisualizer
+  predefined_model:
+    name: EmbeddingsModel
 
 loader:
   params:

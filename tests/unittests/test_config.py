@@ -48,6 +48,7 @@ from luxonis_train.config.predefined_models import (
     AnomalyDetectionModel,
     ClassificationModel,
     DetectionModel,
+    EmbeddingsModel,
     FOMOModel,
     InstanceSegmentationModel,
     KeypointDetectionModel,
@@ -969,6 +970,7 @@ def test_predefined_version_resolver_branches(
     [
         (AnomalyDetectionModel, "light", ["RecSubNet", "DiscSubNetHead"]),
         (ClassificationModel, "light", ["ResNet", "ClassificationHead"]),
+        (EmbeddingsModel, "default", ["GhostFaceNet", "GhostFaceNetHead"]),
         (
             DetectionModel,
             "light",

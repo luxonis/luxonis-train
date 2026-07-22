@@ -160,3 +160,25 @@ def test_info_cli_command_displays_model_components():
     assert "RepPANNeck" in result.stdout
     assert "Head" in result.stdout
     assert "EfficientBBoxHead" in result.stdout
+
+
+def test_embeddings_model_uses_a_predefined_model_class():
+    config = resolve_predefined_config("embeddings", None)
+    assert "name: EmbeddingsModel" in config.read_text()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "luxonis_train",
+            "info",
+            "--model",
+            "embeddings",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "EmbeddingsModel:v1" in result.stdout
+    assert "GhostFaceNet" in result.stdout
+    assert "GhostFaceNetHead" in result.stdout

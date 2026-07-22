@@ -768,22 +768,37 @@ def info(*, model: str, variant: str | None = None):
         )
     )
 
-    if not isinstance(predefined_model, SimplePredefinedModel):
-        console.print(
-            "[yellow]Component documentation is available for "
-            "SimplePredefinedModel presets only.[/]"
-        )
-        return
-
     node_configs = {node.name: node for node in predefined_model.nodes}
-    components = (
-        ("Backbone", predefined_model._backbone),
-        (
-            "Neck",
-            predefined_model._neck if predefined_model._use_neck else None,
-        ),
-        ("Head", predefined_model._head),
-    )
+    if isinstance(predefined_model, SimplePredefinedModel):
+        components = (
+            ("Backbone", predefined_model._backbone),
+            (
+                "Neck",
+                predefined_model._neck if predefined_model._use_neck else None,
+            ),
+            ("Head", predefined_model._head),
+        )
+    else:
+        section_by_module = {
+            "backbones": "Backbone",
+            "necks": "Neck",
+            "heads": "Head",
+        }
+        components = tuple(
+            (
+                next(
+                    (
+                        label
+                        for package, label in section_by_module.items()
+                        if f".nodes.{package}."
+                        in NODES.get(node.name).__module__
+                    ),
+                    "Node",
+                ),
+                node.name,
+            )
+            for node in predefined_model.nodes
+        )
     for section, node_name in components:
         if node_name is None:
             continue
