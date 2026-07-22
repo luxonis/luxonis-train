@@ -885,6 +885,30 @@ def test_predefined_registry_rekey_branches(
     assert registry["DetectionModel"] is DetectionModel
 
 
+def test_predefined_registry_rekeys_versioned_class_to_family(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class DetectionModelV2(DetectionModel):
+        _VERSION = 2
+
+    MODELS._module_dict.pop("DetectionModelV2", None)
+    registry = {
+        "DetectionModel:v1": DetectionModel,
+        "DetectionModelV2": DetectionModelV2,
+    }
+    monkeypatch.setattr(MODELS, "_module_dict", registry)
+
+    predefined_models._rekey_registry_with_versions()
+
+    assert "DetectionModelV2" not in registry
+    assert registry["DetectionModel:v2"] is DetectionModelV2
+    assert resolve_predefined_class("DetectionModel", 2) is DetectionModelV2
+    assert (
+        resolve_predefined_class("DetectionModel", "latest")
+        is DetectionModelV2
+    )
+
+
 def test_predefined_version_resolver_branches(
     monkeypatch: pytest.MonkeyPatch,
 ):

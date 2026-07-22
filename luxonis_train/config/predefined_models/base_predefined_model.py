@@ -22,9 +22,16 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
 
     Subclasses that introduce breaking architecture changes should
     increment this to 2, 3, ... . Registration composes the registry key
-    as ``f"{cls.__name__}:v{cls._VERSION}"`` in
+    as ``f"{family}:v{cls._VERSION}"`` in
     :mod:`luxonis_train.config.predefined_models` at import time.
+
+    Name breaking-version classes ``FamilyV2``, ``FamilyV3``, etc., so
+    their stable family is inferred from the class name. Set ``_FAMILY``
+    explicitly when that naming convention cannot be used.
     """
+
+    _FAMILY: str | None = None
+    """Stable registry family override for non-standard class names."""
 
     @property
     @abstractmethod

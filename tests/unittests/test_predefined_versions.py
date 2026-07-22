@@ -29,15 +29,14 @@ def fake_v2_model() -> Iterator[type[DetectionModel]]:
     test.
     """
 
-    class DetectionModel_V2(DetectionModel):
+    class DetectionModelV2(DetectionModel):
         _VERSION = 2
 
-    # AutoRegisterMeta registers under the plain class name; we swap the key
-    # to the `Family:vN` form the resolver expects.
-    MODELS._module_dict.pop("DetectionModel_V2", None)
-    MODELS._module_dict["DetectionModel:v2"] = DetectionModel_V2
+    # AutoRegisterMeta first registers the plain class name. Rekey it through
+    # the production path to verify the documented ``FamilyV2`` convention.
+    predefined_models._rekey_registry_with_versions()
     try:
-        yield DetectionModel_V2
+        yield DetectionModelV2
     finally:
         MODELS._module_dict.pop("DetectionModel:v2", None)
 
