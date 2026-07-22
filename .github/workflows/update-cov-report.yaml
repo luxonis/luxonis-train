@@ -4,12 +4,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   update-base-report:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        suite: [unit, predefined, combinations, misc]
 
     steps:
       - name: Checkout
@@ -20,12 +21,30 @@ jobs:
       - name: Download artifacts
         uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151
         with:
-          name: coverage-${{ matrix.suite }}
-          path: coverage.xml
+          name: coverage-.*
+          name_is_regexp: true
+          path: coverage
           workflow: ci.yaml
+          merge_multiple: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect coverage files
+        id: coverage-files
+        shell: bash
+        run: |
+          files=$(find coverage -type f -name 'coverage-*.xml' | sort | paste -sd, -)
+          if [[ -z "$files" ]]; then
+            echo "No coverage files found" >&2
+            exit 1
+          fi
+          echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          files: ${{ steps.coverage-files.outputs.files }}
+          flags: pytest
+          name: pytest
+          disable_search: true

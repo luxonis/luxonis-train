@@ -1,0 +1,85 @@
+name: Update Test Durations
+
+on:
+  schedule:
+    - cron: "37 3 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-durations:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit, predefined, combinations, misc]
+
+    runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
+
+      - name: Install source version of LuxonisML
+        run: |
+          pip uninstall luxonis-ml -y
+          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+
+      - name: Authenticate to Google Cloud
+        id: google-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          create_credentials_file: true
+          export_environment_variables: true
+          token_format: access_token
+
+      - name: Generate pytest durations
+        shell: bash
+        env:
+          LUXONISML_BUCKET: luxonis-test-bucket
+          HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
+        run: |
+          mkdir -p .pytest-durations
+          durations_path=".pytest-durations/.test_durations.${{ matrix.suite }}"
+          pytest \
+            -x \
+            --cov \
+            --cov-report "xml:coverage-durations-${{ matrix.suite }}.xml" \
+            --store-durations \
+            --clean-durations \
+            --durations-path "$durations_path" \
+            --junitxml "junit-durations-${{ matrix.suite }}.xml" \
+            -o junit_family=legacy \
+            -m "${{ matrix.suite }}"
+
+      - name: Save pytest durations cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .pytest-durations
+          key: pytest-durations-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload pytest durations
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pytest-durations-${{ matrix.suite }}
+          path: |
+            .pytest-durations/.test_durations.${{ matrix.suite }}
+            junit-durations-${{ matrix.suite }}.xml
+            coverage-durations-${{ matrix.suite }}.xml
+          if-no-files-found: ignore
+          retention-days: 30

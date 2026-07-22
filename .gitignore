@@ -53,6 +53,8 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
+.pytest-durations/
+.test_durations*
 .cache
 nosetests.xml
 coverage.xml

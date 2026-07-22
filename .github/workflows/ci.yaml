@@ -183,8 +183,10 @@ jobs:
       - config-test
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [unit, predefined, combinations, misc]
+        group: [1, 2, 3, 4]
 
     runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
@@ -201,6 +203,14 @@ jobs:
         with:
           python-version: "3.10"
           cache: pip
+
+      - name: Restore pytest durations
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .pytest-durations
+          key: pytest-durations-${{ matrix.suite }}-${{ github.run_id }}
+          restore-keys: |
+            pytest-durations-${{ matrix.suite }}-
 
       - name: Install dependencies
         run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
@@ -223,29 +233,64 @@ jobs:
           token_format: access_token
 
       - name: Run pytest
+        shell: bash
         env:
           LUXONISML_BUCKET: luxonis-test-bucket
-          SUITE: ${{ matrix.suite }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
-        run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
+        run: |
+          junit_xml="junit-${{ matrix.suite }}-${{ matrix.group }}.xml"
+          coverage_xml="coverage-${{ matrix.suite }}-${{ matrix.group }}.xml"
+          mkdir -p .pytest-durations
+          durations_path=".pytest-durations/.test_durations.${{ matrix.suite }}"
+          pytest \
+            -x \
+            --cov \
+            --cov-report "xml:$coverage_xml" \
+            --splits 4 \
+            --group "${{ matrix.group }}" \
+            --durations-path "$durations_path" \
+            --splitting-algorithm duration_based_chunks \
+            --junitxml "$junit_xml" \
+            -o junit_family=legacy \
+            -m "${{ matrix.suite }}"
+
+      - name: Upload test result artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: junit-${{ matrix.suite }}-${{ matrix.group }}
+          path: junit-${{ matrix.suite }}-${{ matrix.group }}.xml
+          if-no-files-found: ignore
 
       - name: Upload test results to Codecov
+        if: ${{ always() }}
         uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          files: junit-${{ matrix.suite }}-${{ matrix.group }}.xml
           flags: ${{ matrix.suite }}
+          name: pytest-${{ matrix.suite }}-${{ matrix.group }}
+          disable_search: true
+          handle_no_reports_found: true
 
       - name: Upload coverage results to Codecov
+        if: ${{ always() }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          files: coverage-${{ matrix.suite }}-${{ matrix.group }}.xml
           flags: ${{ matrix.suite }}
+          name: pytest-${{ matrix.suite }}-${{ matrix.group }}
+          disable_search: true
+          handle_no_reports_found: true
 
       - name: Upload coverage as artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: coverage-${{ matrix.suite }}
-          path: coverage.xml
+          name: coverage-${{ matrix.suite }}-${{ matrix.group }}
+          path: coverage-${{ matrix.suite }}-${{ matrix.group }}.xml
+          if-no-files-found: ignore
           overwrite: true
