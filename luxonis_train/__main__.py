@@ -13,6 +13,10 @@ from cyclopts import App, Group, Parameter, validators
 from loguru import logger
 from luxonis_ml.typing import Params, PathType
 
+from luxonis_train.config.predefined import (
+    list_predefined_models,
+    resolve_predefined_config,
+)
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 OptsType: TypeAlias = Annotated[
@@ -42,18 +46,39 @@ annotation_group = Group.create_ordered("Annotation")
 management_group = Group.create_ordered("Management")
 
 
+def _resolve_config(
+    config: PathType | Params | None,
+    model: str | None,
+    variant: str | None,
+) -> PathType | Params | None:
+    if model is None:
+        if variant is not None:
+            raise ValueError(
+                "'--variant' requires '--model' to be specified as well."
+            )
+        return config
+    if config is not None:
+        raise ValueError("'--config' and '--model' are mutually exclusive.")
+    return str(resolve_predefined_config(model, variant))
+
+
 def create_model(
     config: PathType | Params | None,
     opts: list[str] | None = None,
     weights: PathType | None = None,
     allow_empty_dataset: bool = False,
+    *,
+    model: str | None = None,
+    variant: str | None = None,
 ) -> "LuxonisModel":
+    resolved = _resolve_config(config, model, variant)
+
     importlib.reload(sys.modules["luxonis_train"])
 
     from luxonis_train import LuxonisModel
 
     return LuxonisModel(
-        config,
+        resolved,
         opts,
         weights=weights,
         allow_empty_dataset=allow_empty_dataset,
@@ -66,13 +91,23 @@ def train(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     debug: bool = False,
 ):
     """Start the training process.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Run `luxonis_train list-models` to see the
+        options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
@@ -83,7 +118,12 @@ def train(
         be useful for quick testing of the training loop.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).train(weights=weights)
 
 
@@ -93,13 +133,20 @@ def tune(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     debug: bool = False,
 ):
     """Start hyperparameter tuning.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model.
+    @type variant: str
+    @param variant: Variant of the predefined model.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type weights: str
@@ -110,7 +157,12 @@ def tune(
         be useful for quick testing of the tuning.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).tune()
 
 
@@ -122,6 +174,9 @@ def _yield_visualizations(
         float, Parameter(["--size_multiplier", "-s"])
     ] = 1.0,
     list_augmentations: bool = False,
+    *,
+    model: str | None = None,
+    variant: str | None = None,
 ) -> Iterator["np.ndarray"]:
     import cv2
     import numpy as np
@@ -167,16 +222,16 @@ def _yield_visualizations(
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
-    model = create_model(config, opts)
+    lx_model = create_model(config, opts, model=model, variant=variant)
 
-    loader = model.loaders[view]
+    loader = lx_model.loaders[view]
     raw_loader = getattr(loader, "loader", None)
     if list_augmentations and raw_loader is not None:
         collector = AugmentationsCollector(
             raw_loader.augmentations,  # type: ignore[attr-defined]
             [
                 aug.model_dump()
-                for aug in model.cfg_preprocessing.get_active_augmentations()
+                for aug in lx_model.cfg_preprocessing.get_active_augmentations()
             ],
         )
         get_applied_augmentations = collector.get_applied_augmentations
@@ -214,6 +269,8 @@ def inspect(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "train",
     size_multiplier: Annotated[
         float, Parameter(["--size_multiplier", "-s"])
@@ -253,6 +310,8 @@ def inspect(
         size_multiplier=size_multiplier,
         list_augmentations=list_augmentations,
         opts=opts,
+        model=model,
+        variant=variant,
     ):
         window_name = get_window()
         cv2.resizeWindow(window_name, width=viz.shape[1], height=viz.shape[0])
@@ -268,6 +327,8 @@ def test(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "test",
     weights: str | None = None,
     debug: bool = False,
@@ -290,7 +351,12 @@ def test(
         be useful for quick testing of the evaluation loop.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).test(view=view, weights=weights)
 
 
@@ -300,6 +366,8 @@ def infer(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "val",
     save_dir: Path | None = None,
     source_path: str | None = None,
@@ -327,7 +395,12 @@ def infer(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).infer(
         view=view,
         save_dir=save_dir,
@@ -344,6 +417,8 @@ def annotate(
     dir_path: Path,
     dataset_name: str,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     bucket_storage: Literal["local", "gcs"] = "local",
     delete_local: bool = True,
@@ -377,11 +452,16 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+    lx_model = create_model(
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     )
 
-    model.annotate(
+    lx_model.annotate(
         dir_path=dir_path,
         dataset_name=dataset_name,
         weights=weights,
@@ -398,6 +478,8 @@ def export(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     save_path: str | None = None,
     weights: str | None = None,
     ckpt_only: bool = False,
@@ -422,7 +504,12 @@ def export(
     @param opts: A list of optional CLI overrides of the
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).export(save_path=save_path, weights=weights, ckpt_only=ckpt_only)
 
 
@@ -431,7 +518,9 @@ def archive(
     opts: OptsType = None,
     /,
     *,
-    config: str | None,
+    config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     executable: str | None = None,
     weights: str | None = None,
 ):
@@ -448,7 +537,12 @@ def archive(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).archive(path=executable, weights=weights)
 
 
@@ -458,6 +552,8 @@ def convert(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     save_dir: str | None = None,
     weights: str | None = None,
 ):
@@ -478,7 +574,12 @@ def convert(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).convert(save_dir=save_dir, weights=weights)
 
 
@@ -488,21 +589,53 @@ def quantize(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
 ):
     """Quantize the model using AIMET.
 
     @type config: str
     @param config: Path to the configuration file.
+    @type model: str
+    @param model: Name of a packaged predefined model.
+    @type variant: str
+    @param variant: Variant of the predefined model.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(
-        config, opts, weights=weights, allow_empty_dataset=False
+    lx_model = create_model(
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=False,
+        model=model,
+        variant=variant,
     )
-    model.quantize()
+    lx_model.quantize()
+
+
+@app.command(group=management_group, sort_key=1, name="list-models")
+def list_models():
+    """List packaged predefined models and their variants.
+
+    Each row shows `<model>: <variants>`, with `*` marking the variant
+    that `--variant` defaults to when omitted.
+    """
+    entries = list_predefined_models()
+    if not entries:
+        print("No packaged predefined models found.")
+        return
+    width = max(len(name) for name in entries)
+    for name, variants in entries.items():
+        default = variants[0]
+        rendered = []
+        for v in variants:
+            label = v if v is not None else "<default>"
+            rendered.append(f"{label}*" if v == default else label)
+        print(f"  {name.ljust(width)}  {', '.join(rendered)}")
 
 
 @upgrade_app.command()
