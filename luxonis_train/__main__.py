@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, TypeAlias
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, cast
 
 import yaml
 from cyclopts import App, Group, Parameter, validators
@@ -743,14 +743,14 @@ def info(*, model: str, variant: str | None = None):
     config = yaml.safe_load(config_path.read_text())
     predefined_config = config["model"]["predefined_model"]
     class_family = predefined_config["name"]
-    version: int | str = (
-        int(requested_version)
-        if requested_version not in {None, "latest"}
-        else "latest"
-    )
+    version: int | str
+    if requested_version is None or requested_version == "latest":
+        version = "latest"
+    else:
+        version = int(requested_version)
     model_class = resolve_predefined_class(class_family, version)
     selected_variant = variant or predefined_config.get("variant", "default")
-    predefined_model = model_class(
+    predefined_model = cast(Any, model_class)(
         variant=selected_variant,
         **predefined_config.get("params", {}),
     )
