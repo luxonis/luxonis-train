@@ -21,7 +21,7 @@ jobs:
       - name: Download artifacts
         uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151
         with:
-          name: coverage-.*
+          name: coverage-ubuntu-t4-4core-.*
           name_is_regexp: true
           path: coverage
           workflow: ci.yaml
@@ -32,7 +32,7 @@ jobs:
         id: coverage-files
         shell: bash
         run: |
-          files=$(find coverage -type f -name 'coverage-*.xml' | sort | paste -sd, -)
+          files=$(find coverage -type f -name 'coverage-ubuntu-t4-4core-*.xml' | sort | paste -sd, -)
           if [[ -z "$files" ]]; then
             echo "No coverage files found" >&2
             exit 1
@@ -45,6 +45,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           files: ${{ steps.coverage-files.outputs.files }}
-          flags: pytest
-          name: pytest
+          flags: pytest-ubuntu-t4-4core
+          name: pytest-ubuntu-t4-4core
           disable_search: true

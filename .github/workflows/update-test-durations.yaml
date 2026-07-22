@@ -12,12 +12,7 @@ concurrency:
 
 jobs:
   update-durations:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [unit, predefined, combinations, misc]
-
-    runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
+    runs-on: ubuntu-t4-4core
 
     steps:
       - name: Checkout
@@ -55,32 +50,31 @@ jobs:
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
         run: |
           mkdir -p .pytest-durations
-          durations_path=".pytest-durations/.test_durations.${{ matrix.suite }}"
+          durations_path=".pytest-durations/.test_durations.ubuntu-t4-4core"
           pytest \
             -x \
             --cov \
-            --cov-report "xml:coverage-durations-${{ matrix.suite }}.xml" \
+            --cov-report "xml:coverage-durations-ubuntu-t4-4core.xml" \
             --store-durations \
             --clean-durations \
             --durations-path "$durations_path" \
-            --junitxml "junit-durations-${{ matrix.suite }}.xml" \
-            -o junit_family=legacy \
-            -m "${{ matrix.suite }}"
+            --junitxml "junit-durations-ubuntu-t4-4core.xml" \
+            -o junit_family=legacy
 
       - name: Save pytest durations cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .pytest-durations
-          key: pytest-durations-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: pytest-durations-ubuntu-t4-4core-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload pytest durations
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: pytest-durations-${{ matrix.suite }}
+          name: pytest-durations-ubuntu-t4-4core
           path: |
-            .pytest-durations/.test_durations.${{ matrix.suite }}
-            junit-durations-${{ matrix.suite }}.xml
-            coverage-durations-${{ matrix.suite }}.xml
+            .pytest-durations/.test_durations.ubuntu-t4-4core
+            junit-durations-ubuntu-t4-4core.xml
+            coverage-durations-ubuntu-t4-4core.xml
           if-no-files-found: ignore
           retention-days: 30
