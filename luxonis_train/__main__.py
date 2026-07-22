@@ -656,12 +656,16 @@ def list_models():
     """
     from importlib.resources import files
 
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
     from luxonis_train.config.predefined import _resolve_filename
     from luxonis_train.config.predefined_versions import list_versions
 
     entries = list_predefined_models()
     if not entries:
-        print("No packaged predefined models found.")
+        Console().print("[yellow]No packaged predefined models found.[/]")
         return
 
     def _load_class_family(model: str) -> str | None:
@@ -674,7 +678,14 @@ def list_models():
         except Exception:
             return None
 
-    width = max(len(name) for name in entries)
+    table = Table(
+        title="Packaged predefined models",
+        caption="[dim]* default when the option is omitted[/]",
+        box=box.ROUNDED,
+    )
+    table.add_column("Model", style="bold cyan")
+    table.add_column("Variants")
+    table.add_column("Versions", style="green")
     for name, variants in entries.items():
         default = variants[0]
         rendered_variants = []
@@ -693,8 +704,103 @@ def list_models():
                 version_str = "-"
         else:
             version_str = "?"
-        print(
-            f"  {name.ljust(width)}  variants: {', '.join(rendered_variants):22}  versions: {version_str}"
+        table.add_row(name, ", ".join(rendered_variants), version_str)
+
+    Console().print(table)
+
+
+@app.command(group=management_group, sort_key=2)
+def info(*, model: str, variant: str | None = None):
+    """Display documentation for a packaged predefined model.
+
+    @type model: str
+    @param model: Packaged model name, optionally suffixed with a
+        version (for example `detection:v1`).
+    @type variant: str | None
+    @param variant: Model variant to describe. Defaults to the packaged
+        model's default variant.
+    """
+    import inspect
+
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+
+    from luxonis_train.config.predefined_models.base_predefined_model import (
+        SimplePredefinedModel,
+    )
+    from luxonis_train.config.predefined_versions import (
+        resolve_predefined_class,
+        resolved_class_name,
+    )
+    from luxonis_train.registry import NODES
+
+    importlib.import_module("luxonis_train.nodes")
+    importlib.import_module("luxonis_train.config.predefined_models")
+
+    family, requested_version = _split_model_version(model)
+    config_path = resolve_predefined_config(family, variant)
+    config = yaml.safe_load(config_path.read_text())
+    predefined_config = config["model"]["predefined_model"]
+    class_family = predefined_config["name"]
+    version: int | str = (
+        int(requested_version)
+        if requested_version not in {None, "latest"}
+        else "latest"
+    )
+    model_class = resolve_predefined_class(class_family, version)
+    selected_variant = variant or predefined_config.get("variant", "default")
+    predefined_model = model_class(
+        variant=selected_variant,
+        **predefined_config.get("params", {}),
+    )
+    resolved_name = resolved_class_name(class_family, version)
+
+    console = Console()
+    description = inspect.cleandoc(model_class.__dict__.get("__doc__") or "")
+    if not description:
+        description = f"Predefined {class_family} architecture."
+    console.print(
+        Panel(
+            Text(description),
+            title=f"[bold]{family}[/] · {selected_variant} · {resolved_name}",
+            border_style="cyan",
+        )
+    )
+
+    if not isinstance(predefined_model, SimplePredefinedModel):
+        console.print(
+            "[yellow]Component documentation is available for "
+            "SimplePredefinedModel presets only.[/]"
+        )
+        return
+
+    node_configs = {node.name: node for node in predefined_model.nodes}
+    components = (
+        ("Backbone", predefined_model._backbone),
+        (
+            "Neck",
+            predefined_model._neck if predefined_model._use_neck else None,
+        ),
+        ("Head", predefined_model._head),
+    )
+    for section, node_name in components:
+        if node_name is None:
+            continue
+        node_config = node_configs[node_name]
+        node_class = NODES.get(node_name)
+        node_doc = (
+            node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
+        )
+        node_doc = inspect.cleandoc(node_doc or "")
+        body = Text(node_doc or "No documentation available.")
+        variant_label = node_config.variant or "default"
+        console.print(
+            Panel(
+                body,
+                title=f"[bold]{section}[/] · {node_name} ({variant_label})",
+                border_style="green",
+            )
         )
 
 

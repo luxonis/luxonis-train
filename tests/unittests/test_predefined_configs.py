@@ -131,5 +131,32 @@ def test_list_models_cli_command_runs_and_lists_models():
     )
     assert "detection" in result.stdout
     assert "anomaly_detection" in result.stdout
+    assert "Variants" in result.stdout
+    assert "Versions" in result.stdout
     # Default marker present.
     assert "*" in result.stdout
+
+
+def test_info_cli_command_displays_model_components():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "luxonis_train",
+            "info",
+            "--model",
+            "detection",
+            "--variant",
+            "light",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "DetectionModel:v1" in result.stdout
+    assert "Backbone" in result.stdout
+    assert "EfficientRep" in result.stdout
+    assert "Neck" in result.stdout
+    assert "RepPANNeck" in result.stdout
+    assert "Head" in result.stdout
+    assert "EfficientBBoxHead" in result.stdout
