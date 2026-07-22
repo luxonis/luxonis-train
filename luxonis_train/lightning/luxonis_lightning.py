@@ -618,6 +618,8 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
+        if isinstance(previous_cfg, dict):
+            self._warn_on_predefined_model_mismatch(previous_cfg)
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
@@ -727,6 +729,16 @@ class LuxonisLightningModule(pl.LightningModule):
                 f"but current config requests only {self.cfg.trainer.epochs} epochs. "
                 "Please set a number of epochs that is higher than the previously-trained epoch number."
             )
+
+    def _warn_on_predefined_model_mismatch(self, ckpt_config: dict) -> None:
+        from luxonis_train.config.predefined_versions import (
+            warn_on_predefined_model_mismatch,
+        )
+
+        warn_on_predefined_model_mismatch(
+            self.cfg.model.predefined_model,
+            ckpt_config.get("model", {}).get("predefined_model"),
+        )
 
     def _evaluation_step(
         self,

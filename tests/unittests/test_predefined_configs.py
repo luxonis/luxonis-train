@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from luxonis_train.__main__ import _resolve_config
+from luxonis_train.__main__ import _resolve_config, _split_model_version
 from luxonis_train.config.predefined import (
     VARIANT_ORDER,
     list_predefined_models,
@@ -92,6 +92,30 @@ def test_cli_resolver_returns_packaged_path_for_model():
     assert isinstance(resolved, str)
     assert resolved.endswith("detection_light_model.yaml")
     assert Path(resolved).exists()
+
+
+def test_split_model_version_forms():
+    assert _split_model_version("detection") == ("detection", None)
+    assert _split_model_version("detection:v1") == ("detection", "1")
+    assert _split_model_version("detection:v12") == ("detection", "12")
+    assert _split_model_version("detection:latest") == ("detection", "latest")
+
+
+def test_split_model_version_rejects_malformed():
+    with pytest.raises(ValueError, match="Malformed model spec"):
+        _split_model_version("detection:bad")
+    with pytest.raises(ValueError, match="Malformed model spec"):
+        _split_model_version("detection:2")  # missing the leading `v`
+
+
+def test_resolver_strips_version_before_yaml_lookup():
+    """CLI `--model detection:v1` should still resolve to the same YAML
+    preset as `--model detection`; the version part is consumed by
+    `create_model`, not by the YAML resolver.
+    """
+    plain = _resolve_config(None, "detection", "light")
+    with_version = _resolve_config(None, "detection:v1", "light")
+    assert plain == with_version
 
 
 def test_list_models_cli_command_runs_and_lists_models():

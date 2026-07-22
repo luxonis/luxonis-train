@@ -17,6 +17,15 @@ from luxonis_train.variants import VariantBase
 
 
 class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
+    _VERSION: int = 1
+    """Version marker for this predefined-model class.
+
+    Subclasses that introduce breaking architecture changes should
+    increment this to 2, 3, ... . Registration composes the registry key
+    as ``f"{cls.__name__}:v{cls._VERSION}"`` in
+    :mod:`luxonis_train.config.predefined_models` at import time.
+    """
+
     @property
     @abstractmethod
     def nodes(self) -> list[NodeConfig]: ...

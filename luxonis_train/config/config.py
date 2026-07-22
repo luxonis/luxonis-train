@@ -44,7 +44,7 @@ from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
 import luxonis_train as lxt
-from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.registry import NODES
 from luxonis_train.upgrade import upgrade_config
 
 
@@ -108,6 +108,7 @@ class NodeConfig(ConfigItem):
 
 class PredefinedModelConfig(ConfigItem):
     variant: str | Literal["default", "none"] | None = "default"
+    version: int | Literal["latest"] = "latest"
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
@@ -166,15 +167,26 @@ class ModelConfig(BaseModelExtraForbid):
         if self.predefined_model is None:
             return self
 
-        logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        from luxonis_train.config.predefined_versions import (
+            resolve_predefined_class,
+        )
+
+        cls = resolve_predefined_class(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        if cls.__name__ != self.predefined_model.name:
+            logger.info(
+                f"Using predefined model: `{self.predefined_model.name}` "
+                f"(resolved to `{cls.__name__}`, version={self.predefined_model.version})"
+            )
+        else:
+            logger.info(
+                f"Using predefined model: `{self.predefined_model.name}`"
+            )
         kwargs = dict(self.predefined_model.params or {})
         if not kwargs.get("variant"):
             kwargs["variant"] = self.predefined_model.variant
-        model = from_registry(
-            MODELS,
-            self.predefined_model.name,
-            **kwargs,
-        )
+        model = cls(**kwargs)
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
             include_metrics=self.predefined_model.include_metrics,

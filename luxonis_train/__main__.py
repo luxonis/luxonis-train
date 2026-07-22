@@ -46,6 +46,27 @@ annotation_group = Group.create_ordered("Annotation")
 management_group = Group.create_ordered("Management")
 
 
+def _split_model_version(model: str) -> tuple[str, str | None]:
+    """Split ``family:vN`` (or ``family:latest``) into ``(family,
+    version)``.
+
+    Returns the version portion unchanged (as a string) so callers can
+    tell "no colon" from "``:latest``". The version is not parsed to an
+    int here — it is passed straight through as a config override.
+    """
+    if ":" not in model:
+        return model, None
+    family, _, version_str = model.partition(":")
+    if version_str.startswith("v") and version_str[1:].isdigit():
+        return family, version_str[1:]
+    if version_str == "latest":
+        return family, "latest"
+    raise ValueError(
+        f"Malformed model spec '{model}'. Expected '<name>', "
+        f"'<name>:vN' (e.g. detection:v1), or '<name>:latest'."
+    )
+
+
 def _resolve_config(
     config: PathType | Params | None,
     model: str | None,
@@ -59,7 +80,8 @@ def _resolve_config(
         return config
     if config is not None:
         raise ValueError("'--config' and '--model' are mutually exclusive.")
-    return str(resolve_predefined_config(model, variant))
+    family, _ = _split_model_version(model)
+    return str(resolve_predefined_config(family, variant))
 
 
 def create_model(
@@ -71,6 +93,14 @@ def create_model(
     model: str | None = None,
     variant: str | None = None,
 ) -> "LuxonisModel":
+    if model is not None:
+        _, version = _split_model_version(model)
+        if version is not None and version != "latest":
+            opts = [
+                *list(opts or []),
+                "model.predefined_model.version",
+                version,
+            ]
     resolved = _resolve_config(config, model, variant)
 
     importlib.reload(sys.modules["luxonis_train"])
@@ -619,23 +649,53 @@ def quantize(
 
 @app.command(group=management_group, sort_key=1, name="list-models")
 def list_models():
-    """List packaged predefined models and their variants.
+    """List packaged predefined models, their variants and versions.
 
-    Each row shows `<model>: <variants>`, with `*` marking the variant
-    that `--variant` defaults to when omitted.
+    Each row shows `<model>  variants  versions`. The `*` marks the
+    default variant / version picked when the option is omitted.
     """
+    from importlib.resources import files
+
+    from luxonis_train.config.predefined import _resolve_filename
+    from luxonis_train.config.predefined_versions import list_versions
+
     entries = list_predefined_models()
     if not entries:
         print("No packaged predefined models found.")
         return
+
+    def _load_class_family(model: str) -> str | None:
+        filename = _resolve_filename(model, None)
+        try:
+            data = yaml.safe_load(
+                Path(str(files("configs") / filename)).read_text()
+            )
+            return data["model"]["predefined_model"]["name"]
+        except Exception:
+            return None
+
     width = max(len(name) for name in entries)
     for name, variants in entries.items():
         default = variants[0]
-        rendered = []
+        rendered_variants = []
         for v in variants:
             label = v if v is not None else "<default>"
-            rendered.append(f"{label}*" if v == default else label)
-        print(f"  {name.ljust(width)}  {', '.join(rendered)}")
+            rendered_variants.append(f"{label}*" if v == default else label)
+        class_family = _load_class_family(name)
+        if class_family is not None:
+            versions = list_versions(class_family)
+            if versions:
+                latest = max(versions)
+                version_str = ", ".join(
+                    f"v{v}*" if v == latest else f"v{v}" for v in versions
+                )
+            else:
+                version_str = "-"
+        else:
+            version_str = "?"
+        print(
+            f"  {name.ljust(width)}  variants: {', '.join(rendered_variants):22}  versions: {version_str}"
+        )
 
 
 @upgrade_app.command()
