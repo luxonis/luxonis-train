@@ -3,8 +3,10 @@ from enum import Enum
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
+from unittest.mock import patch
 
 import pytest
+from loguru import logger
 from luxonis_ml.typing import Params
 from pydantic import ValidationError
 
@@ -17,6 +19,7 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
     TrainerConfig,
+    predefined_models,
 )
 from luxonis_train.config.config import (
     AIMETConfig,
@@ -36,6 +39,11 @@ from luxonis_train.config.config import (
     TunerConfig,
     _validate_quantization_mode,
 )
+from luxonis_train.config.predefined import (
+    VARIANT_ORDER,
+    list_predefined_models,
+    resolve_predefined_config,
+)
 from luxonis_train.config.predefined_models import (
     AnomalyDetectionModel,
     ClassificationModel,
@@ -49,6 +57,14 @@ from luxonis_train.config.predefined_models import (
 from luxonis_train.config.predefined_models.base_predefined_model import (
     SimplePredefinedModel,
 )
+from luxonis_train.config.predefined_versions import (
+    _split_family_version,
+    list_versions,
+    resolve_predefined_class,
+    resolved_class_name,
+    warn_on_predefined_model_mismatch,
+)
+from luxonis_train.registry import MODELS
 
 BASE_MODEL_CFG: Params = {
     "model": {"nodes": [{"name": "Backbone"}]},
@@ -803,6 +819,125 @@ def test_predefined_model_loading_can_exclude_attachments():
     assert head.losses == []
     assert head.metrics == []
     assert head.visualizers == []
+
+
+def test_list_predefined_models_covers_known_presets():
+    entries = list_predefined_models()
+
+    assert "detection" in entries
+    assert "anomaly_detection" in entries
+    assert "embeddings" in entries
+
+    assert entries["detection"][0] in VARIANT_ORDER
+    assert set(entries["detection"]) == {"light", "heavy"}
+
+    assert entries["anomaly_detection"] == [None]
+    assert entries["embeddings"] == [None]
+
+    for excluded in (
+        "defaults",
+        "complex",
+        "example_export",
+        "example_tuning",
+    ):
+        assert excluded not in entries
+
+
+def test_resolve_predefined_config_variants():
+    path = resolve_predefined_config("detection", "light")
+    assert isinstance(path, Path)
+    assert path.exists()
+    assert path.name == "detection_light_model.yaml"
+
+    default = resolve_predefined_config("detection", None)
+    expected_variant = list_predefined_models()["detection"][0]
+    assert default.name == f"detection_{expected_variant}_model.yaml"
+
+    variantless = resolve_predefined_config("anomaly_detection", None)
+    assert variantless.name == "anomaly_detection_model.yaml"
+
+    with pytest.raises(ValueError, match="Unknown predefined model 'nope'"):
+        resolve_predefined_config("nope", None)
+
+    with pytest.raises(
+        ValueError,
+        match="Variant 'nope' is not available for model 'detection'",
+    ):
+        resolve_predefined_config("detection", "nope")
+
+
+def test_predefined_registry_rekey_branches(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry = {
+        "external": object(),
+        "SimplePredefinedModel": SimplePredefinedModel,
+        "DetectionModel:v1": DetectionModel,
+        "DetectionModel": DetectionModel,
+    }
+    monkeypatch.setattr(MODELS, "_module_dict", registry)
+
+    predefined_models._rekey_registry_with_versions()
+
+    assert "external" in registry
+    assert "SimplePredefinedModel" not in registry
+    assert registry["DetectionModel:v1"] is DetectionModel
+    assert registry["DetectionModel"] is DetectionModel
+
+
+def test_predefined_version_resolver_branches(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class DetectionModelV2(DetectionModel):
+        _VERSION = 2
+
+    MODELS._module_dict.pop("DetectionModelV2", None)
+    registry = {
+        "DetectionModel:v1": DetectionModel,
+        "DetectionModel:v2": DetectionModelV2,
+        "ConcreteSimplePredefinedModel": ConcreteSimplePredefinedModel,
+        "NoVersionPreset": object(),
+    }
+    monkeypatch.setattr(MODELS, "_module_dict", registry)
+
+    assert _split_family_version("DetectionModel:v2") == ("DetectionModel", 2)
+    assert _split_family_version("DetectionModel") == ("DetectionModel", None)
+    assert list_versions("ConcreteSimplePredefinedModel") == {
+        1: "ConcreteSimplePredefinedModel"
+    }
+    assert list_versions("NoVersionPreset") == {}
+
+    assert resolve_predefined_class("DetectionModel") is DetectionModelV2
+    assert resolve_predefined_class("DetectionModel", 1) is DetectionModel
+    assert (
+        resolve_predefined_class("DetectionModel:v2", "latest")
+        is DetectionModelV2
+    )
+    assert resolved_class_name("DetectionModel") == "DetectionModel:v2"
+
+    with pytest.raises(ValueError, match="conflicts with version=1"):
+        resolve_predefined_class("DetectionModel:v2", 1)
+
+    with pytest.raises(ValueError, match="No predefined model registered"):
+        resolve_predefined_class("DoesNotExist")
+
+    with pytest.raises(
+        ValueError, match=r"Version 99.+Available versions: \[1, 2\]"
+    ):
+        resolve_predefined_class("DetectionModel", 99)
+
+    current = PredefinedModelConfig(name="DetectionModel", version=2)
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 1
+
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(None, {"name": "DetectionModel"})
+        warn_on_predefined_model_mismatch(current, None)
+        warn_on_predefined_model_mismatch(current, {"version": 1})
+    assert warn.call_count == 0
 
 
 @pytest.mark.parametrize(
