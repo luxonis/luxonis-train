@@ -883,7 +883,7 @@ def test_predefined_registry_rekey_branches(
     assert "external" in registry
     assert "SimplePredefinedModel" not in registry
     assert registry["DetectionModel:v1"] is DetectionModel
-    assert registry["DetectionModel"] is DetectionModel
+    assert "DetectionModel" not in registry
 
 
 def test_predefined_registry_rekeys_versioned_class_to_family(

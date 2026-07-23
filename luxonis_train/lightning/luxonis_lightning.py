@@ -625,9 +625,10 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
-        if isinstance(previous_cfg, dict):
+        if isinstance(previous_cfg, dict) or "predefined_model" in ckpt:
             self._warn_on_predefined_model_mismatch(
-                previous_cfg, ckpt.get("predefined_model")
+                previous_cfg if isinstance(previous_cfg, dict) else None,
+                ckpt.get("predefined_model"),
             )
 
         state_dict = ckpt["state_dict"]
@@ -741,14 +742,14 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def _warn_on_predefined_model_mismatch(
         self,
-        ckpt_config: dict,
+        ckpt_config: dict[str, Any] | None,
         ckpt_predefined_model: Any | None = None,
     ) -> None:
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
         )
 
-        if ckpt_predefined_model is None:
+        if ckpt_predefined_model is None and ckpt_config is not None:
             model_config = ckpt_config.get("model")
             ckpt_predefined_model = (
                 model_config.get("predefined_model")

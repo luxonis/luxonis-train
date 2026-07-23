@@ -46,6 +46,7 @@ def _rekey_registry_with_versions() -> None:
             continue  # already versioned
         versioned = f"{_model_family_name(cls)}:v{cls._VERSION}"
         if versioned in MODELS._module_dict:
+            MODELS._module_dict.pop(key, None)
             continue
         MODELS._module_dict.pop(key, None)
         MODELS._module_dict[versioned] = cls

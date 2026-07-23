@@ -238,6 +238,25 @@ def test_lightning_warn_uses_checkpoint_predefined_model_metadata(
     assert warn.call_count == 1
 
 
+def test_lightning_warn_uses_top_level_metadata_without_config(
+    fake_v2_model: type[DetectionModel],
+):
+    module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
+    module.cfg = SimpleNamespace(
+        model=SimpleNamespace(
+            predefined_model=PredefinedModelConfig(
+                name="DetectionModel", version=2
+            )
+        )
+    )
+
+    with patch.object(logger, "warning") as warn:
+        module._warn_on_predefined_model_mismatch(
+            None, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 1
+
+
 def test_all_shipped_predefined_models_use_colon_key():
     """Every registered predefined model uses the `Family:vN` key
     format.
