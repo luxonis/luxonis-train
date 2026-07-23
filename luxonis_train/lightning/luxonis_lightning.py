@@ -1238,17 +1238,17 @@ class LuxonisLightningModule(pl.LightningModule):
         optimizers: Sequence[Optimizer],
         schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
     ) -> None:
-        logger.info(f"Using {len(optimizers)} optimizer(s).")
-        for optimizer, scheduler in zip(optimizers, schedulers, strict=True):
-            optimizer_name = type(optimizer).__name__
-            if isinstance(scheduler, dict):
-                scheduler_name = type(scheduler["scheduler"]).__name__
-            else:
-                scheduler_name = type(scheduler).__name__
-            logger.info(
-                f"Using optimizer: '{optimizer_name}' with scheduler: '{scheduler_name}'"
-            )
-            logger.info(optimizer)
+        from luxonis_train.callbacks.luxonis_progress_bar import (
+            build_optimizer_summary,
+            log_optimizer_summary,
+        )
+
+        summary = build_optimizer_summary(
+            optimizers,
+            schedulers,
+            {name: node.module for name, node in self.nodes.items()},
+        )
+        log_optimizer_summary(summary, use_rich=self.cfg.rich_logging)
 
     def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
         outputs = self.full_forward(inputs).outputs

@@ -1,6 +1,8 @@
+import json
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Mapping
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from typing import Any
 
@@ -10,11 +12,18 @@ from lightning.pytorch.callbacks import (
     RichProgressBar,
     TQDMProgressBar,
 )
+from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
+    LRSchedulerTypeUnion,
+)
 from loguru import logger
-from rich.console import Console
+from rich.console import Console, RenderableType
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 from tabulate import tabulate
-from torch import Tensor
+from torch import Tensor, nn
+from torch.optim import Optimizer
 from typing_extensions import override
 
 import luxonis_train as lxt
@@ -408,3 +417,338 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
     ) -> None:
         super().on_train_epoch_end(trainer, pl_module)
         super()._log_progress(trainer)
+
+
+def build_optimizer_summary(
+    optimizers: Sequence[Optimizer],
+    schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
+    modules: Mapping[str, nn.Module],
+) -> dict[str, Any]:
+    """Build the serializable optimizer / parameter-group summary.
+
+    Two different denominators are used, chosen so that percentages sum
+    naturally in the axis the reader cares about:
+
+    - **Group-level** percentages are relative to the model's *trainable*
+      parameters, so summing across all groups of all optimizers gives
+      100% (modulo unclaimed / external parameters).
+    - **Owner-level** percentages inside each group are relative to that
+      *owner's* own trainable parameters, so summing all appearances of
+      a single owner across the optimizers gives 100% — telling the
+      reader how each node's parameters were split across groups.
+
+    Frozen parameters (``requires_grad=False``) cannot enter any
+    optimizer group, so they are excluded from every denominator. The
+    header carries the frozen counts so users can still see the split.
+    """
+    param_owner: dict[int, str] = {}
+    owner_trainable_tensors: dict[str, int] = defaultdict(int)
+    owner_trainable_params: dict[str, int] = defaultdict(int)
+    frozen_tensors = 0
+    frozen_params = 0
+    seen: set[int] = set()
+    for owner_name, module in modules.items():
+        for p in module.parameters():
+            if id(p) in seen:
+                continue
+            seen.add(id(p))
+            param_owner[id(p)] = owner_name
+            if p.requires_grad:
+                owner_trainable_tensors[owner_name] += 1
+                owner_trainable_params[owner_name] += p.numel()
+            else:
+                frozen_tensors += 1
+                frozen_params += p.numel()
+
+    # Second pass: count "<external>" parameters that appear in any
+    # optimizer group but weren't attributed to a known module, so we
+    # have a real denominator for their per-owner percentages.
+    ext_seen: set[int] = set()
+    for optimizer in optimizers:
+        for group in optimizer.param_groups:
+            for p in group["params"]:
+                if id(p) in param_owner or id(p) in ext_seen:
+                    continue
+                ext_seen.add(id(p))
+                owner_trainable_tensors["<external>"] += 1
+                owner_trainable_params["<external>"] += p.numel()
+
+    trainable_tensors = sum(owner_trainable_tensors.values())
+    trainable_params = sum(owner_trainable_params.values())
+
+    summary: dict[str, Any] = {
+        "n_optimizers": len(optimizers),
+        "trainable_tensors": trainable_tensors,
+        "trainable_params": trainable_params,
+        "frozen_tensors": frozen_tensors,
+        "frozen_params": frozen_params,
+        "optimizers": [],
+    }
+
+    for i, (optimizer, scheduler) in enumerate(
+        zip(optimizers, schedulers, strict=True)
+    ):
+        if isinstance(scheduler, dict):
+            scheduler_name = type(scheduler["scheduler"]).__name__
+        else:
+            scheduler_name = type(scheduler).__name__
+
+        groups_info: list[dict[str, Any]] = []
+        for g_idx, group in enumerate(optimizer.param_groups):
+            per_owner_tensors: dict[str, int] = defaultdict(int)
+            per_owner_numel: dict[str, int] = defaultdict(int)
+            total_numel = 0
+            for p in group["params"]:
+                owner = param_owner.get(id(p), "<external>")
+                per_owner_tensors[owner] += 1
+                per_owner_numel[owner] += p.numel()
+                total_numel += p.numel()
+
+            hyperparams = {
+                k: v
+                for k, v in group.items()
+                if k != "params"
+                and not callable(v)
+                and not isinstance(v, (list, tuple, dict))
+            }
+            owners = [
+                {
+                    "name": name,
+                    "n_tensors": per_owner_tensors[name],
+                    "n_tensors_of_owner": owner_trainable_tensors[name],
+                    "tensors_pct_of_owner": _pct(
+                        per_owner_tensors[name],
+                        owner_trainable_tensors[name],
+                    ),
+                    "n_params": per_owner_numel[name],
+                    "n_params_of_owner": owner_trainable_params[name],
+                    "params_pct_of_owner": _pct(
+                        per_owner_numel[name],
+                        owner_trainable_params[name],
+                    ),
+                }
+                for name in sorted(
+                    per_owner_numel,
+                    key=lambda n: per_owner_numel[n],
+                    reverse=True,
+                )
+            ]
+            n_tensors_group = len(group["params"])
+            groups_info.append(
+                {
+                    "index": g_idx,
+                    "n_tensors": n_tensors_group,
+                    "n_params": total_numel,
+                    "tensors_pct_of_model": _pct(
+                        n_tensors_group, trainable_tensors
+                    ),
+                    "params_pct_of_model": _pct(total_numel, trainable_params),
+                    "hyperparams": hyperparams,
+                    "owners": owners,
+                }
+            )
+
+        summary["optimizers"].append(
+            {
+                "index": i,
+                "optimizer": type(optimizer).__name__,
+                "scheduler": scheduler_name,
+                "n_groups": len(optimizer.param_groups),
+                "groups": groups_info,
+            }
+        )
+    return summary
+
+
+def _pct(numerator: int, denominator: int) -> float:
+    return numerator / denominator * 100 if denominator else 0.0
+
+
+def log_optimizer_summary(
+    summary: dict[str, Any], use_rich: bool = True
+) -> None:
+    """Render the optimizer / parameter-group summary.
+
+    Emits a pretty console version (nested rich panels, or a plaintext
+    indented-list fallback) and dumps an equivalent JSON payload to the
+    log file via ``logger.bind(file_only=True)``.
+    """
+    if use_rich:
+        _render_optimizer_summary_rich(summary)
+    else:
+        _render_optimizer_summary_plain(summary)
+
+    logger.bind(file_only=True).info(
+        "Optimizer / parameter-group summary (JSON):\n"
+        + json.dumps(summary, indent=2, default=str)
+    )
+
+
+def _render_optimizer_summary_rich(summary: dict[str, Any]) -> None:
+    from rich import get_console
+    from rich.columns import Columns
+    from rich.console import Group
+
+    console = get_console()
+    console.print(
+        Panel.fit(
+            f"[bold]Using {summary['n_optimizers']} optimizer(s)[/]  "
+            f"[dim]trainable: {summary['trainable_tensors']:,} tensors / "
+            f"{summary['trainable_params']:,} params  |  "
+            f"frozen: {summary['frozen_tensors']:,} tensors / "
+            f"{summary['frozen_params']:,} params[/]",
+            border_style="cyan",
+        )
+    )
+    for opt in summary["optimizers"]:
+        group_panels: list[RenderableType] = []
+        for group in opt["groups"]:
+            header_line = (
+                f"[white]{group['n_tensors']} tensors[/] "
+                f"[dim]({group['tensors_pct_of_model']:.1f}% of trainable)[/]"
+                f"  •  "
+                f"[white]{group['n_params']:,} params[/] "
+                f"[dim]({group['params_pct_of_model']:.1f}% of trainable)[/]"
+            )
+            side_by_side = Columns(
+                [
+                    _render_hyperparam_panel(group["hyperparams"]),
+                    _render_owners_panel(group["owners"]),
+                ],
+            )
+            group_panels.append(
+                Panel.fit(
+                    Group(Text(""), header_line, Text(""), side_by_side),
+                    title=f"[bold]Group #{group['index']}[/]",
+                    title_align="left",
+                    border_style="blue",
+                )
+            )
+
+        opt_body = Group(
+            Text(""),
+            Text.from_markup(
+                f"[cyan]{opt['optimizer']}[/] + "
+                f"[magenta]{opt['scheduler']}[/]  "
+                f"[dim]({opt['n_groups']} parameter group(s))[/]"
+            ),
+            Text(""),
+            *group_panels,
+        )
+        console.print(
+            Panel.fit(
+                opt_body,
+                title=f"[bold]Optimizer #{opt['index']}[/]",
+                title_align="left",
+                border_style="magenta",
+            )
+        )
+
+
+def _render_optimizer_summary_plain(summary: dict[str, Any]) -> None:
+    lines: list[str] = []
+    lines.append(f"Using {summary['n_optimizers']} optimizer(s).")
+    lines.append(
+        f"  trainable: {summary['trainable_tensors']:,} tensors / "
+        f"{summary['trainable_params']:,} params"
+    )
+    lines.append(
+        f"  frozen:    {summary['frozen_tensors']:,} tensors / "
+        f"{summary['frozen_params']:,} params"
+    )
+    for opt in summary["optimizers"]:
+        lines.append("")
+        lines.append(
+            f"Optimizer #{opt['index']}: {opt['optimizer']} + "
+            f"{opt['scheduler']}  ({opt['n_groups']} parameter group(s))"
+        )
+        for group in opt["groups"]:
+            lines.append(
+                f"  Group #{group['index']}: "
+                f"{group['n_tensors']} tensors "
+                f"({group['tensors_pct_of_model']:.1f}% of trainable)  •  "
+                f"{group['n_params']:,} params "
+                f"({group['params_pct_of_model']:.1f}% of trainable)"
+            )
+            lines.append("    hyperparameters:")
+            if group["hyperparams"]:
+                for k, v in group["hyperparams"].items():
+                    lines.append(f"      {k} = {_format_hyperparam(v)}")
+            else:
+                lines.append("      -")
+            lines.append("    owners:")
+            if group["owners"]:
+                for o in group["owners"]:
+                    lines.append(f"      {o['name']}")
+                    lines.append(
+                        f"        tensors "
+                        f"{o['n_tensors']}/{o['n_tensors_of_owner']} "
+                        f"({o['tensors_pct_of_owner']:.1f}% of owner)"
+                    )
+                    lines.append(
+                        f"        params  "
+                        f"{o['n_params']:,}/{o['n_params_of_owner']:,} "
+                        f"({o['params_pct_of_owner']:.1f}% of owner)"
+                    )
+            else:
+                lines.append("      -")
+    logger.info("\n" + "\n".join(lines) + "\n")
+
+
+def _format_hyperparam(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
+
+
+def _render_hyperparam_panel(hyperparams: dict[str, Any]) -> RenderableType:
+    if not hyperparams:
+        return Panel("[dim]-[/]", border_style="dim", padding=(0, 1))
+
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(justify="right", style="bold yellow", no_wrap=True)
+    grid.add_column(style="dim")
+    grid.add_column(style="white")
+    for k, v in hyperparams.items():
+        grid.add_row(str(k), "=", _format_hyperparam(v))
+    return Panel(
+        grid,
+        title="[bold yellow]hyperparameters[/]",
+        title_align="left",
+        border_style="yellow",
+        padding=(0, 1),
+    )
+
+
+def _render_owners_panel(owners: list[dict[str, Any]]) -> RenderableType:
+    if not owners:
+        return Panel("[dim]-[/]", border_style="dim", padding=(0, 1))
+
+    outer = Table.grid(padding=(0, 0))
+    outer.add_column()
+    for i, o in enumerate(owners):
+        stat_grid = Table.grid(padding=(0, 1))
+        stat_grid.add_column(justify="right", style="bold cyan", no_wrap=True)
+        stat_grid.add_column(justify="right", style="white")
+        stat_grid.add_column(style="dim")
+        stat_grid.add_row(
+            "tensors",
+            f"{o['n_tensors']}/{o['n_tensors_of_owner']}",
+            f"({o['tensors_pct_of_owner']:.1f}%)",
+        )
+        stat_grid.add_row(
+            "params",
+            f"{o['n_params']:,}/{o['n_params_of_owner']:,}",
+            f"({o['params_pct_of_owner']:.1f}%)",
+        )
+        outer.add_row(Text(o["name"], style="bold green"))
+        outer.add_row(stat_grid)
+        if i < len(owners) - 1:
+            outer.add_row(Text(""))
+    return Panel(
+        outer,
+        title="[bold green]owners[/]",
+        title_align="left",
+        border_style="green",
+        padding=(0, 1),
+    )
