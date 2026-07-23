@@ -162,6 +162,30 @@ def test_info_cli_command_displays_model_components():
     assert "EfficientBBoxHead" in result.stdout
 
 
+def _iter_predefined_model_variant_pairs() -> list[tuple[str, str | None]]:
+    return [
+        (model, variant)
+        for model, variants in list_predefined_models().items()
+        for variant in variants
+    ]
+
+
+@pytest.mark.parametrize(
+    ("model", "variant"), _iter_predefined_model_variant_pairs()
+)
+def test_info_cli_runs_for_every_predefined_model_variant(
+    model: str, variant: str | None
+):
+    args = [sys.executable, "-m", "luxonis_train", "info", "--model", model]
+    if variant is not None:
+        args += ["--variant", variant]
+    result = subprocess.run(args, capture_output=True, text=True, check=True)
+    assert result.returncode == 0
+    assert result.stdout.strip(), (
+        f"`info` produced no output for --model {model} --variant {variant!r}"
+    )
+
+
 def test_embeddings_model_uses_a_predefined_model_class():
     config = resolve_predefined_config("embeddings", None)
     assert "name: EmbeddingsModel" in config.read_text()
