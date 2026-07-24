@@ -1,6 +1,6 @@
 [project]
 name = "luxonis-train"
-version = "0.4.6"
+dynamic = ["version"]
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -96,6 +96,9 @@ explicit = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["luxonis_train*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "luxonis_train._version.__version__" }
 
 [tool.ruff]
 target-version = "py310"

@@ -47,9 +47,10 @@ dependencies, run:
 scripts/export_requirements.sh
 ```
 
-The pre-commit hook runs this script automatically when `pyproject.toml` or
-`uv.lock` is staged. It refreshes `uv.lock` and the generated requirements
-files; review and stage those updates before committing again.
+The pre-commit hook runs this script automatically when `pyproject.toml`,
+`uv.lock`, or `luxonis_train/_version.py` is staged. It refreshes `uv.lock`
+and the generated requirements files; review and stage those updates before
+committing again.
 
 ## Pre-commit Hooks
 

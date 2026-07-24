@@ -8,7 +8,7 @@ repos:
         entry: scripts/export_requirements.sh
         language: system
         pass_filenames: false
-        files: ^(pyproject\.toml|uv\.lock)$
+        files: ^(pyproject\.toml|uv\.lock|luxonis_train/_version\.py)$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.14

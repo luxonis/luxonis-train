@@ -2088,7 +2088,6 @@ utils = [
 
 [[package]]
 name = "luxonis-train"
-version = "0.4.6"
 source = { editable = "." }
 dependencies = [
     { name = "blobconverter" },
