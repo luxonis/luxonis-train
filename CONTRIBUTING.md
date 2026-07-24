@@ -39,6 +39,18 @@ To include AIMET support locally, run:
 uv sync --extra aimet
 ```
 
+The `requirements*.txt` files are generated compatibility exports for users
+that still install with pip. Do not edit them manually; after changing
+dependencies, run:
+
+```bash
+scripts/export_requirements.sh
+```
+
+The pre-commit hook runs this script automatically when `pyproject.toml` or
+`uv.lock` is staged. It refreshes `uv.lock` and the generated requirements
+files; review and stage those updates before committing again.
+
 ## Pre-commit Hooks
 
 We use pre-commit hooks to ensure code quality and consistency:
