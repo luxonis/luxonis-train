@@ -219,6 +219,33 @@ def test_checkpoint_metadata_includes_excluded_predefined_model():
     assert ckpt_predefined_model["version"] == 1
 
 
+def test_checkpoint_metadata_pins_latest_to_concrete_version(
+    fake_v2_model: type[DetectionModel],
+):
+    """`version: "latest"` must be resolved to a concrete integer at
+    checkpoint time.
+
+    Otherwise a checkpoint trained today against v1 becomes
+    indistinguishable from a future v2 checkpoint (both stored as
+    ``"latest"``), and the mismatch warning is silently suppressed once
+    the default flips.
+    """
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "version": "latest",
+                }
+            },
+            "trainer": {"smart_cfg_auto_populate": False},
+        }
+    )
+    ckpt_predefined_model = _checkpoint_predefined_model(cfg)
+    assert ckpt_predefined_model is not None
+    assert ckpt_predefined_model["version"] == 2
+
+
 def test_lightning_warn_uses_checkpoint_predefined_model_metadata(
     fake_v2_model: type[DetectionModel],
 ):

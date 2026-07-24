@@ -54,7 +54,22 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
     predefined_model = cfg.model.predefined_model
     if predefined_model is None:
         return None
-    return predefined_model.model_dump()
+    dumped = predefined_model.model_dump()
+    if dumped.get("version") == "latest":
+        from luxonis_train.config.predefined_versions import (
+            _split_family_version,
+            resolved_class_name,
+        )
+
+        try:
+            _, resolved_version = _split_family_version(
+                resolved_class_name(predefined_model.name, "latest")
+            )
+        except ValueError:
+            resolved_version = None
+        if resolved_version is not None:
+            dumped["version"] = resolved_version
+    return dumped
 
 
 class LuxonisLightningModule(pl.LightningModule):
