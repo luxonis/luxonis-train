@@ -277,7 +277,13 @@ def create_loader_from_directory(
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
 
-    dataset.add({"file": img_path} for img_path in img_paths)
+    dataset.add(
+        {
+            "file": img_path,
+            "sample_metadata": {"path": str(img_path)},
+        }
+        for img_path in img_paths
+    )
     dataset.make_splits(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
     )
