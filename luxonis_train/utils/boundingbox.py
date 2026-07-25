@@ -229,14 +229,7 @@ def non_max_suppression(
     @return: list of kept detections for each image, boxes in "xyxy" format. Tensors
         with shape [n_kept, M]
     """
-    if not (0 <= conf_thres <= 1):
-        raise ValueError(
-            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
-        )
-    if not (0 <= iou_thres <= 1):
-        raise ValueError(
-            f"IoU threshold must be in range [0,1] but set to {iou_thres}."
-        )
+    _validate_nms_thresholds(conf_thres, iou_thres)
 
     multi_label &= n_classes > 1
 
@@ -255,75 +248,140 @@ def non_max_suppression(
     ] * preds.size(0)
 
     for i, x in enumerate(preds):
-        curr_out = x[candidate_mask[i]]
-
-        if curr_out.size(0) == 0:
-            continue
-
-        if predicts_objectness:
-            if n_classes == 1:
-                curr_out[:, 5 : 5 + n_classes] = curr_out[:, 4:5]
-            else:
-                curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
-        else:
-            curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
-
-        bboxes = curr_out[:, :4]
-        keep_mask = torch.zeros(bboxes.size(0)).bool()
-        if bbox_format != "xyxy":
-            bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
-
-        if multi_label:
-            box_idx, class_idx = (
-                (curr_out[:, 5 : 5 + n_classes] > conf_thres)
-                .nonzero(as_tuple=False)
-                .T
-            )
-            keep_mask[box_idx] = True
-            curr_out = torch.cat(
-                (
-                    bboxes[keep_mask],
-                    curr_out[keep_mask, class_idx + 5, None],
-                    class_idx[:, None].float(),
-                ),
-                1,
-            )
-        else:
-            conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(
-                1, keepdim=True
-            )
-            keep_mask[conf.view(-1) > conf_thres] = True
-            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[
-                keep_mask
-            ]
-
-        if has_additional:
-            curr_out = torch.hstack(
-                [curr_out, x[candidate_mask[i]][keep_mask, 5 + n_classes :]]
-            )
-
-        if keep_classes is not None:
-            curr_out = curr_out[
-                (
-                    curr_out[:, 5:6]
-                    == torch.tensor(keep_classes, device=curr_out.device)
-                ).any(1)
-            ]
-
-        if not curr_out.size(0):
-            continue
-
-        keep_indices = batched_nms(
-            boxes=curr_out[:, :4],
-            scores=curr_out[:, 4],
-            iou_threshold=iou_thres,
-            idxs=curr_out[:, 5].int() * (0 if agnostic else 1),
+        curr_out = _nms_single_image(
+            x,
+            candidate_mask[i],
+            n_classes=n_classes,
+            conf_thres=conf_thres,
+            iou_thres=iou_thres,
+            keep_classes=keep_classes,
+            agnostic=agnostic,
+            multi_label=multi_label,
+            bbox_format=bbox_format,
+            max_det=max_det,
+            predicts_objectness=predicts_objectness,
+            has_additional=has_additional,
         )
-        keep_indices = keep_indices[:max_det]
-
-        output[i] = curr_out[keep_indices]
+        if curr_out is not None:
+            output[i] = curr_out
 
     return output
+
+
+def _validate_nms_thresholds(conf_thres: float, iou_thres: float) -> None:
+    if not (0 <= conf_thres <= 1):
+        raise ValueError(
+            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
+        )
+    if not (0 <= iou_thres <= 1):
+        raise ValueError(
+            f"IoU threshold must be in range [0,1] but set to {iou_thres}."
+        )
+
+
+def _apply_objectness(
+    curr_out: Tensor, n_classes: int, predicts_objectness: bool
+) -> Tensor:
+    if predicts_objectness and n_classes == 1:
+        curr_out[:, 5 : 5 + n_classes] = curr_out[:, 4:5]
+    else:
+        curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
+    return curr_out
+
+
+def _select_detections(
+    curr_out: Tensor,
+    bboxes: Tensor,
+    n_classes: int,
+    conf_thres: float,
+    multi_label: bool,
+) -> tuple[Tensor, Tensor]:
+    keep_mask = torch.zeros(bboxes.size(0)).bool()
+    if multi_label:
+        box_idx, class_idx = (
+            (curr_out[:, 5 : 5 + n_classes] > conf_thres)
+            .nonzero(as_tuple=False)
+            .T
+        )
+        keep_mask[box_idx] = True
+        curr_out = torch.cat(
+            (
+                bboxes[keep_mask],
+                curr_out[keep_mask, class_idx + 5, None],
+                class_idx[:, None].float(),
+            ),
+            1,
+        )
+    else:
+        conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(1, keepdim=True)
+        keep_mask[conf.view(-1) > conf_thres] = True
+        curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
+    return curr_out, keep_mask
+
+
+def _filter_keep_classes(curr_out: Tensor, keep_classes: list[int]) -> Tensor:
+    return curr_out[
+        (
+            curr_out[:, 5:6]
+            == torch.tensor(keep_classes, device=curr_out.device)
+        ).any(1)
+    ]
+
+
+def _run_batched_nms(
+    curr_out: Tensor, iou_thres: float, agnostic: bool, max_det: int
+) -> Tensor:
+    keep_indices = batched_nms(
+        boxes=curr_out[:, :4],
+        scores=curr_out[:, 4],
+        iou_threshold=iou_thres,
+        idxs=curr_out[:, 5].int() * (0 if agnostic else 1),
+    )
+    return curr_out[keep_indices[:max_det]]
+
+
+def _nms_single_image(
+    x: Tensor,
+    candidate_mask_i: Tensor,
+    *,
+    n_classes: int,
+    conf_thres: float,
+    iou_thres: float,
+    keep_classes: list[int] | None,
+    agnostic: bool,
+    multi_label: bool,
+    bbox_format: BBoxFormatType,
+    max_det: int,
+    predicts_objectness: bool,
+    has_additional: bool,
+) -> Tensor | None:
+    """Run NMS for a single image; returns None when nothing is kept."""
+    curr_out = x[candidate_mask_i]
+    if curr_out.size(0) == 0:
+        return None
+
+    curr_out = _apply_objectness(curr_out, n_classes, predicts_objectness)
+
+    bboxes = curr_out[:, :4]
+    if bbox_format != "xyxy":
+        bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
+
+    curr_out, keep_mask = _select_detections(
+        curr_out, bboxes, n_classes, conf_thres, multi_label
+    )
+
+    if has_additional:
+        curr_out = torch.hstack(
+            [curr_out, x[candidate_mask_i][keep_mask, 5 + n_classes :]]
+        )
+
+    if keep_classes is not None:
+        curr_out = _filter_keep_classes(curr_out, keep_classes)
+
+    if not curr_out.size(0):
+        return None
+
+    return _run_batched_nms(curr_out, iou_thres, agnostic, max_det)
 
 
 def anchors_for_fpn_features(
@@ -467,56 +525,89 @@ def compute_iou_loss(
     """
     device = pred_bboxes.device
     target_bboxes = target_bboxes.to(device)
-    if mask_positive is None or mask_positive.sum() > 0:
-        if target_scores is not None:
-            bbox_weight = torch.masked_select(
-                target_scores.sum(-1),
-                mask_positive
-                if mask_positive is not None
-                else torch.ones_like(target_scores.sum(-1)),
-            ).unsqueeze(-1)
-        else:
-            bbox_weight = torch.tensor(1.0)
-
-        if mask_positive is not None:
-            bbox_mask = mask_positive.unsqueeze(-1).repeat([1, 1, 4])
-        else:
-            bbox_mask = torch.ones_like(pred_bboxes, dtype=torch.bool)
-
-        pred_bboxes_pos = torch.masked_select(pred_bboxes, bbox_mask).reshape(
-            [-1, 4]
-        )
-        target_bboxes_pos = torch.masked_select(
-            target_bboxes, bbox_mask
-        ).reshape([-1, 4])
-
-        iou = bbox_iou(
-            pred_bboxes_pos,
-            target_bboxes_pos,
-            iou_type=iou_type,
-            bbox_format=bbox_format,
-            element_wise=True,
-        ).unsqueeze(-1)
-        loss_iou = (1 - iou) * bbox_weight
-
-        if reduction == "mean":
-            loss_iou = loss_iou.mean()
-
-        elif reduction == "sum":
-            if target_scores is None:
-                raise NotImplementedError(
-                    "Sum reduction is not supported when `target_scores` is None"
-                )
-            loss_iou = loss_iou.sum()
-            if target_scores.sum() > 1:
-                loss_iou /= target_scores.sum()
-        else:
-            raise ValueError(f"Unknown reduction type `{reduction}`")
-    else:
-        loss_iou = torch.tensor(0.0).to(pred_bboxes.device)
-        iou = torch.zeros([target_bboxes.shape[0]]).to(pred_bboxes.device)
+    if mask_positive is not None and mask_positive.sum() == 0:
+        return _empty_iou_loss(pred_bboxes, target_bboxes)
+    loss_iou, iou = _positive_iou_loss(
+        pred_bboxes,
+        target_bboxes,
+        target_scores,
+        mask_positive,
+        iou_type,
+        bbox_format,
+        reduction,
+    )
 
     return loss_iou, iou.detach().clamp(0)
+
+
+def _empty_iou_loss(
+    pred_bboxes: Tensor, target_bboxes: Tensor
+) -> tuple[Tensor, Tensor]:
+    return (
+        torch.tensor(0.0).to(pred_bboxes.device),
+        torch.zeros([target_bboxes.shape[0]]).to(pred_bboxes.device),
+    )
+
+
+def _positive_iou_loss(
+    pred_bboxes: Tensor,
+    target_bboxes: Tensor,
+    target_scores: Tensor | None,
+    mask_positive: Tensor | None,
+    iou_type: IoUType,
+    bbox_format: BBoxFormatType,
+    reduction: Literal["sum", "mean"],
+) -> tuple[Tensor, Tensor]:
+    bbox_mask = _bbox_mask(pred_bboxes, mask_positive)
+    bbox_weight = _bbox_weight(target_scores, mask_positive)
+    iou = bbox_iou(
+        torch.masked_select(pred_bboxes, bbox_mask).reshape([-1, 4]),
+        torch.masked_select(target_bboxes, bbox_mask).reshape([-1, 4]),
+        iou_type=iou_type,
+        bbox_format=bbox_format,
+        element_wise=True,
+    ).unsqueeze(-1)
+    return _reduce_iou_loss(
+        (1 - iou) * bbox_weight, target_scores, reduction
+    ), iou
+
+
+def _bbox_mask(pred_bboxes: Tensor, mask_positive: Tensor | None) -> Tensor:
+    if mask_positive is None:
+        return torch.ones_like(pred_bboxes, dtype=torch.bool)
+    return mask_positive.unsqueeze(-1).repeat([1, 1, 4])
+
+
+def _bbox_weight(
+    target_scores: Tensor | None, mask_positive: Tensor | None
+) -> Tensor:
+    if target_scores is None:
+        return torch.tensor(1.0)
+    mask = (
+        mask_positive
+        if mask_positive is not None
+        else torch.ones_like(target_scores.sum(-1))
+    )
+    return torch.masked_select(target_scores.sum(-1), mask).unsqueeze(-1)
+
+
+def _reduce_iou_loss(
+    loss_iou: Tensor,
+    target_scores: Tensor | None,
+    reduction: Literal["sum", "mean"],
+) -> Tensor:
+    if reduction == "mean":
+        return loss_iou.mean()
+    if reduction != "sum":
+        raise ValueError(f"Unknown reduction type `{reduction}`")
+    if target_scores is None:
+        raise NotImplementedError(
+            "Sum reduction is not supported when `target_scores` is None"
+        )
+    loss_iou = loss_iou.sum()
+    return (
+        loss_iou / target_scores.sum() if target_scores.sum() > 1 else loss_iou
+    )
 
 
 def keypoints_to_bboxes(

@@ -77,7 +77,7 @@ class NestedDict:
         self,
         old_key: str,
         new_key: str,
-        value: ParamValue | None | EllipsisType = ...,
+        value: ParamValue | EllipsisType | None = ...,
     ) -> None:
         if old_key not in self:
             return
@@ -97,16 +97,7 @@ class NestedDict:
 
 
 def upgrade_config(config: PathType | Params) -> Params:
-    if isinstance(config, dict):
-        cfg = NestedDict(config)
-    else:
-        config = Path(config)
-        if config.suffix == "json":
-            cfg = json.loads(config.read_text(encoding="utf-8"))
-        else:
-            cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
-
-        cfg = NestedDict(cfg)
+    cfg = _load_config(config)
 
     old_version = Version.parse(cfg.get("version", "0.3.0"))
     if "config_version" in cfg:
@@ -123,6 +114,28 @@ def upgrade_config(config: PathType | Params) -> Params:
         f"Upgrading the config from v{old_version} to v{lxt.__version__}"
     )
 
+    _apply_field_replacements(cfg)
+    heads = _migrate_nodes(cfg)
+    _assign_export_output_names(cfg, heads)
+    _migrate_attached_modules(cfg, heads)
+
+    cfg.update("version", lxt.__version__)
+
+    return cfg._dict
+
+
+def _load_config(config: PathType | Params) -> NestedDict:
+    if isinstance(config, dict):
+        return NestedDict(config)
+    config = Path(config)
+    if config.suffix == "json":
+        cfg = json.loads(config.read_text(encoding="utf-8"))
+    else:
+        cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
+    return NestedDict(cfg)
+
+
+def _apply_field_replacements(cfg: NestedDict) -> None:
     cfg.replace(
         "trainer.use_rich_progress_bar",
         "rich_logging",
@@ -132,7 +145,6 @@ def upgrade_config(config: PathType | Params) -> Params:
         "preprocessing.color_space",
         "RGB" if cfg["preprocessing.train_rgb"] else "BGR",
     )
-
     cfg.replace(
         "model.predefined_model.params.variant",
         "model.predefined_model.variant",
@@ -147,6 +159,8 @@ def upgrade_config(config: PathType | Params) -> Params:
     if "tuner" in cfg and cfg["tuner"] is None:
         cfg.pop("tuner")
 
+
+def _migrate_nodes(cfg: NestedDict) -> dict[str, NestedDict]:
     nodes = cfg.get("model.nodes", [])
     assert isinstance(nodes, list)
 
@@ -163,20 +177,30 @@ def upgrade_config(config: PathType | Params) -> Params:
             heads[node_name] = node
         if node.pop("params.download_weights", False):
             node["params.weights"] = "download"
+    return heads
 
+
+def _assign_export_output_names(
+    cfg: NestedDict, heads: dict[str, NestedDict]
+) -> None:
     export_output_names = cfg.pop("exporter.output_names", None)
-    if export_output_names is not None:
-        if len(heads) == 1:
-            head = next(iter(heads.values()))
-            if "params" not in head:
-                head["params"] = {}
-            head["params.export_output_names"] = export_output_names
-        else:
-            logger.error(
-                "Multiple heads found in model, cannot assign "
-                "'exporter.output_names' to a specific head."
-            )
+    if export_output_names is None:
+        return
+    if len(heads) == 1:
+        head = next(iter(heads.values()))
+        if "params" not in head:
+            head["params"] = {}
+        head["params.export_output_names"] = export_output_names
+    else:
+        logger.error(
+            "Multiple heads found in model, cannot assign "
+            "'exporter.output_names' to a specific head."
+        )
 
+
+def _migrate_attached_modules(
+    cfg: NestedDict, heads: dict[str, NestedDict]
+) -> None:
     for key in ["metrics", "losses", "visualizers"]:
         modules: list[dict] = cfg.pop(f"model.{key}", [])
         for module in modules:
@@ -195,10 +219,6 @@ def upgrade_config(config: PathType | Params) -> Params:
             logger.info(
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
-
-    cfg.update("version", lxt.__version__)
-
-    return cfg._dict
 
 
 def upgrade_installation() -> None:

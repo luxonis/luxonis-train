@@ -222,7 +222,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: Callable[[Tensor], Tensor] | None | bool = True,
+        activation: Callable[[Tensor], Tensor] | bool | None = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -354,7 +354,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         refine_block: nn.Module | Literal["se"] | None = None,
         use_scale_layer: bool = True,
         scale_layer_padding: int | tuple[int, int] | None = None,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
     ):
         """GeneralReparametrizableBlock is a basic rep-style block,
         including training and deploy status.

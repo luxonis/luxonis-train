@@ -1,4 +1,5 @@
 from math import ceil
+from typing import Any
 
 import lightning.pytorch as pl
 from lightning.fabric.utilities.data import sized_len
@@ -14,92 +15,129 @@ class FailOnNoTrainBatches(pl.Callback):
     ) -> None:
         # Ensure Lightning has computed the effective number of train batches.
         trainer.fit_loop.setup_data()
-        if trainer.fit_loop.max_batches == 0:
-            dataset_len = None
-            batch_size = None
-            drop_last = None
+        if trainer.fit_loop.max_batches != 0:
+            return
+        raise RuntimeError(_no_train_batches_message(trainer, pl_module))
 
-            combined_loader = trainer.fit_loop._combined_loader
-            flattened = getattr(combined_loader, "flattened", None)
-            dataloaders = (
-                flattened if isinstance(flattened, list) else [combined_loader]
-            )
-            # try to get info from dataloader directly
-            dataloaders = [dl for dl in dataloaders if dl is not None]
-            for dl in dataloaders:
-                if dataset_len is None:
-                    dataset = getattr(dl, "dataset", None)
-                    if dataset is not None:
-                        dataset_len = sized_len(dataset)
-                if batch_size is None:
-                    batch_size = getattr(dl, "batch_size", None)
-                if drop_last is None:
-                    drop_last = getattr(dl, "drop_last", None)
-                if (
-                    dataset_len is not None
-                    and batch_size is not None
-                    and drop_last is not None
-                ):
-                    break
 
-            # fallback to config
-            if batch_size is None:
-                batch_size = pl_module.cfg.trainer.batch_size  # type: ignore
+def _no_train_batches_message(
+    trainer: pl.Trainer, pl_module: pl.LightningModule
+) -> str:
+    dataset_len, batch_size, drop_last = _loader_details(trainer)
+    if batch_size is None:
+        configured_batch_size = pl_module.cfg.trainer.batch_size  # type: ignore
+        batch_size = (
+            configured_batch_size
+            if isinstance(configured_batch_size, int)
+            else None
+        )
+    min_required = _minimum_required_size(
+        batch_size,
+        drop_last,
+        trainer.world_size,
+        trainer.limit_train_batches,
+    )
+    detail_msg = _format_details(
+        dataset_len,
+        min_required,
+        batch_size,
+        trainer.world_size,
+        drop_last,
+        trainer.limit_train_batches,
+    )
+    return (
+        "No training batches found. Your dataset is smaller than the effective "
+        "batch size or skip_last_batch=True removed the last batch. "
+        f"{detail_msg}"
+    )
 
-            world_size = trainer.world_size
-            limit_batches = trainer.limit_train_batches
 
-            min_required = None
-            min_batches_needed = None
+def _loader_details(
+    trainer: pl.Trainer,
+) -> tuple[int | None, int | None, bool | None]:
+    combined_loader = trainer.fit_loop._combined_loader
+    flattened = getattr(combined_loader, "flattened", None)
+    dataloaders = (
+        flattened if isinstance(flattened, list) else [combined_loader]
+    )
+    details: tuple[int | None, int | None, bool | None] = (None, None, None)
+    for dataloader in dataloaders:
+        if dataloader is None:
+            continue
+        details = _merge_loader_details(details, dataloader)
+        if all(value is not None for value in details):
+            break
+    return details
 
-            # check if we are limiting number of batches
-            if isinstance(limit_batches, int):
-                if limit_batches > 0:
-                    min_batches_needed = 1
-            elif isinstance(limit_batches, float) and limit_batches > 0.0:
-                min_batches_needed = ceil(1.0 / limit_batches)
 
-            if (
-                batch_size is not None
-                and drop_last is not None
-                and min_batches_needed is not None
-            ):
-                assert isinstance(batch_size, int)
-                if drop_last:
-                    min_required = batch_size * world_size * min_batches_needed
-                else:
-                    min_required = (
-                        min_batches_needed - 1
-                    ) * batch_size * world_size + 1
+def _merge_loader_details(
+    details: tuple[int | None, int | None, bool | None], dataloader: Any
+) -> tuple[int | None, int | None, bool | None]:
+    dataset_len, batch_size, drop_last = details
+    if dataset_len is None:
+        dataset = getattr(dataloader, "dataset", None)
+        if dataset is not None:
+            dataset_len = sized_len(dataset)
+    batch_size = (
+        batch_size
+        if batch_size is not None
+        else getattr(dataloader, "batch_size", None)
+    )
+    drop_last = (
+        drop_last
+        if drop_last is not None
+        else getattr(dataloader, "drop_last", None)
+    )
+    return dataset_len, batch_size, drop_last
 
-            detail_parts: list[str] = []
-            if dataset_len is not None:
-                detail_parts.append(f"dataset_size={dataset_len}")
-            if min_required is not None:
-                detail_parts.append(f"min_required_size={min_required}")
-            if (
-                dataset_len is not None
-                and min_required is not None
-                and dataset_len < min_required
-            ):
-                detail_parts.append(f"missing={min_required - dataset_len}")
 
-            params = [
-                f"batch_size={batch_size}" if batch_size is not None else None,
-                f"world_size={world_size}",
-                f"drop_last={drop_last}" if drop_last is not None else None,
-                f"limit_train_batches={limit_batches}",
-            ]
-            params_msg = ", ".join(p for p in params if p is not None)
-            detail_msg = (
-                f" (details: {', '.join(detail_parts)}; params: {params_msg})"
-                if detail_parts or params_msg
-                else ""
-            )
+def _minimum_required_size(
+    batch_size: int | None,
+    drop_last: bool | None,
+    world_size: int,
+    limit_batches: float,
+) -> int | None:
+    min_batches_needed = _minimum_batch_count(limit_batches)
+    if batch_size is None or drop_last is None or min_batches_needed is None:
+        return None
+    if drop_last:
+        return batch_size * world_size * min_batches_needed
+    return (min_batches_needed - 1) * batch_size * world_size + 1
 
-            raise RuntimeError(
-                "No training batches found. "
-                "Your dataset is smaller than the effective batch size "
-                "or skip_last_batch=True removed the last batch. "
-                f"{detail_msg}"
-            )
+
+def _minimum_batch_count(limit_batches: float) -> int | None:
+    if isinstance(limit_batches, int):
+        return 1 if limit_batches > 0 else None
+    return ceil(1.0 / limit_batches) if limit_batches > 0.0 else None
+
+
+def _format_details(
+    dataset_len: int | None,
+    min_required: int | None,
+    batch_size: int | None,
+    world_size: int,
+    drop_last: bool | None,
+    limit_batches: float,
+) -> str:
+    details = [
+        f"dataset_size={dataset_len}" if dataset_len is not None else None,
+        f"min_required_size={min_required}"
+        if min_required is not None
+        else None,
+        (
+            f"missing={min_required - dataset_len}"
+            if dataset_len is not None
+            and min_required is not None
+            and dataset_len < min_required
+            else None
+        ),
+    ]
+    params = [
+        f"batch_size={batch_size}" if batch_size is not None else None,
+        f"world_size={world_size}",
+        f"drop_last={drop_last}" if drop_last is not None else None,
+        f"limit_train_batches={limit_batches}",
+    ]
+    detail_parts = [part for part in details if part is not None]
+    params_msg = ", ".join(part for part in params if part is not None)
+    return f"(details: {', '.join(detail_parts)}; params: {params_msg})"

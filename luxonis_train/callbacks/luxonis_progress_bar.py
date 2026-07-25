@@ -270,40 +270,39 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]"
         )
         self.console.print("[bold magenta]Metrics:[/bold magenta]")
-        for table_name, table in metrics.items():
-            self.print_table(
-                table_name, list(table.items()), ["Name", "Value"]
-            )
-            for matrix_name, matrix in matrices.get(table_name, {}).items():
-                self._print_matrix(
-                    self._format_matrix_title(matrix_name), matrix
-                )
-        for table_name, table in matrices.items():
-            if table_name in metrics:
-                continue
-            for matrix_name, matrix in table.items():
-                self._print_matrix(
-                    f"{table_name}/{self._format_matrix_title(matrix_name)}",
-                    matrix,
-                )
+        self._print_result_tables(metrics, matrices)
         self.console.rule(style="bold magenta")
 
         # Log file output
         self._log_console.rule(f"{stage}")
         self._log_console.print(f"Loss: {loss}")
         self._log_console.print("Metrics:")
+        self._print_result_tables(metrics, matrices, self._log_console)
+        self._log_console.rule()
+
+        # Dump to logger
+        logger.bind(file_only=True).info("\n" + self._log_buffer.getvalue())
+        self._log_buffer.seek(0)
+        self._log_buffer.truncate(0)
+
+    def _print_result_tables(
+        self,
+        metrics: Mapping[str, Mapping[str, int | str | float]],
+        matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
+        console: Console | None = None,
+    ) -> None:
         for table_name, table in metrics.items():
             self.print_table(
                 table_name,
                 list(table.items()),
                 ["Name", "Value"],
-                console=self._log_console,
+                console=console,
             )
             for matrix_name, matrix in matrices.get(table_name, {}).items():
                 self._print_matrix(
                     self._format_matrix_title(matrix_name),
                     matrix,
-                    console=self._log_console,
+                    console=console,
                 )
         for table_name, table in matrices.items():
             if table_name in metrics:
@@ -312,14 +311,8 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
                 self._print_matrix(
                     f"{table_name}/{self._format_matrix_title(matrix_name)}",
                     matrix,
-                    console=self._log_console,
+                    console=console,
                 )
-        self._log_console.rule()
-
-        # Dump to logger
-        logger.bind(file_only=True).info("\n" + self._log_buffer.getvalue())
-        self._log_buffer.seek(0)
-        self._log_buffer.truncate(0)
 
     @override
     def print_table(
