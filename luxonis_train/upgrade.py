@@ -128,7 +128,7 @@ def _load_config(config: PathType | Params) -> NestedDict:
     if isinstance(config, dict):
         return NestedDict(config)
     config = Path(config)
-    if config.suffix == "json":
+    if config.suffix == ".json":
         cfg = json.loads(config.read_text(encoding="utf-8"))
     else:
         cfg = yaml.safe_load(config.read_text(encoding="utf-8"))

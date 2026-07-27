@@ -79,7 +79,7 @@ def default_annotate(
 
         if _is_all_empty(preds_for_image, required_labels):
             yield {"file": str(img_path)}
-            return
+            continue
 
         transformed = _prepare_transformed(
             preds_for_image,

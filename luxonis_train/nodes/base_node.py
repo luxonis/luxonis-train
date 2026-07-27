@@ -619,7 +619,10 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         input_name = "features"
         if name in "xyz":
             idx = "xyz".index(name)
-        idx = int(match.group(1) or 0) if match else 0
+        elif match and match.group(1):
+            idx = int(match.group(1))
+        else:
+            idx = 0
 
         packet = inputs[idx]
         if input_name not in packet:
@@ -710,7 +713,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @rtype: list[T] | T
         @return: Attached elements. If C{attach_index} is set to
             C{"all"} or is a slice, returns a list of attached elements.
-        @raises ValueError: If the C{attach_index} is invalid.
         """
         if not isinstance(value, list):
             if self.attach_index not in (None, -1, 0):

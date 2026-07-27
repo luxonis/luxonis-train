@@ -250,6 +250,8 @@ class BaseAttachedModule(
         self, kwargs: Mapping[str, Tensor | list[Tensor] | None]
     ) -> None:
         for kwarg_name, parameter in self._signature.items():
+            if kwarg_name not in kwargs:
+                continue
             value = kwargs[kwarg_name]
             if check_type(value, parameter.annotation):
                 continue

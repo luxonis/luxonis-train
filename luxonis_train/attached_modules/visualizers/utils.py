@@ -431,7 +431,7 @@ def _resize_to_match(
     """
     if resize_along not in ["width", "height", "exact"]:
         raise ValueError(
-            "Invalid value for resize_along: {resize_along}. "
+            f"Invalid value for resize_along: {resize_along}. "
             "Valid options are: 'width', 'height', 'exact'."
         )
 

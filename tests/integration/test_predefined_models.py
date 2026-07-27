@@ -1,5 +1,6 @@
 import tarfile
 from pathlib import Path
+from typing import Literal
 
 import cv2
 import numpy as np
@@ -37,7 +38,9 @@ def _infer_source(
 
 
 def _assert_infer_output(
-    subtest: str, save_dir: Path, loader: LuxonisLoader
+    subtest: Literal["single_image", "image_dir", "video", "loader"],
+    save_dir: Path,
+    loader: LuxonisLoader,
 ) -> None:
     if subtest == "single_image":
         assert len(list(save_dir.rglob("*.png"))) == 1
@@ -45,7 +48,7 @@ def _assert_infer_output(
         assert len(list(save_dir.iterdir())) == len(loader)
     elif subtest == "video":
         assert len(list(save_dir.rglob("*.mp4"))) == 1
-    if subtest is None:
+    else:
         assert len(list(save_dir.iterdir())) == len(loader)
 
 
@@ -70,7 +73,7 @@ def _run_infer_subtests(
             video_writer.write(img)
         video_writer.release()
 
-        for subtest in ["single_image", "image_dir", "video", "loader"]:
+        for subtest in ("single_image", "image_dir", "video", "loader"):
             with subtests.test(f"infer/{subtest}"):
                 save_dir = tmp_path / f"infer_{subtest}"
                 source = _infer_source(subtest, img_dir, video_path)
