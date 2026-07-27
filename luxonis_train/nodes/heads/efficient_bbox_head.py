@@ -115,18 +115,20 @@ class EfficientBBoxHead(BaseDetectionHead):
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
-        bboxes = self._postprocess_detections(
+        detections_pre_nms = self._prepare_bbox_inference_output(
             features_list,
             class_scores,
             distributions,
             anchor_points,
             stride_tensor,
         )
+        bboxes = self._run_nms(detections_pre_nms)
         return {
             self.task.main_output: bboxes,
             "features": features_list,
             "class_scores": class_scores,
             "distributions": distributions,
+            "detections_pre_nms": detections_pre_nms,
         }
 
     @staticmethod
@@ -172,11 +174,32 @@ class EfficientBBoxHead(BaseDetectionHead):
         """Perform post-processing of the output and returns bboxs after
         NMS.
         """
+        detections_pre_nms = self._prepare_bbox_inference_output(
+            features,
+            class_scores,
+            distributions,
+            anchor_points,
+            stride_tensor,
+            tail=tail,
+        )
+        return self._run_nms(detections_pre_nms)
+
+    def _prepare_bbox_inference_output(
+        self,
+        features: list[Tensor],
+        class_scores: Tensor,
+        distributions: Tensor,
+        anchor_points: Tensor,
+        stride_tensor: Tensor,
+        *,
+        tail: list[Tensor] | None = None,
+    ) -> Tensor:
+        """Decode predictions into the tensor expected by NMS."""
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 
         bboxes *= stride_tensor
-        output_merged = torch.cat(
+        return torch.cat(
             [
                 bboxes,
                 torch.ones(
@@ -190,8 +213,10 @@ class EfficientBBoxHead(BaseDetectionHead):
             dim=-1,
         )
 
+    def _run_nms(self, detections_pre_nms: Tensor) -> list[Tensor]:
+        """Apply NMS to decoded detection candidates."""
         return non_max_suppression(
-            output_merged,
+            detections_pre_nms,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,

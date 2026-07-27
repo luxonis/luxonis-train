@@ -4,6 +4,7 @@ faster-coco-eval~=1.7
 grad-cam~=1.5
 lightning~=2.5
 luxonis-ml[data,tracker,s3,gcs,roboflow]>=0.9.0
+matplotlib~=3.10
 mlflow~=3.6
 onnxruntime~=1.23
 onnxscript~=0.5
