@@ -7,6 +7,7 @@ from loguru import logger
 from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
+from luxonis_ml.typing import Params
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -31,6 +32,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         bbox_area_threshold: float = 0.0004,
         class_order_per_task: dict[str, list[str]] | None = None,
         kpts_mapping_per_task: dict[str, list[int]] | None = None,
+        return_sample_metadata: bool = False,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -87,8 +89,14 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             If provided, the classes for the specified tasks will be reordered.
         @type kpts_mapping_per_task: dict[str, list[int]] | None
         @param kpts_mapping_per_task: Dictionary mapping task names to custom keypoint mappings. If provided, the keypoints for the specified tasks will be reordered.
+        @type return_sample_metadata: bool
+        @param return_sample_metadata: Whether C{__getitem__} should also
+            return the per-sample metadata (C{sample_metadata}) as a third
+            element. Defaults to C{False} to keep the standard
+            C{(image, labels)} output used during training.
         """
         super().__init__(**kwargs)
+        self.return_sample_metadata = return_sample_metadata
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -159,8 +167,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @override
     def __getitem__(
         self, idx: int
-    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
-        img, labels = self.loader[idx]
+    ) -> (
+        tuple[dict[str, Tensor] | Tensor, Labels]
+        | tuple[dict[str, Tensor] | Tensor, Labels, Params]
+    ):
+        output = self.loader[idx]
+        img, labels = output
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
 
@@ -171,7 +183,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if len(img) == 1:
             img = next(iter(img.values()))
 
-        return img, self.dict_numpy_to_torch(labels)
+        tensor_labels = self.dict_numpy_to_torch(labels)
+        if self.return_sample_metadata:
+            return img, tensor_labels, output.metadata
+        return img, tensor_labels
 
     def _remap_keypoints(
         self, labels: dict[str, np.ndarray]
