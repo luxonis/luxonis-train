@@ -356,7 +356,9 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs: dict[str, Tensor],
     ) -> list[Packet[Tensor]]:
         return [
-            computed.get(input_name, {"features": [inputs[input_name]]})
+            computed[input_name]
+            if input_name in computed
+            else {"features": [inputs[input_name]]}
             for input_name in input_names
         ]
 
@@ -1345,13 +1347,14 @@ class LuxonisLightningModule(pl.LightningModule):
             names = node.module.export_output_names
             if names is None:
                 continue
-            if len(names) == output_counts[node_name]:
+            output_count = output_counts.get(node_name, 0)
+            if len(names) == output_count:
                 export_names[node_name] = names
                 continue
             logger.warning(
                 f"Number of provided output names for node {node_name} "
                 f"({len(names)}) does not match number of outputs "
-                f"({output_counts[node_name]}). Using default names."
+                f"({output_count}). Using default names."
             )
         return export_names
 

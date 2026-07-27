@@ -1024,7 +1024,7 @@ class Config(LuxonisConfig):
             "results. If this behavior is not desired, set "
             "`smart_cfg_auto_populate` to `False`."
         )
-        accumulate_grad_batches = int(64 / self.trainer.batch_size)
+        accumulate_grad_batches = max(1, int(64 / self.trainer.batch_size))
         self.trainer.accumulate_grad_batches = accumulate_grad_batches
         logger.info(
             f"Setting 'accumulate_grad_batches' to {accumulate_grad_batches} "
@@ -1098,7 +1098,7 @@ class Config(LuxonisConfig):
             ),
             None,
         )
-        if callback is None:  # pragma: ignore
+        if callback is None:  # pragma: no cover
             return
         callback.params["scheduling"] = schedule  # type: ignore
         logger.info(

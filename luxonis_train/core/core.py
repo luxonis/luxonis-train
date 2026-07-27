@@ -177,9 +177,9 @@ class LuxonisModel:
             downloaded = safe_download(weights)
             if downloaded is None:
                 raise RuntimeError(
-                    f"Failed to download weights from {downloaded}."
+                    f"Failed to download weights from {weights}."
                 )
-            ckpt = torch.load(downloaded, map_location="cpu")  # nosemgre
+            ckpt = torch.load(downloaded, map_location="cpu")  # nosemgrep
             return downloaded, ckpt
 
     @staticmethod
@@ -631,14 +631,15 @@ class LuxonisModel:
             onnx_save_path, scale_values, mean_values, color_space
         )
 
-        with open(export_path.with_suffix(".yaml"), "w") as f:
+        yaml_path = export_path.with_suffix(".yaml")
+        with open(yaml_path, "w") as f:
             yaml.safe_dump(
                 modelconverter_config,
                 f,
                 sort_keys=False,
                 default_flow_style=False,
             )
-            self._upload_export_artifact(f.name, name=f.name)
+        self._upload_export_artifact(yaml_path, name=str(yaml_path))
 
         return onnx_save_path
 

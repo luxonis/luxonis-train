@@ -586,7 +586,7 @@ def _bbox_weight(
     mask = (
         mask_positive
         if mask_positive is not None
-        else torch.ones_like(target_scores.sum(-1))
+        else torch.ones_like(target_scores.sum(-1), dtype=torch.bool)
     )
     return torch.masked_select(target_scores.sum(-1), mask).unsqueeze(-1)
 
