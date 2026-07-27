@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        suite: [unit, predefined, combinations, misc]
+        suite: [unit, predefined_light, predefined_heavy, combinations, misc]
 
     steps:
       - name: Checkout
