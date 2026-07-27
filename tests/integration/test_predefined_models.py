@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+from _pytest.mark import ParameterSet
 from luxonis_ml.data import LuxonisLoader
 from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
@@ -24,6 +25,26 @@ def skip_if_no_aimet() -> None:
         pytest.skip("AIMET is not installed")
 
 
+def _predefined_model_params() -> list[ParameterSet]:
+    params = []
+    for config_name, extra_opts in PREDEFINED_MODELS:
+        marker = (
+            pytest.mark.predefined_heavy
+            if "heavy" in config_name
+            else pytest.mark.predefined_light
+        )
+        params.append(
+            pytest.param(
+                config_name,
+                extra_opts,
+                marks=marker,
+                id=config_name,
+            )
+        )
+    return params
+
+
+@pytest.mark.predefined_light
 def test_model_construction():
     cfg = "configs/detection_light_model.yaml"
     model = LuxonisModel(
@@ -41,7 +62,9 @@ def test_model_construction():
         assert not node.visualizers
 
 
-@pytest.mark.parametrize(("config_name", "extra_opts"), PREDEFINED_MODELS)
+@pytest.mark.parametrize(
+    ("config_name", "extra_opts"), _predefined_model_params()
+)
 def test_predefined_models(
     config_name: str,
     extra_opts: Params | None,
