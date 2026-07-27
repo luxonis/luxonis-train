@@ -231,39 +231,53 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         dataset_metadata: DatasetMetadata,
         node_cfg: NodeConfig,
     ) -> None:
+        if Node.task is None:
+            return
+        metadata = {
+            label
+            for label in Node.task.required_labels
+            if isinstance(label, Metadata)
+        }
         metadata_override = node_cfg.metadata_task_override
-        if Node.task is not None:
-            metadata = {
-                label
-                for label in Node.task.required_labels
-                if isinstance(label, Metadata)
-            }
-            if metadata_override is not None:
-                if isinstance(metadata_override, str):
-                    if len(metadata) != 1:
-                        raise ValueError(
-                            f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
-                            "so the `metadata_task_override` must be a dictionary."
-                        )
-                    metadata_override = {
-                        next(iter(metadata)).name: metadata_override
-                    }
+        if metadata_override is not None:
+            self._apply_metadata_override(metadata, metadata_override, Node)
+        self._validate_metadata_types(metadata, dataset_metadata, node_cfg)
 
-                for m in metadata:
-                    m.name = metadata_override.get(m.name, m.name)
+    @staticmethod
+    def _apply_metadata_override(
+        metadata: set[Metadata],
+        metadata_override: str | dict[str, str],
+        Node: type[BaseNode],
+    ) -> None:
+        if isinstance(metadata_override, str):
+            if len(metadata) != 1:
+                raise ValueError(
+                    f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                    "so the `metadata_task_override` must be a dictionary."
+                )
+            metadata_override = {next(iter(metadata)).name: metadata_override}
 
-            metadata_types = dataset_metadata.metadata_types
+        for m in metadata:
+            m.name = metadata_override.get(m.name, m.name)
 
-            for m in metadata:
-                m_name = f"{node_cfg.task_name}/{m}"
-                if m_name not in metadata_types:
-                    continue
-                typ = metadata_types[m_name]
-                if not m.check_type(typ):
-                    raise ValueError(
-                        f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
-                        f"Expected type '{m.typ}', got '{typ.__name__}'."
-                    )
+    @staticmethod
+    def _validate_metadata_types(
+        metadata: set[Metadata],
+        dataset_metadata: DatasetMetadata,
+        node_cfg: NodeConfig,
+    ) -> None:
+        metadata_types = dataset_metadata.metadata_types
+
+        for m in metadata:
+            m_name = f"{node_cfg.task_name}/{m}"
+            if m_name not in metadata_types:
+                continue
+            typ = metadata_types[m_name]
+            if not m.check_type(typ):
+                raise ValueError(
+                    f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
+                    f"Expected type '{m.typ}', got '{typ.__name__}'."
+                )
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
@@ -407,68 +421,85 @@ def build_optimizers(
         params=[p for p in parameters if p.requires_grad],
     )
 
-    def _get_scheduler(cfg: ConfigItem, optimizer: Optimizer) -> LRScheduler:
-        return from_registry(
-            SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
-        )
-
     if cfg_scheduler.name == "SequentialLR":
-        if "schedulers" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'schedulers' "
-                "parameter containing the configurations of the "
-                "individual schedulers."
-            )
-        schedulers = cfg_scheduler.params["schedulers"]
-        if not check_type(schedulers, list[dict]):
-            raise TypeError(
-                "'schedulers' parameter of 'SequentialLR' scheduler "
-                f"must be a list of dictionaries. Got `{schedulers}`."
-            )
-        schedulers_list = [
-            _get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
-            for scheduler_cfg in schedulers
-        ]
-
-        if "milestones" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'milestones' parameter."
-            )
-
-        milestones = cfg_scheduler.params["milestones"]
-        if not check_type(milestones, list[int]):
-            raise TypeError(
-                "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
-                f"Got `{milestones}`."
-            )
-
-        scheduler = SequentialLR(
-            optimizer, schedulers=schedulers_list, milestones=milestones
-        )
-
+        scheduler = _build_sequential_lr(cfg_scheduler, optimizer)
     elif cfg_scheduler.name == "ReduceLROnPlateau":
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-        if cfg_scheduler.params.get("mode") == "max":
-            if main_metric is None:
-                raise ValueError(
-                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
-                )
-            node_name, metric_name = main_metric
-            formatted = nodes.formatted_name(node_name)
-            monitor = f"val/metric/{formatted}/{metric_name}"
-        else:
-            monitor = "val/loss"
-
-        scheduler = {
-            "scheduler": scheduler,
-            "monitor": monitor,
-            "frequency": cfg.trainer.validation_interval,
-        }
-
+        scheduler = _build_reduce_on_plateau(
+            cfg, cfg_scheduler, optimizer, main_metric, nodes
+        )
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
     return [optimizer], [scheduler]
+
+
+def _get_scheduler(cfg: ConfigItem, optimizer: Optimizer) -> LRScheduler:
+    return from_registry(
+        SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
+    )
+
+
+def _build_sequential_lr(
+    cfg_scheduler: ConfigItem, optimizer: Optimizer
+) -> SequentialLR:
+    if "schedulers" not in cfg_scheduler.params:
+        raise ValueError(
+            "'SequentialLR' scheduler requires 'schedulers' "
+            "parameter containing the configurations of the "
+            "individual schedulers."
+        )
+    schedulers = cfg_scheduler.params["schedulers"]
+    if not check_type(schedulers, list[dict]):
+        raise TypeError(
+            "'schedulers' parameter of 'SequentialLR' scheduler "
+            f"must be a list of dictionaries. Got `{schedulers}`."
+        )
+    schedulers_list = [
+        _get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
+        for scheduler_cfg in schedulers
+    ]
+
+    if "milestones" not in cfg_scheduler.params:
+        raise ValueError(
+            "'SequentialLR' scheduler requires 'milestones' parameter."
+        )
+
+    milestones = cfg_scheduler.params["milestones"]
+    if not check_type(milestones, list[int]):
+        raise TypeError(
+            "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
+            f"Got `{milestones}`."
+        )
+
+    return SequentialLR(
+        optimizer, schedulers=schedulers_list, milestones=milestones
+    )
+
+
+def _build_reduce_on_plateau(
+    cfg: Config,
+    cfg_scheduler: ConfigItem,
+    optimizer: Optimizer,
+    main_metric: tuple[str, str] | None,
+    nodes: Nodes,
+) -> dict[str, Any]:
+    scheduler = _get_scheduler(cfg_scheduler, optimizer)
+    if cfg_scheduler.params.get("mode") == "max":
+        if main_metric is None:
+            raise ValueError(
+                "ReduceLROnPlateau with 'max' mode requires a main_metric."
+            )
+        node_name, metric_name = main_metric
+        formatted = nodes.formatted_name(node_name)
+        monitor = f"val/metric/{formatted}/{metric_name}"
+    else:
+        monitor = "val/loss"
+
+    return {
+        "scheduler": scheduler,
+        "monitor": monitor,
+        "frequency": cfg.trainer.validation_interval,
+    }
 
 
 def build_callbacks(
@@ -633,8 +664,33 @@ def log_balanced_class_images(
     current_epoch: int,
 ) -> tuple[int, list[int], list[int]]:
     """Log images with balanced class distribution."""
-    logged_indices = []
+    logged_indices = _select_balanced_indices(
+        visualizations, labels, cls_task_keys, class_log_counts
+    )
+    node_logged_images = _log_indexed_images(
+        tracker,
+        nodes,
+        visualizations,
+        logged_indices,
+        n_logged_images,
+        max_log_images,
+        mode,
+        current_epoch,
+    )
+    return node_logged_images, class_log_counts, logged_indices
 
+
+def _select_balanced_indices(
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_task_keys: list[str],
+    class_log_counts: list[int],
+) -> list[int]:
+    """Pick batch indices that keep per-class logging balanced.
+
+    Mutates C{class_log_counts} in place.
+    """
+    logged_indices = []
     batch_size = next(
         iter(next(iter(visualizations.values())).values())
     ).shape[0]
@@ -650,7 +706,20 @@ def log_balanced_class_images(
                 logged_indices.append(idx)
                 for c in classes:
                     class_log_counts[c] += 1
+    return logged_indices
 
+
+def _log_indexed_images(
+    tracker: LuxonisTrackerPL,
+    nodes: Nodes,
+    visualizations: dict[str, dict[str, Tensor]],
+    logged_indices: list[int],
+    n_logged_images: int,
+    max_log_images: int,
+    mode: Literal["test", "val"],
+    current_epoch: int,
+) -> int:
+    node_logged_images = n_logged_images
     for node_name, node_visualizations in visualizations.items():
         node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
@@ -665,7 +734,7 @@ def log_balanced_class_images(
                 )
                 node_logged_images += 1
 
-    return node_logged_images, class_log_counts, logged_indices
+    return node_logged_images
 
 
 def log_sequential_images(

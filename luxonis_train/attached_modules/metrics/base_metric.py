@@ -6,6 +6,7 @@ from inspect import Parameter
 from types import EllipsisType
 from typing import (
     Annotated,
+    Any,
     ClassVar,
     Literal,
     get_args,
@@ -105,41 +106,54 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         hints = get_type_hints(self.__class__, include_extras=True)
 
         for attr_name, attr_type in hints.items():
-            if get_origin(attr_type) is Annotated:
-                type_args = get_args(attr_type)
-                main_type = type_args[0]
+            self._register_metric_state(attr_name, attr_type)
 
-                state = next(
-                    (arg for arg in type_args if isinstance(arg, MetricState)),
-                    None,
+    def _register_metric_state(
+        self, attr_name: str, attr_type: object
+    ) -> None:
+        if get_origin(attr_type) is not Annotated:
+            return
+        type_args = get_args(attr_type)
+        state = next(
+            (arg for arg in type_args if isinstance(arg, MetricState)), None
+        )
+        if state is None:
+            return
+        default = self._metric_state_default(type_args[0], state.default)
+        self.add_state(
+            attr_name,
+            default=default,
+            dist_reduce_fx=self._metric_state_reducer(
+                default, state.dist_reduce_fx
+            ),
+            persistent=state.persistent,
+        )
+
+    @staticmethod
+    def _metric_state_default(
+        main_type: object, default: object
+    ) -> Tensor | list:
+        if default is None:
+            if main_type is Tensor:
+                default = 0.0
+            elif getattr(main_type, "__origin__", None) is list:
+                default = []
+            else:
+                raise ValueError(
+                    f"Unsupported type of a metric state: `{main_type}`"
                 )
-                if state is not None:
-                    default = state.default
-                    if default is None:
-                        if main_type is Tensor:
-                            default = 0.0
-                        elif getattr(main_type, "__origin__", None) is list:
-                            default = []
-                        else:
-                            raise ValueError(
-                                f"Unsupported type of a metric state: `{main_type}`"
-                            )
-                    if isinstance(default, Number):
-                        default = torch.tensor(default)
+        return (
+            torch.tensor(default) if isinstance(default, Number) else default
+        )  # type: ignore
 
-                    dist_reduce_fx = state.dist_reduce_fx
-                    if dist_reduce_fx is ...:
-                        if isinstance(default, list):
-                            dist_reduce_fx = "cat"
-                        else:
-                            dist_reduce_fx = "sum"
-
-                    self.add_state(
-                        attr_name,
-                        default=default,
-                        dist_reduce_fx=dist_reduce_fx,
-                        persistent=state.persistent,
-                    )
+    @staticmethod
+    def _metric_state_reducer(
+        default: Tensor | list,
+        reducer: Any,
+    ) -> Any:
+        if reducer is not ...:
+            return reducer
+        return "cat" if isinstance(default, list) else "sum"
 
     @abstractmethod
     def update(self, *args: Tensor | list[Tensor]) -> None:

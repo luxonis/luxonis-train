@@ -376,8 +376,8 @@ luxonis_train train --config configs/detection_light_model.yaml
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel(
-  "configs/detection_light_model.yaml",
-  {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"}
+    "configs/detection_light_model.yaml",
+    {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"},
 )
 model.train()
 ```
@@ -681,6 +681,7 @@ class CustomCallback(pl.Callback):
 from torch import Tensor
 
 from luxonis_train import BaseLoss, Tasks
+
 
 # Subclasses of `BaseNode`, `BaseLoss`, `BaseMetric`
 # and `BaseVisualizer` are registered automatically.
