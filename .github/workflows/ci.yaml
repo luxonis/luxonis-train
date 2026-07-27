@@ -3,6 +3,11 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
       concurrency_group:
         description: "Optional concurrency group for an external caller"
         required: false
@@ -17,6 +22,11 @@ on:
         default: main
   workflow_call:
     inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
       concurrency_group:
         description: "Optional concurrency group for an external caller"
         required: false
@@ -54,7 +64,7 @@ on:
 concurrency:
   # External callers can provide an isolated concurrency group.
   group: ${{ inputs.concurrency_group || format('{0}-{1}', github.workflow, github.ref) }}
-  cancel-in-progress: ${{ !inputs.concurrency_group }}
+  cancel-in-progress: ${{ inputs.cancel_in_progress || !inputs.concurrency_group }}
 
 permissions:
   pull-requests: write
