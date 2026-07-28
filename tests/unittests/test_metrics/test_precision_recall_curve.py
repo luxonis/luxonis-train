@@ -529,6 +529,50 @@ def test_evaluation_epoch_end_skips_artifact_generation_failure(
     assert int(metric.target_count) == 0
 
 
+def test_evaluation_epoch_end_skips_tracker_image_logging_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metric = make_metric(thresholds=[0.0, 0.5, 1.0])
+    metric.update(
+        make_pre_nms([(10, 10, 30, 30, 0.9, 0)]),
+        torch.tensor(
+            [[0, 0, 0.1, 0.1, 0.2, 0.2]],
+            dtype=torch.float32,
+        ),
+    )
+    harness = make_epoch_end_harness(metric, is_global_zero=True)
+
+    def failing_log_image(
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        del args, kwargs
+        raise RuntimeError("tracker image logging failed")
+
+    monkeypatch.setattr(
+        harness.tracker,
+        "log_image",
+        failing_log_image,
+    )
+
+    LuxonisLightningModule._evaluation_epoch_end(
+        cast(LuxonisLightningModule, harness),
+        "val",
+    )
+
+    metric_logs = [
+        name
+        for name, _, _ in harness._logged
+        if name.startswith("val/metric/")
+    ]
+    assert metric_logs == [
+        "val/metric/head/PrecisionRecallCurve",
+        "val/metric/head/confidence_at_max_f1",
+    ]
+    assert harness.tracker.images == []
+    assert int(metric.target_count) == 0
+
+
 def test_mlflow_keys_classify_curve_as_image_artifact() -> None:
     metric = make_metric(thresholds=[0.0, 0.5, 1.0])
     harness = make_epoch_end_harness(metric, is_global_zero=True)

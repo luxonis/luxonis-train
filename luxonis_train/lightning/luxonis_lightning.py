@@ -898,16 +898,26 @@ class LuxonisLightningModule(pl.LightningModule):
                             )
                             continue
 
-                        self.tracker.log_image(
-                            name=f"{mode}/metrics/{self.current_epoch}/"
-                            f"{formatted_node_name}/{metric_name}/"
-                            f"{artifact_name}",
-                            img=artifact.detach()
-                            .cpu()
-                            .numpy()
-                            .transpose(1, 2, 0),
-                            step=self.current_epoch,
-                        )
+                        try:
+                            image = (
+                                artifact.detach()
+                                .cpu()
+                                .numpy()
+                                .transpose(1, 2, 0)
+                            )
+                            self.tracker.log_image(
+                                name=f"{mode}/metrics/{self.current_epoch}/"
+                                f"{formatted_node_name}/{metric_name}/"
+                                f"{artifact_name}",
+                                img=image,
+                                step=self.current_epoch,
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to log metric artifact "
+                                f"'{artifact_name}' from metric "
+                                f"'{metric_name}'. Skipping artifact logging."
+                            )
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
             loss=self._loss_accumulators[mode]["loss"],
