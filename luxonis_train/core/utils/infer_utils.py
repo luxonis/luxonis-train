@@ -10,7 +10,7 @@ import torch
 import torch.utils.data as torch_data
 from lightning.pytorch.callbacks import BasePredictionWriter
 from loguru import logger
-from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
 from torch.utils.data._utils.collate import default_collate
@@ -19,6 +19,7 @@ import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.typing import Labels
 from luxonis_train.utils import Counter
 
 IMAGE_FORMATS = {
@@ -255,8 +256,8 @@ def _save_renders_batch(
 def create_loader_from_directory(
     img_paths: Iterable[PathType],
     model: "lxt.LuxonisModel",
-    add_path_annotation: bool = False,
     batch_size: int | None = None,
+    return_sample_metadata: bool = False,
 ) -> torch_data.DataLoader:
     """Create a DataLoader from a directory of images.
 
@@ -264,26 +265,25 @@ def create_loader_from_directory(
     @param img_paths: Iterable of paths to the images.
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
-    @type add_path_annotation: bool
-    @param add_path_annotation: Whether to add the image path as an
-        annotation in the dataset.
     @type batch_size: int | None
     @param batch_size: The batch size for the DataLoader. If None, uses
         the model's default batch size.
+    @type return_sample_metadata: bool
+    @param return_sample_metadata: Whether to return sample metadata
+        from the DataLoader. Passed to L{LuxonisLoaderTorch}.
     @rtype: torch_data.DataLoader
     @return: The DataLoader for the images.
     """
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
 
-    def generator() -> DatasetIterator:
-        for img_path in img_paths:
-            data: dict[str, Any] = {"file": img_path}
-            if add_path_annotation:
-                data["annotation"] = {"metadata": {"path": str(img_path)}}
-            yield data
-
-    dataset.add(generator())
+    dataset.add(
+        {
+            "file": img_path,
+            "sample_metadata": {"path": str(img_path)},
+        }
+        for img_path in img_paths
+    )
     dataset.make_splits(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
     )
@@ -296,26 +296,21 @@ def create_loader_from_directory(
         augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
+        return_sample_metadata=return_sample_metadata,
     )
 
-    def collate_fix_paths(batch: list[tuple[Tensor, dict[str, Any]]]) -> Any:
-        for _, m in batch:
-            m["/metadata/path"] = (
-                m["/metadata/path"]
-                .view(-1)
-                .byte()
-                .cpu()
-                .numpy()
-                .tobytes()
-                .rstrip(b"\0")
-                .decode("utf-8", "ignore")
-            )
-        return default_collate(batch)
+    def collate_with_metadata(
+        batch: list[tuple[Any, Labels, dict[str, Any]]],
+    ) -> Any:
+        samples = [(img, labels) for img, labels, _ in batch]
+        sample_metadata = [metadata for *_, metadata in batch]
+        inputs, labels = default_collate(samples)
+        return inputs, labels, sample_metadata
 
     return torch_data.DataLoader(
         loader,
-        collate_fn=collate_fix_paths
-        if add_path_annotation
+        collate_fn=collate_with_metadata
+        if return_sample_metadata
         else default_collate,
         batch_size=batch_size or model.cfg.trainer.batch_size,
         pin_memory=True,

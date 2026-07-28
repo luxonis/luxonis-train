@@ -257,12 +257,12 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
         rng = np.random.default_rng()
         for _ in range(n_squares):
             top_left = (
-                rng.integers(0, w // 2),
-                rng.integers(0, h // 2),
+                int(rng.integers(0, w // 2)),
+                int(rng.integers(0, h // 2)),
             )
             bottom_right = (
-                rng.integers(w // 2, w),
-                rng.integers(h // 2, h),
+                int(rng.integers(w // 2, w)),
+                int(rng.integers(h // 2, h)),
             )
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
@@ -473,6 +473,14 @@ def pytest_configure(config: Config):
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line(
         "markers", "predefined: mark test as a predefined model test"
+    )
+    config.addinivalue_line(
+        "markers",
+        "predefined_light: mark test as a light predefined model test",
+    )
+    config.addinivalue_line(
+        "markers",
+        "predefined_heavy: mark test as a heavy predefined model test",
     )
     config.addinivalue_line(
         "markers", "combinations: mark test as a combinations test"
