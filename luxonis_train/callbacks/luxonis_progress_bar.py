@@ -429,15 +429,15 @@ def build_optimizer_summary(
     Two different denominators are used, chosen so that percentages sum
     naturally in the axis the reader cares about:
 
-    - **Group-level** percentages are relative to the model's *trainable*
-      parameters, so summing across all groups of all optimizers gives
-      100% (modulo unclaimed / external parameters).
-    - **Owner-level** percentages inside each group are relative to that
-      *owner's* own trainable parameters, so summing all appearances of
-      a single owner across the optimizers gives 100% — telling the
-      reader how each node's parameters were split across groups.
+        - B{Group-level} percentages are relative to the model's I{trainable}
+          parameters, so summing across all groups of all optimizers gives
+          100% (modulo unclaimed / external parameters).
+        - B{Owner-level} percentages inside each group are relative to that
+          I{owner's} own trainable parameters, so summing all appearances of
+          a single owner across the optimizers gives 100% — telling the
+          reader how each node's parameters were split across groups.
 
-    Frozen parameters (``requires_grad=False``) cannot enter any
+    Frozen parameters (C{requires_grad=False}) cannot enter any
     optimizer group, so they are excluded from every denominator. The
     header carries the frozen counts so users can still see the split.
     """
