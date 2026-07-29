@@ -48,7 +48,7 @@ def annotate_from_directory(
     img_paths = list(img_paths)
 
     loader = create_loader_from_directory(
-        img_paths, model, add_path_annotation=True, batch_size=1
+        img_paths, model, return_sample_metadata=True, batch_size=1
     )
 
     annotated_dataset = LuxonisDataset(
@@ -81,12 +81,12 @@ def annotated_dataset_generator(
     """
     lt_module = model.lightning_module.eval()
 
-    for imgs, metas in loader:
+    for imgs, _, sample_metadata in loader:
         with torch.no_grad():
             batch_out = lt_module.full_forward(imgs).outputs
 
         for head_name, head_output in batch_out.items():
-            img_paths = [Path(p) for p in metas["/metadata/path"]]
+            img_paths = [Path(meta["path"]) for meta in sample_metadata]
             head = lt_module.nodes[head_name].module
             if isinstance(head, lxt.BaseHead):
                 for record in head.annotate(
