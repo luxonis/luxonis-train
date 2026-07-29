@@ -301,6 +301,7 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     module = model.lightning_module
     optimizers, _ = module.configure_optimizers()
     calls: list[tuple[Optimizer, float, str]] = []
+    optimizer_accesses: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
     monkeypatch.setattr(
         module,
@@ -317,9 +318,12 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
             {"loss": torch.tensor(1.0)},
         ),
     )
-    monkeypatch.setattr(
-        module, "optimizers", lambda *_args, **_kwargs: list(optimizers)
-    )
+
+    def get_optimizers(*args: object, **kwargs: object) -> list[Optimizer]:
+        optimizer_accesses.append((args, kwargs))
+        return list(optimizers)
+
+    monkeypatch.setattr(module, "optimizers", get_optimizers)
     monkeypatch.setattr(module, "lr_schedulers", list)
     monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
     monkeypatch.setattr(
@@ -336,6 +340,7 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     module.training_step((torch.empty(0), {}))
 
     assert module.automatic_optimization is False
+    assert optimizer_accesses == [((), {})]
     assert calls == [(optimizer, 1.5, "value") for optimizer in optimizers]
 
 

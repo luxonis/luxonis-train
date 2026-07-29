@@ -20,10 +20,33 @@ from ._helpers import (
     node,
     optimizer_group_names,
     optimizer_parameter_names,
+    parent_parameter_head_node,
     scheduler,
     tiny_head_node,
     trainable_parameter_names,
 )
+
+
+@pytest.mark.parametrize(
+    "finetuning",
+    [
+        None,
+        {"parameters": [{"name": "alpha"}]},
+    ],
+)
+def test_optimizer_includes_parameter_owned_by_non_leaf_module(
+    finetuning: Params | None, opts: Params
+):
+    snapshot = build_snapshot(
+        config([parent_parameter_head_node(finetuning)]),
+        opts,
+    )
+
+    alpha_names = matching_names(snapshot, "alpha")
+
+    assert len(alpha_names) == 1
+    assert alpha_names <= optimizer_parameter_names(snapshot)
+    assert_all_trainable_parameters_assigned(snapshot)
 
 
 @pytest.fixture

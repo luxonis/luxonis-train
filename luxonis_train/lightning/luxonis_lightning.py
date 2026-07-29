@@ -470,7 +470,7 @@ class LuxonisLightningModule(pl.LightningModule):
         loss = self.compute_training_loss(train_batch)
         if self.automatic_optimization:
             return loss
-        optimizers = self.optimizers(use_pl_optimizer=False)
+        optimizers = self.optimizers()
         if optimizers is None:
             optimizers = []
         elif not isinstance(optimizers, list):
@@ -486,7 +486,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.cfg.trainer.gradient_clip_val is not None:
             for optimizer in optimizers:
                 self.clip_gradients(
-                    optimizer,
+                    cast(Optimizer, optimizer),
                     gradient_clip_val=self.cfg.trainer.gradient_clip_val,
                     gradient_clip_algorithm=(
                         self.cfg.trainer.gradient_clip_algorithm or "norm"

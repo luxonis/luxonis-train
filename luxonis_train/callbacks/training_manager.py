@@ -23,6 +23,7 @@ class TrainingManager(BaseFinetuning):
         epoch: int,
         optimizer: Optimizer,
     ) -> None:
+        _ = optimizer
         for (
             node_name,
             node,
@@ -31,8 +32,9 @@ class TrainingManager(BaseFinetuning):
         ) in pl_module.nodes.frozen_nodes():
             if e == epoch:
                 logger.info(f"Unfreezing node '{node_name}'")
-                self.unfreeze_and_add_param_group(
-                    node, optimizer, lr_after_unfreeze, initial_denom_lr=1.0
+                self.make_trainable(node)
+                pl_module.nodes.restore_unfrozen_parameters(
+                    node, lr_after_unfreeze
                 )
 
     @override

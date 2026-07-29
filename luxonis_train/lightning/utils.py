@@ -75,7 +75,22 @@ class MainMetric(NamedTuple):
     metric_name: str
 
 
-OptimizerSchedulerConfig = tuple[OptimizerConfig, SchedulerConfig]
+class OptimizerGroupPlan(NamedTuple):
+    parameters: list[nn.Parameter]
+    trainable_parameters: list[nn.Parameter]
+    optimizer_params: Kwargs
+
+
+class OptimizerPlan(NamedTuple):
+    optimizer_name: str
+    scheduler: SchedulerConfig
+    parameter_groups: list[OptimizerGroupPlan]
+
+
+class UnfreezeTarget(NamedTuple):
+    optimizer: Optimizer
+    optimizer_params: Kwargs
+    parameter_group: dict[str, Any] | None
 
 
 def _freeze_config_value(value: Any) -> Hashable:
@@ -181,6 +196,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         self.graph: dict[str, list[str]] = {}
         self.nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
+        self._unfreeze_targets: dict[int, UnfreezeTarget] = {}
 
         self.loader_input_shapes = self._get_loader_input_shapes(
             cfg, input_shapes
@@ -343,49 +359,62 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         cfg_base_scheduler: SchedulerConfig | None,
         used_params: set[int] | None = None,
         include_default: bool = True,
-    ) -> tuple[list[OptimizerSchedulerConfig], set[int]]:
+    ) -> tuple[list[OptimizerPlan], set[int]]:
         cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
         cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
-        optimizer_configs: list[OptimizerSchedulerConfig] = []
         groups: dict[
             tuple[str, str, Hashable],
-            tuple[list[Kwargs], SchedulerConfig],
+            tuple[list[OptimizerGroupPlan], SchedulerConfig],
         ] = {}
         used_params = set(used_params or set())
         if include_default and not any(
             node.finetuning for node in self.values()
         ):
-            params = []
+            parameter_groups: list[OptimizerGroupPlan] = []
+            trainable_parameters: list[nn.Parameter] = []
             for node in self.values():
+                frozen_parameters: list[nn.Parameter] = []
                 for module in node.module.modules():
-                    if list(module.parameters()) and not list(
-                        module.children()
-                    ):
-                        for p in module.parameters():
-                            if p.requires_grad and id(p) not in used_params:
-                                params.append(p)
-                                used_params.add(id(p))
+                    for p in module.parameters(recurse=False):
+                        if id(p) in used_params:
+                            continue
+                        if p.requires_grad:
+                            trainable_parameters.append(p)
+                        elif node.unfreeze_after is not None:
+                            frozen_parameters.append(p)
+                        else:
+                            continue
+                        used_params.add(id(p))
+                if frozen_parameters:
+                    parameter_groups.append(
+                        OptimizerGroupPlan(
+                            parameters=frozen_parameters,
+                            trainable_parameters=[],
+                            optimizer_params=cfg_base_optimizer.params,
+                        )
+                    )
 
-            if params:
-                optimizer_configs.append(
-                    (
-                        OptimizerConfig(
-                            name=cfg_base_optimizer.name,
-                            params=cast(
-                                Params,
-                                {
-                                    "params": [
-                                        {"params": params}
-                                        | cfg_base_optimizer.params
-                                    ]
-                                },
-                            ),
-                        ),
-                        cfg_base_scheduler,
+            if trainable_parameters:
+                parameter_groups.insert(
+                    0,
+                    OptimizerGroupPlan(
+                        parameters=trainable_parameters,
+                        trainable_parameters=trainable_parameters,
+                        optimizer_params=cfg_base_optimizer.params,
                     ),
                 )
-            return optimizer_configs, used_params
 
+            if parameter_groups:
+                return [
+                    OptimizerPlan(
+                        optimizer_name=cfg_base_optimizer.name,
+                        scheduler=cfg_base_scheduler,
+                        parameter_groups=parameter_groups,
+                    )
+                ], used_params
+            return [], used_params
+
+        optimizer_plans: list[OptimizerPlan] = []
         for node in self.values():
             finetunings = [
                 (finetuning, False) for finetuning in node.finetuning
@@ -401,6 +430,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                         True,
                     )
                 )
+
             for finetuning, is_default in finetunings:
                 cfg_optimizer = merge_config_items(
                     cfg_base_optimizer, finetuning.optimizer
@@ -413,27 +443,29 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     ParameterPattern(name=".*")
                 ]
                 for module_name, module in node.module.named_modules():
-                    if list(module.parameters()) and not list(
-                        module.children()
+                    for param_name, p in module.named_parameters(
+                        recurse=False
                     ):
-                        for param_name, p in module.named_parameters():
-                            name = (
-                                f"{module_name}.{param_name}"
-                                if module_name
-                                else param_name
-                            )
-                            if (
-                                any(
-                                    pattern.matches(
-                                        module.__class__.__name__, name
-                                    )
-                                    for pattern in patterns
+                        name = (
+                            f"{module_name}.{param_name}"
+                            if module_name
+                            else param_name
+                        )
+                        if (
+                            any(
+                                pattern.matches(
+                                    module.__class__.__name__, name
                                 )
-                                and p.requires_grad
-                                and id(p) not in used_params
-                            ):
-                                params.append(p)
-                                used_params.add(id(p))
+                                for pattern in patterns
+                            )
+                            and id(p) not in used_params
+                            and (
+                                p.requires_grad
+                                or node.unfreeze_after is not None
+                            )
+                        ):
+                            params.append(p)
+                            used_params.add(id(p))
 
                 if not params:
                     if not is_default:
@@ -452,23 +484,27 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 if group_key not in groups:
                     groups[group_key] = ([], cfg_scheduler)
                 groups[group_key][0].append(
-                    {"params": params} | cfg_optimizer.params
+                    OptimizerGroupPlan(
+                        parameters=params,
+                        trainable_parameters=[
+                            p for p in params if p.requires_grad
+                        ],
+                        optimizer_params=cfg_optimizer.params,
+                    )
                 )
 
         for (optimizer_name, _, _), (
-            optimizer_params,
+            parameter_groups,
             scheduler,
         ) in groups.items():
-            optimizer_configs.append(
-                (
-                    OptimizerConfig(
-                        name=optimizer_name,
-                        params={"params": optimizer_params},  # type: ignore
-                    ),
-                    scheduler,
+            optimizer_plans.append(
+                OptimizerPlan(
+                    optimizer_name=optimizer_name,
+                    scheduler=scheduler,
+                    parameter_groups=parameter_groups,
                 )
             )
-        return optimizer_configs, used_params
+        return optimizer_plans, used_params
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
@@ -526,6 +562,44 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     node.lr_after_unfreeze,
                 )
 
+    def restore_unfrozen_parameters(
+        self, module: BaseNode, lr: float | None
+    ) -> None:
+        targets: dict[int, tuple[UnfreezeTarget, list[nn.Parameter]]] = {}
+        for parameter in module.parameters():
+            target = self._unfreeze_targets.pop(id(parameter), None)
+            if target is None:
+                continue
+            target_id = id(target)
+            if target_id not in targets:
+                targets[target_id] = (target, [])
+            targets[target_id][1].append(parameter)
+
+        for target, parameters in targets.values():
+            existing_parameter_ids = {
+                id(parameter)
+                for group in target.optimizer.param_groups
+                for parameter in group["params"]
+            }
+            parameters = [
+                parameter
+                for parameter in parameters
+                if id(parameter) not in existing_parameter_ids
+            ]
+            if not parameters:
+                continue
+
+            if target.parameter_group is not None:
+                target.parameter_group["params"].extend(parameters)
+                if lr is not None:
+                    target.parameter_group["lr"] = float(lr)
+                continue
+
+            parameter_group = {"params": parameters} | target.optimizer_params
+            if lr is not None:
+                parameter_group["lr"] = float(lr)
+            target.optimizer.add_param_group(parameter_group)
+
     def traverse(
         self,
     ) -> Iterator[tuple[str, NodeWrapper, list[str], list[str]]]:
@@ -552,21 +626,61 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 f"val/metric/{formatted_node}/{self.main_metric.metric_name}"
             )
 
-        optimizer_configs, _ = self._extract_optimizer_params(
+        optimizer_plans, _ = self._extract_optimizer_params(
             base_optimizer,
             base_scheduler,
             used_params=used_params,
             include_default=include_default,
         )
-        for cfg_optimizer, cfg_scheduler in optimizer_configs:
+        self._unfreeze_targets.clear()
+        for plan in optimizer_plans:
+            configured_groups = [
+                group
+                for group in plan.parameter_groups
+                if group.trainable_parameters
+            ]
+            if not configured_groups:
+                configured_groups = plan.parameter_groups
+
+            cfg_optimizer = OptimizerConfig(
+                name=plan.optimizer_name,
+                params=cast(
+                    Params,
+                    {
+                        "params": [
+                            {"params": group.trainable_parameters}
+                            | group.optimizer_params
+                            for group in configured_groups
+                        ]
+                    },
+                ),
+            )
             optimizer, scheduler = build_optimizer_scheduler(
                 self.cfg,
                 main_metric_monitor,
                 cfg_optimizer,
-                cfg_scheduler,
+                plan.scheduler,
             )
             optimizers.append(optimizer)
             schedulers.append(scheduler)
+
+            configured_parameter_groups = {
+                id(group): parameter_group
+                for group, parameter_group in zip(
+                    configured_groups,
+                    optimizer.param_groups,
+                    strict=True,
+                )
+            }
+            for group in plan.parameter_groups:
+                target = UnfreezeTarget(
+                    optimizer=optimizer,
+                    optimizer_params=group.optimizer_params,
+                    parameter_group=configured_parameter_groups.get(id(group)),
+                )
+                for parameter in group.parameters:
+                    if not parameter.requires_grad:
+                        self._unfreeze_targets[id(parameter)] = target
 
         return optimizers, schedulers
 
@@ -577,13 +691,13 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         used_params: set[int] | None = None,
         include_default: bool = True,
     ) -> tuple[int, set[int]]:
-        optimizer_configs, used_params = self._extract_optimizer_params(
+        optimizer_plans, used_params = self._extract_optimizer_params(
             base_optimizer,
             base_scheduler,
             used_params=used_params,
             include_default=include_default,
         )
-        return len(optimizer_configs), used_params
+        return len(optimizer_plans), used_params
 
     def build_callbacks(
         self, save_dir: Path, n_optimizers: int

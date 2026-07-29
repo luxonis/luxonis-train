@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import pytest
+import torch
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from torch.optim import Optimizer
@@ -88,6 +89,21 @@ class TinyHead(BaseNode):
         return self.fc(self.flatten(x))
 
 
+class ParentParameterHead(BaseNode):
+    task = Tasks.CLASSIFICATION
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.conv = nn.Conv2d(3, 4, 1)
+        self.alpha = nn.Parameter(torch.ones(1))
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(4, 10)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.conv(x) * self.alpha
+        return self.fc(self.pool(x).flatten(1))
+
+
 @dataclass
 class OptimizerSnapshot:
     model: LuxonisModel
@@ -110,6 +126,13 @@ def head_node(finetuning: Any | None = None) -> Params:
 def tiny_head_node(finetuning: Any | None = None) -> Params:
     node = head_node(finetuning)
     node["name"] = "TinyHead"
+    node["alias"] = "Head"
+    return node
+
+
+def parent_parameter_head_node(finetuning: Any | None = None) -> Params:
+    node = head_node(finetuning)
+    node["name"] = "ParentParameterHead"
     node["alias"] = "Head"
     return node
 
@@ -157,13 +180,12 @@ def parameter_names_by_id(model: LuxonisModel) -> dict[int, str]:
     names: dict[int, str] = {}
     for node_name, luxonis_node in model.lightning_module.nodes.items():
         for module_name, module in luxonis_node.module.named_modules():
-            if list(module.parameters()) and not list(module.children()):
-                for param_name, param in module.named_parameters():
-                    name = (
-                        f"{node_name}.{module.__class__.__name__}."
-                        f"{module_name}.{param_name}"
-                    )
-                    names[id(param)] = name
+            for param_name, param in module.named_parameters(recurse=False):
+                name = (
+                    f"{node_name}.{module.__class__.__name__}."
+                    f"{module_name}.{param_name}"
+                )
+                names[id(param)] = name
     return names
 
 
