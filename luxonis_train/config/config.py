@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
@@ -119,6 +119,24 @@ class ParameterPattern(BaseModelExtraForbid):
 class SchedulerConfig(ConfigItem):
     name: str = "ConstantLR"
 
+    # Finetuning overrides inherit the name from the config they extend,
+    # so for them `params` without a `name` is meaningful.
+    _requires_explicit_name: ClassVar[bool] = True
+
+    @model_validator(mode="after")
+    def validate_name_given_with_params(self) -> Self:
+        if (
+            self._requires_explicit_name
+            and self.params
+            and "name" not in self.model_fields_set
+        ):
+            raise ValueError(
+                "Scheduler `params` were given without a `name`. "
+                f"Specify the scheduler name explicitly instead of relying "
+                f"on the '{self.name}' default."
+            )
+        return self
+
     def get_sequential_lr_params(self) -> "SequentialLRParams":
         if self.name != "SequentialLR":
             raise RuntimeError(
@@ -141,9 +159,24 @@ class SequentialLRParams(BaseModelExtraForbid):
     milestones: list[int]
     last_epoch: int = -1
 
+    @field_validator("schedulers", mode="after")
+    @classmethod
+    def validate_scheduler_names(
+        cls, schedulers: list[SchedulerConfig]
+    ) -> list[SchedulerConfig]:
+        for i, scheduler in enumerate(schedulers):
+            if "name" not in scheduler.model_fields_set:
+                raise ValueError(
+                    f"Scheduler at index {i} of 'SequentialLR' does not "
+                    "specify the `name` field."
+                )
+        return schedulers
+
 
 class FinetuningSchedulerConfig(SchedulerConfig):
     name: str | None = None
+
+    _requires_explicit_name: ClassVar[bool] = False
 
 
 class OptimizerConfig(ConfigItem):

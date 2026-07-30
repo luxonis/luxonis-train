@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Hashable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -90,7 +90,17 @@ class OptimizerPlan(NamedTuple):
 class UnfreezeTarget(NamedTuple):
     optimizer: Optimizer
     optimizer_params: Kwargs
-    parameter_group: dict[str, Any] | None
+    group_index: int | None
+
+
+# Splits the parameters matched by a single finetuning rule into
+# sub-groups with different optimizer options. Used by training
+# strategies whose optimizer options depend on the kind of parameter
+# (e.g. no weight decay for biases and normalization weights).
+GroupSplitter = Callable[
+    [list[tuple[nn.Module, nn.Parameter]], Kwargs, set[str]],
+    list[tuple[list[nn.Parameter], Kwargs]],
+]
 
 
 def _freeze_config_value(value: Any) -> Hashable:
@@ -359,6 +369,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         cfg_base_scheduler: SchedulerConfig | None,
         used_params: set[int] | None = None,
         include_default: bool = True,
+        group_splitter: GroupSplitter | None = None,
     ) -> tuple[list[OptimizerPlan], set[int]]:
         cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
         cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
@@ -438,7 +449,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 cfg_scheduler = merge_config_items(
                     cfg_base_scheduler, finetuning.scheduler
                 )
-                params = []
+                params: list[tuple[nn.Module, nn.Parameter]] = []
                 patterns = finetuning.parameters or [
                     ParameterPattern(name=".*")
                 ]
@@ -464,7 +475,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                                 or node.unfreeze_after is not None
                             )
                         ):
-                            params.append(p)
+                            params.append((module, p))
                             used_params.add(id(p))
 
                 if not params:
@@ -483,15 +494,31 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 )
                 if group_key not in groups:
                     groups[group_key] = ([], cfg_scheduler)
-                groups[group_key][0].append(
-                    OptimizerGroupPlan(
-                        parameters=params,
-                        trainable_parameters=[
-                            p for p in params if p.requires_grad
-                        ],
-                        optimizer_params=cfg_optimizer.params,
+
+                if group_splitter is None:
+                    splits = [([p for _, p in params], cfg_optimizer.params)]
+                else:
+                    explicit_keys = set(
+                        finetuning.optimizer.params
+                        if finetuning.optimizer is not None
+                        else {}
                     )
-                )
+                    splits = group_splitter(
+                        params, cfg_optimizer.params, explicit_keys
+                    )
+
+                for split_params, split_options in splits:
+                    if not split_params:
+                        continue
+                    groups[group_key][0].append(
+                        OptimizerGroupPlan(
+                            parameters=split_params,
+                            trainable_parameters=[
+                                p for p in split_params if p.requires_grad
+                            ],
+                            optimizer_params=split_options,
+                        )
+                    )
 
         for (optimizer_name, _, _), (
             parameter_groups,
@@ -550,6 +577,21 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     def formatted_name(self, node_name: str) -> str:
         return self[node_name].formatted_name
 
+    def frozen_parameter_ids(self) -> set[int]:
+        """Ids of the parameters that C{TrainingManager} freezes before
+        training starts.
+
+        Needed wherever optimizers have to be reasoned about before
+        C{BaseFinetuning.setup} has actually frozen anything, because at
+        that point every parameter still has C{requires_grad=True}.
+        """
+        return {
+            id(parameter)
+            for node in self.values()
+            if node.unfreeze_after is not None
+            for parameter in node.module.parameters()
+        }
+
     def frozen_nodes(
         self,
     ) -> Iterator[tuple[str, BaseNode, int, float | None]]:
@@ -563,12 +605,39 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 )
 
     def restore_unfrozen_parameters(
-        self, module: BaseNode, lr: float | None
+        self,
+        module: BaseNode,
+        lr: float | None,
+        fallback_optimizer: Optimizer | None = None,
+        optimizers: Sequence[Optimizer] = (),
     ) -> None:
+        """Attach the parameters of a just-unfrozen node to an
+        optimizer.
+
+        @type module: BaseNode
+        @param module: The node that has just been unfrozen.
+        @type lr: float | None
+        @param lr: The learning rate to use for the unfrozen parameters.
+            If C{None}, the current learning rate of the optimizer is
+            used, so that parameters unfrozen mid-training join at the
+            already decayed rate rather than at the initial one.
+        @type fallback_optimizer: Optimizer | None
+        @param fallback_optimizer: Optimizer to attach parameters to
+            when no optimizer claimed them at build time. This happens
+            when a training strategy is active, because the strategy
+            skips frozen parameters and only nodes with a C{finetuning}
+            entry get an optimizer of their own.
+        @type optimizers: Sequence[Optimizer]
+        @param optimizers: All optimizers of the run, used to detect
+            parameters that already belong to some optimizer.
+        """
         targets: dict[int, tuple[UnfreezeTarget, list[nn.Parameter]]] = {}
+        unclaimed: list[nn.Parameter] = []
+
         for parameter in module.parameters():
             target = self._unfreeze_targets.pop(id(parameter), None)
             if target is None:
+                unclaimed.append(parameter)
                 continue
             target_id = id(target)
             if target_id not in targets:
@@ -576,29 +645,37 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             targets[target_id][1].append(parameter)
 
         for target, parameters in targets.values():
-            existing_parameter_ids = {
-                id(parameter)
-                for group in target.optimizer.param_groups
-                for parameter in group["params"]
-            }
-            parameters = [
-                parameter
-                for parameter in parameters
-                if id(parameter) not in existing_parameter_ids
-            ]
-            if not parameters:
-                continue
+            _attach_parameter_group(
+                target.optimizer,
+                parameters,
+                lr,
+                target.optimizer_params,
+                target.group_index,
+            )
 
-            if target.parameter_group is not None:
-                target.parameter_group["params"].extend(parameters)
-                if lr is not None:
-                    target.parameter_group["lr"] = float(lr)
-                continue
+        assigned_ids = {
+            id(parameter)
+            for optimizer in optimizers
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+        }
+        unclaimed = [
+            parameter
+            for parameter in unclaimed
+            if parameter.requires_grad and id(parameter) not in assigned_ids
+        ]
+        if not unclaimed:
+            return
 
-            parameter_group = {"params": parameters} | target.optimizer_params
-            if lr is not None:
-                parameter_group["lr"] = float(lr)
-            target.optimizer.add_param_group(parameter_group)
+        if fallback_optimizer is None:
+            logger.warning(
+                f"{len(unclaimed)} parameters of node '{module.name}' were "
+                "unfrozen but belong to no optimizer, so they will not be "
+                "trained."
+            )
+            return
+
+        _attach_parameter_group(fallback_optimizer, unclaimed, lr, {}, None)
 
     def traverse(
         self,
@@ -611,6 +688,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         base_scheduler: SchedulerConfig | None = None,
         used_params: set[int] | None = None,
         include_default: bool = True,
+        group_splitter: GroupSplitter | None = None,
     ) -> tuple[
         Sequence[Optimizer],
         Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
@@ -631,6 +709,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             base_scheduler,
             used_params=used_params,
             include_default=include_default,
+            group_splitter=group_splitter,
         )
         self._unfreeze_targets.clear()
         for plan in optimizer_plans:
@@ -642,17 +721,16 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             if not configured_groups:
                 configured_groups = plan.parameter_groups
 
+            parameter_groups = [
+                {"params": group.trainable_parameters} | group.optimizer_params
+                for group in configured_groups
+            ]
             cfg_optimizer = OptimizerConfig(
                 name=plan.optimizer_name,
                 params=cast(
                     Params,
-                    {
-                        "params": [
-                            {"params": group.trainable_parameters}
-                            | group.optimizer_params
-                            for group in configured_groups
-                        ]
-                    },
+                    {"params": parameter_groups}
+                    | _shared_group_options(parameter_groups),
                 ),
             )
             optimizer, scheduler = build_optimizer_scheduler(
@@ -664,19 +742,15 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             optimizers.append(optimizer)
             schedulers.append(scheduler)
 
-            configured_parameter_groups = {
-                id(group): parameter_group
-                for group, parameter_group in zip(
-                    configured_groups,
-                    optimizer.param_groups,
-                    strict=True,
-                )
+            configured_group_indices = {
+                id(group): index
+                for index, group in enumerate(configured_groups)
             }
             for group in plan.parameter_groups:
                 target = UnfreezeTarget(
                     optimizer=optimizer,
                     optimizer_params=group.optimizer_params,
-                    parameter_group=configured_parameter_groups.get(id(group)),
+                    group_index=configured_group_indices.get(id(group)),
                 )
                 for parameter in group.parameters:
                     if not parameter.requires_grad:
@@ -745,9 +819,12 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     callback.name == "GradientAccumulationScheduler"
                     and n_optimizers > 1
                 ):
-                    logger.warning(
-                        "Gradient accumulation scheduling is not supported for multiple optimizers. "
-                        "The callback will be ignored."
+                    logger.info(
+                        "Multiple optimizers are used, so training runs in "
+                        "manual optimization mode, where Lightning does not "
+                        "support the 'GradientAccumulationScheduler' "
+                        "callback. The configured schedule will be applied "
+                        "directly in the training step instead."
                     )
                     continue
                 callbacks.append(
@@ -779,6 +856,128 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 )
 
         return callbacks
+
+
+_MISSING = object()
+
+
+def _options_equal(left: Any, right: Any) -> bool:
+    if left is _MISSING:
+        return False
+    if left is right:
+        return True
+    try:
+        return bool(left == right)
+    except Exception:  # pragma: no cover
+        return False
+
+
+def _shared_group_options(
+    parameter_groups: Sequence[Mapping[str, Any]],
+) -> Kwargs:
+    """Options that every parameter group agrees on.
+
+    These are also passed to the optimizer's constructor so that
+    arguments consumed only in C{__init__} (such as Adagrad's
+    C{initial_accumulator_value}) take effect, and so that the
+    constructor's own validation of the hyperparameters runs. The per-
+    group dicts keep the same values, so per-group overrides are
+    unaffected.
+    """
+    if not parameter_groups:
+        return {}
+    first, *rest = parameter_groups
+    return {
+        key: value
+        for key, value in first.items()
+        if key != "params"
+        and all(
+            _options_equal(group.get(key, _MISSING), value) for group in rest
+        )
+    }
+
+
+def _current_group_lr(
+    optimizer: Optimizer, group_index: int | None
+) -> float | None:
+    """Return the learning rate the optimizer currently uses.
+
+    Mirrors C{BaseFinetuning.unfreeze_and_add_param_group}: parameters
+    unfrozen mid-training join at the rate the scheduler has decayed to,
+    not at the initially configured one.
+    """
+    groups = optimizer.param_groups
+    if not groups:
+        return None
+    if group_index is not None and 0 <= group_index < len(groups):
+        group = groups[group_index]
+    else:
+        group = groups[0]
+    lr = group.get("lr")
+    return None if lr is None else float(lr)
+
+
+def _attach_parameter_group(
+    optimizer: Optimizer,
+    parameters: list[nn.Parameter],
+    lr: float | None,
+    optimizer_params: Kwargs,
+    group_index: int | None,
+) -> None:
+    """Add parameters to an optimizer as a new parameter group.
+
+    Always a *new* group: extending an existing one in place is
+    invisible to C{BaseFinetuning._store}, which only records groups
+    appended past the ones it already knows about. The stale metadata
+    would then drop the parameters when training is resumed.
+    """
+    existing_ids = {
+        id(parameter)
+        for group in optimizer.param_groups
+        for parameter in group["params"]
+    }
+    parameters = [
+        parameter
+        for parameter in parameters
+        if id(parameter) not in existing_ids
+    ]
+    if not parameters:
+        return
+
+    parameter_group: dict[str, Any] = {"params": parameters} | optimizer_params
+    if lr is None:
+        lr = _current_group_lr(optimizer, group_index)
+    if lr is not None:
+        parameter_group["lr"] = float(lr)
+    optimizer.add_param_group(parameter_group)
+
+
+def get_gradient_accumulation_schedule(cfg: Config) -> dict[int, int] | None:
+    """Return the configured gradient accumulation schedule as C{{epoch:
+    factor}}.
+
+    Lightning refuses to accumulate gradients itself under manual
+    optimization, so with more than one optimizer the schedule has to be
+    applied by hand in the training step.
+    """
+    for callback in cfg.trainer.callbacks:
+        if (
+            callback.active
+            and callback.name == "GradientAccumulationScheduler"
+        ):
+            scheduling = callback.params.get("scheduling")
+            if isinstance(scheduling, Mapping):
+                schedule = {
+                    int(epoch): int(factor)
+                    for epoch, factor in scheduling.items()
+                    if isinstance(epoch, int | str)
+                    and isinstance(factor, int | str)
+                }
+                if schedule:
+                    return schedule
+    if cfg.trainer.accumulate_grad_batches is not None:
+        return {0: int(cfg.trainer.accumulate_grad_batches)}
+    return None
 
 
 def compute_losses(

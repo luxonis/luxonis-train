@@ -267,9 +267,12 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     opts: Params, monkeypatch: pytest.MonkeyPatch
 ):
     """Under manual optimization (multi-optimizer path) Lightning
-    doesn't clip gradients for us — the training step must call
-    ``clip_gradients`` once per optimizer with the configured value and
-    algorithm.
+    doesn't clip gradients for us — the training step must clip the
+    whole model *once*, exactly like automatic optimization does.
+
+    Clipping each optimizer separately would let the total applied
+    gradient scale with the number of optimizers, so adding a single
+    ``finetuning`` entry could make a previously converging run diverge.
 
     Setup:
         Head rule targeting Linear with SGD (forces two optimizers →
@@ -277,9 +280,9 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
         ``gradient_clip_algorithm='value'``.
 
     Expected result:
-        ``automatic_optimization`` flipped to ``False`` and
-        ``clip_gradients`` was invoked once for each configured
-        optimizer with the exact ``(1.5, 'value')`` arguments.
+        ``automatic_optimization`` flipped to ``False`` and the clipping
+        happened in a single call covering every parameter that has a
+        gradient, rather than once per optimizer.
     """
     model = _build_model(
         config(
@@ -300,7 +303,7 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     )
     module = model.lightning_module
     optimizers, _ = module.configure_optimizers()
-    calls: list[tuple[Optimizer, float, str]] = []
+    calls: list[tuple[set[int], float]] = []
     optimizer_accesses: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
     monkeypatch.setattr(
@@ -327,21 +330,25 @@ def test_manual_multi_optimizer_training_step_clips_gradients(
     monkeypatch.setattr(module, "lr_schedulers", list)
     monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
     monkeypatch.setattr(
-        module,
-        "clip_gradients",
-        lambda optimizer, gradient_clip_val, gradient_clip_algorithm: (
-            calls.append(
-                (optimizer, gradient_clip_val, gradient_clip_algorithm)
-            )
+        torch.nn.utils,
+        "clip_grad_value_",
+        lambda parameters, clip_value: calls.append(
+            ({id(parameter) for parameter in parameters}, clip_value)
         ),
     )
+    for parameter in module.parameters():
+        parameter.grad = torch.ones_like(parameter)
+    # Captured up front: `optimizer.zero_grad()` clears the gradients
+    # again once the step has run.
+    expected_ids = {id(parameter) for parameter in module.parameters()}
     module._trainer = SimpleNamespace(is_last_batch=False)  # type: ignore[assignment]
 
-    module.training_step((torch.empty(0), {}))
+    module.training_step((torch.empty(0), {}), batch_idx=0)
 
     assert module.automatic_optimization is False
     assert optimizer_accesses == [((), {})]
-    assert calls == [(optimizer, 1.5, "value") for optimizer in optimizers]
+    assert len(optimizers) > 1
+    assert calls == [(expected_ids, 1.5)]
 
 
 def test_manual_training_step_accepts_single_optimizer_and_scheduler(

@@ -1,5 +1,6 @@
 import math
 
+from loguru import logger
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from torch.nn import functional as F
@@ -22,6 +23,7 @@ class OCRCTCHead(BaseHead):
         ignore_unknown: bool = True,
         mid_channels: int | None = None,
         return_feats: bool = False,
+        fc_decay: float | None = None,
         **kwargs,
     ):
         """OCR CTC head.
@@ -44,10 +46,29 @@ class OCRCTCHead(BaseHead):
         @type return_feats: bool
         @param return_feats: Whether to return features. Defaults to
             False.
+        @type fc_decay: float | None
+        @param fc_decay: Deprecated and ignored. It never had any effect
+            on training. Use a C{finetuning} entry with a
+            C{weight_decay} optimizer parameter to regularize the fully
+            connected layers instead.
         """
         super().__init__(**kwargs)
         if len(set(alphabet)) != len(alphabet):  # pragma: no cover
             raise ValueError("Alphabet has duplicate characters.")
+
+        if fc_decay is not None:
+            logger.warning(
+                "The `fc_decay` parameter of 'OCRCTCHead' is deprecated "
+                "and has no effect. It never applied any regularization. "
+                "Use a `finetuning` entry on the node to set "
+                "`weight_decay` for the fully connected layers instead:\n"
+                "  finetuning:\n"
+                "    - parameters:\n"
+                "        module_type: Linear\n"
+                "      optimizer:\n"
+                "        params:\n"
+                f"          weight_decay: {fc_decay}"
+            )
 
         self.return_feats = return_feats
 

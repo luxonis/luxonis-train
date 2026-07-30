@@ -48,6 +48,7 @@ from .utils import (
     check_tensor_device,
     compute_losses,
     compute_visualization_buffer,
+    get_gradient_accumulation_schedule,
     get_model_execution_order,
     log_balanced_class_images,
     log_sequential_images,
@@ -171,6 +172,9 @@ class LuxonisLightningModule(pl.LightningModule):
         self._training_strategy_base_configs: (
             tuple[OptimizerConfig, SchedulerConfig] | None
         ) = None
+        self._gradient_accumulation_schedule: dict[int, int] | None = (
+            get_gradient_accumulation_schedule(self.cfg)
+        )
 
     @override
     def load_state_dict(
@@ -465,40 +469,110 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def training_step(
-        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+        self,
+        train_batch: tuple[dict[str, Tensor] | Tensor, Labels],
+        batch_idx: int = 0,
     ) -> Tensor:
         loss = self.compute_training_loss(train_batch)
         if self.automatic_optimization:
             return loss
-        optimizers = self.optimizers()
-        if optimizers is None:
-            optimizers = []
-        elif not isinstance(optimizers, list):
-            optimizers = [optimizers]
-        schedulers = self.lr_schedulers()
-        if schedulers is None:
-            schedulers = []
-        elif not isinstance(schedulers, list):
-            schedulers = [schedulers]
-        for optimizer in optimizers:
-            optimizer.zero_grad()
-        self.manual_backward(loss)
-        if self.cfg.trainer.gradient_clip_val is not None:
+
+        optimizers = self._active_optimizers()
+        schedulers = self._active_schedulers()
+
+        accumulation = self._accumulation_factor()
+        # Automatic optimization normalizes the loss by the accumulation
+        # factor before the backward pass, so manual accumulation has to
+        # do the same to keep the gradient magnitude unchanged.
+        self.manual_backward(loss / accumulation)
+
+        is_last_batch = self.trainer.is_last_batch
+        if (batch_idx + 1) % accumulation == 0 or is_last_batch:
+            self._clip_gradients_globally()
             for optimizer in optimizers:
-                self.clip_gradients(
-                    cast(Optimizer, optimizer),
-                    gradient_clip_val=self.cfg.trainer.gradient_clip_val,
-                    gradient_clip_algorithm=(
-                        self.cfg.trainer.gradient_clip_algorithm or "norm"
-                    ),
-                )
-        for optimizer in optimizers:
-            optimizer.step()
-        if self.trainer.is_last_batch:
+                optimizer.step()
+            for optimizer in optimizers:
+                optimizer.zero_grad()
+
+        if is_last_batch:
             for scheduler in schedulers:
                 if not isinstance(scheduler, ReduceLROnPlateau):
                     scheduler.step()
         return loss
+
+    def _active_optimizers(self) -> list[Any]:
+        optimizers = self.optimizers()
+        if optimizers is None:
+            return []
+        if isinstance(optimizers, list):
+            return optimizers
+        return [optimizers]
+
+    def _active_schedulers(self) -> list[Any]:
+        schedulers = self.lr_schedulers()
+        if schedulers is None:
+            return []
+        if isinstance(schedulers, list):
+            return schedulers
+        return [schedulers]
+
+    def _accumulation_factor(self) -> int:
+        """Return the number of batches to accumulate gradients over.
+
+        Lightning rejects `accumulate_grad_batches != 1` under manual
+        optimization, so with multiple optimizers the configured
+        schedule has to be honored here. Ignoring it would be silently
+        wrong for the predefined models, whose loss weights
+        `smart_cfg_auto_populate` has already scaled by the very same
+        factor.
+        """
+        schedule = self._gradient_accumulation_schedule
+        if not schedule:
+            return 1
+        factor = 1
+        for epoch in sorted(schedule):
+            if self.current_epoch >= epoch:
+                factor = schedule[epoch]
+        return max(1, factor)
+
+    def _clip_gradients_globally(self) -> None:
+        """Clip the gradients of the whole model as a single unit.
+
+        Automatic optimization clips one global norm over all
+        parameters. Clipping each optimizer separately would let the
+        total norm grow with the number of optimizers, so a config that
+        converged before adding a `finetuning` entry could diverge after
+        it.
+        """
+        clip_val = self.cfg.trainer.gradient_clip_val
+        if clip_val is None:
+            return
+        parameters = [p for p in self.parameters() if p.grad is not None]
+        if not parameters:
+            return
+        if self.cfg.trainer.gradient_clip_algorithm == "value":
+            torch.nn.utils.clip_grad_value_(parameters, clip_val)
+        else:
+            torch.nn.utils.clip_grad_norm_(parameters, clip_val)
+
+    def _reduce_across_ranks(self, value: float) -> float:
+        """Average a rank-local value over all processes.
+
+        The loss accumulator is per-rank. Stepping `ReduceLROnPlateau`
+        with it would let ranks disagree about when to decay, and
+        learning rates are optimizer state that DDP never re-
+        synchronizes, so the replicas would silently drift apart.
+        """
+        try:
+            trainer = self.trainer
+        except RuntimeError:
+            return value
+        if trainer.world_size <= 1:
+            return value
+        reduced = trainer.strategy.reduce(
+            torch.tensor(value, device=self.device), reduce_op="mean"
+        )
+        return float(reduced)
 
     def _step_reduce_lr_on_plateau_schedulers(
         self, loss: float, metrics: dict[str, dict[str, float]]
@@ -506,15 +580,18 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.automatic_optimization:
             return
 
-        schedulers = self.lr_schedulers()
-        if schedulers is None:
+        schedulers = [
+            scheduler
+            for scheduler in self._active_schedulers()
+            if isinstance(scheduler, ReduceLROnPlateau)
+        ]
+        if not schedulers:
             return
-        if not isinstance(schedulers, list):
-            schedulers = [schedulers]
+
+        if any(scheduler.mode == "min" for scheduler in schedulers):
+            loss = self._reduce_across_ranks(loss)
 
         for scheduler in schedulers:
-            if not isinstance(scheduler, ReduceLROnPlateau):
-                continue
             if scheduler.mode == "min":
                 scheduler.step(loss)
                 continue
@@ -682,7 +759,12 @@ class LuxonisLightningModule(pl.LightningModule):
                 base_optimizer_cfg,
                 base_scheduler_cfg,
                 include_default=False,
+                group_splitter=self.training_strategy.split_parameter_group,
             )
+            # The strategy only adjusts learning rates of its own
+            # optimizer, so it has to be told about the optimizers built
+            # from the `finetuning` rules for its warmup to cover them.
+            self.training_strategy.attach_optimizers(optimizers)
             used_params = {
                 id(p)
                 for optimizer in optimizers
@@ -696,8 +778,18 @@ class LuxonisLightningModule(pl.LightningModule):
             schedulers = [*schedulers, *strategy_schedulers]
         else:
             optimizers, schedulers = self.nodes.build_optimizers()
-        if len(optimizers) > 1:
-            self.automatic_optimization = False
+
+        if not optimizers:
+            raise ValueError(
+                "No optimizer was created because no parameter of the model "
+                "is trainable. Check the `freezing` settings of the nodes "
+                "and make sure at least one node has trainable parameters."
+            )
+
+        # Assigned unconditionally: the flag lives on the module, so
+        # leaving it at `False` would leak into any later `fit` call on
+        # the same model.
+        self.automatic_optimization = len(optimizers) == 1
 
         self._log_optimizer_scheduler_info(optimizers, schedulers)
 
@@ -727,8 +819,12 @@ class LuxonisLightningModule(pl.LightningModule):
             base_scheduler_cfg,
             include_default=False,
         )
+        # `configure_callbacks` runs before `TrainingManager` freezes
+        # the configured nodes, so without excluding them here the
+        # strategy would count parameters that are frozen by the time
+        # the optimizers are really built, and overestimate.
         return count + self.training_strategy.estimate_optimizer_count(
-            used_params
+            used_params | self.nodes.frozen_parameter_ids()
         )
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:

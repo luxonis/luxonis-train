@@ -1,8 +1,10 @@
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
+from luxonis_ml.typing import Kwargs
 from torch import nn
 from torch.optim import SGD
 from torch.optim.lr_scheduler import LambdaLR
@@ -13,6 +15,25 @@ import luxonis_train as lxt
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 
 from .base_strategy import BaseTrainingStrategy
+
+
+def _optional_float(value: object) -> float | None:
+    return None if value is None else float(cast(float, value))
+
+
+def is_undecayed_parameter(module: nn.Module, parameter: nn.Parameter) -> bool:
+    """Whether L{TripleLRSGD} leaves this parameter out of weight decay.
+
+    Mirrors the grouping done by L{TripleLRSGD.parameter_groups}, where
+    only regular weights are decayed while biases and BatchNorm weights
+    are not.
+    """
+    if getattr(module, "bias", None) is parameter:
+        return True
+    return (
+        isinstance(module, nn.BatchNorm2d)
+        and getattr(module, "weight", None) is parameter
+    )
 
 
 @dataclass
@@ -31,6 +52,8 @@ class TripleLRScheduler:
             round(self.warmup_epochs * self.max_stepnum), 100
         )
         self.step = 0
+        self.external_optimizers: list[Optimizer] = []
+        self.external_targets: list[list[tuple[float, float | None]]] = []
         self.lrf = self.lre / self.optimizer.defaults["lr"]
         if self.cosine_annealing:
             self.lf = lambda x: (
@@ -45,6 +68,22 @@ class TripleLRScheduler:
 
     def create_scheduler(self) -> LambdaLR:
         return LambdaLR(self.optimizer, lr_lambda=self.lf)
+
+    def attach_optimizers(self, optimizers: Sequence[Optimizer]) -> None:
+        """Record the optimizers built from the C{finetuning} rules so
+        that warmup covers them too.
+
+        Their configured learning rate and momentum are captured now,
+        because warmup overwrites both on every step.
+        """
+        self.external_optimizers = list(optimizers)
+        self.external_targets = [
+            [
+                (float(group["lr"]), _optional_float(group.get("momentum")))
+                for group in optimizer.param_groups
+            ]
+            for optimizer in optimizers
+        ]
 
     def update_learning_rate(self, current_epoch: int) -> None:
         self.step = self.step % self.max_stepnum
@@ -68,7 +107,31 @@ class TripleLRScheduler:
                         [0, self.warmup_stepnum],
                         [self.warmup_momentum, momentum],
                     )
+            self._warmup_external_optimizers(curr_step, current_epoch)
         self.step += 1
+
+    def _warmup_external_optimizers(
+        self, curr_step: int, current_epoch: int
+    ) -> None:
+        for optimizer, targets in zip(
+            self.external_optimizers, self.external_targets, strict=True
+        ):
+            # Groups added after `attach_optimizers` (by unfreezing) have
+            # no recorded target, so `zip` leaves them untouched.
+            for param, (lr, momentum) in zip(
+                optimizer.param_groups, targets, strict=False
+            ):
+                param["lr"] = np.interp(
+                    curr_step,
+                    [0, self.warmup_stepnum],
+                    [0.0, lr * self.lf(current_epoch)],
+                )
+                if momentum is not None and "momentum" in param:
+                    param["momentum"] = np.interp(
+                        curr_step,
+                        [0, self.warmup_stepnum],
+                        [self.warmup_momentum, momentum],
+                    )
 
 
 @dataclass
@@ -191,6 +254,7 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
         )
         self._excluded_params: set[int] = set()
+        self._external_optimizers: list[Optimizer] = []
         self._build_optimizer_scheduler()
 
     def _build_optimizer_scheduler(
@@ -216,6 +280,9 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             epochs=self.cfg.trainer.epochs,
             max_stepnum=self.max_stepnum,
         )
+        # `configure_optimizers` can rebuild the scheduler after the
+        # finetuning optimizers were attached, so re-attach them here.
+        self.scheduler.attach_optimizers(self._external_optimizers)
 
     @override
     def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]:
@@ -231,6 +298,53 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             name="LambdaLR",
             params={"lr_lambda": self.scheduler.lf},  # type: ignore
         )
+
+    @override
+    def attach_optimizers(self, optimizers: Sequence[Optimizer]) -> None:
+        self._external_optimizers = list(optimizers)
+        self.scheduler.attach_optimizers(self._external_optimizers)
+
+    @override
+    def split_parameter_group(
+        self,
+        parameters: list[tuple[nn.Module, nn.Parameter]],
+        optimizer_params: Kwargs,
+        explicit_keys: set[str],
+    ) -> list[tuple[list[nn.Parameter], Kwargs]]:
+        """Keep the strategy's own rule that biases and BatchNorm
+        weights are never decayed.
+
+        Without this, a C{finetuning} rule inheriting C{weight_decay}
+        from L{get_base_configs} would apply it to every parameter it
+        matched, including the ones L{TripleLRSGD.create_optimizer}
+        deliberately leaves undecayed. A C{weight_decay} the user set on
+        the rule itself is honored as written.
+        """
+        if (
+            "weight_decay" not in optimizer_params
+            or "weight_decay" in explicit_keys
+            or not optimizer_params["weight_decay"]
+        ):
+            return [
+                ([parameter for _, parameter in parameters], optimizer_params)
+            ]
+
+        decayed: list[nn.Parameter] = []
+        undecayed: list[nn.Parameter] = []
+        for module, parameter in parameters:
+            if is_undecayed_parameter(module, parameter):
+                undecayed.append(parameter)
+            else:
+                decayed.append(parameter)
+
+        groups = []
+        if decayed:
+            groups.append((decayed, optimizer_params))
+        if undecayed:
+            groups.append(
+                (undecayed, optimizer_params | {"weight_decay": 0.0})
+            )
+        return groups
 
     @override
     def configure_optimizers(

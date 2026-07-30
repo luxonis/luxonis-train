@@ -23,7 +23,11 @@ class TrainingManager(BaseFinetuning):
         epoch: int,
         optimizer: Optimizer,
     ) -> None:
-        _ = optimizer
+        try:
+            optimizers = list(pl_module.trainer.optimizers)
+        except RuntimeError:
+            optimizers = [optimizer]
+
         for (
             node_name,
             node,
@@ -33,8 +37,16 @@ class TrainingManager(BaseFinetuning):
             if e == epoch:
                 logger.info(f"Unfreezing node '{node_name}'")
                 self.make_trainable(node)
+                # `optimizer` is the fallback for parameters that no
+                # optimizer claimed at build time, which happens when a
+                # training strategy is active: it skips frozen
+                # parameters, and only nodes with a `finetuning` entry
+                # get an optimizer of their own.
                 pl_module.nodes.restore_unfrozen_parameters(
-                    node, lr_after_unfreeze
+                    node,
+                    lr_after_unfreeze,
+                    fallback_optimizer=optimizer,
+                    optimizers=optimizers,
                 )
 
     @override
