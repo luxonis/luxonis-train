@@ -45,7 +45,10 @@ from .utils import (
     compute_visualization_buffer,
     get_model_execution_order,
     log_balanced_class_images,
+    log_metric_artifacts,
     log_sequential_images,
+    metric_artifact_image_name,
+    mlflow_image_key,
     postprocess_metrics,
 )
 
@@ -842,6 +845,19 @@ class LuxonisLightningModule(pl.LightningModule):
                     metric.get_loggable_values(computed),
                     log_sub_metrics=self.cfg.trainer.log_sub_metrics,
                 )
+                if (
+                    self.trainer.is_global_zero
+                    and not self.trainer.sanity_checking
+                ):
+                    log_metric_artifacts(
+                        self.tracker,
+                        metric,
+                        computed,
+                        mode=mode,
+                        formatted_node_name=formatted_node_name,
+                        metric_name=metric_name,
+                        current_epoch=self.current_epoch,
+                    )
                 metric.reset()
                 if isinstance(
                     self.trainer.strategy,
@@ -878,46 +894,6 @@ class LuxonisLightningModule(pl.LightningModule):
                             sync_dist=True,
                         )
 
-                if self.trainer.is_global_zero:
-                    try:
-                        artifacts = metric.get_artifacts(computed)
-                    except Exception:
-                        logger.exception(
-                            "Failed to generate artifacts for metric "
-                            f"'{metric_name}'. Skipping artifact logging."
-                        )
-                        artifacts = {}
-
-                    for artifact_name, artifact in artifacts.items():
-                        if artifact.dim() != 3:
-                            logger.warning(
-                                "Skipping metric artifact "
-                                f"'{artifact_name}' from metric "
-                                f"'{metric_name}': expected shape "
-                                f"[C, H, W], got {tuple(artifact.shape)}."
-                            )
-                            continue
-
-                        try:
-                            image = (
-                                artifact.detach()
-                                .cpu()
-                                .numpy()
-                                .transpose(1, 2, 0)
-                            )
-                            self.tracker.log_image(
-                                name=f"{mode}/metrics/{self.current_epoch}/"
-                                f"{formatted_node_name}/{metric_name}/"
-                                f"{artifact_name}",
-                                img=image,
-                                step=self.current_epoch,
-                            )
-                        except Exception:
-                            logger.exception(
-                                "Failed to log metric artifact "
-                                f"'{artifact_name}' from metric "
-                                f"'{metric_name}'. Skipping artifact logging."
-                            )
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
             loss=self._loss_accumulators[mode]["loss"],
@@ -1035,14 +1011,26 @@ class LuxonisLightningModule(pl.LightningModule):
                 for artifact_name in metric.get_artifact_names():
                     for epoch_idx in sorted({0, *val_eval_epochs}):
                         artifact_keys.add(
-                            f"val/metrics/{epoch_idx}/"
-                            f"{formatted_node_name}/{metric_name}/"
-                            f"{artifact_name}.png"
+                            mlflow_image_key(
+                                metric_artifact_image_name(
+                                    "val",
+                                    formatted_node_name,
+                                    metric_name,
+                                    artifact_name,
+                                ),
+                                epoch_idx,
+                            )
                         )
                     artifact_keys.add(
-                        f"test/metrics/{test_eval_epoch}/"
-                        f"{formatted_node_name}/{metric_name}/"
-                        f"{artifact_name}.png"
+                        mlflow_image_key(
+                            metric_artifact_image_name(
+                                "test",
+                                formatted_node_name,
+                                metric_name,
+                                artifact_name,
+                            ),
+                            test_eval_epoch,
+                        )
                     )
 
             for viz_name in node.visualizers:

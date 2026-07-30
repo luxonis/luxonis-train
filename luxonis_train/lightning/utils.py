@@ -563,6 +563,99 @@ def postprocess_metrics(
             )
 
 
+def metric_artifact_image_name(
+    mode: Literal["test", "val"],
+    formatted_node_name: str,
+    metric_name: str,
+    artifact_name: str,
+) -> str:
+    """Build the tracker image name for a metric artifact.
+
+    The epoch is deliberately not part of the name - C{log_image}
+    inserts the step as its own path segment, the same way visualization
+    images are named.
+    """
+    return (
+        f"{mode}/metrics/{formatted_node_name}/{metric_name}/{artifact_name}"
+    )
+
+
+def mlflow_image_key(name: str, step: int) -> str:
+    """Return the MLflow artifact path an image is logged under.
+
+    Mirrors the path construction of C{LuxonisTracker.log_image}, which
+    splits the caption off the name and puts the step in between.
+    """
+    base_path, caption = name.rsplit("/", 1)
+    return f"{base_path}/{step}/{caption}.png"
+
+
+def log_metric_artifacts(
+    tracker: LuxonisTrackerPL,
+    metric: BaseMetric,
+    computed: Any,
+    *,
+    mode: Literal["test", "val"],
+    formatted_node_name: str,
+    metric_name: str,
+    current_epoch: int,
+) -> None:
+    """Render and log the image artifacts of a single metric.
+
+    Must be called before the metric is reset, as artifacts may be
+    derived from the metric's state. Every failure is reported and
+    swallowed - a metric that cannot produce or upload a figure must not
+    bring down the run.
+    """
+    try:
+        artifacts = metric.get_artifacts(computed)
+    except Exception:
+        logger.exception(
+            "Failed to generate artifacts for metric "
+            f"'{metric_name}'. Skipping artifact logging."
+        )
+        return
+
+    if not isinstance(artifacts, dict):
+        logger.warning(
+            f"Metric '{metric_name}' returned artifacts of type "
+            f"'{type(artifacts).__name__}', expected a dict of "
+            "images. Skipping artifact logging."
+        )
+        return
+
+    for artifact_name, artifact in artifacts.items():
+        try:
+            if not isinstance(artifact, Tensor):
+                logger.warning(
+                    f"Skipping metric artifact '{artifact_name}' from "
+                    f"metric '{metric_name}': expected a tensor of shape "
+                    f"[C, H, W], got a '{type(artifact).__name__}'."
+                )
+                continue
+            if artifact.dim() != 3:
+                logger.warning(
+                    f"Skipping metric artifact '{artifact_name}' from "
+                    f"metric '{metric_name}': expected shape [C, H, W], "
+                    f"got {tuple(artifact.shape)}."
+                )
+                continue
+
+            tracker.log_image(
+                name=metric_artifact_image_name(
+                    mode, formatted_node_name, metric_name, artifact_name
+                ),
+                img=artifact.detach().cpu().numpy().transpose(1, 2, 0),
+                step=current_epoch,
+            )
+        except Exception:
+            logger.exception(
+                f"Failed to log metric artifact '{artifact_name}' from "
+                f"metric '{metric_name}'. The artifact is dropped for "
+                f"epoch {current_epoch}."
+            )
+
+
 T = TypeVar("T", bound=BaseAttachedModule)
 
 

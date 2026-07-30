@@ -123,13 +123,15 @@ class EfficientBBoxHead(BaseDetectionHead):
             stride_tensor,
         )
         bboxes = self._run_nms(detections_pre_nms)
-        return {
+        packet: Packet[Tensor] = {
             self.task.main_output: bboxes,
             "features": features_list,
             "class_scores": class_scores,
             "distributions": distributions,
-            "detections_pre_nms": detections_pre_nms,
         }
+        if self.keep_detections_pre_nms:
+            packet["detections_pre_nms"] = detections_pre_nms
+        return packet
 
     @staticmethod
     def _wrap_export(
