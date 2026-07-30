@@ -183,7 +183,6 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Build image artifacts from an already computed metric
         result.
         """
-        del values
         return {}
 
     def get_artifact_names(self) -> tuple[str, ...]:
