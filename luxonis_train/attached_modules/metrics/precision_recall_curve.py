@@ -74,10 +74,10 @@ class PrecisionRecallCurve(BaseMetric):
             counted, not even at the lowest confidence threshold. The
             metric spends most of its time in NMS, whose cost grows with
             the number of candidates above the floor, so a floor of C{0}
-            keeps every decoded anchor (including the ones scoring zero)
-            and makes validation needlessly slow. The default of C{1e-3}
-            matches common detection validation practice. The effective
-            floor is the larger of this value and the lowest confidence
+            keeps every decoded anchor scoring above zero and makes
+            validation needlessly slow. The default of C{1e-3} matches
+            common detection validation practice. The effective floor is
+            the larger of this value and the lowest confidence
             threshold.
         @type nms_iou_threshold: float | None
         @param nms_iou_threshold: IoU used by NMS. Defaults to the
@@ -521,7 +521,9 @@ def _exclusive_threshold(value: float) -> float:
     C{non_max_suppression} keeps candidates scoring strictly above
     C{conf_thres}, while the curve counts use C{>=}. Returning the
     largest C{float32} below C{value} keeps candidates scoring exactly
-    C{value} in both.
+    C{value} in both. A floor of C{0} is the exception: C{conf_thres}
+    may not be negative, so candidates scoring exactly zero are always
+    dropped.
     """
     if value <= 0.0:
         return 0.0

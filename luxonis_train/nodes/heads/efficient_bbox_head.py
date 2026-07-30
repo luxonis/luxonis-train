@@ -163,29 +163,6 @@ class EfficientBBoxHead(BaseDetectionHead):
             [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
         )
 
-    def _postprocess_detections(
-        self,
-        features: list[Tensor],
-        class_scores: Tensor,
-        distributions: Tensor,
-        anchor_points: Tensor,
-        stride_tensor: Tensor,
-        *,
-        tail: list[Tensor] | None = None,
-    ) -> list[Tensor]:
-        """Perform post-processing of the output and returns bboxs after
-        NMS.
-        """
-        detections_pre_nms = self._prepare_bbox_inference_output(
-            features,
-            class_scores,
-            distributions,
-            anchor_points,
-            stride_tensor,
-            tail=tail,
-        )
-        return self._run_nms(detections_pre_nms)
-
     def _prepare_bbox_inference_output(
         self,
         features: list[Tensor],
