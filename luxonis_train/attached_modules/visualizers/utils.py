@@ -1,7 +1,7 @@
 import colorsys
 import io
 from collections.abc import Mapping
-from typing import Literal
+from typing import Literal, cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -87,7 +87,7 @@ def torch_img_to_numpy(
     arr = np.ascontiguousarray(arr)
     if reverse_colors:
         arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-    return arr
+    return cast(npt.NDArray[np.uint8], arr)
 
 
 def numpy_to_torch_img(img: np.ndarray) -> Tensor:

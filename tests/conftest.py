@@ -272,6 +272,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
     ) -> DatasetIterator:
         for path in train_paths:
             img = cv2.imread(str(path))
+            assert img is not None, f"Failed to read image '{path}'"
             img_h, img_w, _ = img.shape
             mask = np.zeros((img_h, img_w), dtype=np.uint8)
             yield {
@@ -284,6 +285,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
 
         for path in test_paths:
             img = cv2.imread(str(path))
+            assert img is not None, f"Failed to read image '{path}'"
             img_h, img_w, _ = img.shape
             mask = random_square_mask((img_h, img_w))
             poly = cv2.findContours(

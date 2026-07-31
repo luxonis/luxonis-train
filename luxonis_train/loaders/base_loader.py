@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -296,13 +296,16 @@ class BaseLoaderTorch(
         @param path: Path to the image file.
         @rtype: np.ndarray[np.uint8]
         @return: Image as a numpy array.
+        @raise ValueError: If the image cannot be read.
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError(f"Unable to read image from '{path}'")
         if self.color_space == "RGB":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif self.color_space == "GRAY":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        return img
+        return cast(npt.NDArray[np.uint8], img)
 
     def _getter_check_none(
         self,
