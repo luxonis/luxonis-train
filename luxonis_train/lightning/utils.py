@@ -496,9 +496,12 @@ def build_training_strategy(
                 stubs["rules"] = lambda self: []
             elif method == "get_base_configs":
                 stubs["get_base_configs"] = _raise_not_implemented
-        concrete = type(cls.__name__, (cls,), stubs)
-        legacy = concrete(
-            pl_module=cast(Any, pl_module), **training_strategy.params
+        # `register=False`: the shim must not replace the original
+        # class in the STRATEGIES registry.
+        metaclass = cast(Any, type(cls))
+        concrete = metaclass(cls.__name__, (cls,), stubs, register=False)
+        legacy = cast(Any, concrete)(
+            pl_module=pl_module, **training_strategy.params
         )
         return LegacyStrategyAdapter(legacy)
 

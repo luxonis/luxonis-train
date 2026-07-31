@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+import torch
 from lightning.pytorch.callbacks import GradientAccumulationScheduler
 from loguru import logger
 from luxonis_ml.typing import Params
@@ -12,6 +13,7 @@ from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.config.config import (
+    CallbackConfig,
     Config,
     OptimizerConfig,
     SchedulerConfig,
@@ -31,6 +33,7 @@ from ._helpers import (
     matching_names,
     optimizer_group_names,
     optimizer_names,
+    parent_parameter_head_node,
     scheduler,
     tiny_head_node,
     trainable_parameter_names,
@@ -603,3 +606,129 @@ def test_strategy_override_warning_only_when_optimizer_explicitly_set():
     mutated.trainer.optimizer.name = "AdamW"
     (warning,) = _override_warnings(mutated)
     assert "optimizer" in warning
+
+
+def test_strategy_tail_adopts_attribute_parameters(opts: Params):
+    """Parameters that are not literal ``weight``/``bias`` attributes
+    (e.g. a scalar ``alpha``) match none of TripleLR's structural rules
+    and must flow to the default tail instead of being silently dropped
+    from optimization (the pre-plan implementation lost them).
+    """
+    snapshot = build_snapshot(
+        config(
+            [parent_parameter_head_node()],
+            trainer={
+                "training_strategy": {
+                    "name": "TripleLRSGDStrategy",
+                    "params": {"lr": 0.02},
+                }
+            },
+        ),
+        opts,
+    )
+
+    alpha_names = matching_names(snapshot, "alpha")
+    assert alpha_names
+    _, optimizer, group = find_group(snapshot, alpha_names)
+    assert isinstance(optimizer, SGD)
+    assert group["lr"] == pytest.approx(0.02)
+    assert_no_duplicate_parameters(snapshot)
+    assert_all_trainable_parameters_assigned(snapshot)
+
+
+class OldStyleStrategy(BaseTrainingStrategy):
+    """A strategy written against the released (pre-rules) API: it
+    neither implements ``rules`` nor ``get_base_configs``.
+    """
+
+    def __init__(
+        self, pl_module: "lxt.LuxonisLightningModule", lr: float = 0.05
+    ):
+        self.pl_module = pl_module
+        self.lr = lr
+        self.update_calls = 0
+        self._optimizer = AdamW(
+            [
+                parameter
+                for parameter in pl_module.parameters()
+                if parameter.requires_grad
+            ],
+            lr=lr,
+        )
+
+    def configure_optimizers(self):
+        return [self._optimizer], [ConstantLR(self._optimizer, factor=1.0)]
+
+    @override
+    def update_parameters(self) -> None:
+        self.update_calls += 1
+
+
+def test_legacy_strategy_is_mounted_with_a_deprecation_warning(
+    opts: Params,
+):
+    """A strategy implementing the released ``configure_optimizers``
+    API is wrapped by the compatibility adapter: a deprecation warning
+    is logged, its optimizer is mounted verbatim (single opaque inner -
+    the raw shapes are kept), and ``update_parameters`` forwards.
+    """
+    from luxonis_train.strategies.legacy import LegacyStrategyAdapter
+
+    # `LuxonisModel` construction re-runs `setup_logging` (wiping any
+    # loguru sink), so the warning is captured around
+    # `build_training_strategy` directly, driven with a stub module.
+    cfg = _strategy_config({})
+    cfg.trainer.training_strategy = CallbackConfig(name="OldStyleStrategy")
+    stub = SimpleNamespace(
+        parameters=lambda: iter([nn.Parameter(torch.zeros(2))])
+    )
+    messages: list[str] = []
+    handler_id = logger.add(
+        lambda message: messages.append(message.record["message"]),
+        level="WARNING",
+    )
+    try:
+        strategy = build_training_strategy(cfg, cast(Any, stub))
+    finally:
+        logger.remove(handler_id)
+
+    assert any("deprecated strategy API" in message for message in messages)
+    assert isinstance(strategy, LegacyStrategyAdapter)
+    assert strategy.legacy_name == "OldStyleStrategy"
+    strategy.update_parameters()
+
+    # end to end: the mounted optimizer keeps its raw shapes
+    model = _build_model(
+        config(
+            [tiny_head_node()],
+            trainer={"training_strategy": {"name": "OldStyleStrategy"}},
+        ),
+        opts,
+    )
+    optimizers, scheduler_configs = (
+        model.lightning_module.configure_optimizers()
+    )
+    (optimizer,) = optimizers
+    assert isinstance(optimizer, AdamW)
+    assert isinstance(scheduler_configs[0], ConstantLR)
+    legacy = model.lightning_module.training_strategy
+    assert isinstance(legacy, LegacyStrategyAdapter)
+    legacy.update_parameters()
+
+
+def test_legacy_strategy_overlap_with_finetuning_rules_errors(
+    opts: Params,
+):
+    """A legacy strategy whose optimizer holds parameters that a
+    finetuning rule already claimed is a hard error - double membership
+    would step those parameters twice.
+    """
+    model = _build_model(
+        config(
+            [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
+            trainer={"training_strategy": {"name": "OldStyleStrategy"}},
+        ),
+        opts,
+    )
+    with pytest.raises(ValueError, match="already claimed"):
+        model.lightning_module.configure_optimizers()

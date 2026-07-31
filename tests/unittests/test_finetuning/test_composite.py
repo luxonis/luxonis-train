@@ -2,6 +2,8 @@
 wrappers, and the training-plan resolution pipeline.
 """
 
+from typing import cast
+
 import pytest
 import torch
 from lightning.fabric.utilities.optimizer import _optimizer_to_device
@@ -360,3 +362,44 @@ def test_lr_after_unfreeze_survives_scheduler_steps(opts: Params):
     # the cosine curve continues from the NEW base, not the old 0.02
     expected = 0.5 * (1 + math.cos(math.pi * 1 / 4)) / 2
     assert runtime.group(handle)["lr"] == pytest.approx(expected)
+
+
+def test_plateau_and_epoch_scheduler_configs_coexist(opts: Params):
+    """A plateau rule and an epoch-interval rule produce two scheduler
+    configurations on the one composite optimizer - Lightning drives
+    the epoch bucket every epoch and the plateau bucket with its
+    monitored value.
+    """
+    node = tiny_head_node(
+        [
+            {
+                "parameters": [{"module_type": "Linear"}],
+                "optimizer": {"name": "SGD", "params": {"lr": 0.1}},
+                "scheduler": {
+                    "name": "ReduceLROnPlateau",
+                    "params": {"patience": 1},
+                },
+            }
+        ]
+    )
+    model = LuxonisModel(
+        config([node]),
+        opts | {"loader.params.n_classes": 10},
+        allow_empty_dataset=True,
+    )
+    optimizers, scheduler_configs = (
+        model.lightning_module.configure_optimizers()
+    )
+
+    (composite,) = optimizers
+    assert isinstance(composite, CompositeOptimizer)
+    assert len(scheduler_configs) == 2
+
+    epoch_config = cast(dict, scheduler_configs[0])
+    plateau_config = cast(dict, scheduler_configs[1])
+    assert isinstance(epoch_config["scheduler"], CompositeLRScheduler)
+    assert epoch_config["scheduler"].optimizer is composite
+    assert isinstance(plateau_config["scheduler"], CompositeReduceLROnPlateau)
+    assert plateau_config["scheduler"].optimizer is composite
+    assert plateau_config["monitor"] == "val/loss"
+    assert plateau_config["reduce_on_plateau"] is True
