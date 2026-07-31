@@ -57,6 +57,9 @@ on:
       - ".python-version"
       - "pyproject.toml"
       - "uv.lock"
+      - "requirements*.txt"
+      - "scripts/**"
+      - ".pre-commit-config.yaml"
       - "luxonis_train/**"
       - "tests/**"
       - ".github/workflows/ci.yaml"
@@ -87,11 +90,14 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          python-version: "3.10"
+          # The interpreter comes from `.python-version` so that bumping
+          # that file actually takes effect here.
           enable-cache: true
 
       - name: Run pre-commit
-        run: uv run --locked --only-group dev pre-commit run --all-files
+        run: >-
+          uv run --locked --only-group dev pre-commit run
+          --all-files --show-diff-on-failure --color=always
         env:
           # CI can run from a checked-out protected branch via workflow_call.
           # Keep this hook for local commits, but skip it for full CI lint runs.
@@ -113,7 +119,6 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          python-version: "3.10"
           enable-cache: true
 
       - name: Build docs
@@ -135,7 +140,6 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          python-version: "3.10"
           enable-cache: true
 
       - name: Sync dependencies
@@ -174,11 +178,17 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          python-version: "3.10"
           enable-cache: true
 
       - name: Sync config test dependencies
         run: uv sync --locked --only-group config-test
+
+      # Release branches must be validated against the newest published
+      # LuxonisML, not the version pinned in `uv.lock`, because that is
+      # what `pip install luxonis-train` will resolve for end users.
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
@@ -224,7 +234,6 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          python-version: "3.10"
           enable-cache: true
 
       - name: Sync dependencies

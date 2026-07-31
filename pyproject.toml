@@ -18,7 +18,7 @@ dependencies = [
   "lightning~=2.5",
   "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]>=0.9.1",
   "onnx~=1.19",
-  "onnxruntime>=1.23,<1.24",
+  "onnxruntime~=1.23",
   "onnxscript~=0.5",
   "onnxsim~=0.4",
   "optuna-integration~=4.6",
@@ -56,28 +56,28 @@ issues = "https://github.com/luxonis/luxonis-train/issues"
 aimet = ["aimet-torch~=2.31", "torch==2.11", "torchvision~=0.26"]
 
 [dependency-groups]
-config-test = [
-  "luxonis-ml[data,utils]>=0.9.1",
-  "pytest-cov>=4.1.0",
-  "semver~=3.0",
-]
+config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov>=4.1.0", "semver~=3.0"]
 dev = [
-  "gdown>=4.2.0",
-  "opencv-stubs>=0.0.8",
   "pre-commit>=3.2.1,<4.0.0",
-  "pyright>=1.1.380",
-  "pytest-cov>=4.1.0",
-  "pytest-order>=1.3.0",
-  "pytest-rerunfailures>=14.0",
-  "pytest-subtests>=0.12.1",
-  "pytest-timeout>=2.4.0",
-  "pytest-sugar>=1.1.0",
+  "pytest-cov~=7.1",
+  "pytest-order~=1.5",
+  "pytest-rerunfailures~=16.4",
+  "pytest-subtests~=0.15",
+  "pytest-timeout~=2.4",
 ]
 docs = ["pydoctor"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# `albumentations`, `albucore` and `roboflow` pull in `opencv-python-headless`,
+# which ships the same top-level `cv2` module as the `opencv-python` that
+# `luxonis-ml` and `grad-cam` require. Installing both leaves `cv2` as a
+# mix of two distributions decided by install order, so drop the headless
+# one -- `opencv-python` satisfies the import for every consumer.
+override-dependencies = ["opencv-python-headless; sys_platform == 'never'"]
 
 [tool.uv.sources]
 torch = [

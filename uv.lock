@@ -16,6 +16,9 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'",
 ]
 
+[manifest]
+overrides = [{ name = "opencv-python-headless", marker = "sys_platform == 'never'" }]
+
 [[package]]
 name = "absl-py"
 version = "2.5.0"
@@ -196,7 +199,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "opencv-python-headless" },
+    { name = "opencv-python-headless", marker = "sys_platform == 'never'" },
     { name = "simsimd" },
     { name = "stringzilla" },
 ]
@@ -213,7 +216,7 @@ dependencies = [
     { name = "albucore" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "opencv-python-headless" },
+    { name = "opencv-python-headless", marker = "sys_platform == 'never'" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2228,20 +2231,16 @@ aimet = [
 
 [package.dev-dependencies]
 config-test = [
-    { name = "luxonis-ml", extra = ["data", "utils"] },
+    { name = "luxonis-ml", extra = ["utils"] },
     { name = "pytest-cov" },
     { name = "semver" },
 ]
 dev = [
-    { name = "gdown" },
-    { name = "opencv-stubs" },
     { name = "pre-commit" },
-    { name = "pyright" },
     { name = "pytest-cov" },
     { name = "pytest-order" },
     { name = "pytest-rerunfailures" },
     { name = "pytest-subtests" },
-    { name = "pytest-sugar" },
     { name = "pytest-timeout" },
 ]
 docs = [
@@ -2259,7 +2258,7 @@ requires-dist = [
     { name = "lightning", specifier = "~=2.5" },
     { name = "luxonis-ml", extras = ["data", "gcs", "mlflow", "roboflow", "s3", "tracker"], specifier = ">=0.9.1" },
     { name = "onnx", specifier = "~=1.19" },
-    { name = "onnxruntime", specifier = ">=1.23,<1.24" },
+    { name = "onnxruntime", specifier = "~=1.23" },
     { name = "onnxscript", specifier = "~=0.5" },
     { name = "onnxsim", specifier = "~=0.4" },
     { name = "optuna", specifier = "~=4.6" },
@@ -2286,21 +2285,17 @@ provides-extras = ["aimet"]
 
 [package.metadata.requires-dev]
 config-test = [
-    { name = "luxonis-ml", extras = ["data", "utils"], specifier = ">=0.9.1" },
+    { name = "luxonis-ml", extras = ["utils"], specifier = ">=0.9.1" },
     { name = "pytest-cov", specifier = ">=4.1.0" },
     { name = "semver", specifier = "~=3.0" },
 ]
 dev = [
-    { name = "gdown", specifier = ">=4.2.0" },
-    { name = "opencv-stubs", specifier = ">=0.0.8" },
     { name = "pre-commit", specifier = ">=3.2.1,<4.0.0" },
-    { name = "pyright", specifier = ">=1.1.380" },
-    { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "pytest-order", specifier = ">=1.3.0" },
-    { name = "pytest-rerunfailures", specifier = ">=14.0" },
-    { name = "pytest-subtests", specifier = ">=0.12.1" },
-    { name = "pytest-sugar", specifier = ">=1.1.0" },
-    { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "pytest-cov", specifier = "~=7.1" },
+    { name = "pytest-order", specifier = "~=1.5" },
+    { name = "pytest-rerunfailures", specifier = "~=16.4" },
+    { name = "pytest-subtests", specifier = "~=0.15" },
+    { name = "pytest-timeout", specifier = "~=2.4" },
 ]
 docs = [{ name = "pydoctor" }]
 
@@ -3189,23 +3184,6 @@ dependencies = [
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2f/7e/d20f68a5f1487adf19d74378d349932a386b1ece3be9be9915e5986db468/opencv-python-headless-4.10.0.84.tar.gz", hash = "sha256:f2017c6101d7c2ef8d7bc3b414c37ff7f54d64413a1847d89970b6b7069b4e1a", size = 95117755, upload-time = "2024-06-17T18:32:15.606Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/9b/583c8d9259f6fc19413f83fd18dd8e6cbc8eefb0b4dc6da52dd151fe3272/opencv_python_headless-4.10.0.84-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:a4f4bcb07d8f8a7704d9c8564c224c8b064c63f430e95b61ac0bffaa374d330e", size = 54835657, upload-time = "2024-06-18T04:58:12.904Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/7b/b4c67f5dad7a9a61c47f7a39e4050e8a4628bd64b3c3daaeb755d759f928/opencv_python_headless-4.10.0.84-cp37-abi3-macosx_12_0_x86_64.whl", hash = "sha256:5ae454ebac0eb0a0b932e3406370aaf4212e6a3fdb5038cc86c7aea15a6851da", size = 56475470, upload-time = "2024-06-17T19:34:39.604Z" },
-    { url = "https://files.pythonhosted.org/packages/91/61/f838ce2046f3ec3591ea59ea3549085e399525d3b4558c4ed60b55ed88c0/opencv_python_headless-4.10.0.84-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:46071015ff9ab40fccd8a163da0ee14ce9846349f06c6c8c0f2870856ffa45db", size = 29329705, upload-time = "2024-06-17T20:00:49.406Z" },
-    { url = "https://files.pythonhosted.org/packages/d1/09/248f86a404567303cdf120e4a301f389b68e3b18e5c0cc428de327da609c/opencv_python_headless-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:377d08a7e48a1405b5e84afcbe4798464ce7ee17081c1c23619c8b398ff18295", size = 49858781, upload-time = "2024-06-17T18:31:49.495Z" },
-    { url = "https://files.pythonhosted.org/packages/30/c0/66f88d58500e990a9a0a5c06f98862edf1d0a3a430781218a8c193948438/opencv_python_headless-4.10.0.84-cp37-abi3-win32.whl", hash = "sha256:9092404b65458ed87ce932f613ffbb1106ed2c843577501e5768912360fc50ec", size = 28675298, upload-time = "2024-06-17T18:28:56.897Z" },
-    { url = "https://files.pythonhosted.org/packages/26/d0/22f68eb23eea053a31655960f133c0be9726c6a881547e6e9e7e2a946c4f/opencv_python_headless-4.10.0.84-cp37-abi3-win_amd64.whl", hash = "sha256:afcf28bd1209dd58810d33defb622b325d3cbe49dcd7a43a902982c33e5fad05", size = 38754031, upload-time = "2024-06-17T18:29:04.871Z" },
-]
-
-[[package]]
-name = "opencv-stubs"
-version = "0.1.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0b/f4/8cdf24683aae51ad94e443b2b8482a117d7ecf8d6663be8877ec490a73e9/opencv_stubs-0.1.3.tar.gz", hash = "sha256:25b74af6bd7903340587e0fdc7d49ced0d159b56bbc598e5a58d5f3a01549e1c", size = 376250, upload-time = "2026-02-17T12:48:51.53Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/8b/6041723a40fedc5092bf39a91f0daa0410ebaa09763f07385a01871309bb/opencv_stubs-0.1.3-py3-none-any.whl", hash = "sha256:37074b00ede8ec9e2e2b0e77d02277841421606520327087580309e968e45bfc", size = 365107, upload-time = "2026-02-17T12:48:50.042Z" },
-]
 
 [[package]]
 name = "opentelemetry-api"
@@ -4026,19 +4004,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyright"
-version = "1.1.411"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "nodeenv" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/7e/ab/265f7dc69d28113ebba19092e57b075f41543b2ed048429c5f56e2b88eac/pyright-1.1.411.tar.gz", hash = "sha256:d885a0551f2e763b089a02702174e7f4ba77548cddabc972ab86d1f7f1b0f998", size = 4112861, upload-time = "2026-06-25T02:14:06.37Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/49/385be530a6a5b78d1cbcd5c2e38debc8959a2fc6bdb716f4e581002979fc/pyright-1.1.411-py3-none-any.whl", hash = "sha256:dc7c72a8e2700c55baa127554040e067041ea53ccfd50bf96308cc4291c7d5d9", size = 6181526, upload-time = "2026-06-25T02:14:04.691Z" },
-]
-
-[[package]]
 name = "pysocks"
 version = "1.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4115,19 +4080,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bb/d9/20097971a8d315e011e055d512fa120fd6be3bdb8f4b3aa3e3c6bf77bebc/pytest_subtests-0.15.0.tar.gz", hash = "sha256:cb495bde05551b784b8f0b8adfaa27edb4131469a27c339b80fd8d6ba33f887c", size = 18525, upload-time = "2025-10-20T16:26:18.358Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/23/64/bba465299b37448b4c1b84c7a04178399ac22d47b3dc5db1874fe55a2bd3/pytest_subtests-0.15.0-py3-none-any.whl", hash = "sha256:da2d0ce348e1f8d831d5a40d81e3aeac439fec50bd5251cbb7791402696a9493", size = 9185, upload-time = "2025-10-20T16:26:17.239Z" },
-]
-
-[[package]]
-name = "pytest-sugar"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytest" },
-    { name = "termcolor" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/4e/60fed105549297ba1a700e1ea7b828044842ea27d72c898990510b79b0e2/pytest-sugar-1.1.1.tar.gz", hash = "sha256:73b8b65163ebf10f9f671efab9eed3d56f20d2ca68bda83fa64740a92c08f65d", size = 16533, upload-time = "2025-08-23T12:19:35.737Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/d5/81d38a91c1fdafb6711f053f5a9b92ff788013b19821257c2c38c1e132df/pytest_sugar-1.1.1-py3-none-any.whl", hash = "sha256:2f8319b907548d5b9d03a171515c1d43d2e38e32bd8182a1781eb20b43344cc8", size = 11440, upload-time = "2025-08-23T12:19:34.894Z" },
 ]
 
 [[package]]
@@ -4427,7 +4379,7 @@ dependencies = [
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "opencv-python-headless" },
+    { name = "opencv-python-headless", marker = "sys_platform == 'never'" },
     { name = "pi-heif" },
     { name = "pillow" },
     { name = "pillow-avif-plugin" },
