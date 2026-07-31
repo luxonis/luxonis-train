@@ -54,12 +54,16 @@ committing again.
 
 ## Pre-commit Hooks
 
-We use pre-commit hooks to ensure code quality and consistency:
+We use pre-commit hooks to ensure code quality and consistency. The hooks are
+run by [`prek`](https://github.com/j178/prek), a drop-in replacement for
+`pre-commit` that reads the same `.pre-commit-config.yaml`:
 
-1. Clone the repository and run `uv run pre-commit install` in the root directory.
-1. The `pre-commit` hook will now run automatically on `git commit`.
-   - If the hook fails, it will print an error message and abort the commit.
+1. Clone the repository and run `uv run prek install` in the root directory.
+1. The hooks will now run automatically on `git commit`.
+   - If a hook fails, it will print an error message and abort the commit.
    - Some hooks will also modify the files in-place to fix found issues.
+
+To run every hook manually, use `uv run prek run --all-files`.
 
 ## Documentation
 
