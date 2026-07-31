@@ -5,10 +5,6 @@ from typing import Any, cast
 import pytest
 import torch
 from lightning.pytorch.callbacks import GradientAccumulationScheduler
-from lightning.pytorch.trainer.configuration_validator import (
-    _verify_loop_configurations,
-)
-from lightning.pytorch.trainer.states import TrainerFn
 from lightning.pytorch.utilities.types import (
     LRSchedulerConfig,
     LRSchedulerTypeUnion,
@@ -182,25 +178,20 @@ def test_configure_callbacks_does_not_build_strategy_optimizers(opts: Params):
 
 
 def test_gradient_accumulation_callback_uses_optimizer_count(opts: Params):
-    """``GradientAccumulationScheduler`` only makes sense with a single
-    optimizer — Lightning does not support it under manual optimization
-    with multiple optimizers.
+    """``GradientAccumulationScheduler`` is available regardless of the
+    finetuning topology: several optimizer configurations are driven
+    through one composite optimizer under automatic optimization.
 
     Setup:
         Both models set ``accumulate_grad_batches=2`` on the trainer.
         - ``single_optimizer``: rule with no optimizer override → all
-          rules share one Adam+ConstantLR key → one optimizer overall
-          (default rule collapses into it).
+          rules share one Adam+ConstantLR key → one optimizer overall.
         - ``multiple_optimizers``: rule overrides optimizer to SGD →
-          two distinct optimizers (SGD for Linear, Adam default for
-          the rest).
+          two inner optimizers inside one composite.
 
     Expected result:
-        The callback is present only in the single-optimizer model.
-        Both models still report ``automatic_optimization=True``
-        immediately after construction — the switch to manual
-        optimization happens later, inside ``configure_optimizers``,
-        which this test does not invoke.
+        The callback is present in both models and both stay in
+        automatic optimization.
     """
     single_optimizer = _build_model(
         config(
@@ -225,7 +216,7 @@ def test_gradient_accumulation_callback_uses_optimizer_count(opts: Params):
     )
 
     assert _has_gradient_accumulation_callback(single_optimizer)
-    assert not _has_gradient_accumulation_callback(multiple_optimizers)
+    assert _has_gradient_accumulation_callback(multiple_optimizers)
     assert single_optimizer.lightning_module.automatic_optimization is True
     assert multiple_optimizers.lightning_module.automatic_optimization is True
 
@@ -273,87 +264,6 @@ def test_triple_lr_optimizer_count_omits_strategy_when_finetuning_claims_all(
     )
 
     assert _has_gradient_accumulation_callback(model)
-
-
-def test_manual_multi_optimizer_training_step_clips_gradients(
-    opts: Params, monkeypatch: pytest.MonkeyPatch
-):
-    """Under manual optimization (multi-optimizer path) Lightning
-    doesn't clip gradients for us — the training step must call
-    ``clip_gradients`` once per optimizer with the configured value and
-    algorithm.
-
-    Setup:
-        Head rule targeting Linear with SGD (forces two optimizers →
-        manual mode) and ``gradient_clip_val=1.5``,
-        ``gradient_clip_algorithm='value'``.
-
-    Expected result:
-        ``automatic_optimization`` flipped to ``False`` and
-        ``clip_gradients`` was invoked once for each configured
-        optimizer with the exact ``(1.5, 'value')`` arguments.
-    """
-    model = _build_model(
-        config(
-            [
-                tiny_head_node(
-                    {
-                        "parameters": [{"module_type": "Linear"}],
-                        "optimizer": {"name": "SGD"},
-                    }
-                )
-            ],
-            trainer={
-                "gradient_clip_val": 1.5,
-                "gradient_clip_algorithm": "value",
-            },
-        ),
-        opts,
-    )
-    module = model.lightning_module
-    optimizers, _ = module.configure_optimizers()
-    calls: list[tuple[Optimizer, float, str]] = []
-    optimizer_accesses: list[tuple[tuple[object, ...], dict[str, object]]] = []
-
-    monkeypatch.setattr(
-        module,
-        "full_forward",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            losses={"Head": {"CrossEntropyLoss": torch.tensor(1.0)}}
-        ),
-    )
-    monkeypatch.setattr(
-        luxonis_lightning,
-        "compute_losses",
-        lambda *_args, **_kwargs: (
-            torch.tensor(1.0, requires_grad=True),
-            {"loss": torch.tensor(1.0)},
-        ),
-    )
-
-    def get_optimizers(*args: object, **kwargs: object) -> list[Optimizer]:
-        optimizer_accesses.append((args, kwargs))
-        return list(optimizers)
-
-    monkeypatch.setattr(module, "optimizers", get_optimizers)
-    monkeypatch.setattr(module, "lr_schedulers", list)
-    monkeypatch.setattr(module, "manual_backward", lambda _loss: None)
-    monkeypatch.setattr(
-        module,
-        "clip_gradients",
-        lambda optimizer, gradient_clip_val, gradient_clip_algorithm: (
-            calls.append(
-                (optimizer, gradient_clip_val, gradient_clip_algorithm)
-            )
-        ),
-    )
-    module._trainer = SimpleNamespace(is_last_batch=False)  # type: ignore[assignment]
-
-    module.training_step((torch.empty(0), {}))
-
-    assert module.automatic_optimization is False
-    assert optimizer_accesses == [((), {})]
-    assert calls == [(optimizer, 1.5, "value") for optimizer in optimizers]
 
 
 def test_manual_training_step_accepts_single_optimizer_and_scheduler(
@@ -976,58 +886,6 @@ def test_manual_training_step_does_not_step_reduce_lr_on_plateau_scheduler(
     module.training_step((torch.empty(0), {}))
 
     assert step_calls == []
-
-
-def test_manual_optimization_clears_trainer_gradient_clipping(opts: Params):
-    """Several optimizers flip the module into manual optimization,
-    which Lightning refuses to combine with trainer-level gradient
-    clipping or gradient accumulation.
-
-    That normally goes unnoticed only because Lightning validates the
-    configuration *before* it calls `configure_optimizers`. The moment
-    the check runs afterwards - as it does on a second `fit` with the
-    same module, since `LuxonisModel` reuses one trainer - it raises
-    `MisconfigurationException`. Since the manual `training_step` clips
-    from `cfg.trainer`, the trainer-level settings must be cleared so
-    the configuration is valid whenever Lightning validates it.
-    """
-    model = _build_model(
-        config(
-            [
-                tiny_head_node(
-                    {
-                        "parameters": [{"module_type": "Linear"}],
-                        "optimizer": {"name": "SGD"},
-                    }
-                )
-            ],
-            trainer={
-                "gradient_clip_val": 1.5,
-                "gradient_clip_algorithm": "value",
-            },
-        ),
-        opts,
-    )
-    module = model.lightning_module
-    trainer = model.pl_trainer
-    # Lightning attaches the module before `strategy.setup`, which is
-    # what calls `configure_optimizers`.
-    module.trainer = trainer
-    trainer.strategy._lightning_module = module
-
-    optimizers, _ = module.configure_optimizers()
-
-    assert len(optimizers) > 1
-    assert module.automatic_optimization is False
-    # the manual `training_step` still clips, from the config
-    assert module.cfg.trainer.gradient_clip_val == 1.5
-
-    assert trainer.gradient_clip_val is None
-    assert trainer.gradient_clip_algorithm is None
-    assert trainer.accumulate_grad_batches == 1
-
-    trainer.state.fn = TrainerFn.FITTING
-    _verify_loop_configurations(trainer)
 
 
 def _strategy_config(trainer_extra: Params) -> Config:

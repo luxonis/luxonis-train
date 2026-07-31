@@ -352,7 +352,9 @@ def test_lr_after_unfreeze_survives_scheduler_steps(opts: Params):
         if runtime.plan.inners[handle.inner_index].optimizer_name == "SGD"
     ]
     runtime.set_group_base_lr(handle, 0.5)
-    runtime.members[handle.inner_index].step()
+    member = runtime.members[handle.inner_index]
+    assert not isinstance(member, ReduceLROnPlateau)
+    member.step()
 
     # the cosine curve continues from the NEW base, not the old 0.02
     expected = 0.5 * (1 + math.cos(math.pi * 1 / 4)) / 2

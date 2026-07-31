@@ -168,6 +168,14 @@ def build_snapshot(config: Params, opts: Params) -> OptimizerSnapshot:
         allow_empty_dataset=True,
     )
     optimizers, schedulers = model.lightning_module.configure_optimizers()
+    runtime = model.lightning_module.training_plan
+    if runtime is not None and len(runtime.inner_optimizers) > 1:
+        # The composite path: structural assertions run against the
+        # inner optimizers and their member schedulers. The
+        # single-inner bypass keeps the raw return shapes (including
+        # the plateau scheduler dictionary), so it is left untouched.
+        optimizers = list(runtime.inner_optimizers)
+        schedulers = list(runtime.members)
     return OptimizerSnapshot(
         model=model,
         optimizers=list(optimizers),
@@ -315,9 +323,20 @@ def assert_no_duplicate_parameters(snapshot: OptimizerSnapshot) -> None:
 def assert_all_trainable_parameters_assigned(
     snapshot: OptimizerSnapshot,
 ) -> None:
-    assert optimizer_parameter_ids(snapshot) == trainable_parameter_ids(
+    # The partition is total, so the optimizers may additionally hold
+    # frozen parameters; every trainable parameter must be covered.
+    assert trainable_parameter_ids(snapshot) <= optimizer_parameter_ids(
         snapshot
     )
+
+
+def assert_total_partition(snapshot: OptimizerSnapshot) -> None:
+    every = {
+        id(parameter)
+        for node in snapshot.model.lightning_module.nodes.values()
+        for parameter in node.module.parameters()
+    }
+    assert optimizer_parameter_ids(snapshot) == every
 
 
 def assert_group_options(

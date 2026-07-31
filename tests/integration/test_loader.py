@@ -70,7 +70,10 @@ def test_dummy_loader(opts: Params):
     model.train()
 
     # `complex_model.yaml` carries finetuning rules that build several
-    # optimizers, so this is also the end-to-end guard for the manual
-    # optimization path.
-    assert model.lightning_module.automatic_optimization is False
-    assert len(model.pl_trainer.optimizers) > 1
+    # inner optimizers inside one composite, so this is also the
+    # end-to-end guard for the automatic-optimization composite path.
+    assert model.lightning_module.automatic_optimization is True
+    assert len(model.pl_trainer.optimizers) == 1
+    runtime = model.lightning_module.training_plan
+    assert runtime is not None
+    assert len(runtime.inner_optimizers) > 1

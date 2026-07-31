@@ -30,6 +30,11 @@ from luxonis_train.attached_modules.visualizers import (
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
+from luxonis_train.lightning.training_plan import (
+    TrainingPlanRuntime,
+    build_training_plan,
+    resolve_training_plan,
+)
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import _INTERNAL
@@ -171,6 +176,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self._training_strategy_base_configs: (
             tuple[OptimizerConfig, SchedulerConfig] | None
         ) = None
+        self._training_plan: TrainingPlanRuntime | None = None
 
     @override
     def load_state_dict(
@@ -718,15 +724,41 @@ class LuxonisLightningModule(pl.LightningModule):
             )
             optimizers = [*optimizers, *strategy_optimizers]
             schedulers = [*schedulers, *strategy_schedulers]
-        else:
-            optimizers, schedulers = self.nodes.build_optimizers()
-        if len(optimizers) > 1:
-            self.automatic_optimization = False
-            self._disable_trainer_automatic_optimization_features()
+            if len(optimizers) > 1:
+                self.automatic_optimization = False
+                self._disable_trainer_automatic_optimization_features()
 
-        self._log_optimizer_scheduler_info(optimizers, schedulers)
+            self._log_optimizer_scheduler_info(optimizers, schedulers)
 
-        return optimizers, schedulers
+            return optimizers, schedulers
+
+        plan = resolve_training_plan(self.cfg, self.nodes)
+        runtime = build_training_plan(
+            plan, self.cfg, self._main_metric_monitor()
+        )
+        self.nodes.freeze_schedule.attach_group_handles(runtime)
+        self._training_plan = runtime
+
+        self._log_optimizer_scheduler_info(
+            list(runtime.inner_optimizers), list(runtime.members)
+        )
+
+        return [runtime.optimizer], runtime.scheduler_configs
+
+    @property
+    def training_plan(self) -> TrainingPlanRuntime | None:
+        """The built optimizer/scheduler runtime of the last
+        `configure_optimizers` call, or C{None} before the first call
+        (and under a training strategy).
+        """
+        return self._training_plan
+
+    def _main_metric_monitor(self) -> str | None:
+        if self.nodes.main_metric is None:
+            return None
+        node_name, metric_name = self.nodes.main_metric
+        formatted_node = self.nodes.formatted_name(node_name)
+        return f"val/metric/{formatted_node}/{metric_name}"
 
     def _disable_trainer_automatic_optimization_features(self) -> None:
         """Clear the trainer settings Lightning refuses to combine with
@@ -761,8 +793,10 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def _expected_optimizer_count(self) -> int:
         if self.training_strategy is None:
-            count, _ = self.nodes.count_optimizers()
-            return count
+            # The training plan always produces exactly one optimizer
+            # (possibly a composite), so automatic optimization and its
+            # callbacks are unconditionally available.
+            return 1
 
         base_optimizer_cfg, base_scheduler_cfg = (
             self._get_training_strategy_base_configs()

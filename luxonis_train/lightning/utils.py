@@ -50,6 +50,10 @@ from luxonis_train.config.config import (
     ParameterPattern,
     SchedulerConfig,
 )
+from luxonis_train.lightning.freezing import (
+    FreezeSchedule,
+    resolve_unfreeze_epoch,
+)
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.registry import (
@@ -287,6 +291,10 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         super().__init__(self.nodes)
 
+        # Snapshots the original trainability state, so it must be
+        # built before any freeze is applied.
+        self.freeze_schedule = FreezeSchedule.from_nodes(self)
+
     @cached_property
     def main_metric_reference(self) -> BaseMetric:
         if self.main_metric is None:
@@ -516,19 +524,14 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
     ) -> tuple[int | None, float | None]:
-        unfreeze_after = None
-        lr_after_unfreeze = None
-        if node_cfg.freezing.active:
-            if node_cfg.freezing.unfreeze_after is None:
-                unfreeze_after = total_epochs
-            elif isinstance(node_cfg.freezing.unfreeze_after, int):
-                unfreeze_after = node_cfg.freezing.unfreeze_after
-            else:
-                unfreeze_after = int(
-                    node_cfg.freezing.unfreeze_after * total_epochs
-                )
-            if node_cfg.freezing.lr_after_unfreeze is not None:
-                lr_after_unfreeze = node_cfg.freezing.lr_after_unfreeze
+        unfreeze_after = resolve_unfreeze_epoch(
+            node_cfg.freezing, total_epochs
+        )
+        lr_after_unfreeze = (
+            node_cfg.freezing.lr_after_unfreeze
+            if node_cfg.freezing.active
+            else None
+        )
         return unfreeze_after, lr_after_unfreeze
 
     def _get_loader_input_shapes(

@@ -4,6 +4,7 @@ import torch
 from luxonis_ml.typing import Params
 
 import luxonis_train as lxt
+from luxonis_train.lightning.training_plan import unwrap_optimizers
 
 from ._helpers import config, tiny_head_node
 
@@ -11,12 +12,10 @@ from ._helpers import config, tiny_head_node
 def test_multi_optimizer_training_updates_every_optimizer(
     opts: Params, tmp_path: Path
 ):
-    """A real two-epoch fit with several optimizers must run under
-    manual optimization and actually step *every* optimizer.
-
-    `gradient_clip_val` is set on purpose: Lightning refuses automatic
-    gradient clipping under manual optimization, so this also exercises
-    the manual clipping path in `training_step`.
+    """A real two-epoch fit with two optimizer configurations must stay
+    in automatic optimization (one composite optimizer) and actually
+    step *every* inner optimizer, with trainer-level gradient clipping
+    active.
 
     Only "at least one parameter per optimizer moved" can be asserted -
     `DummyLoader` yields constant images, so the first convolution's
@@ -57,11 +56,10 @@ def test_multi_optimizer_training_updates_every_optimizer(
 
     model.train()
 
-    assert module.automatic_optimization is False
+    assert module.automatic_optimization is True
     assert module.trainer.current_epoch == 2
 
-    optimizers = module.optimizers()
-    assert isinstance(optimizers, list)
+    optimizers = unwrap_optimizers(module.trainer.optimizers)
     assert len(optimizers) == 2
 
     names_by_id = {
@@ -169,12 +167,9 @@ def test_training_after_unattached_configure_optimizers(
     `build_snapshot` and several tests do - must not poison the
     following fit.
 
-    `configure_optimizers` flips `automatic_optimization` off, but the
-    trainer it would reconcile is not reachable yet. `configure_callbacks`
-    runs while attached and just before Lightning validates the loop
-    configuration, so the trainer-level gradient clipping has to be
-    cleared there too; otherwise the fit dies with
-    `MisconfigurationException`.
+    Several optimizer configurations stay in automatic optimization
+    (one composite optimizer), so trainer-level gradient clipping
+    remains valid and untouched.
     """
     model = lxt.LuxonisModel(
         config(
@@ -199,9 +194,12 @@ def test_training_after_unattached_configure_optimizers(
         allow_empty_dataset=True,
     )
     optimizers, _ = model.lightning_module.configure_optimizers()
-    assert len(optimizers) == 2
-    assert model.lightning_module.automatic_optimization is False
+    assert len(optimizers) == 1
+    assert len(unwrap_optimizers(list(optimizers))) == 2
+    assert model.lightning_module.automatic_optimization is True
 
     model.train()
 
     assert model.lightning_module.trainer.current_epoch == 1
+    # automatic optimization keeps Lightning's own clipping valid
+    assert model.pl_trainer.gradient_clip_val == 1.5
