@@ -74,11 +74,10 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv]
-# `albumentations`, `albucore` and `roboflow` pull in `opencv-python-headless`,
-# which ships the same top-level `cv2` module as the `opencv-python` that
-# `luxonis-ml` and `grad-cam` require. Installing both leaves `cv2` as a
-# mix of two distributions decided by install order, so drop the headless
-# one -- `opencv-python` satisfies the import for every consumer.
+# `opencv-python-headless` (via `albumentations`, `albucore`, `roboflow`) ships
+# the same top-level `cv2` as the `opencv-python` that `luxonis-ml` and
+# `grad-cam` require, so installing both leaves `cv2` a mix of the two decided
+# by install order. Drop the headless one; `opencv-python` satisfies everyone.
 override-dependencies = ["opencv-python-headless; sys_platform == 'never'"]
 
 [tool.uv.sources]

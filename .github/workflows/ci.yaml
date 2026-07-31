@@ -90,8 +90,6 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.28"
-          # The interpreter comes from `.python-version` so that bumping
-          # that file actually takes effect here.
           enable-cache: true
 
       - name: Run pre-commit hooks
@@ -183,9 +181,8 @@ jobs:
       - name: Sync config test dependencies
         run: uv sync --locked --only-group config-test
 
-      # Release branches must be validated against the newest published
-      # LuxonisML, not the version pinned in `uv.lock`, because that is
-      # what `pip install luxonis-train` will resolve for end users.
+      # Release branches must resolve the published LuxonisML rather than
+      # the pinned one, since that is what users get from PyPI.
       - name: Install released version of LuxonisML
         if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
         run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
