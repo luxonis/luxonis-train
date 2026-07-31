@@ -65,8 +65,9 @@ dev = [
   "pytest-subtests~=0.15",
   "pytest-timeout~=2.4",
   "pyright~=1.1",
+  "ruff~=0.16",
 ]
-docs = ["pydoctor"]
+docs = ["pydoctor~=25.10"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
