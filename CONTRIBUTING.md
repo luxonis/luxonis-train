@@ -3,17 +3,6 @@
 **This guide is intended for our internal development team.**
 It outlines our workflow and standards for contributing to this project.
 
-## Table Of Contents
-
-- [Pre-requisites](#pre-requisites)
-- [Pre-commit Hooks](#pre-commit-hooks)
-- [Documentation](#documentation)
-- [Type Checking](#type-checking)
-  - [Editor Support](#editor-support)
-- [Tests](#tests)
-- [GitHub Actions](#github-actions)
-- [Making and Reviewing Changes](#making-and-reviewing-changes)
-
 ## Pre-requisites
 
 Clone the repository and navigate to the root directory:
@@ -30,8 +19,8 @@ uv sync
 ```
 
 > [!NOTE]
-> This creates `.venv`, installs the package in editable mode,
-> and installs the default `dev` dependency group.
+> This creates `.venv`, installs the package in editable mode, and installs
+> the default `dev` dependency group.
 
 To include AIMET support locally, run:
 
@@ -40,8 +29,8 @@ uv sync --extra aimet
 ```
 
 The `requirements*.txt` files are generated compatibility exports for users
-that still install with pip. Do not edit them manually; after changing
-dependencies, run:
+installing with pip. Do not edit them manually; after changing dependencies,
+run:
 
 ```bash
 scripts/export_requirements.sh
@@ -55,25 +44,29 @@ usually you only need to review and stage the refreshed `uv.lock` and
 
 We use pre-commit hooks to ensure code quality and consistency. The hooks are
 run by [`prek`](https://github.com/j178/prek), a drop-in replacement for
-`pre-commit` that reads the same `.pre-commit-config.yaml`:
+`pre-commit` that reads the same `.pre-commit-config.yaml`.
 
-1. Clone the repository and run `uv run prek install` in the root directory.
+1. Run `uv run prek install` in the root directory.
 1. The hooks will now run automatically on `git commit`.
    - If a hook fails, it will print an error message and abort the commit.
    - Some hooks will also modify the files in-place to fix found issues.
 
 To run every hook manually, use `uv run prek run --all-files`.
 
+**Do not commit directly to `main`.** The `no-commit-to-branch` hook blocks it,
+and pull requests are the expected review path.
+
 ## Documentation
 
-We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup language for documentation.
-To verify that your documentation is formatted correctly, run the following command:
+We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup
+language for documentation. To verify that your documentation is formatted
+correctly, run the following command:
 
 ```bash
 uv run --only-group docs pydoctor --docformat=epytext luxonis_train
 ```
 
-**Editor Support:**
+### Editor Support
 
 - **PyCharm** - built in support for generating `epytext` docstrings
 - **Visual Studio Code** - [AI Docify](https://marketplace.visualstudio.com/items?itemName=AIC.docify) extension offers support for `epytext`
@@ -81,13 +74,16 @@ uv run --only-group docs pydoctor --docformat=epytext luxonis_train
 
 ## Type Checking
 
-The codebase is type-checked using [pyright](https://github.com/microsoft/pyright) `v1.1.380`. To run type checking, use the following command in the root project directory:
+The codebase is type-checked using
+[pyright](https://github.com/microsoft/pyright), pinned in the `dev`
+dependency group so that it matches CI. To run type checking, use the
+following command in the root project directory:
 
 ```bash
 uv run pyright --warnings --project pyproject.toml
 ```
 
-**Editor Support:**
+### Editor Support
 
 - **PyCharm** - [Pyright](https://plugins.jetbrains.com/plugin/24145-pyright) extension
 - **Visual Studio Code** - [Pyright](https://marketplace.visualstudio.com/items?itemName=ms-pyright.pyright) extension
@@ -95,8 +91,9 @@ uv run pyright --warnings --project pyproject.toml
 
 ## Tests
 
-We use [pytest](https://docs.pytest.org/en/stable/) for testing.
-The tests are located in the `tests` directory. To run the tests with coverage, use the following command:
+We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are
+located in the `tests` directory. To run the tests with coverage, use the
+following command:
 
 ```bash
 uv run pytest --cov=luxonis_train --cov-report=html
@@ -120,7 +117,8 @@ This command will run all tests and generate HTML coverage report.
 
 Our GitHub Actions workflow is run when a new PR is opened.
 
-1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the [documentation](#documentation) must be built successfully.
+1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the
+   [documentation](#documentation) must be built successfully.
 1. Next, the [type checking](#type-checking) is run.
 1. If all previous checks pass, the [tests](#tests) are run.
 
@@ -132,7 +130,8 @@ Our GitHub Actions workflow is run when a new PR is opened.
 
 ## Making and Submitting Changes
 
-1. Make changes in a new branch.
+1. Make changes in a new branch with a descriptive prefix such as `feat/`,
+   `fix/`, `docs/`, `ci/`, or `test/`.
 1. Test your changes locally.
 1. Commit your changes (pre-commit hooks will run).
 1. Push your branch and create a pull request.
