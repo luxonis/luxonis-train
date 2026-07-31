@@ -33,7 +33,7 @@ def check_aimet_available() -> None:
         raise ImportError(
             "AIMET library is not installed. Please install "
             "`luxonis-train` with the `aimet` extra enabled "
-            "(pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu130)"
+            "(pip install luxonis-train[aimet])"
         )
 
 
