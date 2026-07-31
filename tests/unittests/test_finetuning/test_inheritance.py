@@ -11,7 +11,7 @@ from luxonis_train.config.config import (
     OptimizerConfig,
     SchedulerConfig,
 )
-from luxonis_train.lightning.utils import merge_config_items
+from luxonis_train.lightning.training_plan import merge_config_items
 
 from ._helpers import (
     assert_group_options,

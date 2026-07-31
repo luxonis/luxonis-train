@@ -1,4 +1,9 @@
 from .base_strategy import BaseTrainingStrategy
-from .triple_lr_sgd import TripleLRScheduler
+from .legacy import LegacyStrategyAdapter
+from .triple_lr_sgd import TripleLRSGDStrategy
 
-__all__ = ["BaseTrainingStrategy", "TripleLRScheduler"]
+__all__ = [
+    "BaseTrainingStrategy",
+    "LegacyStrategyAdapter",
+    "TripleLRSGDStrategy",
+]

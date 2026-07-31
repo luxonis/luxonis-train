@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Hashable, Iterator, Mapping, Sequence
+from collections.abc import Iterator
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -10,7 +10,6 @@ from typing import (
     NamedTuple,
     TypeVar,
     cast,
-    overload,
 )
 
 import lightning.pytorch as pl
@@ -19,18 +18,11 @@ from lightning.pytorch.callbacks import (
     GradientAccumulationScheduler,
     ModelCheckpoint,
 )
-from lightning.pytorch.utilities.types import (
-    LRSchedulerConfig,
-    LRSchedulerConfigType,
-    LRSchedulerTypeUnion,
-)
 from loguru import logger
-from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from typing_extensions import override
 
 import luxonis_train as lxt
@@ -43,11 +35,8 @@ from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.config.config import (
     FinetuningConfig,
-    FinetuningOptimizerConfig,
-    FinetuningSchedulerConfig,
     NodeConfig,
     OptimizerConfig,
-    ParameterPattern,
     SchedulerConfig,
 )
 from luxonis_train.lightning.freezing import (
@@ -61,13 +50,15 @@ from luxonis_train.registry import (
     LOSSES,
     METRICS,
     NODES,
-    OPTIMIZERS,
-    SCHEDULERS,
     STRATEGIES,
     VISUALIZERS,
     from_registry,
 )
 from luxonis_train.strategies import BaseTrainingStrategy
+from luxonis_train.strategies.legacy import (
+    DEPRECATION_MESSAGE,
+    LegacyStrategyAdapter,
+)
 from luxonis_train.tasks import Metadata
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
@@ -77,60 +68,6 @@ from luxonis_train.utils.general import to_shape_packet
 class MainMetric(NamedTuple):
     node_name: str
     metric_name: str
-
-
-class OptimizerGroupPlan(NamedTuple):
-    parameters: list[nn.Parameter]
-    trainable_parameters: list[nn.Parameter]
-    optimizer_params: Kwargs
-
-
-class OptimizerPlan(NamedTuple):
-    optimizer_name: str
-    scheduler: SchedulerConfig
-    parameter_groups: list[OptimizerGroupPlan]
-
-
-class UnfreezeTarget(NamedTuple):
-    optimizer: Optimizer
-    optimizer_params: Kwargs
-
-    # Index into `optimizer.param_groups`, not the group dictionary
-    # itself: `BaseFinetuning.on_fit_start` restores a resumed run by
-    # *replacing* `optimizer.param_groups` with freshly built dicts, which
-    # would leave a cached dictionary dangling. The index stays valid
-    # because `build_optimizers` zips the plan against `param_groups` in
-    # order and `add_param_group` only ever appends.
-    parameter_group_index: int | None
-
-
-def _freeze_config_value(value: Any) -> Hashable:
-    if isinstance(value, Mapping):
-        return tuple(
-            (str(key), _freeze_config_value(item))
-            for key, item in sorted(
-                value.items(), key=lambda item: str(item[0])
-            )
-        )
-    if isinstance(value, list | tuple):
-        return tuple(_freeze_config_value(item) for item in value)
-    if isinstance(value, set | frozenset):
-        return tuple(
-            sorted(
-                (_freeze_config_value(item) for item in value),
-                key=repr,
-            )
-        )
-
-    model_dump = getattr(value, "model_dump", None)
-    if callable(model_dump):
-        return _freeze_config_value(model_dump(mode="json"))
-
-    try:
-        hash(value)
-    except TypeError:
-        return repr(value)
-    return cast(Hashable, value)
 
 
 class LossAccumulator(defaultdict[str, float]):
@@ -207,7 +144,6 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         self.graph: dict[str, list[str]] = {}
         self.nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
-        self._unfreeze_targets: dict[int, UnfreezeTarget] = {}
 
         self.loader_input_shapes = self._get_loader_input_shapes(
             cfg, input_shapes
@@ -368,159 +304,6 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                         f"Expected type '{m.typ}', got '{typ.__name__}'."
                     )
 
-    def _extract_optimizer_params(
-        self,
-        cfg_base_optimizer: OptimizerConfig | None,
-        cfg_base_scheduler: SchedulerConfig | None,
-        used_params: set[int] | None = None,
-        include_default: bool = True,
-    ) -> tuple[list[OptimizerPlan], set[int]]:
-        cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
-        cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
-        groups: dict[
-            tuple[str, str, Hashable],
-            tuple[list[OptimizerGroupPlan], SchedulerConfig],
-        ] = {}
-        used_params = set(used_params or set())
-        if include_default and not any(
-            node.finetuning for node in self.values()
-        ):
-            parameter_groups: list[OptimizerGroupPlan] = []
-            trainable_parameters: list[nn.Parameter] = []
-            for node in self.values():
-                frozen_parameters: list[nn.Parameter] = []
-                for module in node.module.modules():
-                    for p in module.parameters(recurse=False):
-                        if id(p) in used_params:
-                            continue
-                        if p.requires_grad:
-                            trainable_parameters.append(p)
-                        elif node.unfreeze_after is not None:
-                            frozen_parameters.append(p)
-                        else:
-                            continue
-                        used_params.add(id(p))
-                if frozen_parameters:
-                    parameter_groups.append(
-                        OptimizerGroupPlan(
-                            parameters=frozen_parameters,
-                            trainable_parameters=[],
-                            optimizer_params=cfg_base_optimizer.params,
-                        )
-                    )
-
-            if trainable_parameters:
-                parameter_groups.insert(
-                    0,
-                    OptimizerGroupPlan(
-                        parameters=trainable_parameters,
-                        trainable_parameters=trainable_parameters,
-                        optimizer_params=cfg_base_optimizer.params,
-                    ),
-                )
-
-            if parameter_groups:
-                return [
-                    OptimizerPlan(
-                        optimizer_name=cfg_base_optimizer.name,
-                        scheduler=cfg_base_scheduler,
-                        parameter_groups=parameter_groups,
-                    )
-                ], used_params
-            return [], used_params
-
-        optimizer_plans: list[OptimizerPlan] = []
-        for node in self.values():
-            finetunings = [
-                (finetuning, False) for finetuning in node.finetuning
-            ]
-            if include_default:
-                finetunings.append(
-                    (
-                        FinetuningConfig(
-                            parameters=[ParameterPattern(name=".*")],
-                            optimizer=cfg_base_optimizer.to_finetuning(),
-                            scheduler=cfg_base_scheduler.to_finetuning(),
-                        ),
-                        True,
-                    )
-                )
-
-            for finetuning, is_default in finetunings:
-                cfg_optimizer = merge_config_items(
-                    cfg_base_optimizer, finetuning.optimizer
-                )
-                cfg_scheduler = merge_config_items(
-                    cfg_base_scheduler, finetuning.scheduler
-                )
-                params = []
-                patterns = finetuning.parameters or [
-                    ParameterPattern(name=".*")
-                ]
-                for module_name, module in node.module.named_modules():
-                    for param_name, p in module.named_parameters(
-                        recurse=False
-                    ):
-                        name = (
-                            f"{module_name}.{param_name}"
-                            if module_name
-                            else param_name
-                        )
-                        if (
-                            any(
-                                pattern.matches(
-                                    module.__class__.__name__, name
-                                )
-                                for pattern in patterns
-                            )
-                            and id(p) not in used_params
-                            and (
-                                p.requires_grad
-                                or node.unfreeze_after is not None
-                            )
-                        ):
-                            params.append(p)
-                            used_params.add(id(p))
-
-                if not params:
-                    if not is_default:
-                        raise ValueError(
-                            "Finetuning parameters for node "
-                            f"'{node.name}' did not match any "
-                            "available trainable parameters."
-                        )
-                    continue
-
-                group_key = (
-                    cfg_optimizer.name,
-                    cfg_scheduler.name,
-                    _freeze_config_value(cfg_scheduler.params),
-                )
-                if group_key not in groups:
-                    groups[group_key] = ([], cfg_scheduler)
-                groups[group_key][0].append(
-                    OptimizerGroupPlan(
-                        parameters=params,
-                        trainable_parameters=[
-                            p for p in params if p.requires_grad
-                        ],
-                        optimizer_params=cfg_optimizer.params,
-                    )
-                )
-
-        for (optimizer_name, _, _), (
-            parameter_groups,
-            scheduler,
-        ) in groups.items():
-            optimizer_plans.append(
-                OptimizerPlan(
-                    optimizer_name=optimizer_name,
-                    scheduler=scheduler,
-                    parameter_groups=parameter_groups,
-                )
-            )
-        return optimizer_plans, used_params
-
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
     ) -> tuple[int | None, float | None]:
@@ -560,169 +343,12 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     def formatted_name(self, node_name: str) -> str:
         return self[node_name].formatted_name
 
-    def frozen_nodes(
-        self,
-    ) -> Iterator[tuple[str, BaseNode, int, float | None]]:
-        for node_name, node in self.items():
-            if node.unfreeze_after is not None:
-                yield (
-                    node_name,
-                    node.module,
-                    node.unfreeze_after,
-                    node.lr_after_unfreeze,
-                )
-
-    def restore_unfrozen_parameters(
-        self, module: BaseNode, lr: float | None
-    ) -> None:
-        targets: dict[int, tuple[UnfreezeTarget, list[nn.Parameter]]] = {}
-        for parameter in module.parameters():
-            target = self._unfreeze_targets.pop(id(parameter), None)
-            if target is None:
-                continue
-            target_id = id(target)
-            if target_id not in targets:
-                targets[target_id] = (target, [])
-            targets[target_id][1].append(parameter)
-
-        for target, parameters in targets.values():
-            existing_parameter_ids = {
-                id(parameter)
-                for group in target.optimizer.param_groups
-                for parameter in group["params"]
-            }
-            parameters = [
-                parameter
-                for parameter in parameters
-                if id(parameter) not in existing_parameter_ids
-            ]
-            if not parameters:
-                continue
-
-            if target.parameter_group_index is not None:
-                parameter_group = target.optimizer.param_groups[
-                    target.parameter_group_index
-                ]
-                parameter_group["params"].extend(parameters)
-                if lr is not None:
-                    parameter_group["lr"] = float(lr)
-                continue
-
-            parameter_group = {"params": parameters} | target.optimizer_params
-            if lr is not None:
-                parameter_group["lr"] = float(lr)
-            target.optimizer.add_param_group(parameter_group)
-
     def traverse(
         self,
     ) -> Iterator[tuple[str, NodeWrapper, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
 
-    def build_optimizers(
-        self,
-        base_optimizer: OptimizerConfig | None = None,
-        base_scheduler: SchedulerConfig | None = None,
-        used_params: set[int] | None = None,
-        include_default: bool = True,
-    ) -> tuple[
-        Sequence[Optimizer],
-        Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
-    ]:
-
-        optimizers = []
-        schedulers = []
-
-        main_metric_monitor = None
-        if self.main_metric is not None:
-            formatted_node = self.formatted_name(self.main_metric.node_name)
-            main_metric_monitor = (
-                f"val/metric/{formatted_node}/{self.main_metric.metric_name}"
-            )
-
-        optimizer_plans, _ = self._extract_optimizer_params(
-            base_optimizer,
-            base_scheduler,
-            used_params=used_params,
-            include_default=include_default,
-        )
-        self._unfreeze_targets.clear()
-        for plan in optimizer_plans:
-            configured_groups = [
-                group
-                for group in plan.parameter_groups
-                if group.trainable_parameters
-            ]
-            if not configured_groups:
-                configured_groups = plan.parameter_groups
-
-            cfg_optimizer = OptimizerConfig(
-                name=plan.optimizer_name,
-                params=cast(
-                    Params,
-                    {
-                        "params": [
-                            {"params": group.trainable_parameters}
-                            | group.optimizer_params
-                            for group in configured_groups
-                        ]
-                    },
-                ),
-            )
-            optimizer, scheduler = build_optimizer_scheduler(
-                self.cfg,
-                main_metric_monitor,
-                cfg_optimizer,
-                plan.scheduler,
-            )
-            optimizers.append(optimizer)
-            schedulers.append(scheduler)
-
-            # The optimizer builds one parameter group per configured
-            # group, in order, so `configured_groups[i]` is the plan for
-            # `optimizer.param_groups[i]` and the index can be stored
-            # instead of the group dictionary.
-            if len(configured_groups) != len(optimizer.param_groups):
-                raise RuntimeError(  # pragma: no cover
-                    f"Optimizer '{plan.optimizer_name}' created "
-                    f"{len(optimizer.param_groups)} parameter group(s) "
-                    f"but {len(configured_groups)} were configured."
-                )
-            configured_parameter_groups = {
-                id(group): index
-                for index, group in enumerate(configured_groups)
-            }
-            for group in plan.parameter_groups:
-                target = UnfreezeTarget(
-                    optimizer=optimizer,
-                    optimizer_params=group.optimizer_params,
-                    parameter_group_index=configured_parameter_groups.get(
-                        id(group)
-                    ),
-                )
-                for parameter in group.parameters:
-                    if not parameter.requires_grad:
-                        self._unfreeze_targets[id(parameter)] = target
-
-        return optimizers, schedulers
-
-    def count_optimizers(
-        self,
-        base_optimizer: OptimizerConfig | None = None,
-        base_scheduler: SchedulerConfig | None = None,
-        used_params: set[int] | None = None,
-        include_default: bool = True,
-    ) -> tuple[int, set[int]]:
-        optimizer_plans, used_params = self._extract_optimizer_params(
-            base_optimizer,
-            base_scheduler,
-            used_params=used_params,
-            include_default=include_default,
-        )
-        return len(optimizer_plans), used_params
-
-    def build_callbacks(
-        self, save_dir: Path, n_optimizers: int
-    ) -> list[pl.Callback]:
+    def build_callbacks(self, save_dir: Path) -> list[pl.Callback]:
         """Configure Pytorch Lightning callbacks."""
         model_name = self.cfg.model.name
 
@@ -762,15 +388,6 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
-                if (
-                    callback.name == "GradientAccumulationScheduler"
-                    and n_optimizers > 1
-                ):
-                    logger.warning(
-                        "Gradient accumulation scheduling is not supported for multiple optimizers. "
-                        "The callback will be ignored."
-                    )
-                    continue
                 callbacks.append(
                     from_registry(CALLBACKS, callback.name, **callback.params)
                 )
@@ -778,12 +395,6 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 logger.info(f"Callback '{callback.name}' is inactive.")
 
         if self.cfg.trainer.accumulate_grad_batches is not None:
-            if n_optimizers > 1:
-                logger.warning(
-                    "Gradient accumulation scheduling is not supported for multiple optimizers. "
-                    "The `accumulate_grad_batches` parameter in the config will be ignored."
-                )
-                return callbacks
             if not any(
                 isinstance(cb, GradientAccumulationScheduler)
                 for cb in callbacks
@@ -845,36 +456,62 @@ def build_training_strategy(
     cfg: Config, pl_module: pl.LightningModule
 ) -> BaseTrainingStrategy | None:
     training_strategy = cfg.trainer.training_strategy
-    if training_strategy is not None:
-        logger.info(f"Using training strategy '{training_strategy.name}'")
-        # `optimizer` and `scheduler` have defaults, so they are never
-        # `None`; only warn about the ones the user actually configured.
-        # Compared against the defaults rather than `model_fields_set`,
-        # which misses in-place mutation and reports every field as set
-        # on a config rebuilt from `model_dump` (the tuner and the saved
-        # `training_config.yaml` both do that).
-        defaults = {
-            "optimizer": OptimizerConfig(),
-            "scheduler": SchedulerConfig(),
-        }
-        overridden = sorted(
-            field
-            for field, default in defaults.items()
-            if getattr(cfg.trainer, field) != default
+    if training_strategy is None:
+        return None
+    logger.info(f"Using training strategy '{training_strategy.name}'")
+    # `optimizer` and `scheduler` have defaults, so they are never
+    # `None`; only warn about the ones the user actually configured.
+    # Compared against the defaults rather than `model_fields_set`,
+    # which misses in-place mutation and reports every field as set
+    # on a config rebuilt from `model_dump` (the tuner and the saved
+    # `training_config.yaml` both do that).
+    defaults = {
+        "optimizer": OptimizerConfig(),
+        "scheduler": SchedulerConfig(),
+    }
+    overridden = sorted(
+        field
+        for field, default in defaults.items()
+        if getattr(cfg.trainer, field) != default
+    )
+    if overridden:
+        fields = " and ".join(f"`trainer.{field}`" for field in overridden)
+        logger.warning(
+            "Training strategy is defined. It will override "
+            f"the {fields} specified in the config."
         )
-        if overridden:
-            fields = " and ".join(f"`trainer.{field}`" for field in overridden)
-            logger.warning(
-                "Training strategy is defined. It will override "
-                f"the {fields} specified in the config."
-            )
-        return from_registry(
-            STRATEGIES,
-            training_strategy.name,
-            **training_strategy.params,
-            pl_module=pl_module,
+
+    cls = STRATEGIES.get(training_strategy.name)
+    rules_attribute = getattr(cls, "rules", None)
+    if rules_attribute is None or getattr(
+        rules_attribute, "__isabstractmethod__", False
+    ):
+        # The class predates the rule-based strategy API. Fill the
+        # abstract methods with stubs so it can be instantiated, then
+        # mount it through the compatibility adapter.
+        logger.warning(DEPRECATION_MESSAGE.format(name=training_strategy.name))
+        stubs: dict[str, Any] = {}
+        for method in getattr(cls, "__abstractmethods__", ()):  # type: ignore[union-attr]
+            if method == "rules":
+                stubs["rules"] = lambda self: []
+            elif method == "get_base_configs":
+                stubs["get_base_configs"] = _raise_not_implemented
+        concrete = type(cls.__name__, (cls,), stubs)
+        legacy = concrete(
+            pl_module=cast(Any, pl_module), **training_strategy.params
         )
-    return None
+        return LegacyStrategyAdapter(legacy)
+
+    return from_registry(
+        STRATEGIES,
+        training_strategy.name,
+        **training_strategy.params,
+        pl_module=pl_module,
+    )
+
+
+def _raise_not_implemented(self: Any) -> Any:
+    raise NotImplementedError
 
 
 def postprocess_metrics(
@@ -1142,121 +779,3 @@ def check_tensor_device(
     if isinstance(x, (list | tuple)):
         return all(isinstance(i, Tensor) and i.device == device for i in x)
     raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
-
-
-@overload
-def merge_config_items(
-    base: OptimizerConfig,
-    override: FinetuningOptimizerConfig | None,
-) -> OptimizerConfig: ...
-
-
-@overload
-def merge_config_items(
-    base: SchedulerConfig,
-    override: FinetuningSchedulerConfig | None,
-) -> SchedulerConfig: ...
-
-
-def merge_config_items(
-    base: OptimizerConfig | SchedulerConfig,
-    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
-) -> OptimizerConfig | SchedulerConfig:
-    if override is None:
-        # Not `base.to_finetuning()`: that returns a `Finetuning*Config`,
-        # whose `name` is `str | None` because it models a *partial*
-        # user override. Callers here require a concrete name.
-        return type(base)(name=base.name, params=base.params)
-
-    if override.name is None or override.name == base.name:
-        name = base.name
-        params = base.params | override.params
-    else:
-        name = override.name
-        params = override.params
-
-    return type(base)(name=name, params=params)
-
-
-def build_optimizer_scheduler(
-    cfg: Config,
-    main_metric_monitor: str | None,
-    cfg_optimizer: OptimizerConfig,
-    cfg_scheduler: SchedulerConfig,
-) -> tuple[Optimizer, LRScheduler | LRSchedulerConfigType]:
-    """Configure model optimizers and schedulers."""
-    optimizer = from_registry(
-        OPTIMIZERS, cfg_optimizer.name, **cfg_optimizer.params
-    )
-    optimizer_keys = set(optimizer.defaults) | {"params"}
-    for group in optimizer.param_groups:
-        unknown_keys = set(group) - optimizer_keys
-        if unknown_keys:
-            keys = ", ".join(sorted(unknown_keys))
-            raise TypeError(
-                f"Invalid parameter group option(s) for optimizer "
-                f"'{cfg_optimizer.name}': {keys}"
-            )
-    scheduler: LRScheduler | LRSchedulerConfigType
-
-    def _get_scheduler(
-        cfg: SchedulerConfig, optimizer: Optimizer
-    ) -> LRScheduler:
-        return from_registry(
-            SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
-        )
-
-    if cfg_scheduler.name == "CosineAnnealingLR":
-        if "T_max" not in cfg_scheduler.params:
-            cfg_scheduler = SchedulerConfig(
-                name=cfg_scheduler.name,
-                params={**cfg_scheduler.params, "T_max": cfg.trainer.epochs},
-            )
-            logger.warning(
-                "`T_max` was not set for 'CosineAnnealingLR' "
-                "Automatically setting `T_max` to number of epochs."
-            )
-        elif cfg_scheduler.params["T_max"] != cfg.trainer.epochs:
-            logger.warning(
-                "Parameter `T_max` of 'CosineAnnealingLR' is "
-                "not equal to the number of epochs. "
-                "Make sure this is intended."
-                f"`T_max`: {cfg_scheduler.params['T_max']}, "
-                f"Number of epochs: {cfg.trainer.epochs}"
-            )
-
-    if cfg_scheduler.name == "SequentialLR":
-        scheduler_params = cfg_scheduler.get_sequential_lr_params()
-
-        scheduler = SequentialLR(
-            optimizer,
-            schedulers=[
-                _get_scheduler(scheduler_cfg, optimizer)
-                for scheduler_cfg in scheduler_params.schedulers
-            ],
-            milestones=scheduler_params.milestones,
-            last_epoch=scheduler_params.last_epoch,
-        )
-
-    elif cfg_scheduler.name == "ReduceLROnPlateau":
-        reduce_scheduler = _get_scheduler(cfg_scheduler, optimizer)
-        if cfg_scheduler.params.get("mode") == "max":
-            if main_metric_monitor is None:
-                raise ValueError(
-                    "ReduceLROnPlateau with 'max' mode "
-                    "requires a metric to monitor."
-                )
-            monitor = main_metric_monitor
-        else:
-            monitor = "val/loss"
-
-        scheduler = {
-            "scheduler": reduce_scheduler,
-            "monitor": monitor,
-            "frequency": cfg.trainer.validation_interval,
-        }
-
-    else:
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-
-    return optimizer, scheduler

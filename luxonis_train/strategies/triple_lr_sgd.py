@@ -1,151 +1,51 @@
 import math
-from dataclasses import dataclass
-from typing import cast
 
 import numpy as np
 from torch import nn
-from torch.optim import SGD
-from torch.optim.lr_scheduler import LambdaLR
-from torch.optim.optimizer import Optimizer
 from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
+from luxonis_train.lightning.training_plan import StrategyRule
 
 from .base_strategy import BaseTrainingStrategy
 
 
-@dataclass
-class TripleLRScheduler:
-    optimizer: Optimizer
-    warmup_epochs: int
-    warmup_bias_lr: float
-    warmup_momentum: float
-    lre: float
-    cosine_annealing: bool
-    epochs: int
-    max_stepnum: int
-
-    def __post_init__(self) -> None:
-        self.warmup_stepnum = max(
-            round(self.warmup_epochs * self.max_stepnum), 100
-        )
-        self.step = 0
-        self.lrf = self.lre / self.optimizer.defaults["lr"]
-        if self.cosine_annealing:
-            self.lf = lambda x: (
-                ((1 - math.cos(x * math.pi / self.epochs)) / 2)
-                * (self.lrf - 1)
-                + 1
-            )
-        else:
-            self.lf = lambda x: (
-                max(1 - x / self.epochs, 0) * (1.0 - self.lrf) + self.lrf
-            )
-
-    def create_scheduler(self) -> LambdaLR:
-        return LambdaLR(self.optimizer, lr_lambda=self.lf)
-
-    def update_learning_rate(self, current_epoch: int) -> None:
-        self.step = self.step % self.max_stepnum
-        curr_step = self.step + self.max_stepnum * current_epoch
-
-        if curr_step <= self.warmup_stepnum:
-            for k, param in enumerate(self.optimizer.param_groups):
-                warmup_bias_lr = self.warmup_bias_lr if k == 2 else 0.0
-                param["lr"] = np.interp(
-                    curr_step,
-                    [0, self.warmup_stepnum],
-                    [
-                        warmup_bias_lr,
-                        self.optimizer.defaults["lr"] * self.lf(current_epoch),
-                    ],
-                )
-                if "momentum" in param:
-                    momentum = cast(float, self.optimizer.defaults["momentum"])
-                    self.optimizer.defaults["momentum"] = np.interp(
-                        curr_step,
-                        [0, self.warmup_stepnum],
-                        [self.warmup_momentum, momentum],
-                    )
-        self.step += 1
+def _is_batch_norm_weight(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module_name, parameter
+    return isinstance(module, nn.BatchNorm2d) and parameter_name == "weight"
 
 
-@dataclass
-class TripleLRSGD:
-    model: nn.Module
-    lr: float
-    momentum: float
-    weight_decay: float
-    nesterov: bool
-    excluded_params: set[int] | None = None
+def _is_weight(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module, module_name, parameter
+    return parameter_name == "weight"
 
-    def parameter_groups(
-        self,
-    ) -> tuple[list[nn.Parameter], list[nn.Parameter], list[nn.Parameter]]:
-        batch_norm_weights, regular_weights, biases = [], [], []
-        excluded_params = self.excluded_params or set()
 
-        for module in self.model.modules():
-            if (
-                hasattr(module, "bias")
-                and isinstance(module.bias, nn.Parameter)
-                and module.bias.requires_grad
-                and id(module.bias) not in excluded_params
-            ):
-                biases.append(module.bias)
-            if isinstance(module, nn.BatchNorm2d):
-                if (
-                    isinstance(module.weight, nn.Parameter)
-                    and module.weight.requires_grad
-                    and id(module.weight) not in excluded_params
-                ):
-                    batch_norm_weights.append(module.weight)
-            elif (
-                hasattr(module, "weight")
-                and isinstance(module.weight, nn.Parameter)
-                and module.weight.requires_grad
-                and id(module.weight) not in excluded_params
-            ):
-                regular_weights.append(module.weight)
-
-        return batch_norm_weights, regular_weights, biases
-
-    def has_parameters(self) -> bool:
-        return any(self.parameter_groups())
-
-    def create_optimizer(self) -> Optimizer:
-        batch_norm_weights, regular_weights, biases = self.parameter_groups()
-
-        return SGD(
-            [
-                {
-                    "params": batch_norm_weights,
-                    "lr": self.lr,
-                    "momentum": self.momentum,
-                    "nesterov": self.nesterov,
-                },
-                {
-                    "params": regular_weights,
-                    "weight_decay": self.weight_decay,
-                    "lr": self.lr,
-                    "momentum": self.momentum,
-                    "nesterov": self.nesterov,
-                },
-                {
-                    "params": biases,
-                    "lr": self.lr,
-                    "momentum": self.momentum,
-                    "nesterov": self.nesterov,
-                },
-            ],
-            lr=self.lr,
-            momentum=self.momentum,
-            nesterov=self.nesterov,
-        )
+def _is_bias(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module, module_name, parameter
+    return parameter_name == "bias"
 
 
 class TripleLRSGDStrategy(BaseTrainingStrategy):
+    BATCH_NORM_TAG = "triple_lr/batch_norm_weights"
+    WEIGHT_TAG = "triple_lr/weights"
+    BIAS_TAG = "triple_lr/biases"
+
     def __init__(
         self,
         pl_module: "lxt.LuxonisLightningModule",
@@ -160,6 +60,11 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         cosine_annealing: bool = True,
     ):
         """TripleLRSGD strategy.
+
+        Splits the model parameters into three SGD groups (batch-norm
+        weights, other weights, biases; weight decay only on the
+        weights) with a shared per-epoch learning-rate factor and a
+        per-step linear warmup.
 
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module to be used.
@@ -190,74 +95,78 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         self.max_stepnum = math.ceil(
             len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
         )
-        self._excluded_params: set[int] = set()
-        self._build_optimizer_scheduler()
-
-    def _build_optimizer_scheduler(
-        self, excluded_params: set[int] | None = None
-    ) -> None:
-        self._excluded_params = set(excluded_params or set())
-        self.optimizer = TripleLRSGD(
-            model=self.model,
-            lr=self.lr,
-            momentum=self.momentum,
-            weight_decay=self.weight_decay,
-            nesterov=self.nesterov,
-            excluded_params=self._excluded_params,
-        ).create_optimizer()
-
-        self.scheduler = TripleLRScheduler(
-            optimizer=self.optimizer,
-            warmup_epochs=self.warmup_epochs,
-            warmup_bias_lr=self.warmup_bias_lr,
-            warmup_momentum=self.warmup_momentum,
-            lre=self.lre,
-            cosine_annealing=self.cosine_annealing,
-            epochs=self.cfg.trainer.epochs,
-            max_stepnum=self.max_stepnum,
+        self.warmup_stepnum = max(
+            round(self.warmup_epochs * self.max_stepnum), 100
         )
+        self.step = 0
+        self.lrf = self.lre / self.lr
+        epochs = self.cfg.trainer.epochs
+        if self.cosine_annealing:
+            self.lf = lambda x: (
+                ((1 - math.cos(x * math.pi / epochs)) / 2) * (self.lrf - 1) + 1
+            )
+        else:
+            self.lf = lambda x: (
+                max(1 - x / epochs, 0) * (1.0 - self.lrf) + self.lrf
+            )
 
-    @override
-    def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]:
+    def _sgd(self, **extra: float | bool) -> OptimizerConfig:
         return OptimizerConfig(
             name="SGD",
             params={
                 "lr": self.lr,
                 "momentum": self.momentum,
-                "weight_decay": self.weight_decay,
                 "nesterov": self.nesterov,
+                **extra,
             },
-        ), SchedulerConfig(
+        )
+
+    @override
+    def rules(self) -> list[StrategyRule]:
+        # Batch-norm weights are tested before generic weights, so a
+        # `BatchNorm2d.weight` lands in the batch-norm group.
+        return [
+            StrategyRule(
+                tag=self.BATCH_NORM_TAG,
+                selector=_is_batch_norm_weight,
+                optimizer=self._sgd(),
+            ),
+            StrategyRule(
+                tag=self.WEIGHT_TAG,
+                selector=_is_weight,
+                optimizer=self._sgd(weight_decay=self.weight_decay),
+            ),
+            StrategyRule(
+                tag=self.BIAS_TAG,
+                selector=_is_bias,
+                optimizer=self._sgd(),
+            ),
+        ]
+
+    @override
+    def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]:
+        return self._sgd(), SchedulerConfig(
             name="LambdaLR",
-            params={"lr_lambda": self.scheduler.lf},  # type: ignore
+            params={"lr_lambda": self.lf},  # type: ignore
         )
-
-    @override
-    def configure_optimizers(
-        self, excluded_params: set[int] | None = None
-    ) -> tuple[list[Optimizer], list[LambdaLR]]:
-        excluded_params = set(excluded_params or set())
-        if excluded_params != self._excluded_params:
-            self._build_optimizer_scheduler(excluded_params)
-        if all(not group["params"] for group in self.optimizer.param_groups):
-            return [], []
-        return [self.optimizer], [self.scheduler.create_scheduler()]
-
-    @override
-    def estimate_optimizer_count(
-        self, excluded_params: set[int] | None = None
-    ) -> int:
-        optimizer = TripleLRSGD(
-            model=self.model,
-            lr=self.lr,
-            momentum=self.momentum,
-            weight_decay=self.weight_decay,
-            nesterov=self.nesterov,
-            excluded_params=set(excluded_params or set()),
-        )
-        return 1 if optimizer.has_parameters() else 0
 
     @override
     def update_parameters(self) -> None:
         current_epoch = self.model.current_epoch
-        self.scheduler.update_learning_rate(current_epoch)
+        self.step = self.step % self.max_stepnum
+        curr_step = self.step + self.max_stepnum * current_epoch
+
+        if curr_step <= self.warmup_stepnum:
+            for tag, warmup_start_lr in (
+                (self.BATCH_NORM_TAG, 0.0),
+                (self.WEIGHT_TAG, 0.0),
+                (self.BIAS_TAG, self.warmup_bias_lr),
+            ):
+                target_lr = self.lr * self.lf(current_epoch)
+                for handle in self.group_handles.get(tag, ()):
+                    self.runtime.group(handle)["lr"] = np.interp(
+                        curr_step,
+                        [0, self.warmup_stepnum],
+                        [warmup_start_lr, target_lr],
+                    )
+        self.step += 1

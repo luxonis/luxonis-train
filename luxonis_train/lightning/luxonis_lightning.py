@@ -19,7 +19,6 @@ from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing_extensions import Self, override
 
 import luxonis_train
@@ -29,7 +28,6 @@ from luxonis_train.attached_modules.visualizers import (
 )
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
-from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 from luxonis_train.lightning.training_plan import (
     TrainingPlanRuntime,
     build_training_plan,
@@ -173,9 +171,6 @@ class LuxonisLightningModule(pl.LightningModule):
         )
         self._restore_validation_interval_after_first_epoch = False
         self._original_check_val_every_n_epoch: int | None = None
-        self._training_strategy_base_configs: (
-            tuple[OptimizerConfig, SchedulerConfig] | None
-        ) = None
         self._training_plan: TrainingPlanRuntime | None = None
 
     @override
@@ -473,90 +468,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def training_step(
         self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> Tensor:
-        loss = self.compute_training_loss(train_batch)
-        if self.automatic_optimization:
-            return loss
-        optimizers = self.optimizers()
-        if optimizers is None:
-            optimizers = []
-        elif not isinstance(optimizers, list):
-            optimizers = [optimizers]
-        schedulers = self.lr_schedulers()
-        if schedulers is None:
-            schedulers = []
-        elif not isinstance(schedulers, list):
-            schedulers = [schedulers]
-        for optimizer in optimizers:
-            optimizer.zero_grad()
-        self.manual_backward(loss)
-        if self.cfg.trainer.gradient_clip_val is not None:
-            for optimizer in optimizers:
-                self.clip_gradients(
-                    cast(Optimizer, optimizer),
-                    gradient_clip_val=self.cfg.trainer.gradient_clip_val,
-                    gradient_clip_algorithm=(
-                        self.cfg.trainer.gradient_clip_algorithm or "norm"
-                    ),
-                )
-        for optimizer in optimizers:
-            optimizer.step()
-        # Mirrors Lightning's automatic path, which steps epoch-interval
-        # non-plateau schedulers at the end of the last training batch
-        # (`_TrainingEpochLoop.advance`), i.e. *before* the validation
-        # loop. Do not move this to `on_train_epoch_end` - that would
-        # make the learning rate seen during validation lag one step
-        # behind an equivalent single-optimizer run.
-        if self.trainer.is_last_batch:
-            for scheduler in schedulers:
-                if not isinstance(scheduler, ReduceLROnPlateau):
-                    scheduler.step()
-        return loss
-
-    def _step_reduce_lr_on_plateau_schedulers(
-        self, loss: float, metrics: dict[str, dict[str, float]]
-    ) -> None:
-        if self.automatic_optimization:
-            return
-
-        # Mirror the `config.frequency` gate Lightning applies in
-        # `update_lr_schedulers`. The frequency is
-        # `cfg.trainer.validation_interval` (see
-        # `build_optimizer_scheduler`), which normally coincides with
-        # `check_val_every_n_epoch` - except while
-        # `run_validation_after_first_epoch` temporarily forces
-        # validation after epoch 0.
-        frequency = self.cfg.trainer.validation_interval
-        if frequency > 1 and (self.current_epoch + 1) % frequency != 0:
-            return
-
-        schedulers = self.lr_schedulers()
-        if schedulers is None:
-            return
-        if not isinstance(schedulers, list):
-            schedulers = [schedulers]
-
-        for scheduler in schedulers:
-            if not isinstance(scheduler, ReduceLROnPlateau):
-                continue
-            if scheduler.mode == "min":
-                scheduler.step(loss)
-                continue
-
-            if self.nodes.main_metric is None:
-                raise RuntimeError(
-                    "Cannot step ReduceLROnPlateau scheduler with 'max' mode "
-                    "without a main metric."
-                )
-            node_name, metric_name = self.nodes.main_metric
-            try:
-                value = metrics[node_name][metric_name]
-            except KeyError as exc:
-                raise ValueError(
-                    "Cannot use ReduceLROnPlateau scheduler when main metric "
-                    "is not a logged scalar. Consider changing the main metric "
-                    "to return a single value or using a different scheduler."
-                ) from exc
-            scheduler.step(value)
+        return self.compute_training_loss(train_batch)
 
     @override
     def validation_step(
@@ -679,24 +591,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        try:
-            trainer = self.trainer
-        except RuntimeError:
-            trainer = None
-        trainer_fn = getattr(getattr(trainer, "state", None), "fn", None)
-        n_optimizers = (
-            self._expected_optimizer_count()
-            if trainer_fn is None or trainer_fn == "fit"
-            else 1
-        )
-        if n_optimizers > 1:
-            # `Trainer._run` calls this hook (via `_attach_model_callbacks`)
-            # while the module is attached and just *before*
-            # `_verify_loop_configurations`, so this is the only point at
-            # which the trainer can still be made consistent for a fit
-            # whose `configure_optimizers` already ran unattached.
-            self._disable_trainer_automatic_optimization_features()
-        return self.nodes.build_callbacks(self.save_dir, n_optimizers)
+        return self.nodes.build_callbacks(self.save_dir)
 
     @override
     def configure_optimizers(
@@ -704,38 +599,17 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> tuple[
         Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
     ]:
-        if self.training_strategy is not None:
-            base_optimizer_cfg, base_scheduler_cfg = (
-                self._get_training_strategy_base_configs()
-            )
-            optimizers, schedulers = self.nodes.build_optimizers(
-                base_optimizer_cfg,
-                base_scheduler_cfg,
-                include_default=False,
-            )
-            used_params = {
-                id(p)
-                for optimizer in optimizers
-                for group in optimizer.param_groups
-                for p in group["params"]
-            }
-            strategy_optimizers, strategy_schedulers = (
-                self.training_strategy.configure_optimizers(used_params)
-            )
-            optimizers = [*optimizers, *strategy_optimizers]
-            schedulers = [*schedulers, *strategy_schedulers]
-            if len(optimizers) > 1:
-                self.automatic_optimization = False
-                self._disable_trainer_automatic_optimization_features()
-
-            self._log_optimizer_scheduler_info(optimizers, schedulers)
-
-            return optimizers, schedulers
-
-        plan = resolve_training_plan(self.cfg, self.nodes)
-        runtime = build_training_plan(
-            plan, self.cfg, self._main_metric_monitor()
+        plan = resolve_training_plan(
+            self.cfg, self.nodes, self.training_strategy
         )
+        runtime = build_training_plan(
+            plan,
+            self.cfg,
+            self._main_metric_monitor(),
+            self.training_strategy,
+        )
+        if self.training_strategy is not None:
+            self.training_strategy.attach(runtime, plan.handles_by_tag)
         self.nodes.freeze_schedule.attach_group_handles(runtime)
         self._training_plan = runtime
 
@@ -759,56 +633,6 @@ class LuxonisLightningModule(pl.LightningModule):
         node_name, metric_name = self.nodes.main_metric
         formatted_node = self.nodes.formatted_name(node_name)
         return f"val/metric/{formatted_node}/{metric_name}"
-
-    def _disable_trainer_automatic_optimization_features(self) -> None:
-        """Clear the trainer settings Lightning refuses to combine with
-        manual optimization.
-
-        Gradient clipping is emulated in L{training_step} from
-        C{cfg.trainer.gradient_clip_val}, and gradient accumulation is
-        not supported with multiple optimizers, so the trainer-level
-        settings must be cleared. Otherwise Lightning's
-        C{__verify_manual_optimization_support} raises whenever it runs
-        after C{configure_optimizers} - as it does on a second C{fit}
-        with the same module, since L{LuxonisModel} reuses one trainer.
-        """
-        try:
-            trainer = self.trainer
-        except RuntimeError:
-            return
-        trainer.gradient_clip_val = None
-        trainer.gradient_clip_algorithm = None
-        trainer.accumulate_grad_batches = 1
-
-    def _get_training_strategy_base_configs(
-        self,
-    ) -> tuple[OptimizerConfig, SchedulerConfig]:
-        if self.training_strategy is None:
-            raise RuntimeError("Training strategy is not configured.")
-        if self._training_strategy_base_configs is None:
-            self._training_strategy_base_configs = (
-                self.training_strategy.get_base_configs()
-            )
-        return self._training_strategy_base_configs
-
-    def _expected_optimizer_count(self) -> int:
-        if self.training_strategy is None:
-            # The training plan always produces exactly one optimizer
-            # (possibly a composite), so automatic optimization and its
-            # callbacks are unconditionally available.
-            return 1
-
-        base_optimizer_cfg, base_scheduler_cfg = (
-            self._get_training_strategy_base_configs()
-        )
-        count, used_params = self.nodes.count_optimizers(
-            base_optimizer_cfg,
-            base_scheduler_cfg,
-            include_default=False,
-        )
-        return count + self.training_strategy.estimate_optimizer_count(
-            used_params
-        )
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Load checkpoint weights from provided path.
@@ -1102,9 +926,6 @@ class LuxonisLightningModule(pl.LightningModule):
             matrices=matrices,
         )
 
-        if mode == "val" and not self.trainer.sanity_checking:
-            self._step_reduce_lr_on_plateau_schedulers(loss, table)
-
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(
                 f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
@@ -1315,7 +1136,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def _log_optimizer_scheduler_info(
         self,
         optimizers: Sequence[Optimizer],
-        schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
+        schedulers: Sequence[Any],
     ) -> None:
         from luxonis_train.callbacks.luxonis_progress_bar import (
             build_optimizer_summary,

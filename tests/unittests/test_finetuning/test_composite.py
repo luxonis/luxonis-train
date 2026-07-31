@@ -353,6 +353,7 @@ def test_lr_after_unfreeze_survives_scheduler_steps(opts: Params):
     ]
     runtime.set_group_base_lr(handle, 0.5)
     member = runtime.members[handle.inner_index]
+    assert member is not None
     assert not isinstance(member, ReduceLROnPlateau)
     member.step()
 

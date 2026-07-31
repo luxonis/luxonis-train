@@ -1,13 +1,14 @@
+from types import SimpleNamespace
+from typing import Any, cast
+
 import pytorch_lightning as pl
 import torch
-from torch import Tensor
-from torch.optim import Optimizer
+from torch import Tensor, nn
+from torch.optim import SGD, Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
-from luxonis_train.strategies.triple_lr_sgd import (
-    TripleLRSGD,
-    TripleLRSGDStrategy,
-)
+from luxonis_train.lightning.training_plan import GroupHandle
+from luxonis_train.strategies.triple_lr_sgd import TripleLRSGDStrategy
 
 
 class _Core:
@@ -22,7 +23,40 @@ class _Cfg:
     trainer = Trainer()
 
 
+def _partition(
+    strategy: TripleLRSGDStrategy, module: nn.Module
+) -> dict[str, list[nn.Parameter]]:
+    """Apply the strategy's rules with first-match-wins claiming, the
+    way the training plan does.
+    """
+    rules = strategy.rules()
+    groups: dict[str, list[nn.Parameter]] = {rule.tag: [] for rule in rules}
+    claimed: set[int] = set()
+    for module_name, submodule in module.named_modules():
+        for parameter_name, parameter in submodule.named_parameters(
+            recurse=False
+        ):
+            if id(parameter) in claimed:
+                continue
+            for rule in rules:
+                if rule.selector(
+                    submodule, module_name, parameter, parameter_name
+                ):
+                    groups[rule.tag].append(parameter)
+                    claimed.add(id(parameter))
+                    break
+    return groups
+
+
 def test_triple_lr_sgd():
+    """Golden numeric table for the TripleLRSGD warmup and schedule.
+
+    The strategy is attached to a hand-built SGD with the conventional
+    three-group layout (batch-norm weights, weights, biases) - exactly
+    what the training plan builds from its rules - and driven through a
+    real Lightning fit.
+    """
+
     class DummyModel(pl.LightningModule):
         def __init__(self):
             super().__init__()
@@ -43,7 +77,34 @@ def test_triple_lr_sgd():
             self,
         ) -> tuple[list[Optimizer], list[LambdaLR]]:
             self.strategy = TripleLRSGDStrategy(model)  # type: ignore
-            return self.strategy.configure_optimizers()
+            groups = _partition(self.strategy, self)
+            optimizer = SGD(
+                [
+                    {"params": groups[TripleLRSGDStrategy.BATCH_NORM_TAG]},
+                    {
+                        "params": groups[TripleLRSGDStrategy.WEIGHT_TAG],
+                        "weight_decay": self.strategy.weight_decay,
+                    },
+                    {"params": groups[TripleLRSGDStrategy.BIAS_TAG]},
+                ],
+                lr=self.strategy.lr,
+                momentum=self.strategy.momentum,
+                nesterov=self.strategy.nesterov,
+            )
+            runtime = SimpleNamespace(
+                group=lambda handle: optimizer.param_groups[handle.group_index]
+            )
+            self.strategy.attach(
+                cast(Any, runtime),
+                {
+                    TripleLRSGDStrategy.BATCH_NORM_TAG: (GroupHandle(0, 0),),
+                    TripleLRSGDStrategy.WEIGHT_TAG: (GroupHandle(0, 1),),
+                    TripleLRSGDStrategy.BIAS_TAG: (GroupHandle(0, 2),),
+                },
+            )
+            return [optimizer], [
+                LambdaLR(optimizer, lr_lambda=self.strategy.lf)
+            ]
 
         def on_before_optimizer_step(self, optimizer: Optimizer) -> None:
             for i, param_group in enumerate(optimizer.param_groups):
@@ -85,7 +146,12 @@ def test_triple_lr_sgd():
             assert abs(value - expected) < tol
 
 
-def test_triple_lr_sgd_ignores_non_trainable_parameters():
+def test_triple_lr_rules_classify_parameters():
+    """The three rules classify parameters structurally - batch-norm
+    weights before generic weights, biases separately - regardless of
+    their `requires_grad` state (the partition is total; freezing is
+    expressed through `requires_grad` alone).
+    """
     model = torch.nn.Sequential(
         torch.nn.BatchNorm2d(3),
         torch.nn.Conv2d(3, 4, 1),
@@ -104,22 +170,20 @@ def test_triple_lr_sgd_ignores_non_trainable_parameters():
     convolution.bias.requires_grad_(False)
     linear.weight.requires_grad_(False)
 
-    optimizer_builder = TripleLRSGD(
-        model=model,
-        lr=0.02,
-        momentum=0.937,
-        weight_decay=0.0005,
-        nesterov=True,
-    )
-    parameter_ids = {
-        id(param)
-        for group in optimizer_builder.parameter_groups()
-        for param in group
-    }
+    stub = SimpleNamespace(core=_Core(), cfg=_Cfg(), current_epoch=0)
+    strategy = TripleLRSGDStrategy(cast(Any, stub))
+    groups = _partition(strategy, model)
 
-    assert id(batch_norm.weight) not in parameter_ids
-    assert id(convolution.bias) not in parameter_ids
-    assert id(linear.weight) not in parameter_ids
-    assert id(batch_norm.bias) in parameter_ids
-    assert id(convolution.weight) in parameter_ids
-    assert id(linear.bias) in parameter_ids
+    def ids(tag: str) -> set[int]:
+        return {id(parameter) for parameter in groups[tag]}
+
+    assert ids(TripleLRSGDStrategy.BATCH_NORM_TAG) == {id(batch_norm.weight)}
+    assert ids(TripleLRSGDStrategy.WEIGHT_TAG) == {
+        id(convolution.weight),
+        id(linear.weight),
+    }
+    assert ids(TripleLRSGDStrategy.BIAS_TAG) == {
+        id(batch_norm.bias),
+        id(convolution.bias),
+        id(linear.bias),
+    }
