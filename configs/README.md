@@ -130,10 +130,12 @@ This section allows you to specify advanced finetuning configurations for each n
 
 Behavior notes:
 
+- **Unanchored matching.** Both `name` and `module_type` are matched with `re.search`, so a pattern matches anywhere in the string. `module_type: Linear` therefore also claims `LazyLinear` and the `NonDynamicallyQuantizableLinear` used by `nn.MultiheadAttention.out_proj`, and `name: conv1` also claims `branch1.conv10.weight`. Anchor the pattern (`module_type: ^Linear$`) when you mean an exact match.
 - **Case-insensitive matching.** Both `name` and `module_type` patterns are matched with `re.IGNORECASE`, so `module_type: linear` matches `Linear`.
 - **First match wins.** Finetuning entries are evaluated in order; each parameter is claimed by the first entry whose pattern matches it. Put the most specific rules first and general fallbacks last (see `configs/complex_model.yaml` — `keypoint_heads` before generic `Conv2d`).
 - **Cross-family overrides drop base params.** When the override's `optimizer.name` (or `scheduler.name`) differs from the trainer-level one, the trainer-level `params` are not inherited — only the override's `params` apply. Same-family overrides (or omitted `name`) inherit and shallow-merge the base `params`.
 - **Grouping.** Entries that share the same optimizer name, scheduler name, and scheduler `params` are collapsed into a single optimizer with one `param_group` per entry — different `lr` / `weight_decay` between entries is still honored via PyTorch parameter groups. Any difference in optimizer name or scheduler config produces a separate optimizer, which switches the trainer into Lightning's manual-optimization mode.
+- **Multiple optimizers disable gradient accumulation.** In manual-optimization mode every batch performs an optimizer step, so `trainer.accumulate_grad_batches` and the `GradientAccumulationScheduler` callback are ignored (a warning is logged). Keep the finetuning entries in a single optimizer if you rely on gradient accumulation.
 
 **Example:**
 

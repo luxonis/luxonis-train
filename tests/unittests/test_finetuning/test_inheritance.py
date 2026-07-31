@@ -5,6 +5,14 @@ from luxonis_ml.typing import Params
 from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import ConstantLR, StepLR
 
+from luxonis_train.config.config import (
+    FinetuningOptimizerConfig,
+    FinetuningSchedulerConfig,
+    OptimizerConfig,
+    SchedulerConfig,
+)
+from luxonis_train.lightning.utils import merge_config_items
+
 from ._helpers import (
     assert_group_options,
     build_snapshot,
@@ -242,3 +250,34 @@ def test_optimizer_and_scheduler_inheritance_together(
     else:
         assert group["weight_decay"] == pytest.approx(0.1)
         assert scheduler_cfg.step_size == 5
+
+
+def test_merge_config_items_without_override_keeps_base_type():
+    """`merge_config_items` is declared - via `@overload` - to return an
+    `OptimizerConfig` / `SchedulerConfig`, whose `name` is a plain
+    `str`.
+
+    The no-override branch must therefore not hand back a
+    `Finetuning*Config`, whose `name` is `str | None` because it models
+    a *partial* user override. That nullable name would leak into plan
+    building (`OptimizerPlan.optimizer_name`, `from_registry(SCHEDULERS,
+    cfg.name)`), which requires a concrete name. The result must also
+    not share its `params` dict with the base config.
+    """
+    base_optimizer = OptimizerConfig(name="AdamW", params={"lr": 0.1})
+    merged_optimizer = merge_config_items(base_optimizer, None)
+
+    assert type(merged_optimizer) is OptimizerConfig
+    assert not isinstance(merged_optimizer, FinetuningOptimizerConfig)
+    assert merged_optimizer.name == "AdamW"
+    assert merged_optimizer.params == {"lr": 0.1}
+    assert merged_optimizer.params is not base_optimizer.params
+
+    base_scheduler = SchedulerConfig(name="StepLR", params={"step_size": 3})
+    merged_scheduler = merge_config_items(base_scheduler, None)
+
+    assert type(merged_scheduler) is SchedulerConfig
+    assert not isinstance(merged_scheduler, FinetuningSchedulerConfig)
+    assert merged_scheduler.name == "StepLR"
+    assert merged_scheduler.params == {"step_size": 3}
+    assert merged_scheduler.params is not base_scheduler.params

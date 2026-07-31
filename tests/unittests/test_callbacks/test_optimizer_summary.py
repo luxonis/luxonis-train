@@ -13,12 +13,14 @@ in the axis the reader cares about:
 from collections import defaultdict
 
 import torch
+from loguru import logger
 from torch import nn
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import ConstantLR, CosineAnnealingLR, LambdaLR
 
 from luxonis_train.callbacks.luxonis_progress_bar import (
     build_optimizer_summary,
+    log_optimizer_summary,
 )
 
 
@@ -284,3 +286,55 @@ def test_empty_model_produces_safe_zero_totals():
     (owner,) = group["owners"]
     assert owner["name"] == "<external>"
     assert owner["params_pct_of_owner"] == 100.0
+
+
+def test_plain_optimizer_summary_renders_all_optimizers():
+    """`log_optimizer_summary(use_rich=False)` is the fallback used when
+    `rich_logging` is disabled.
+
+    It must render every optimizer, group, hyperparameter and owner as
+    indented plaintext, since that is the only record of how the
+    parameters were split when rich output is unavailable.
+    """
+    backbone = _tiny_module(4, 8)
+    head = _tiny_module(8, 2)
+    backbone_optimizer = SGD(backbone.parameters(), lr=0.01)
+    head_optimizer = SGD(head.parameters(), lr=0.5)
+    summary = build_optimizer_summary(
+        [backbone_optimizer, head_optimizer],
+        [
+            ConstantLR(backbone_optimizer, factor=1.0),
+            ConstantLR(head_optimizer, factor=1.0),
+        ],
+        {"backbone": backbone, "head": head},
+    )
+
+    messages: list[str] = []
+    handler_id = logger.add(
+        lambda message: messages.append(message.record["message"]),
+        level="INFO",
+    )
+    try:
+        log_optimizer_summary(summary, use_rich=False)
+    finally:
+        logger.remove(handler_id)
+
+    rendered = messages[0]
+
+    assert "Using 2 optimizer(s)." in rendered
+    assert "trainable: 4 tensors / 58 params" in rendered
+    assert "frozen:    0 tensors / 0 params" in rendered
+    assert "Optimizer #0: SGD + ConstantLR  (1 parameter group(s))" in rendered
+    assert "Optimizer #1: SGD + ConstantLR  (1 parameter group(s))" in rendered
+    assert (
+        "Group #0: 2 tensors (50.0% of trainable)  •  "
+        "40 params (69.0% of trainable)" in rendered
+    )
+    assert (
+        "Group #0: 2 tensors (50.0% of trainable)  •  "
+        "18 params (31.0% of trainable)" in rendered
+    )
+    assert "      lr = 0.01\n" in rendered
+    assert "      lr = 0.5\n" in rendered
+    assert "backbone\n        tensors 2/2 (100.0% of owner)" in rendered
+    assert "head\n        tensors 2/2 (100.0% of owner)" in rendered

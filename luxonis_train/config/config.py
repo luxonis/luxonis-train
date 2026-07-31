@@ -90,7 +90,7 @@ class ParameterPattern(BaseModelExtraForbid):
     module_type: str | None = None
 
     @model_validator(mode="after")
-    def validate(self) -> Self:
+    def validate_pattern(self) -> Self:
         if self.name is None and self.module_type is None:
             raise ValueError(
                 "At least one of `name` or `module_type` must be specified for parameter pattern."
@@ -108,11 +108,8 @@ class ParameterPattern(BaseModelExtraForbid):
             self.name, parameter_name, flags=re.IGNORECASE
         ):
             return False
-        return not (
-            self.module_type is not None
-            and not re.search(
-                self.module_type, module_type, flags=re.IGNORECASE
-            )
+        return self.module_type is None or bool(
+            re.search(self.module_type, module_type, flags=re.IGNORECASE)
         )
 
 

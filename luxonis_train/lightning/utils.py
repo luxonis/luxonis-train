@@ -90,7 +90,14 @@ class OptimizerPlan(NamedTuple):
 class UnfreezeTarget(NamedTuple):
     optimizer: Optimizer
     optimizer_params: Kwargs
-    parameter_group: dict[str, Any] | None
+
+    # Index into `optimizer.param_groups`, not the group dictionary
+    # itself: `BaseFinetuning.on_fit_start` restores a resumed run by
+    # *replacing* `optimizer.param_groups` with freshly built dicts, which
+    # would leave a cached dictionary dangling. The index stays valid
+    # because `build_optimizers` zips the plan against `param_groups` in
+    # order and `add_param_group` only ever appends.
+    parameter_group_index: int | None
 
 
 def _freeze_config_value(value: Any) -> Hashable:
@@ -589,10 +596,13 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             if not parameters:
                 continue
 
-            if target.parameter_group is not None:
-                target.parameter_group["params"].extend(parameters)
+            if target.parameter_group_index is not None:
+                parameter_group = target.optimizer.param_groups[
+                    target.parameter_group_index
+                ]
+                parameter_group["params"].extend(parameters)
                 if lr is not None:
-                    target.parameter_group["lr"] = float(lr)
+                    parameter_group["lr"] = float(lr)
                 continue
 
             parameter_group = {"params": parameters} | target.optimizer_params
@@ -664,19 +674,27 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             optimizers.append(optimizer)
             schedulers.append(scheduler)
 
-            configured_parameter_groups = {
-                id(group): parameter_group
-                for group, parameter_group in zip(
-                    configured_groups,
-                    optimizer.param_groups,
-                    strict=True,
+            # The optimizer builds one parameter group per configured
+            # group, in order, so `configured_groups[i]` is the plan for
+            # `optimizer.param_groups[i]` and the index can be stored
+            # instead of the group dictionary.
+            if len(configured_groups) != len(optimizer.param_groups):
+                raise RuntimeError(  # pragma: no cover
+                    f"Optimizer '{plan.optimizer_name}' created "
+                    f"{len(optimizer.param_groups)} parameter group(s) "
+                    f"but {len(configured_groups)} were configured."
                 )
+            configured_parameter_groups = {
+                id(group): index
+                for index, group in enumerate(configured_groups)
             }
             for group in plan.parameter_groups:
                 target = UnfreezeTarget(
                     optimizer=optimizer,
                     optimizer_params=group.optimizer_params,
-                    parameter_group=configured_parameter_groups.get(id(group)),
+                    parameter_group_index=configured_parameter_groups.get(
+                        id(group)
+                    ),
                 )
                 for parameter in group.parameters:
                     if not parameter.requires_grad:
@@ -826,13 +844,26 @@ def build_training_strategy(
     training_strategy = cfg.trainer.training_strategy
     if training_strategy is not None:
         logger.info(f"Using training strategy '{training_strategy.name}'")
-        if (
-            cfg.trainer.optimizer is not None
-            or cfg.trainer.scheduler is not None
-        ):
+        # `optimizer` and `scheduler` have defaults, so they are never
+        # `None`; only warn about the ones the user actually configured.
+        # Compared against the defaults rather than `model_fields_set`,
+        # which misses in-place mutation and reports every field as set
+        # on a config rebuilt from `model_dump` (the tuner and the saved
+        # `training_config.yaml` both do that).
+        defaults = {
+            "optimizer": OptimizerConfig(),
+            "scheduler": SchedulerConfig(),
+        }
+        overridden = sorted(
+            field
+            for field, default in defaults.items()
+            if getattr(cfg.trainer, field) != default
+        )
+        if overridden:
+            fields = " and ".join(f"`trainer.{field}`" for field in overridden)
             logger.warning(
                 "Training strategy is defined. It will override "
-                "any specified optimizer or scheduler from the config."
+                f"the {fields} specified in the config."
             )
         return from_registry(
             STRATEGIES,
@@ -1129,7 +1160,10 @@ def merge_config_items(
     override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
 ) -> OptimizerConfig | SchedulerConfig:
     if override is None:
-        return base.to_finetuning()
+        # Not `base.to_finetuning()`: that returns a `Finetuning*Config`,
+        # whose `name` is `str | None` because it models a *partial*
+        # user override. Callers here require a concrete name.
+        return type(base)(name=base.name, params=base.params)
 
     if override.name is None or override.name == base.name:
         name = base.name

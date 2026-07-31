@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import (
     ConstantLR,
     CosineAnnealingLR,
     ReduceLROnPlateau,
+    SequentialLR,
     StepLR,
 )
 
@@ -678,3 +679,52 @@ def test_default_optimizer_receives_unclaimed_trainable_parameters(
     assert_group_options(default_group, {"lr": 0.004})
     assert_no_duplicate_parameters(snapshot)
     assert_all_trainable_parameters_assigned(snapshot)
+
+
+def test_sequential_lr_scheduler_chains_sub_schedulers(opts: Params):
+    """`SequentialLR` is configured with nested scheduler configs rather
+    than a plain `optimizer` argument, so it takes a dedicated branch in
+    `build_optimizer_scheduler`.
+
+    Setup: a single-optimizer model whose scheduler chains two
+    `ConstantLR`s with a milestone at epoch 1.
+
+    Expected: a real `SequentialLR` wrapping both sub-schedulers over
+    the built optimizer, with the first sub-scheduler's factor applied
+    immediately and the milestone switching to the second one.
+    """
+    snapshot = build_snapshot(
+        config(
+            [tiny_head_node()],
+            trainer={
+                "optimizer": {"name": "SGD", "params": {"lr": 0.1}},
+                "scheduler": {
+                    "name": "SequentialLR",
+                    "params": {
+                        "schedulers": [
+                            {
+                                "name": "ConstantLR",
+                                "params": {"factor": 0.5, "total_iters": 1},
+                            },
+                            {"name": "ConstantLR", "params": {"factor": 1.0}},
+                        ],
+                        "milestones": [1],
+                    },
+                },
+            },
+        ),
+        opts,
+    )
+    (optimizer,) = snapshot.optimizers
+    (sequential,) = snapshot.schedulers
+
+    assert isinstance(sequential, SequentialLR)
+    assert [type(s) for s in sequential._schedulers] == [
+        ConstantLR,
+        ConstantLR,
+    ]
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(0.05)
+
+    sequential.step()
+
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(0.1)

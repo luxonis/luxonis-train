@@ -30,12 +30,42 @@ class TrainingManager(BaseFinetuning):
             e,
             lr_after_unfreeze,
         ) in pl_module.nodes.frozen_nodes():
-            if e == epoch:
+            # `e <= epoch` rather than `e == epoch`: `freeze_before_training`
+            # re-freezes on every `setup`, so a run resumed past the
+            # unfreeze epoch would otherwise never unfreeze the node
+            # again. The `requires_grad` guard keeps this a no-op once
+            # the node is already trainable.
+            if e <= epoch and any(
+                not parameter.requires_grad for parameter in node.parameters()
+            ):
                 logger.info(f"Unfreezing node '{node_name}'")
                 self.make_trainable(node)
                 pl_module.nodes.restore_unfrozen_parameters(
                     node, lr_after_unfreeze
                 )
+
+    @override
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
+        super().on_train_epoch_start(trainer, pl_module)
+
+        # `BaseFinetuning` checkpoints `_internal_optimizer_metadata` and
+        # restores `optimizer.param_groups` from it when training is
+        # resumed. It only records groups *appended* to the optimizer it
+        # is currently iterating over, but `finetune_function` mutates
+        # every optimizer at once and may extend an existing group in
+        # place. Re-snapshot the real state so a resumed run does not
+        # restore stale parameter groups.
+        mapping = {
+            parameter: name for name, parameter in pl_module.named_parameters()
+        }
+        for optimizer_index, optimizer in enumerate(trainer.optimizers):
+            self._internal_optimizer_metadata[optimizer_index] = (
+                self._apply_mapping_to_param_groups(
+                    optimizer.param_groups, mapping
+                )
+            )
 
     @override
     def on_after_backward(

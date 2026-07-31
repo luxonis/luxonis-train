@@ -1,14 +1,19 @@
 from collections.abc import Sequence
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import pytest
 import torch
 from lightning.pytorch.callbacks import GradientAccumulationScheduler
+from lightning.pytorch.trainer.configuration_validator import (
+    _verify_loop_configurations,
+)
+from lightning.pytorch.trainer.states import TrainerFn
 from lightning.pytorch.utilities.types import (
     LRSchedulerConfig,
     LRSchedulerTypeUnion,
 )
+from loguru import logger
 from luxonis_ml.typing import Params
 from torch.optim import SGD, AdamW, Optimizer
 from torch.optim.lr_scheduler import (
@@ -20,9 +25,16 @@ from torch.optim.lr_scheduler import (
 from typing_extensions import override
 
 import luxonis_train as lxt
-from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
+from luxonis_train.config.config import (
+    Config,
+    OptimizerConfig,
+    SchedulerConfig,
+)
 from luxonis_train.lightning import luxonis_lightning
-from luxonis_train.lightning.utils import MainMetric
+from luxonis_train.lightning.utils import (
+    MainMetric,
+    build_training_strategy,
+)
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 
 from ._helpers import (
@@ -964,3 +976,135 @@ def test_manual_training_step_does_not_step_reduce_lr_on_plateau_scheduler(
     module.training_step((torch.empty(0), {}))
 
     assert step_calls == []
+
+
+def test_manual_optimization_clears_trainer_gradient_clipping(opts: Params):
+    """Several optimizers flip the module into manual optimization,
+    which Lightning refuses to combine with trainer-level gradient
+    clipping or gradient accumulation.
+
+    That normally goes unnoticed only because Lightning validates the
+    configuration *before* it calls `configure_optimizers`. The moment
+    the check runs afterwards - as it does on a second `fit` with the
+    same module, since `LuxonisModel` reuses one trainer - it raises
+    `MisconfigurationException`. Since the manual `training_step` clips
+    from `cfg.trainer`, the trainer-level settings must be cleared so
+    the configuration is valid whenever Lightning validates it.
+    """
+    model = _build_model(
+        config(
+            [
+                tiny_head_node(
+                    {
+                        "parameters": [{"module_type": "Linear"}],
+                        "optimizer": {"name": "SGD"},
+                    }
+                )
+            ],
+            trainer={
+                "gradient_clip_val": 1.5,
+                "gradient_clip_algorithm": "value",
+            },
+        ),
+        opts,
+    )
+    module = model.lightning_module
+    trainer = model.pl_trainer
+    # Lightning attaches the module before `strategy.setup`, which is
+    # what calls `configure_optimizers`.
+    module.trainer = trainer
+    trainer.strategy._lightning_module = module
+
+    optimizers, _ = module.configure_optimizers()
+
+    assert len(optimizers) > 1
+    assert module.automatic_optimization is False
+    # the manual `training_step` still clips, from the config
+    assert module.cfg.trainer.gradient_clip_val == 1.5
+
+    assert trainer.gradient_clip_val is None
+    assert trainer.gradient_clip_algorithm is None
+    assert trainer.accumulate_grad_batches == 1
+
+    trainer.state.fn = TrainerFn.FITTING
+    _verify_loop_configurations(trainer)
+
+
+def _strategy_config(trainer_extra: Params) -> Config:
+    return Config(
+        model=cast(
+            Any, {"name": "test_finetuning", "nodes": [tiny_head_node()]}
+        ),
+        trainer=cast(
+            Any,
+            {
+                "training_strategy": {"name": "CapturingFinetuningStrategy"},
+                **trainer_extra,
+            },
+        ),
+    )
+
+
+def _override_warnings(cfg: Config) -> list[str]:
+    # The sink must be attached *after* the `Config` is built:
+    # `Config.check_rich_logging` calls `setup_logging`, which does
+    # `logger.remove()` and would drop it.
+    messages: list[str] = []
+    handler_id = logger.add(
+        lambda message: messages.append(message.record["message"]),
+        level="WARNING",
+    )
+    try:
+        build_training_strategy(cfg, cast(Any, SimpleNamespace()))
+    finally:
+        logger.remove(handler_id)
+    return [m for m in messages if "Training strategy is defined" in m]
+
+
+def test_strategy_override_warning_only_when_optimizer_explicitly_set():
+    """`trainer.optimizer` and `trainer.scheduler` have a
+    `default_factory`, so they are never `None`.
+
+    Guarding the "training strategy will override your
+    optimizer/scheduler" warning with an `is not None` check therefore
+    makes it fire for every strategy-based config, including the shipped
+    ones that never mention an optimizer. Only the fields the user
+    actually set should be reported.
+    """
+    assert _override_warnings(_strategy_config({})) == []
+
+    (warning,) = _override_warnings(
+        _strategy_config({"optimizer": {"name": "AdamW"}})
+    )
+    assert "optimizer" in warning
+    assert "scheduler" not in warning
+
+    (warning,) = _override_warnings(
+        _strategy_config({"scheduler": {"name": "StepLR"}})
+    )
+    assert "scheduler" in warning
+    assert "optimizer" not in warning
+
+    (warning,) = _override_warnings(
+        _strategy_config(
+            {
+                "optimizer": {"name": "AdamW"},
+                "scheduler": {"name": "StepLR"},
+            }
+        )
+    )
+    assert "optimizer" in warning
+    assert "scheduler" in warning
+
+    # A config rebuilt from `model_dump` reports *every* field as set,
+    # so `model_fields_set` cannot be used here: the tuner and the saved
+    # `training_config.yaml` both take that route.
+    round_tripped = Config.get_config(_strategy_config({}).model_dump())
+    assert _override_warnings(round_tripped) == []
+
+    # ...and mutating the nested model does not mark the field as set,
+    # yet it genuinely changes the optimizer.
+    mutated = _strategy_config({})
+    mutated.trainer.optimizer.name = "AdamW"
+    (warning,) = _override_warnings(mutated)
+    assert "optimizer" in warning

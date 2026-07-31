@@ -68,3 +68,9 @@ def test_dummy_loader(opts: Params):
     }
     model = LuxonisModel(config_file, opts, allow_empty_dataset=True)
     model.train()
+
+    # `complex_model.yaml` carries finetuning rules that build several
+    # optimizers, so this is also the end-to-end guard for the manual
+    # optimization path.
+    assert model.lightning_module.automatic_optimization is False
+    assert len(model.pl_trainer.optimizers) > 1

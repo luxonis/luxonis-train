@@ -494,6 +494,12 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
         for optimizer in optimizers:
             optimizer.step()
+        # Mirrors Lightning's automatic path, which steps epoch-interval
+        # non-plateau schedulers at the end of the last training batch
+        # (`_TrainingEpochLoop.advance`), i.e. *before* the validation
+        # loop. Do not move this to `on_train_epoch_end` - that would
+        # make the learning rate seen during validation lag one step
+        # behind an equivalent single-optimizer run.
         if self.trainer.is_last_batch:
             for scheduler in schedulers:
                 if not isinstance(scheduler, ReduceLROnPlateau):
@@ -504,6 +510,17 @@ class LuxonisLightningModule(pl.LightningModule):
         self, loss: float, metrics: dict[str, dict[str, float]]
     ) -> None:
         if self.automatic_optimization:
+            return
+
+        # Mirror the `config.frequency` gate Lightning applies in
+        # `update_lr_schedulers`. The frequency is
+        # `cfg.trainer.validation_interval` (see
+        # `build_optimizer_scheduler`), which normally coincides with
+        # `check_val_every_n_epoch` - except while
+        # `run_validation_after_first_epoch` temporarily forces
+        # validation after epoch 0.
+        frequency = self.cfg.trainer.validation_interval
+        if frequency > 1 and (self.current_epoch + 1) % frequency != 0:
             return
 
         schedulers = self.lr_schedulers()
@@ -666,6 +683,13 @@ class LuxonisLightningModule(pl.LightningModule):
             if trainer_fn is None or trainer_fn == "fit"
             else 1
         )
+        if n_optimizers > 1:
+            # `Trainer._run` calls this hook (via `_attach_model_callbacks`)
+            # while the module is attached and just *before*
+            # `_verify_loop_configurations`, so this is the only point at
+            # which the trainer can still be made consistent for a fit
+            # whose `configure_optimizers` already ran unattached.
+            self._disable_trainer_automatic_optimization_features()
         return self.nodes.build_callbacks(self.save_dir, n_optimizers)
 
     @override
@@ -698,10 +722,31 @@ class LuxonisLightningModule(pl.LightningModule):
             optimizers, schedulers = self.nodes.build_optimizers()
         if len(optimizers) > 1:
             self.automatic_optimization = False
+            self._disable_trainer_automatic_optimization_features()
 
         self._log_optimizer_scheduler_info(optimizers, schedulers)
 
         return optimizers, schedulers
+
+    def _disable_trainer_automatic_optimization_features(self) -> None:
+        """Clear the trainer settings Lightning refuses to combine with
+        manual optimization.
+
+        Gradient clipping is emulated in L{training_step} from
+        C{cfg.trainer.gradient_clip_val}, and gradient accumulation is
+        not supported with multiple optimizers, so the trainer-level
+        settings must be cleared. Otherwise Lightning's
+        C{__verify_manual_optimization_support} raises whenever it runs
+        after C{configure_optimizers} - as it does on a second C{fit}
+        with the same module, since L{LuxonisModel} reuses one trainer.
+        """
+        try:
+            trainer = self.trainer
+        except RuntimeError:
+            return
+        trainer.gradient_clip_val = None
+        trainer.gradient_clip_algorithm = None
+        trainer.accumulate_grad_batches = 1
 
     def _get_training_strategy_base_configs(
         self,

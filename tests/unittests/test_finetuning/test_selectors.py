@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 from luxonis_ml.typing import Params
+from pydantic import BaseModel
 from torch.optim import SGD
 
 from luxonis_train.config.config import ParameterPattern
@@ -193,5 +194,84 @@ def test_parameter_pattern_matches(
         7. Name + module_type both match → true.
         8. Name matches but module_type doesn't → false (AND).
         9. Name doesn't match but module_type does → false (AND).
+    """
+    assert pattern.matches(module_type, parameter_name) is expected
+
+
+def test_parameter_pattern_validator_does_not_shadow_pydantic_api():
+    """The `@model_validator` on `ParameterPattern` must not be named
+    `validate`.
+
+    `BaseModel.validate` is a (deprecated) pydantic classmethod;
+    defining an instance-level validator with that name replaces it on
+    the class, so `ParameterPattern` alone stops behaving like every
+    other config model. The validator itself must still be registered
+    and still reject empty or underspecified patterns.
+    """
+    validators = ParameterPattern.__pydantic_decorators__.model_validators
+    assert "validate_pattern" in validators
+    assert "validate" not in validators
+    assert "validate" not in vars(ParameterPattern)
+    assert issubclass(ParameterPattern, BaseModel)
+
+    with pytest.raises(ValueError, match="At least one"):
+        ParameterPattern()
+    with pytest.raises(ValueError, match=r"name.*empty"):
+        ParameterPattern(name="")
+    with pytest.raises(ValueError, match=r"module_type.*empty"):
+        ParameterPattern(module_type="")
+
+
+@pytest.mark.parametrize(
+    ("pattern", "module_type", "parameter_name", "expected"),
+    [
+        (ParameterPattern(name="fc"), "Conv2d", "fc.weight", True),
+        (ParameterPattern(module_type="Linear"), "LazyLinear", "w", True),
+        (
+            ParameterPattern(module_type="Linear"),
+            "NonDynamicallyQuantizableLinear",
+            "out_proj.weight",
+            True,
+        ),
+        (ParameterPattern(module_type="^Linear$"), "LazyLinear", "w", False),
+        (ParameterPattern(module_type="linear"), "Linear", "w", True),
+        (ParameterPattern(module_type="Linear"), "Conv2d", "fc.weight", False),
+        (
+            ParameterPattern(name="conv1"),
+            "Conv2d",
+            "branch1.conv10.weight",
+            True,
+        ),
+        (
+            ParameterPattern(name="fc", module_type="Linear"),
+            "LazyLinear",
+            "head.fc.bias",
+            True,
+        ),
+    ],
+)
+def test_parameter_pattern_matching_is_unanchored(
+    pattern: ParameterPattern,
+    module_type: str,
+    parameter_name: str,
+    expected: bool,
+):
+    """Pins the unanchored `re.search` semantics that
+    `configs/README.md` documents.
+
+    Cases (in the order listed above):
+        1. `module_type` unset imposes no constraint.
+        2. `Linear` also claims `LazyLinear` - the pattern is not
+           anchored.
+        3. ...and the `NonDynamicallyQuantizableLinear` that
+           `nn.MultiheadAttention` uses for `out_proj`.
+        4. Anchoring it explicitly excludes `LazyLinear`.
+        5. The search is case-insensitive.
+        6. A set `module_type` that does not match rejects.
+        7. `name` is a substring search too, so `conv1` claims `conv10`.
+        8. `name` and `module_type` are ANDed, both unanchored.
+
+    `is expected` rather than `== expected` is deliberate: `matches`
+    must return a real `bool`, never a truthy `re.Match`.
     """
     assert pattern.matches(module_type, parameter_name) is expected
