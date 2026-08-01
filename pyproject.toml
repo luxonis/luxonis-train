@@ -33,7 +33,7 @@ dependencies = [
   "termcolor~=3.2",
   "torchmetrics~=1.8",
   "torchvision~=0.26",
-  "torch~=2.13",
+  "torch<2.13",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
