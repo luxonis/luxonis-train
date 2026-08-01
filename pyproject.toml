@@ -31,9 +31,9 @@ dependencies = [
   "tabulate~=0.9",
   "tensorboard~=2.20",
   "termcolor~=3.2",
-  "torch>=2.9,<2.12",
+  "torch~=2.13",
   "torchmetrics~=1.8",
-  "torchvision>=0.24,<0.27",
+  "torchvision~=0.26",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -53,10 +53,10 @@ repository = "https://github.com/luxonis/luxonis-train"
 issues = "https://github.com/luxonis/luxonis-train/issues"
 
 [project.optional-dependencies]
-aimet = ["aimet-torch~=2.31", "torch==2.11", "torchvision~=0.26"]
+aimet = ["aimet-torch~=2.36"]
 
 [dependency-groups]
-config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov>=4.1.0", "semver~=3.0"]
+config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
 dev = [
   "prek~=0.4",
   "pytest-cov~=7.1",
