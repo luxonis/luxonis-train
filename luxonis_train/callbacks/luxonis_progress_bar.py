@@ -586,7 +586,6 @@ def log_optimizer_summary(
 
 def _render_optimizer_summary_rich(summary: dict[str, Any]) -> None:
     from rich import get_console
-    from rich.columns import Columns
     from rich.console import Group
 
     console = get_console()
@@ -610,11 +609,15 @@ def _render_optimizer_summary_rich(summary: dict[str, Any]) -> None:
                 f"[white]{group['n_params']:,} params[/] "
                 f"[dim]({group['params_pct_of_model']:.1f}% of trainable)[/]"
             )
-            side_by_side = Columns(
-                [
-                    _render_hyperparam_panel(group["hyperparams"]),
-                    _render_owners_panel(group["owners"]),
-                ],
+            # `Columns` always measures as wide as the console, which would
+            # stop the enclosing `Panel.fit`s from shrinking to their
+            # content. A grid measures its actual width.
+            side_by_side = Table.grid(padding=(0, 1))
+            side_by_side.add_column()
+            side_by_side.add_column()
+            side_by_side.add_row(
+                _render_hyperparam_panel(group["hyperparams"]),
+                _render_owners_panel(group["owners"]),
             )
             group_panels.append(
                 Panel.fit(

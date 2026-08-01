@@ -10,10 +10,13 @@ in the axis the reader cares about:
   parameters were split across groups.
 """
 
+import io
 from collections import defaultdict
+from unittest.mock import patch
 
 import torch
 from loguru import logger
+from rich.console import Console
 from torch import nn
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import ConstantLR, CosineAnnealingLR, LambdaLR
@@ -338,3 +341,38 @@ def test_plain_optimizer_summary_renders_all_optimizers():
     assert "      lr = 0.5\n" in rendered
     assert "backbone\n        tensors 2/2 (100.0% of owner)" in rendered
     assert "head\n        tensors 2/2 (100.0% of owner)" in rendered
+
+
+def test_rich_optimizer_summary_panels_fit_their_content():
+    """The rich panels must shrink to their content instead of
+    stretching across the whole terminal.
+
+    Anything laid out with `rich.columns.Columns` measures as wide as
+    the console, which silently defeats the enclosing `Panel.fit` and
+    blows every panel up to the full width.
+    """
+    backbone = _tiny_module(4, 8)
+    optimizer = SGD(backbone.parameters(), lr=0.01)
+    summary = build_optimizer_summary(
+        [optimizer],
+        [ConstantLR(optimizer, factor=1.0)],
+        {"backbone": backbone},
+    )
+
+    def render(width: int) -> list[str]:
+        buffer = io.StringIO()
+        console = Console(
+            width=width, force_terminal=False, no_color=True, file=buffer
+        )
+        with patch("rich.get_console", return_value=console):
+            log_optimizer_summary(summary, use_rich=True)
+        return [line.rstrip() for line in buffer.getvalue().splitlines()]
+
+    narrow = render(120)
+    wide = render(240)
+
+    assert any("Optimizer #0" in line for line in narrow)
+    assert any("Group #0" in line for line in narrow)
+    # Content-driven layout — doubling the terminal must not widen anything.
+    assert narrow == wide
+    assert max(len(line) for line in narrow) < 120
