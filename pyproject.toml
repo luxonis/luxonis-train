@@ -17,10 +17,10 @@ dependencies = [
   "hubai-sdk>=0.3.1",
   "lightning~=2.5",
   "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]>=0.9.1",
-  "onnx~=1.19",
   "onnxruntime~=1.23",
   "onnxscript~=0.5",
   "onnxsim~=0.4",
+  "onnx~=1.19",
   "optuna-integration~=4.6",
   "optuna~=4.6",
   "psutil~=7.1",
@@ -31,9 +31,9 @@ dependencies = [
   "tabulate~=0.9",
   "tensorboard~=2.20",
   "termcolor~=3.2",
-  "torch~=2.13",
   "torchmetrics~=1.8",
   "torchvision~=0.26",
+  "torch~=2.13",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -59,12 +59,12 @@ aimet = ["aimet-torch~=2.36"]
 config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
 dev = [
   "prek~=0.4",
+  "pyright~=1.1",
   "pytest-cov~=7.1",
   "pytest-order~=1.5",
   "pytest-rerunfailures~=16.4",
   "pytest-subtests~=0.15",
   "pytest-timeout~=2.4",
-  "pyright~=1.1",
   "ruff~=0.16",
 ]
 docs = ["pydoctor~=25.10"]
