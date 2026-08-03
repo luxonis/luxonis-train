@@ -44,8 +44,13 @@ class ResolvedPredefinedConfig(NamedTuple):
     opts: list[str]
 
 
+def configs_dir() -> Path:
+    """Return the directory holding the packaged preset YAMLs."""
+    return Path(str(files(CONFIGS_PACKAGE)))
+
+
 def _config_path(filename: str) -> Path:
-    return Path(str(files(CONFIGS_PACKAGE) / filename))
+    return configs_dir() / filename
 
 
 def _iter_config_files() -> list[str]:

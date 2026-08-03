@@ -19,6 +19,7 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
     TrainerConfig,
+    predefined,
 )
 from luxonis_train.config.config import (
     AIMETConfig,
@@ -40,7 +41,10 @@ from luxonis_train.config.config import (
 )
 from luxonis_train.config.predefined import (
     VARIANT_ORDER,
+    _model_class,
+    configs_dir,
     list_predefined_models,
+    list_variants,
     resolve_predefined_config,
 )
 from luxonis_train.config.predefined_models import (
@@ -79,7 +83,7 @@ class ConcreteSimplePredefinedModel(SimplePredefinedModel):
 
 
 @pytest.mark.parametrize(
-    "path", sorted(Path("configs").glob("*.yaml")), ids=lambda path: path.name
+    "path", sorted(configs_dir().glob("*.yaml")), ids=lambda path: path.name
 )
 def test_config_load(path: Path):
     cfg = Config.get_config(path)
@@ -1244,3 +1248,87 @@ def test_ocr_preset_keeps_its_explicit_accumulation():
     )
     assert cfg.trainer.batch_size == 4
     assert cfg.trainer.accumulate_grad_batches == 2
+
+
+def test_every_packaged_config_is_parametrized():
+    """Guard against the config-load sweep silently emptying out.
+
+    `test_config_load` is parametrized from the packaged directory; if
+    that path ever stops resolving, pytest generates zero cases and the
+    sweep disappears without failing anything.
+    """
+    assert len(sorted(configs_dir().glob("*.yaml"))) >= 19
+
+
+def test_model_class_returns_none_for_unknown_model():
+    assert _model_class("nope") is None
+
+
+def test_model_class_returns_none_for_config_without_predefined_model(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """`defaults.yaml` carries no `model.predefined_model` block."""
+    monkeypatch.setattr(
+        predefined,
+        "default_config_path",
+        lambda _: configs_dir() / "defaults.yaml",
+    )
+    assert _model_class("detection") is None
+    # `list_variants` then falls back to the filename-derived variants.
+    assert list_variants("detection") == ["light", "heavy"]
+
+
+def test_model_class_returns_none_when_class_cannot_be_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from luxonis_train.config import predefined_versions
+
+    def unresolvable(*_args: Any, **_kwargs: Any) -> Any:
+        raise ValueError("gone")
+
+    monkeypatch.setattr(
+        predefined_versions, "resolve_predefined_class", unresolvable
+    )
+    assert _model_class("detection") is None
+
+
+def test_list_variants_skips_class_default_for_unvarianted_config():
+    """A single unvarianted YAML already stands for the class
+    default.
+    """
+    assert list_variants("embeddings") == [None]
+
+
+def test_list_variants_includes_variants_without_a_yaml():
+    assert list_variants("detection") == ["light", "medium", "heavy"]
+
+
+def test_resolve_variant_without_dedicated_yaml():
+    resolved = resolve_predefined_config("detection", "medium")
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == ["model.predefined_model.variant", "medium"]
+
+
+def test_warn_silent_when_current_config_does_not_resolve():
+    """Config validation reports an unresolvable config better than we
+    could here.
+    """
+    current = PredefinedModelConfig(name="DoesNotExist")
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 0
+
+
+def test_warn_when_checkpoint_model_no_longer_resolves():
+    """The checkpoint's architecture being gone is the case the warning
+    exists for, so it must not be swallowed.
+    """
+    current = PredefinedModelConfig(name="DetectionModel", version=1)
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "RemovedModel", "version": 1}
+        )
+    assert warn.call_count == 1
+    assert "RemovedModel" in warn.call_args.args[0]
