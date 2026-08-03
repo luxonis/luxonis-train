@@ -1160,7 +1160,9 @@ def test_versioned_name_still_triggers_smart_auto_populate():
     assert plain.model.predefined_model is not None
     assert pinned.model.predefined_model is not None
 
-    loss_params = pinned.model.predefined_model.params["loss_params"]
+    loss_params = cast(
+        dict[str, Any], pinned.model.predefined_model.params["loss_params"]
+    )
     assert loss_params == plain.model.predefined_model.params["loss_params"]
     assert loss_params["bbox_loss_weight"] == 7.5 * 16
 

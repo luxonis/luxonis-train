@@ -246,6 +246,7 @@ def test_class_only_variant_is_selectable():
 
 def test_cli_resolver_passes_variant_override_through():
     resolved, opts = _resolve_config(None, "detection", "medium")
+    assert isinstance(resolved, str)
     assert resolved.endswith("detection_light_model.yaml")
     assert opts == ["model.predefined_model.variant", "medium"]
 
