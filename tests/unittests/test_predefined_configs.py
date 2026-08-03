@@ -1,13 +1,20 @@
+import importlib
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from luxonis_train.__main__ import _resolve_config, _split_model_version
+from luxonis_train.__main__ import (
+    _resolve_config,
+    _split_model_version,
+    create_model,
+)
 from luxonis_train.config.predefined import (
+    CONFIGS_PACKAGE,
     VARIANT_ORDER,
     list_predefined_models,
+    list_variants,
     resolve_predefined_config,
 )
 
@@ -38,10 +45,11 @@ def test_list_predefined_models_covers_known_presets():
 
 
 def test_resolve_predefined_config_returns_existing_file():
-    path = resolve_predefined_config("detection", "light")
-    assert isinstance(path, Path)
-    assert path.exists()
-    assert path.name == "detection_light_model.yaml"
+    resolved = resolve_predefined_config("detection", "light")
+    assert isinstance(resolved.path, Path)
+    assert resolved.path.exists()
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == []
 
 
 def test_resolve_predefined_config_defaults_variant():
@@ -49,12 +57,12 @@ def test_resolve_predefined_config_defaults_variant():
     # The default variant is the first one in list_predefined_models.
     entries = list_predefined_models()
     expected_variant = entries["detection"][0]
-    assert default.name == f"detection_{expected_variant}_model.yaml"
+    assert default.path.name == f"detection_{expected_variant}_model.yaml"
 
 
 def test_resolve_predefined_config_handles_variantless_model():
-    path = resolve_predefined_config("anomaly_detection", None)
-    assert path.name == "anomaly_detection_model.yaml"
+    resolved = resolve_predefined_config("anomaly_detection", None)
+    assert resolved.path.name == "anomaly_detection_model.yaml"
 
 
 def test_resolve_predefined_config_rejects_unknown_model():
@@ -71,8 +79,8 @@ def test_resolve_predefined_config_rejects_unknown_variant():
 
 
 def test_cli_resolver_passthrough_for_plain_config():
-    assert _resolve_config("foo.yaml", None, None) == "foo.yaml"
-    assert _resolve_config(None, None, None) is None
+    assert _resolve_config("foo.yaml", None, None) == ("foo.yaml", [])
+    assert _resolve_config(None, None, None) == (None, [])
 
 
 def test_cli_resolver_variant_without_model_errors():
@@ -88,10 +96,11 @@ def test_cli_resolver_config_and_model_mutually_exclusive():
 
 
 def test_cli_resolver_returns_packaged_path_for_model():
-    resolved = _resolve_config(None, "detection", "light")
+    resolved, opts = _resolve_config(None, "detection", "light")
     assert isinstance(resolved, str)
     assert resolved.endswith("detection_light_model.yaml")
     assert Path(resolved).exists()
+    assert opts == []
 
 
 def test_split_model_version_forms():
@@ -165,8 +174,8 @@ def test_info_cli_command_displays_model_components():
 def _iter_predefined_model_variant_pairs() -> list[tuple[str, str | None]]:
     return [
         (model, variant)
-        for model, variants in list_predefined_models().items()
-        for variant in variants
+        for model in list_predefined_models()
+        for variant in list_variants(model)
     ]
 
 
@@ -188,7 +197,7 @@ def test_info_cli_runs_for_every_predefined_model_variant(
 
 def test_embeddings_model_uses_a_predefined_model_class():
     config = resolve_predefined_config("embeddings", None)
-    assert "name: EmbeddingsModel" in config.read_text()
+    assert "name: EmbeddingsModel" in config.path.read_text()
 
     result = subprocess.run(
         [
@@ -206,3 +215,64 @@ def test_embeddings_model_uses_a_predefined_model_class():
     assert "EmbeddingsModel:v1" in result.stdout
     assert "GhostFaceNet" in result.stdout
     assert "GhostFaceNetHead" in result.stdout
+
+
+def test_configs_are_packaged_inside_luxonis_train():
+    """The presets must not ship as a generic top-level `configs`
+    package.
+
+    Any other `configs` directory on `sys.path` - a user's own project
+    layout, most commonly - would win the import lookup and shadow them,
+    and another distribution shipping that name would clobber the files
+    outright.
+    """
+    assert CONFIGS_PACKAGE == "luxonis_train.configs"
+    module = importlib.import_module(CONFIGS_PACKAGE)
+    assert module.__name__ == "luxonis_train.configs"
+    assert resolve_predefined_config("detection", "light").path.exists()
+
+
+def test_class_only_variant_is_selectable():
+    """`medium` ships no YAML of its own but is a real `DetectionModel`
+    variant, so `--variant medium` has to reach it.
+    """
+    assert "medium" in list_variants("detection")
+    assert "medium" not in list_predefined_models()["detection"]
+
+    resolved = resolve_predefined_config("detection", "medium")
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == ["model.predefined_model.variant", "medium"]
+
+
+def test_cli_resolver_passes_variant_override_through():
+    resolved, opts = _resolve_config(None, "detection", "medium")
+    assert resolved.endswith("detection_light_model.yaml")
+    assert opts == ["model.predefined_model.variant", "medium"]
+
+
+def test_unknown_variant_error_lists_class_variants():
+    with pytest.raises(ValueError, match="light, medium, heavy"):
+        resolve_predefined_config("detection", "nope")
+
+
+def test_split_model_version_rejects_non_ascii_digits():
+    """`str.isdigit()` accepts superscripts and non-ASCII decimals that
+    `int()` then rejects.
+    """
+    for spec in ("detection:v²", "detection:v٣"):
+        with pytest.raises(ValueError, match="Malformed model spec"):
+            _split_model_version(spec)
+
+
+def test_create_model_requires_a_config_model_or_weights():
+    """Commands must not fall through to an all-defaults model.
+
+    `--config` is optional on every command, but with no `--model` and
+    no `--weights` there is nothing to build from.
+    """
+    with pytest.raises(ValueError, match="No model source given"):
+        create_model(None)
+    # Bare `opts` used to satisfy `luxonis_ml`'s "cfg or overrides" check
+    # and silently produce a default model.
+    with pytest.raises(ValueError, match="No model source given"):
+        create_model(None, ["trainer.epochs", "1"])

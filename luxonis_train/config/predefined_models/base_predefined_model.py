@@ -1,7 +1,8 @@
 from abc import abstractmethod
-from typing import Literal
+from typing import Literal, cast
 
 from luxonis_ml.typing import Kwargs, Params, check_type
+from luxonis_ml.utils.registry import Registry
 from typeguard import typechecked
 from typing_extensions import override
 
@@ -13,10 +14,81 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
-from luxonis_train.variants import VariantBase
+from luxonis_train.variants import VariantBase, VariantMeta
 
 
-class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
+def model_family_name(
+    cls: "type[BasePredefinedModel]", class_name: str | None = None
+) -> str:
+    """Return the stable registry family for a predefined model class.
+
+    Breaking versions are named C{FamilyV2}, C{FamilyV3}, and so on,
+    while users continue to address them as C{Family}.
+    """
+    name = class_name or cls.__name__
+    version_suffix = f"V{cls._VERSION}"
+    if name.endswith(version_suffix):
+        return name[: -len(version_suffix)]
+    return name
+
+
+class PredefinedModelMeta(VariantMeta):
+    """Registers predefined models under versioned C{Family:vN} keys.
+
+    C{AutoRegisterMeta} registers every subclass under its plain class
+    name. That entry is replaced here by two: the canonical
+    C{Family:vN} key that L{luxonis_train.config.predefined_versions}
+    resolves against, and a plain C{Family} alias pointing at the most
+    recently registered version, so that looking a model up by its class
+    name keeps working.
+
+    Keying happens when the class is created rather than in a one-shot
+    sweep after import, so classes registered later - custom models
+    loaded through C{--source}, most importantly - are keyed the same
+    way. That lets them both add a new version of a shipped family and
+    override an existing one, which is what registering under a
+    built-in's name did before versioning was introduced.
+    """
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, type],
+        register: bool = True,
+        register_name: str | None = None,
+        registry: Registry | None = None,
+    ):
+        new_class = super().__new__(
+            cls,
+            name,
+            bases,
+            attrs,
+            register=register,
+            register_name=register_name,
+            registry=registry,
+        )
+        if not register:
+            return new_class
+
+        registry = registry if registry is not None else new_class.REGISTRY
+        registry._module_dict.pop(register_name or name, None)
+
+        # Abstract intermediates (`SimplePredefinedModel`) cannot be
+        # instantiated from a config and must not claim a family name.
+        if getattr(new_class, "__abstractmethods__", None):
+            return new_class
+
+        model_cls = cast("type[BasePredefinedModel]", new_class)
+        family = model_family_name(model_cls, register_name or name)
+        registry[f"{family}:v{model_cls._VERSION}"] = model_cls
+        registry[family] = model_cls
+        return new_class
+
+
+class BasePredefinedModel(
+    VariantBase, metaclass=PredefinedModelMeta, registry=MODELS, register=False
+):
     _VERSION: int = 1
     """Version marker for this predefined-model class.
 

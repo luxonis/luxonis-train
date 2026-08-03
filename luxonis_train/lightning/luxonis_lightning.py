@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -57,18 +58,17 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
     dumped = predefined_model.model_dump()
     if dumped.get("version") == "latest":
         from luxonis_train.config.predefined_versions import (
-            _split_family_version,
-            resolved_class_name,
+            resolve_predefined_class,
         )
 
-        try:
-            _, resolved_version = _split_family_version(
-                resolved_class_name(predefined_model.name, "latest")
-            )
-        except ValueError:
-            resolved_version = None
-        if resolved_version is not None:
-            dumped["version"] = resolved_version
+        # Read the version off the resolved class rather than parsing it
+        # out of the registry key: a model registered under a plain key
+        # has no `:vN` suffix to parse, and would keep `"latest"` here -
+        # which is exactly the ambiguity the pin exists to remove.
+        with suppress(KeyError, ValueError):
+            dumped["version"] = resolve_predefined_class(
+                predefined_model.name, "latest"
+            )._VERSION
     return dumped
 
 
@@ -121,6 +121,15 @@ class LuxonisLightningModule(pl.LightningModule):
 
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
+
+    _ckpt_predefined_model: dict[str, Any] | None = None
+    """Predefined-model pin read from the loaded checkpoint.
+
+    `ModelConfig.predefined_model` is excluded from the dumped config,
+    so a run reconstructed from a checkpoint (`--weights` without
+    `--config`) has none in `self.cfg`. Keeping it here lets
+    `on_save_checkpoint` carry the pin over instead of dropping it.
+    """
 
     __call__: Callable[..., tuple[Tensor, ...]]
 
@@ -640,11 +649,8 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
-        if isinstance(previous_cfg, dict) or "predefined_model" in ckpt:
-            self._warn_on_predefined_model_mismatch(
-                previous_cfg if isinstance(previous_cfg, dict) else None,
-                ckpt.get("predefined_model"),
-            )
+        self._ckpt_predefined_model = ckpt.get("predefined_model")
+        self._warn_on_predefined_model_mismatch(self._ckpt_predefined_model)
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
@@ -756,24 +762,22 @@ class LuxonisLightningModule(pl.LightningModule):
             )
 
     def _warn_on_predefined_model_mismatch(
-        self,
-        ckpt_config: dict[str, Any] | None,
-        ckpt_predefined_model: Any | None = None,
+        self, ckpt_predefined_model: Any | None
     ) -> None:
+        """Warn when the checkpoint was trained with a different
+        predefined-model version than the config resolves to.
+
+        The pin is read from the checkpoint's top-level
+        `predefined_model` key only. It is deliberately not looked for
+        under `config.model.predefined_model`: that field is
+        `Field(exclude=True)`, so no checkpoint has ever contained it.
+        """
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
         )
 
-        if ckpt_predefined_model is None and ckpt_config is not None:
-            model_config = ckpt_config.get("model")
-            ckpt_predefined_model = (
-                model_config.get("predefined_model")
-                if isinstance(model_config, dict)
-                else None
-            )
         warn_on_predefined_model_mismatch(
-            self.cfg.model.predefined_model,
-            ckpt_predefined_model,
+            self.cfg.model.predefined_model, ckpt_predefined_model
         )
 
     def _evaluation_step(
@@ -1197,7 +1201,10 @@ class LuxonisLightningModule(pl.LightningModule):
         checkpoint["state_dict"] = filter_checkpoint_state_dict(
             checkpoint["state_dict"]
         )
-        predefined_model = _checkpoint_predefined_model(self.cfg)
+        predefined_model = (
+            _checkpoint_predefined_model(self.cfg)
+            or self._ckpt_predefined_model
+        )
         checkpoint |= {
             "version": luxonis_train.__version__,
             "execution_order": get_model_execution_order(self),

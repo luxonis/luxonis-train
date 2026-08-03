@@ -34,7 +34,7 @@ def test_freezing_parametrized(
     coco_dataset: LuxonisDataset,
     image_size: tuple[int, int],
 ):
-    config_file = "configs/segmentation_light_model.yaml"
+    config_file = "luxonis_train/configs/segmentation_light_model.yaml"
     opts = {
         "model.predefined_model.params": {
             "head_params": {

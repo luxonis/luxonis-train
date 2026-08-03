@@ -1011,16 +1011,25 @@ class Config(LuxonisConfig):
                 "If this behavior is not desired, set "
                 "`smart_cfg_auto_populate` to `False`."
             )
-            model_name = predefined_model_cfg.name
-            accumulate_grad_batches = int(64 / self.trainer.batch_size)
-            self.trainer.accumulate_grad_batches = accumulate_grad_batches
-            logger.info(
-                f"Setting 'accumulate_grad_batches' to "
-                f"{accumulate_grad_batches} "
-                f"(trainer.batch_size={self.trainer.batch_size})",
-                accumulate_grad_batches,
-                self.trainer.batch_size,
-            )
+            from luxonis_train.config.predefined_versions import family_name
+
+            # `name` may carry an explicit `:vN` suffix; the rules below
+            # apply per family, not per pinned version.
+            model_name = family_name(predefined_model_cfg.name)
+            if self.trainer.accumulate_grad_batches is not None:
+                accumulate_grad_batches = self.trainer.accumulate_grad_batches
+                logger.info(
+                    f"Keeping the explicitly configured "
+                    f"'accumulate_grad_batches' of {accumulate_grad_batches}."
+                )
+            else:
+                accumulate_grad_batches = int(64 / self.trainer.batch_size)
+                self.trainer.accumulate_grad_batches = accumulate_grad_batches
+                logger.info(
+                    f"Setting 'accumulate_grad_batches' to "
+                    f"{accumulate_grad_batches} "
+                    f"(trainer.batch_size={self.trainer.batch_size})"
+                )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
             if not isinstance(loss_params, dict):
                 raise ValueError(

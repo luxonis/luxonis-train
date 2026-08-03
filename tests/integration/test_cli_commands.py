@@ -68,9 +68,9 @@ def test_cli_command_success(
                     command.__name__,
                     *flat_opts,
                 ],
-                config="configs/detection_light_model.yaml"
+                config="luxonis_train/configs/detection_light_model.yaml"
                 if command is not tune
-                else "configs/example_tuning.yaml",
+                else "luxonis_train/configs/example_tuning.yaml",
                 **kwargs,
             )
             if isinstance(res, GeneratorType):
@@ -97,7 +97,7 @@ def test_cli_command_success(
         (
             _test,
             {
-                "config": "configs/segmentation_light_model.yaml",
+                "config": "luxonis_train/configs/segmentation_light_model.yaml",
                 "view": "invalid",
             },
         ),

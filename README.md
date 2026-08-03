@@ -62,7 +62,7 @@ Get started with `LuxonisTrain` in just a few steps:
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
 
-   The `--model` / `--variant` combo above is equivalent to `--config configs/detection_light_model.yaml`; either style works and the packaged YAML is used as the source of truth.
+   The `--model` / `--variant` combo above is equivalent to `--config luxonis_train/configs/detection_light_model.yaml`; either style works and the packaged YAML is used as the source of truth.
 
 1. **Monitor progress with `TensorBoard`**
 
@@ -160,7 +160,7 @@ Specific usage examples can be found in the respective sections below.
 **Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`) as a shortcut to one of the packaged presets. For example:
 
 ```bash
-# Equivalent to --config configs/detection_light_model.yaml
+# Equivalent to --config luxonis_train/configs/detection_light_model.yaml
 luxonis_train train --model detection --variant light
 
 # Same, but pin the predefined-model version explicitly
@@ -237,7 +237,7 @@ trainer:
 
 ### 📚 Configuration Reference
 
-**For a complete reference of all available configuration options, see our [Configuration Documentation](configs/README.md).**
+**For a complete reference of all available configuration options, see our [Configuration Documentation](luxonis_train/configs/README.md).**
 
 > [!TIP]
 > We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
@@ -366,7 +366,7 @@ loader:
 > luxonis_train inspect --model detection --variant light
 > ```
 >
-> `--config configs/detection_light_model.yaml` works the same.
+> `--config luxonis_train/configs/detection_light_model.yaml` works the same.
 >
 > **The `inspect` command is currently only available in the CLI**
 
@@ -384,7 +384,7 @@ Once your configuration file and dataset are ready, start the training process.
 luxonis_train train --model detection --variant light
 ```
 
-`--config configs/detection_light_model.yaml` is equivalent and still supported.
+`--config luxonis_train/configs/detection_light_model.yaml` is equivalent and still supported.
 
 > [!TIP]
 > To change a configuration parameter from the command line, use the following syntax:
@@ -401,7 +401,7 @@ luxonis_train train --model detection --variant light
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel(
-  "configs/detection_light_model.yaml",
+  "luxonis_train/configs/detection_light_model.yaml",
   {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"}
 )
 model.train()
@@ -449,7 +449,7 @@ luxonis_train test --model detection --variant light \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
 model.test(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -496,7 +496,7 @@ luxonis_train infer --model detection --variant light \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
 
 # infer on a dataset view
 model.infer(weights="path/to/checkpoint.ckpt", view="val")
@@ -518,14 +518,14 @@ model.infer(
 
 Export your trained models to `ONNX` for downstream conversion and deployment.
 
-To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
+To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
 
-You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
+You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_export.yaml).
 
 **CLI:**
 
 ```bash
-luxonis_train export --config configs/example_export.yaml --weights path/to/weights.ckpt
+luxonis_train export --config luxonis_train/configs/example_export.yaml --weights path/to/weights.ckpt
 ```
 
 **Python API:**
@@ -533,7 +533,7 @@ luxonis_train export --config configs/example_export.yaml --weights path/to/weig
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/example_export.yaml")
+model = LuxonisModel("luxonis_train/configs/example_export.yaml")
 model.export(weights="path/to/weights.ckpt")
 ```
 
@@ -562,7 +562,7 @@ luxonis_train archive                \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
 model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -578,7 +578,7 @@ Convert is the unified flow for deployment. It performs:
 1. **Archive**: `.onnx` -> `.tar.xz` (NN Archive)
 1. **Platform-specific conversion** (optional): NN Archive -> platform NN Archive via HubAI SDK (recommended) or `blobconverter` (deprecated, RVC2 legacy `.blob`)
 
-Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
+Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
 
 **CLI:**
 
@@ -591,7 +591,7 @@ luxonis_train convert --model detection --variant light --weights path/to/checkp
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
 archive_path, conversion_artifacts = model.convert(
     weights="path/to/checkpoint.ckpt"
 )
@@ -612,7 +612,7 @@ Optimize your model's performance using hyperparameter tuning powered by [`Optun
 
 **Configuration:**
 
-Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in your configuration file.
+Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#tuner) section in your configuration file.
 
 ```yaml
 
@@ -630,7 +630,7 @@ tuner:
 **CLI:**
 
 ```bash
-luxonis_train tune --config configs/example_tuning.yaml
+luxonis_train tune --config luxonis_train/configs/example_tuning.yaml
 ```
 
 **Python API:**
@@ -638,7 +638,7 @@ luxonis_train tune --config configs/example_tuning.yaml
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/example_tuning.yaml")
+model = LuxonisModel("luxonis_train/configs/example_tuning.yaml")
 model.tune()
 ```
 
@@ -654,9 +654,9 @@ model.tune()
 - [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
 - [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
 - [**Callbacks**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md): Allow custom code to be executed at different stages of training.
-- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#optimizer): Control how the model's weights are updated.
-- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#scheduler): Adjust the learning rate during training.
-- [**Training Strategy**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#training-strategy): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
+- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#optimizer): Control how the model's weights are updated.
+- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#scheduler): Adjust the learning rate during training.
+- [**Training Strategy**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#training-strategy): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
 
 **Creating Custom Components:**
 

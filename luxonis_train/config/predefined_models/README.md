@@ -28,7 +28,7 @@ models which can be used instead.
 
 The `SegmentationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
-See an example configuration file using this predefined model [here](../../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -69,7 +69,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 The `DetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
 This detection model is based on [YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -120,7 +120,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 The `KeypointDetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -165,7 +165,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 The `ClassificationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
-See an example configuration file using this predefined model [here](../../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -246,7 +246,7 @@ For larger heatmaps and improved accuracy, you can adjust the `attach_index` in 
 
 The `InstanceSegmentationModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 

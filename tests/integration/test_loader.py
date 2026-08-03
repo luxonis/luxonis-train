@@ -30,7 +30,7 @@ def test_splits(
     expected: dict[Literal["train", "val", "test"], int],
     opts: Params,
 ):
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
 
     opts |= {
         "trainer.batch_size": 1,
@@ -56,12 +56,14 @@ def test_parsing(opts: Params):
             "/datasets/COCO_people_subset.zip"
         ),
     }
-    model = LuxonisModel("configs/detection_light_model.yaml", opts)
+    model = LuxonisModel(
+        "luxonis_train/configs/detection_light_model.yaml", opts
+    )
     model.train()
 
 
 def test_dummy_loader(opts: Params):
-    config_file = "configs/complex_model.yaml"
+    config_file = "luxonis_train/configs/complex_model.yaml"
     opts = opts | {
         "loader.params.dataset_name": "invalid_dataset_name",
         "model.nodes.6.name": "ClassificationHead",

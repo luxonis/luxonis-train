@@ -34,7 +34,7 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 
 [tool.setuptools.package-data]
-configs = ["*.yaml"]
+"luxonis_train.configs" = ["*.yaml"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }

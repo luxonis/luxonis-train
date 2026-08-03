@@ -19,7 +19,6 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
     TrainerConfig,
-    predefined_models,
 )
 from luxonis_train.config.config import (
     AIMETConfig,
@@ -112,7 +111,9 @@ def test_public_config_exports_are_importable():
 
 
 def test_config_dump_roundtrip_without_dataset_fixture(tmp_path: Path):
-    model_config_path = Path("configs", "detection_light_model.yaml")
+    model_config_path = Path(
+        "luxonis_train", "configs", "detection_light_model.yaml"
+    )
     temp_config_path = tmp_path / "config.yaml"
 
     cfg = Config.get_config(
@@ -845,17 +846,18 @@ def test_list_predefined_models_covers_known_presets():
 
 
 def test_resolve_predefined_config_variants():
-    path = resolve_predefined_config("detection", "light")
-    assert isinstance(path, Path)
-    assert path.exists()
-    assert path.name == "detection_light_model.yaml"
+    resolved = resolve_predefined_config("detection", "light")
+    assert isinstance(resolved.path, Path)
+    assert resolved.path.exists()
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == []
 
     default = resolve_predefined_config("detection", None)
     expected_variant = list_predefined_models()["detection"][0]
-    assert default.name == f"detection_{expected_variant}_model.yaml"
+    assert default.path.name == f"detection_{expected_variant}_model.yaml"
 
     variantless = resolve_predefined_config("anomaly_detection", None)
-    assert variantless.name == "anomaly_detection_model.yaml"
+    assert variantless.path.name == "anomaly_detection_model.yaml"
 
     with pytest.raises(ValueError, match="Unknown predefined model 'nope'"):
         resolve_predefined_config("nope", None)
@@ -867,42 +869,28 @@ def test_resolve_predefined_config_variants():
         resolve_predefined_config("detection", "nope")
 
 
-def test_predefined_registry_rekey_branches(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    registry = {
-        "external": object(),
-        "SimplePredefinedModel": SimplePredefinedModel,
-        "DetectionModel:v1": DetectionModel,
-        "DetectionModel": DetectionModel,
-    }
-    monkeypatch.setattr(MODELS, "_module_dict", registry)
-
-    predefined_models._rekey_registry_with_versions()
-
-    assert "external" in registry
-    assert "SimplePredefinedModel" not in registry
-    assert registry["DetectionModel:v1"] is DetectionModel
-    assert "DetectionModel" not in registry
+def test_predefined_metaclass_keys_and_aliases_shipped_models():
+    """Concrete models get both keys, abstract intermediates neither."""
+    assert MODELS._module_dict["DetectionModel:v1"] is DetectionModel
+    # The plain alias keeps class-name lookups working.
+    assert MODELS._module_dict["DetectionModel"] is DetectionModel
+    assert "SimplePredefinedModel" not in MODELS._module_dict
+    assert "BasePredefinedModel" not in MODELS._module_dict
 
 
-def test_predefined_registry_rekeys_versioned_class_to_family(
-    monkeypatch: pytest.MonkeyPatch,
-):
+def test_predefined_metaclass_keys_versioned_class_to_family():
+    """`FamilyV2` is keyed as `Family:v2` when the class is created.
+
+    Keying at class creation rather than in a post-import sweep is what
+    makes models loaded later - through `--source` - reachable by
+    `version:`.
+    """
+
     class DetectionModelV2(DetectionModel):
         _VERSION = 2
 
-    MODELS._module_dict.pop("DetectionModelV2", None)
-    registry = {
-        "DetectionModel:v1": DetectionModel,
-        "DetectionModelV2": DetectionModelV2,
-    }
-    monkeypatch.setattr(MODELS, "_module_dict", registry)
-
-    predefined_models._rekey_registry_with_versions()
-
-    assert "DetectionModelV2" not in registry
-    assert registry["DetectionModel:v2"] is DetectionModelV2
+    assert "DetectionModelV2" not in MODELS._module_dict
+    assert MODELS._module_dict["DetectionModel:v2"] is DetectionModelV2
     assert resolve_predefined_class("DetectionModel", 2) is DetectionModelV2
     assert (
         resolve_predefined_class("DetectionModel", "latest")
@@ -1148,3 +1136,109 @@ def test_pydantic_validation_errors_are_raised():
 def test_simple_config_model_has_no_outputs_when_empty():
     model = ModelConfig()
     assert model.outputs == []
+
+
+def test_versioned_name_still_triggers_smart_auto_populate():
+    """`name: Family:vN` must hit the same auto-population rules as
+    `name: Family`.
+
+    The rules key off the family; the pinned version is not part of it.
+    """
+
+    def build(name: str) -> Config:
+        return Config.get_config(
+            {
+                "model": {
+                    "predefined_model": {"name": name, "variant": "light"}
+                },
+                "trainer": {"batch_size": 4},
+            }
+        )
+
+    plain = build("InstanceSegmentationModel")
+    pinned = build("InstanceSegmentationModel:v1")
+    assert plain.model.predefined_model is not None
+    assert pinned.model.predefined_model is not None
+
+    loss_params = pinned.model.predefined_model.params["loss_params"]
+    assert loss_params == plain.model.predefined_model.params["loss_params"]
+    assert loss_params["bbox_loss_weight"] == 7.5 * 16
+
+
+def test_explicit_accumulate_grad_batches_is_not_overwritten():
+    """An explicitly configured value must survive auto-population.
+
+    Otherwise switching a config to a `predefined_model` silently
+    changes the effective batch size and the number of optimizer steps.
+    """
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "variant": "light",
+                }
+            },
+            "trainer": {"batch_size": 16, "accumulate_grad_batches": 1},
+        }
+    )
+    assert cfg.trainer.accumulate_grad_batches == 1
+
+
+def test_accumulate_grad_batches_auto_populated_when_unset():
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "variant": "light",
+                }
+            },
+            "trainer": {"batch_size": 16},
+        }
+    )
+    assert cfg.trainer.accumulate_grad_batches == 4
+
+
+def test_embeddings_preset_keeps_its_training_recipe():
+    """The embeddings preset trains without gradient accumulation."""
+    from luxonis_train.config.predefined import resolve_predefined_config
+
+    cfg = Config.get_config(
+        str(resolve_predefined_config("embeddings", None).path)
+    )
+    assert cfg.trainer.accumulate_grad_batches == 1
+
+
+def test_embeddings_model_metadata_task_is_configurable():
+    """The metadata field is dataset-specific and must be overridable.
+
+    The preset defaults to `color` for the example re-ID dataset; a
+    dataset keyed on anything else has to be expressible in the config.
+    """
+    from luxonis_train.config.predefined_models import EmbeddingsModel
+
+    custom = cast(Any, EmbeddingsModel)(metadata_task_override="person_id")
+    head = custom.nodes[1]
+    assert head.metadata_task_override == "person_id"
+    assert head.alias == "person_id-embeddings"
+
+    default = cast(Any, EmbeddingsModel)()
+    assert default.nodes[1].metadata_task_override == "color"
+    assert default.nodes[1].alias == "color-embeddings"
+
+
+def test_ocr_preset_keeps_its_explicit_accumulation():
+    """The OCR preset deliberately pairs a small batch with explicit
+    accumulation and gradient clipping.
+
+    Auto-population used to overwrite the configured 2 with 64/4 = 16,
+    quadrupling the effective batch the config asks for.
+    """
+    from luxonis_train.config.predefined import resolve_predefined_config
+
+    cfg = Config.get_config(
+        str(resolve_predefined_config("ocr_recognition", None).path)
+    )
+    assert cfg.trainer.batch_size == 4
+    assert cfg.trainer.accumulate_grad_batches == 2

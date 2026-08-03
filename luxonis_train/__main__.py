@@ -57,8 +57,11 @@ def _split_model_version(model: str) -> tuple[str, str | None]:
     if ":" not in model:
         return model, None
     family, _, version_str = model.partition(":")
-    if version_str.startswith("v") and version_str[1:].isdigit():
-        return family, version_str[1:]
+    digits = version_str[1:]
+    # `isdigit` also accepts superscripts and non-ASCII decimals, which
+    # `int()` then rejects; require plain ASCII digits.
+    if version_str.startswith("v") and digits.isascii() and digits.isdigit():
+        return family, digits
     if version_str == "latest":
         return family, "latest"
     raise ValueError(
@@ -71,17 +74,21 @@ def _resolve_config(
     config: PathType | Params | None,
     model: str | None,
     variant: str | None,
-) -> PathType | Params | None:
+) -> tuple[PathType | Params | None, list[str]]:
+    """Resolve `--config` / `--model` / `--variant` to a config and any
+    overrides needed on top of it.
+    """
     if model is None:
         if variant is not None:
             raise ValueError(
                 "'--variant' requires '--model' to be specified as well."
             )
-        return config
+        return config, []
     if config is not None:
         raise ValueError("'--config' and '--model' are mutually exclusive.")
     family, _ = _split_model_version(model)
-    return str(resolve_predefined_config(family, variant))
+    resolved = resolve_predefined_config(family, variant)
+    return str(resolved.path), resolved.opts
 
 
 def create_model(
@@ -93,15 +100,22 @@ def create_model(
     model: str | None = None,
     variant: str | None = None,
 ) -> "LuxonisModel":
+    opts = list(opts or [])
     if model is not None:
         _, version = _split_model_version(model)
         if version is not None and version != "latest":
-            opts = [
-                *list(opts or []),
-                "model.predefined_model.version",
-                version,
-            ]
-    resolved = _resolve_config(config, model, variant)
+            opts += ["model.predefined_model.version", version]
+    resolved, variant_opts = _resolve_config(config, model, variant)
+    opts += variant_opts
+
+    if resolved is None and weights is None:
+        # Without any of these the config is built purely from defaults
+        # (or blows up deep inside `luxonis_ml`), neither of which is
+        # ever what the caller meant.
+        raise ValueError(
+            "No model source given. Pass '--config', '--model', or "
+            "'--weights' (a checkpoint carries its own config)."
+        )
 
     importlib.reload(sys.modules["luxonis_train"])
 
@@ -109,7 +123,7 @@ def create_model(
 
     return LuxonisModel(
         resolved,
-        opts,
+        opts or None,
         weights=weights,
         allow_empty_dataset=allow_empty_dataset,
     )
@@ -312,7 +326,15 @@ def inspect(
     To close the window press 'q' or 'Esc'.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: Literal["train", "val", "test"]
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -366,8 +388,15 @@ def test(
     """Evaluate a trained model.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: str
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -408,8 +437,15 @@ def infer(
     Supports both images and video files.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: str
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -459,7 +495,14 @@ def annotate(
 
     @type config: str
     @param config: Path to the configuration file used by the model to
-        annotate images.
+        annotate images. Mutually exclusive with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type dir_path: str
     @param dir_path: Path to the directory containing images to
         annotate.
@@ -517,8 +560,15 @@ def export(
     """Export the model to ONNX or BLOB format.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type save_path: str
     @param save_path: Directory where to save all exported model files.
         If not specified, files will be saved to the 'export' directory
@@ -557,7 +607,15 @@ def archive(
     """Convert the model to an NN Archive format.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type executable: str
     @param executable: Path to the exported model, usually an ONNX file.
         If not provided, the model will be exported first.
@@ -594,7 +652,15 @@ def convert(
     configuration.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type save_dir: str
     @param save_dir: Directory where all outputs will be saved. If not
         specified, the default run save directory will be used.
@@ -654,13 +720,14 @@ def list_models():
     Each row shows `<model>  variants  versions`. The `*` marks the
     default variant / version picked when the option is omitted.
     """
-    from importlib.resources import files
-
     from rich import box
     from rich.console import Console
     from rich.table import Table
 
-    from luxonis_train.config.predefined import _resolve_filename
+    from luxonis_train.config.predefined import (
+        default_config_path,
+        list_variants,
+    )
     from luxonis_train.config.predefined_versions import list_versions
 
     entries = list_predefined_models()
@@ -669,11 +736,8 @@ def list_models():
         return
 
     def _load_class_family(model: str) -> str | None:
-        filename = _resolve_filename(model, None)
         try:
-            data = yaml.safe_load(
-                Path(str(files("configs") / filename)).read_text()
-            )
+            data = yaml.safe_load(default_config_path(model).read_text())
             return data["model"]["predefined_model"]["name"]
         except Exception:
             return None
@@ -686,8 +750,11 @@ def list_models():
     table.add_column("Model", style="bold cyan")
     table.add_column("Variants")
     table.add_column("Versions", style="green")
-    for name, variants in entries.items():
-        default = variants[0]
+    for name, file_variants in entries.items():
+        default = file_variants[0]
+        # Not just the variants with a dedicated YAML - `--variant` can
+        # select any variant the backing class declares.
+        variants = list_variants(name)
         rendered_variants = []
         for v in variants:
             label = v if v is not None else "<default>"
@@ -739,8 +806,9 @@ def info(*, model: str, variant: str | None = None):
     importlib.import_module("luxonis_train.config.predefined_models")
 
     family, requested_version = _split_model_version(model)
-    config_path = resolve_predefined_config(family, variant)
-    config = yaml.safe_load(config_path.read_text())
+    config = yaml.safe_load(
+        resolve_predefined_config(family, variant).path.read_text()
+    )
     predefined_config = config["model"]["predefined_model"]
     class_family = predefined_config["name"]
     version: int | str

@@ -16,6 +16,7 @@ from luxonis_train.config.predefined_versions import (
     resolved_class_name,
     warn_on_predefined_model_mismatch,
 )
+from luxonis_train.lightning import luxonis_lightning
 from luxonis_train.lightning.luxonis_lightning import (
     LuxonisLightningModule,
     _checkpoint_predefined_model,
@@ -27,25 +28,33 @@ from luxonis_train.registry import MODELS
 def fake_v2_model() -> Iterator[type[DetectionModel]]:
     """Register a throw-away DetectionModel v2 for the duration of a
     test.
+
+    Defining the class is all it takes: the metaclass keys it as
+    ``DetectionModel:v2`` right away, which is what makes the documented
+    ``FamilyV2`` convention work for models loaded after startup.
     """
+    previous_alias = MODELS._module_dict.get("DetectionModel")
 
     class DetectionModelV2(DetectionModel):
         _VERSION = 2
 
-    # AutoRegisterMeta first registers the plain class name. Rekey it through
-    # the production path to verify the documented ``FamilyV2`` convention.
-    predefined_models._rekey_registry_with_versions()
     try:
         yield DetectionModelV2
     finally:
         MODELS._module_dict.pop("DetectionModel:v2", None)
+        if previous_alias is not None:
+            MODELS._module_dict["DetectionModel"] = previous_alias
 
 
 @pytest.fixture
 def plain_key_custom_model() -> Iterator[type[DetectionModel]]:
+    """Register a model reachable only under a plain registry key."""
+
     class PlainKeyCustomModel(DetectionModel):
         _VERSION = 7
 
+    # Drop the versioned key so only the plain alias is left, standing
+    # in for a model registered outside the versioned key scheme.
     MODELS._module_dict.pop("PlainKeyCustomModel:v7", None)
     try:
         yield PlainKeyCustomModel
@@ -246,47 +255,117 @@ def test_checkpoint_metadata_pins_latest_to_concrete_version(
     assert ckpt_predefined_model["version"] == 2
 
 
-def test_lightning_warn_uses_checkpoint_predefined_model_metadata(
-    fake_v2_model: type[DetectionModel],
-):
+def _module_with_predefined_model(version: int) -> Any:
     module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
     module.cfg = SimpleNamespace(
         model=SimpleNamespace(
             predefined_model=PredefinedModelConfig(
-                name="DetectionModel", version=2
+                name="DetectionModel", version=version
             )
         )
     )
-
-    with patch.object(logger, "warning") as warn:
-        module._warn_on_predefined_model_mismatch(
-            {"model": {}}, {"name": "DetectionModel", "version": 1}
-        )
-    assert warn.call_count == 1
+    return module
 
 
-def test_lightning_warn_uses_top_level_metadata_without_config(
+def test_lightning_warn_uses_top_level_metadata(
     fake_v2_model: type[DetectionModel],
 ):
-    module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
-    module.cfg = SimpleNamespace(
-        model=SimpleNamespace(
-            predefined_model=PredefinedModelConfig(
-                name="DetectionModel", version=2
-            )
-        )
-    )
-
+    module = _module_with_predefined_model(2)
     with patch.object(logger, "warning") as warn:
         module._warn_on_predefined_model_mismatch(
-            None, {"name": "DetectionModel", "version": 1}
+            {"name": "DetectionModel", "version": 1}
         )
     assert warn.call_count == 1
 
 
-def test_all_shipped_predefined_models_use_colon_key():
-    """Every registered predefined model uses the `Family:vN` key
-    format.
+def test_lightning_warn_silent_for_checkpoint_without_pin(
+    fake_v2_model: type[DetectionModel],
+):
+    """Checkpoints written before versioning carry no pin at all."""
+    module = _module_with_predefined_model(2)
+    with patch.object(logger, "warning") as warn:
+        module._warn_on_predefined_model_mismatch(None)
+    assert warn.call_count == 0
+
+
+def test_warn_when_checkpoint_family_no_longer_resolves():
+    """A checkpoint naming a family that is gone must warn, not go
+    quiet.
+
+    This is the "breaking architecture change" case the warning exists
+    for; swallowing the resolution error leaves the user with an opaque
+    state-dict failure instead.
+    """
+    current = PredefinedModelConfig(name="DetectionModel", version=1)
+    ckpt_pm = {"name": "RemovedModel", "version": 1}
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(current, ckpt_pm)
+    assert warn.call_count == 1
+    assert "RemovedModel" in warn.call_args.args[0]
+
+
+def test_warn_silent_when_checkpoint_entry_has_no_name():
+    current = PredefinedModelConfig(name="DetectionModel", version=1)
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(current, {"version": 1})
+    assert warn.call_count == 0
+
+
+def test_checkpoint_pin_survives_resaving_without_config():
+    """Re-saving a run rebuilt from a checkpoint must keep the pin.
+
+    `predefined_model` is excluded from the dumped config, so a
+    `--weights`-only run has none in `cfg`; without carrying the loaded
+    value over, `upgrade checkpoint` would silently strip it.
+    """
+    module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
+    module.cfg = SimpleNamespace(
+        model=SimpleNamespace(predefined_model=None),
+        model_dump=dict,
+    )
+    module.dataset_metadata = SimpleNamespace(dump=dict)
+    pin = {"name": "DetectionModel", "version": 1}
+    module._ckpt_predefined_model = pin
+
+    checkpoint: dict[str, Any] = {"state_dict": {}}
+    with (
+        patch.object(
+            luxonis_lightning, "filter_checkpoint_state_dict", lambda sd: sd
+        ),
+        patch.object(
+            luxonis_lightning, "get_model_execution_order", lambda _: []
+        ),
+    ):
+        module._add_custom_data_to_checkpoint(checkpoint)
+
+    assert checkpoint["predefined_model"] == pin
+
+
+def test_checkpoint_has_no_pin_when_none_is_known():
+    module = cast(Any, LuxonisLightningModule.__new__(LuxonisLightningModule))
+    module.cfg = SimpleNamespace(
+        model=SimpleNamespace(predefined_model=None),
+        model_dump=dict,
+    )
+    module.dataset_metadata = SimpleNamespace(dump=dict)
+
+    checkpoint: dict[str, Any] = {"state_dict": {}}
+    with (
+        patch.object(
+            luxonis_lightning, "filter_checkpoint_state_dict", lambda sd: sd
+        ),
+        patch.object(
+            luxonis_lightning, "get_model_execution_order", lambda _: []
+        ),
+    ):
+        module._add_custom_data_to_checkpoint(checkpoint)
+
+    assert "predefined_model" not in checkpoint
+
+
+def test_all_shipped_predefined_models_are_addressable():
+    """Every predefined model is registered under `Family:vN` and under
+    its plain class name.
     """
     for name in predefined_models.__all__:
         if name == "BasePredefinedModel":
@@ -294,7 +373,9 @@ def test_all_shipped_predefined_models_use_colon_key():
         cls = getattr(predefined_models, name)
         key = f"{cls.__name__}:v{cls._VERSION}"
         assert MODELS._module_dict.get(key) is cls
-        assert cls.__name__ not in MODELS._module_dict
+        # The plain alias is kept so that looking a predefined model up
+        # by its class name keeps working.
+        assert MODELS._module_dict.get(cls.__name__) is cls
 
         family, _, version_part = key.partition(":")
         assert family, f"empty family in registry key: {key!r}"
@@ -304,3 +385,61 @@ def test_all_shipped_predefined_models_use_colon_key():
         assert version_part[1:].isdigit(), (
             f"registry key {key!r} does not use `:vN` format"
         )
+
+
+def test_abstract_intermediates_are_not_registered():
+    assert "SimplePredefinedModel" not in MODELS._module_dict
+    assert "BasePredefinedModel" not in MODELS._module_dict
+
+
+def test_custom_model_overrides_shipped_family():
+    """Registering a class under a built-in's name must take effect.
+
+    Before versioning, `AutoRegisterMeta`'s force-overwrite meant a
+    custom model loaded through `--source` replaced the shipped one.
+    Keying the shipped class as `Family:vN` must not turn that into a
+    silent no-op.
+    """
+    shipped = MODELS._module_dict["DetectionModel:v1"]
+    try:
+
+        class DetectionModel(predefined_models.BasePredefinedModel):
+            @staticmethod
+            def get_variants() -> tuple[str, dict[str, Any]]:
+                return "default", {"default": {}}
+
+            @property
+            def nodes(self) -> list[Any]:
+                return []
+
+        assert resolve_predefined_class("DetectionModel") is DetectionModel
+        assert MODELS._module_dict["DetectionModel:v1"] is DetectionModel
+        assert MODELS._module_dict["DetectionModel"] is DetectionModel
+    finally:
+        MODELS._module_dict["DetectionModel:v1"] = shipped
+        MODELS._module_dict["DetectionModel"] = shipped
+
+
+def test_checkpoint_metadata_pins_plain_key_model_version(
+    plain_key_custom_model: type[DetectionModel],
+):
+    """A model registered under a plain key still gets a concrete
+    version.
+
+    The version has to come off the resolved class, not off the registry
+    key - a plain key has no `:vN` suffix to parse.
+    """
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "PlainKeyCustomModel",
+                    "version": "latest",
+                }
+            },
+            "trainer": {"smart_cfg_auto_populate": False},
+        }
+    )
+    ckpt_predefined_model = _checkpoint_predefined_model(cfg)
+    assert ckpt_predefined_model is not None
+    assert ckpt_predefined_model["version"] == 7

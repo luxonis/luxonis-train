@@ -43,7 +43,7 @@ class SplitLengthLoader(BaseLoaderTorch):
 def test_fixed_validation_batch_limit(
     parking_lot_dataset: LuxonisDataset, opts: Params
 ):
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "model.predefined_model.params.task_name": "vehicles",
         "loader.params.dataset_name": parking_lot_dataset.identifier,

@@ -33,6 +33,17 @@ def _split_family_version(key_or_name: str) -> tuple[str, int | None]:
     return match.group("family"), int(match.group("version"))
 
 
+def family_name(name: str) -> str:
+    """Strip an optional ``:vN`` suffix off a predefined-model name.
+
+    ``DetectionModel:v1`` and ``DetectionModel`` both name the
+    ``DetectionModel`` family, so anything keying behaviour off the
+    configured name has to compare against this rather than the raw
+    string.
+    """
+    return _split_family_version(name)[0]
+
+
 def _plain_key_version(registered: Any) -> int | None:
     version = getattr(registered, "_VERSION", None)
     if isinstance(version, int):
@@ -124,13 +135,31 @@ def warn_on_predefined_model_mismatch(
     """
     if not isinstance(ckpt_predefined, dict) or current is None:
         return
+    if "name" not in ckpt_predefined:
+        return
+    try:
+        current_class = resolved_class_name(current.name, current.version)
+    except (KeyError, ValueError):
+        # The config itself does not resolve. Config validation reports
+        # that with a better message than we could here.
+        return
     try:
         ckpt_class = resolved_class_name(
             ckpt_predefined["name"],
             ckpt_predefined.get("version", "latest"),
         )
-        current_class = resolved_class_name(current.name, current.version)
-    except (KeyError, ValueError):
+    except (KeyError, ValueError) as e:
+        # The architecture the checkpoint was trained with is gone
+        # (renamed family, dropped version). That is exactly the case
+        # this warning exists for, so it must not be swallowed - the
+        # alternative is an opaque state-dict load failure later on.
+        logger.warning(
+            f"The checkpoint was trained with predefined model "
+            f"`{ckpt_predefined['name']}` "
+            f"(version={ckpt_predefined.get('version', 'latest')}), which "
+            f"can no longer be resolved: {e} Loading it into "
+            f"`{current_class}` may fail or silently drop weights."
+        )
         return
     if ckpt_class != current_class:
         logger.warning(
