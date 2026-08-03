@@ -3,6 +3,15 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
+      concurrency_group:
+        description: "Optional concurrency group for an external caller"
+        required: false
+        default: ""
       ml_ref:
         description: "luxonis-ml version (branch/tag/SHA)"
         required: false
@@ -13,6 +22,16 @@ on:
         default: main
   workflow_call:
     inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
+      concurrency_group:
+        description: "Optional concurrency group for an external caller"
+        required: false
+        type: string
+        default: ""
       ml_ref:
         description: "luxonis-ml version (branch/tag/SHA)"
         required: false
@@ -43,8 +62,9 @@ on:
       - "!**/*.md"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # External callers can provide an isolated concurrency group.
+  group: ${{ inputs.concurrency_group || format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ inputs.cancel_in_progress || !inputs.concurrency_group }}
 
 permissions:
   pull-requests: write
@@ -56,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
@@ -78,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
@@ -96,14 +116,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.10"
           cache: pip
@@ -139,14 +159,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.10"
           cache: pip
@@ -184,20 +204,20 @@ jobs:
 
     strategy:
       matrix:
-        suite: [unit, predefined, combinations, misc]
+        suite: [unit, predefined_light, predefined_heavy, combinations, misc]
 
     runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.10"
           cache: pip
