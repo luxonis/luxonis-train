@@ -317,6 +317,22 @@ class _GroupDraft:
         self.parameter_names.append(parameter_name)
 
 
+def _unique_name(name: str, used: set[str]) -> str:
+    """Return C{name}, suffixed if needed to keep it unique among
+    C{used}, and record it there.
+
+    The suffix uses only characters accepted by the trackers the names
+    are logged to.
+    """
+    unique = name
+    index = 2
+    while unique in used:
+        unique = f"{name}-{index}"
+        index += 1
+    used.add(unique)
+    return unique
+
+
 class _PlanBuilder:
     def __init__(self) -> None:
         # inner key -> (optimizer name, scheduler spec)
@@ -387,6 +403,14 @@ class _PlanBuilder:
         inners: list[InnerSpec] = []
         handles_by_node: dict[str, list[GroupHandle]] = {}
         handles_by_tag: dict[str, list[GroupHandle]] = {}
+        # Group names reach `LearningRateMonitor`, which rejects an
+        # optimizer holding two groups of the same name - and the
+        # composite presents every inner's groups as one list. Drafts
+        # are keyed uniquely, but their names are built by joining a
+        # label and a scope with '/', which pathological node names can
+        # make ambiguous. Uniqueness is enforced here so it cannot
+        # depend on what a config happens to call its nodes.
+        used_names: set[str] = set()
         for inner_index, (inner_key, (optimizer_name, scheduler)) in enumerate(
             self._inners.items()
         ):
@@ -397,7 +421,7 @@ class _PlanBuilder:
                 handle = GroupHandle(inner_index, len(groups))
                 groups.append(
                     GroupSpec(
-                        name=draft.name,
+                        name=_unique_name(draft.name, used_names),
                         node_names=tuple(draft.node_names),
                         parameters=tuple(draft.parameters),
                         parameter_names=tuple(draft.parameter_names),
@@ -641,13 +665,21 @@ def build_training_plan(
     bypass_configs: list[Any] | None = None
     for inner in plan.inners:
         torch_groups = [
-            {"params": list(group.parameters), **group.options}
+            # `name` is not an optimizer option - it is what
+            # `LearningRateMonitor` reports the group as, turning
+            # positional `lr-Adam/pg2` series into named ones. Set last
+            # so the plan's name always wins.
+            {
+                "params": list(group.parameters),
+                **group.options,
+                "name": group.name,
+            }
             for group in inner.groups
         ]
         optimizer = from_registry(
             OPTIMIZERS, inner.optimizer_name, params=torch_groups
         )
-        optimizer_keys = set(optimizer.defaults) | {"params"}
+        optimizer_keys = set(optimizer.defaults) | {"params", "name"}
         for group in optimizer.param_groups:
             unknown_keys = set(group) - optimizer_keys
             if unknown_keys:
