@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -7,6 +7,10 @@ from typing import Any, Literal, cast
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
+from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
+    LRSchedulerTypeUnion,
+)
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
@@ -14,6 +18,7 @@ from packaging import version
 from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
+from torch.optim import Optimizer
 from typing_extensions import Self, override
 
 import luxonis_train
@@ -23,6 +28,11 @@ from luxonis_train.attached_modules.visualizers import (
 )
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
+from luxonis_train.lightning.training_plan import (
+    TrainingPlanRuntime,
+    build_training_plan,
+    resolve_training_plan,
+)
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import _INTERNAL
@@ -37,15 +47,16 @@ from .luxonis_output import LuxonisOutput
 from .utils import (
     LossAccumulator,
     Nodes,
-    build_callbacks,
-    build_optimizers,
     build_training_strategy,
     check_tensor_device,
     compute_losses,
     compute_visualization_buffer,
     get_model_execution_order,
     log_balanced_class_images,
+    log_metric_artifacts,
     log_sequential_images,
+    metric_artifact_image_name,
+    mlflow_image_key,
     postprocess_metrics,
 )
 
@@ -163,6 +174,7 @@ class LuxonisLightningModule(pl.LightningModule):
         )
         self._restore_validation_interval_after_first_epoch = False
         self._original_check_val_every_n_epoch: int | None = None
+        self._training_plan: TrainingPlanRuntime | None = None
 
     @override
     def load_state_dict(
@@ -444,8 +456,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return Path(save_path)
 
-    @override
-    def training_step(
+    def compute_training_loss(
         self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> Tensor:
         outputs = self.full_forward(*train_batch)
@@ -455,6 +466,12 @@ class LuxonisLightningModule(pl.LightningModule):
         loss, losses = compute_losses(self.cfg, outputs.losses, self.device)
         self._loss_accumulators["train"].update(losses)
         return loss
+
+    @override
+    def training_step(
+        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+    ) -> Tensor:
+        return self.compute_training_loss(train_batch)
 
     @override
     def validation_step(
@@ -577,22 +594,48 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        return build_callbacks(
-            self.cfg, self.nodes.main_metric, self.save_dir, self.nodes
-        )
+        return self.nodes.build_callbacks(self.save_dir)
 
     @override
     def configure_optimizers(
         self,
     ) -> tuple[
-        list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
+        Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
     ]:
-        if self.training_strategy is not None:
-            return self.training_strategy.configure_optimizers()
-        return build_optimizers(
-            self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
+        plan = resolve_training_plan(
+            self.cfg, self.nodes, self.training_strategy
         )
+        runtime = build_training_plan(
+            plan,
+            self.cfg,
+            self._main_metric_monitor(),
+            self.training_strategy,
+        )
+        if self.training_strategy is not None:
+            self.training_strategy.attach(runtime, plan.handles_by_tag)
+        self.nodes.freeze_schedule.attach_group_handles(runtime)
+        self._training_plan = runtime
+
+        self._log_optimizer_scheduler_info(
+            list(runtime.inner_optimizers), list(runtime.members)
+        )
+
+        return [runtime.optimizer], runtime.scheduler_configs
+
+    @property
+    def training_plan(self) -> TrainingPlanRuntime | None:
+        """The built optimizer/scheduler runtime of the last
+        `configure_optimizers` call, or C{None} before the first call
+        (and under a training strategy).
+        """
+        return self._training_plan
+
+    def _main_metric_monitor(self) -> str | None:
+        if self.nodes.main_metric is None:
+            return None
+        node_name, metric_name = self.nodes.main_metric
+        formatted_node = self.nodes.formatted_name(node_name)
+        return f"val/metric/{formatted_node}/{metric_name}"
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Load checkpoint weights from provided path.
@@ -836,13 +879,26 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
+                computed = metric.compute()
                 values = postprocess_metrics(
                     metric_name,
-                    metric.compute(),
+                    metric.get_loggable_values(computed),
                     log_sub_metrics=self.cfg.trainer.log_sub_metrics,
                 )
+                if (
+                    self.trainer.is_global_zero
+                    and not self.trainer.sanity_checking
+                ):
+                    log_metric_artifacts(
+                        self.tracker,
+                        metric,
+                        computed,
+                        mode=mode,
+                        formatted_node_name=formatted_node_name,
+                        metric_name=metric_name,
+                        current_epoch=self.current_epoch,
+                    )
                 metric.reset()
-
                 if isinstance(
                     self.trainer.strategy,
                     pl.strategies.DDPStrategy,  # type: ignore
@@ -878,9 +934,10 @@ class LuxonisLightningModule(pl.LightningModule):
                             sync_dist=True,
                         )
 
+        loss = self._loss_accumulators[mode]["loss"]
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
-            loss=self._loss_accumulators[mode]["loss"],
+            loss=loss,
             metrics=table,
             matrices=matrices,
         )
@@ -968,9 +1025,10 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
+                computed = metric.compute()
                 values = postprocess_metrics(
                     metric_name,
-                    metric.compute(),
+                    metric.get_loggable_values(computed),
                     log_sub_metrics=self.cfg.trainer.log_sub_metrics,
                 )
                 for sub_name in values:
@@ -990,6 +1048,31 @@ class LuxonisLightningModule(pl.LightningModule):
                         metric_keys.add(
                             f"test/metric/{formatted_node_name}/{sub_name}"
                         )
+
+                for artifact_name in metric.get_artifact_names():
+                    for epoch_idx in sorted({0, *val_eval_epochs}):
+                        artifact_keys.add(
+                            mlflow_image_key(
+                                metric_artifact_image_name(
+                                    "val",
+                                    formatted_node_name,
+                                    metric_name,
+                                    artifact_name,
+                                ),
+                                epoch_idx,
+                            )
+                        )
+                    artifact_keys.add(
+                        mlflow_image_key(
+                            metric_artifact_image_name(
+                                "test",
+                                formatted_node_name,
+                                metric_name,
+                                artifact_name,
+                            ),
+                            test_eval_epoch,
+                        )
+                    )
 
             for viz_name in node.visualizers:
                 for epoch_idx in sorted({0, *val_eval_epochs}):
@@ -1091,6 +1174,23 @@ class LuxonisLightningModule(pl.LightningModule):
     def _strip_state_prefix(key: str) -> str:
         idx = 3 if "module." in key else 2
         return ".".join(key.split(".")[idx:])
+
+    def _log_optimizer_scheduler_info(
+        self,
+        optimizers: Sequence[Optimizer],
+        schedulers: Sequence[Any],
+    ) -> None:
+        from luxonis_train.callbacks.luxonis_progress_bar import (
+            build_optimizer_summary,
+            log_optimizer_summary,
+        )
+
+        summary = build_optimizer_summary(
+            optimizers,
+            schedulers,
+            {name: node.module for name, node in self.nodes.items()},
+        )
+        log_optimizer_summary(summary, use_rich=self.cfg.rich_logging)
 
     def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
         outputs = self.full_forward(inputs).outputs

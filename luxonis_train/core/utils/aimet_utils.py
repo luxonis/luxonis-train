@@ -236,52 +236,54 @@ def quantization_aware_training(
     model.train()
     if CUDAAccelerator.is_available():
         model.cuda()
+    previous_automatic_optimization = model.automatic_optimization
     model.automatic_optimization = False
 
-    assert len(train_loader) > 0, (
-        "Training loader must have at least one batch"
-    )
-
-    for epoch in range(epochs):
-        for imgs, labels in track(
-            train_loader,
-            description=(
-                "Running Quantization-Aware Training "
-                f"(epoch {epoch + 1}/{epochs})"
-            ),
-            total=len(train_loader),
-        ):
-            optimizer.zero_grad()
-            loss = model.training_step((imgs, labels))
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
-
-    if batch_norm_reestimation:
-        logger.info("Reestimating batch norm statistics")
-
-        reestimate_bn_stats(
-            model, train_loader, forward_fn=_patched_forward_pass
+    try:
+        assert len(train_loader) > 0, (
+            "Training loader must have at least one batch"
         )
 
-        if fold_batch_norms:
-            logger.info("Folding batch norms into preceding layers")
-            try:
-                fold_all_batch_norms(
-                    model,
-                    input_shapes=dummy_inputs.shape,
-                    dummy_input=dummy_inputs,
-                )
-            except Exception as e:  # pragma: no cover
-                if not _is_aimet_graph_trace_error(e):  # pragma: no cover
-                    raise
-                logger.warning(
-                    "Skipping post-QAT batch norm folding because AIMET "
-                    "failed to trace the quantized model graph. "
-                    f"Error: {e}"
-                )
+        for epoch in range(epochs):
+            for imgs, labels in track(
+                train_loader,
+                description=(
+                    "Running Quantization-Aware Training "
+                    f"(epoch {epoch + 1}/{epochs})"
+                ),
+                total=len(train_loader),
+            ):
+                optimizer.zero_grad()
+                loss = model.compute_training_loss((imgs, labels))
+                loss.backward()
+                optimizer.step()
+            scheduler.step()
 
-    model.automatic_optimization = True
+        if batch_norm_reestimation:
+            logger.info("Reestimating batch norm statistics")
+
+            reestimate_bn_stats(
+                model, train_loader, forward_fn=_patched_forward_pass
+            )
+
+            if fold_batch_norms:
+                logger.info("Folding batch norms into preceding layers")
+                try:
+                    fold_all_batch_norms(
+                        model,
+                        input_shapes=dummy_inputs.shape,
+                        dummy_input=dummy_inputs,
+                    )
+                except Exception as e:  # pragma: no cover
+                    if not _is_aimet_graph_trace_error(e):  # pragma: no cover
+                        raise
+                    logger.warning(
+                        "Skipping post-QAT batch norm folding because AIMET "
+                        "failed to trace the quantized model graph. "
+                        f"Error: {e}"
+                    )
+    finally:
+        model.automatic_optimization = previous_automatic_optimization
     return model
 
 

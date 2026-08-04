@@ -141,15 +141,18 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
-        boxes, kpts = self._postprocess_keypoint_detections(
+        detections_pre_nms = self._prepare_bbox_inference_output(
             features_list,
             class_scores,
             distributions,
-            pred_keypoints,
             anchor_points,
             stride_tensor,
+            tail=[pred_keypoints],
         )
-        return {
+        boxes, kpts = self._split_keypoint_detections(
+            self._run_nms(detections_pre_nms)
+        )
+        packet: Packet[Tensor] = {
             "boundingbox": boxes,
             "keypoints": kpts,
             "features": features_list,
@@ -157,6 +160,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "distributions": distributions,
             "keypoints_raw": keypoints_raw,
         }
+        if self.keep_detections_pre_nms:
+            packet["detections_pre_nms"] = detections_pre_nms
+        return packet
 
     @property
     @override
@@ -202,27 +208,10 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             batch_size, self.n_keypoints_flat, -1
         )
 
-    def _postprocess_keypoint_detections(
-        self,
-        features: list[Tensor],
-        class_scores: Tensor,
-        distributions: Tensor,
-        pred_keypoints: Tensor,
-        anchor_points: Tensor,
-        stride_tensor: Tensor,
+    def _split_keypoint_detections(
+        self, detections: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor]]:
-        """Perform post-processing of the output and returns bboxs after
-        NMS.
-        """
-        detections = super()._postprocess_detections(
-            features,
-            class_scores,
-            distributions,
-            anchor_points,
-            stride_tensor,
-            tail=[pred_keypoints],
-        )
-
+        """Split post-NMS detections into bboxes and keypoints."""
         bboxes = [detection[:, :6] for detection in detections]
         keypoints = [
             detection[:, 6:].reshape(-1, self.n_keypoints, 3)
