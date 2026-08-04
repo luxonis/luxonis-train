@@ -129,9 +129,9 @@ def warn_on_predefined_model_mismatch(
     """Log a warning if ``current`` and ``ckpt_predefined`` resolve to
     different concrete predefined-model classes.
 
-    ``ckpt_predefined`` is whatever was stored in the checkpoint's
-    ``config.model.predefined_model``. Missing / not-a-dict is treated
-    as a no-op (pre-versioning checkpoints).
+    ``ckpt_predefined`` is whatever was stored under the checkpoint's
+    ``predefined_model`` key. Missing / not-a-dict is treated as a no-op
+    (pre-versioning checkpoints).
     """
     if not isinstance(ckpt_predefined, dict) or current is None:
         return
@@ -150,9 +150,9 @@ def warn_on_predefined_model_mismatch(
         )
     except (KeyError, ValueError) as e:
         # The architecture the checkpoint was trained with is gone
-        # (renamed family, dropped version). That is exactly the case
-        # this warning exists for, so it must not be swallowed - the
-        # alternative is an opaque state-dict load failure later on.
+        # (renamed family, dropped version). Warn instead of staying
+        # silent, otherwise the only symptom is an opaque state-dict
+        # load failure later on.
         logger.warning(
             f"The checkpoint was trained with predefined model "
             f"`{ckpt_predefined['name']}` "

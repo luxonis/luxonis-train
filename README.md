@@ -62,7 +62,15 @@ Get started with `LuxonisTrain` in just a few steps:
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
 
-   The `--model` / `--variant` combo above is equivalent to `--config luxonis_train/configs/detection_light_model.yaml`; either style works and the packaged YAML is used as the source of truth.
+   `--model detection --variant light` runs the `detection_light_model.yaml` preset that ships inside the installed `luxonis_train` package — you never edit that file. Everything after the options is an override applied on top of it, which is how the preset is pointed at your data. Once you have your own dataset registered, the usual form is:
+
+   ```bash
+   luxonis_train train                  \
+     --model detection --variant light  \
+     loader.params.dataset_name "my_dataset"
+   ```
+
+   To change more than a handful of fields, write your own config file and pass it with `--config` instead — see [Configuration](#configuration).
 
 1. **Monitor progress with `TensorBoard`**
 
@@ -156,17 +164,43 @@ luxonis_train <command> --help
 
 Specific usage examples can be found in the respective sections below.
 
-**Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`) as a shortcut to one of the packaged presets. For example:
+**Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`). The two are mutually exclusive and answer different questions:
+
+- `--config my_config.yaml` runs **your** config file.
+- `--model detection --variant light` runs the matching **packaged** preset (here `detection_light_model.yaml`), read straight from the installed package. There is no local file to download or edit, and a config file in your working directory is not picked up.
+
+Both forms accept the same `key value` overrides, so a preset can be adapted from the command line:
 
 ```bash
-# Equivalent to --config luxonis_train/configs/detection_light_model.yaml
-luxonis_train train --model detection --variant light
+# Train the packaged detection preset on your own dataset
+luxonis_train train                  \
+  --model detection --variant light  \
+  loader.params.dataset_name "my_dataset"
 
 # Same, but pin the predefined-model version explicitly
 luxonis_train train --model detection:v1 --variant light
 ```
 
-`--config` and `--model` are mutually exclusive. Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers.
+Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a preset builds.
+
+Presets are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file — a few lines are enough, since it can build on the same predefined model:
+
+```yaml
+model:
+  predefined_model:
+    name: DetectionModel
+    params:
+      variant: light
+
+loader:
+  params:
+    dataset_name: my_dataset
+
+trainer:
+  epochs: 300
+```
+
+and run it with `luxonis_train train --config my_config.yaml`. The packaged YAMLs are good templates for this; they are visible [in this repository](https://github.com/luxonis/luxonis-train/tree/main/luxonis_train/configs) and, in an installed environment, under the directory printed by `python -c "from luxonis_train.config.predefined import configs_dir; print(configs_dir())"`.
 
 **Predefined-model versioning.** The `model.predefined_model` block accepts an optional `version` field (default `"latest"`). When we ship a breaking architecture change to, say, `DetectionModel`, it will land as `DetectionModelV2` alongside the current class; existing configs pinned to `version: 1` keep resolving to the old architecture, and loading a checkpoint whose training-time version differs from the current-config version prints a clear warning telling you which `version` to pin. The equivalent CLI form is `--model detection:v1`, `--model detection:v2`, or `--model detection:latest`.
 
@@ -239,8 +273,9 @@ trainer:
 **For a complete reference of all available configuration options, see our [Configuration Documentation](luxonis_train/configs/README.md).**
 
 > [!TIP]
-> We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
-> These are great starting points that you can customize for your specific needs.
+> We provide a set of predefined configuration files for common computer vision tasks in the `luxonis_train/configs` directory.
+> They ship with the package and are what `--model` / `--variant` select, so they can be used without a local copy.
+> They are also great starting points to copy and customize for your specific needs.
 
 <a name="data-preparation"></a>
 
@@ -365,7 +400,7 @@ loader:
 > luxonis_train inspect --model detection --variant light
 > ```
 >
-> `--config luxonis_train/configs/detection_light_model.yaml` works the same.
+> `--config my_config.yaml` works the same, with the loader section of your own config.
 >
 > **The `inspect` command is currently only available in the CLI**
 
@@ -380,18 +415,30 @@ Once your configuration file and dataset are ready, start the training process.
 **CLI:**
 
 ```bash
+# your own config file
+luxonis_train train --config my_config.yaml
+
+# or one of the packaged presets, unmodified
 luxonis_train train --model detection --variant light
 ```
 
-`--config luxonis_train/configs/detection_light_model.yaml` is equivalent and still supported.
+The `--model` form trains the packaged preset as it ships, which is rarely what you want on its own — at the very least it has to be pointed at your dataset. Overrides do that without a config file of your own:
+
+```bash
+luxonis_train train                  \
+  --model detection --variant light  \
+  loader.params.dataset_name "my_dataset"
+```
 
 > [!TIP]
-> To change a configuration parameter from the command line, use the following syntax:
+> Any configuration parameter can be changed this way, whether the config came from `--config` or `--model`. The value is looked up by its dotted path in the config:
 >
 > ```bash
-> luxonis_train train                  \
->   --model detection --variant light  \
->   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
+> luxonis_train train \
+>   --model detection --variant light \
+>   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco" \
+>   trainer.epochs 300 \
+>   trainer.batch_size 8
 > ```
 
 **Python API:**
@@ -400,7 +447,7 @@ luxonis_train train --model detection --variant light
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel(
-  "luxonis_train/configs/detection_light_model.yaml",
+  "my_config.yaml",
   {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"}
 )
 model.train()
@@ -448,7 +495,7 @@ luxonis_train test --model detection --variant light \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 model.test(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -495,7 +542,7 @@ luxonis_train infer --model detection --variant light \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 
 # infer on a dataset view
 model.infer(weights="path/to/checkpoint.ckpt", view="val")
@@ -524,7 +571,7 @@ You can see an example export configuration [here](https://github.com/luxonis/lu
 **CLI:**
 
 ```bash
-luxonis_train export --config luxonis_train/configs/example_export.yaml --weights path/to/weights.ckpt
+luxonis_train export --config my_export_config.yaml --weights path/to/weights.ckpt
 ```
 
 **Python API:**
@@ -532,7 +579,7 @@ luxonis_train export --config luxonis_train/configs/example_export.yaml --weight
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/example_export.yaml")
+model = LuxonisModel("my_export_config.yaml")
 model.export(weights="path/to/weights.ckpt")
 ```
 
@@ -561,7 +608,7 @@ luxonis_train archive                \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -590,7 +637,7 @@ luxonis_train convert --model detection --variant light --weights path/to/checkp
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 archive_path, conversion_artifacts = model.convert(
     weights="path/to/checkpoint.ckpt"
 )
@@ -611,7 +658,7 @@ Optimize your model's performance using hyperparameter tuning powered by [`Optun
 
 **Configuration:**
 
-Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#tuner) section in your configuration file.
+Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#tuner) section in your configuration file. A full example is available [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_tuning.yaml).
 
 ```yaml
 
@@ -629,7 +676,7 @@ tuner:
 **CLI:**
 
 ```bash
-luxonis_train tune --config luxonis_train/configs/example_tuning.yaml
+luxonis_train tune --config my_tuning_config.yaml
 ```
 
 **Python API:**
@@ -637,7 +684,7 @@ luxonis_train tune --config luxonis_train/configs/example_tuning.yaml
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("luxonis_train/configs/example_tuning.yaml")
+model = LuxonisModel("my_tuning_config.yaml")
 model.tune()
 ```
 

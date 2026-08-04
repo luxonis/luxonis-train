@@ -36,18 +36,16 @@ class PredefinedModelMeta(VariantMeta):
     """Registers predefined models under versioned C{Family:vN} keys.
 
     C{AutoRegisterMeta} registers every subclass under its plain class
-    name. That entry is replaced here by two: the canonical
-    C{Family:vN} key that L{luxonis_train.config.predefined_versions}
-    resolves against, and a plain C{Family} alias pointing at the most
-    recently registered version, so that looking a model up by its class
-    name keeps working.
+    name. That entry is replaced here by two: the canonical C{Family:vN}
+    key that L{luxonis_train.config.predefined_versions} resolves
+    against, and a plain C{Family} alias pointing at the most recently
+    registered version, so that looking a model up by its class name
+    keeps working.
 
-    Keying happens when the class is created rather than in a one-shot
-    sweep after import, so classes registered later - custom models
-    loaded through C{--source}, most importantly - are keyed the same
-    way. That lets them both add a new version of a shipped family and
-    override an existing one, which is what registering under a
-    built-in's name did before versioning was introduced.
+    Keying happens when the class is created, so custom models loaded
+    through C{--source} are keyed the same way as the shipped ones and
+    can either add a new version of a shipped family or override an
+    existing one.
     """
 
     def __new__(

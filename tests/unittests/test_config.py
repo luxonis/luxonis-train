@@ -961,9 +961,8 @@ def test_predefined_metaclass_keys_and_aliases_shipped_models():
 def test_predefined_metaclass_keys_versioned_class_to_family():
     """`FamilyV2` is keyed as `Family:v2` when the class is created.
 
-    Keying at class creation rather than in a post-import sweep is what
-    makes models loaded later - through `--source` - reachable by
-    `version:`.
+    Keying at class creation is what makes models loaded later -
+    through `--source` - reachable by `version:`.
     """
 
     class DetectionModelV2(DetectionModel):

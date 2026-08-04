@@ -62,27 +62,6 @@ from .utils import (
 )
 
 
-def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
-    predefined_model = cfg.model.predefined_model
-    if predefined_model is None:
-        return None
-    dumped = predefined_model.model_dump()
-    if dumped.get("version") == "latest":
-        from luxonis_train.config.predefined_versions import (
-            resolve_predefined_class,
-        )
-
-        # Read the version off the resolved class rather than parsing it
-        # out of the registry key: a model registered under a plain key
-        # has no `:vN` suffix to parse, and would keep `"latest"` here -
-        # which is exactly the ambiguity the pin exists to remove.
-        with suppress(KeyError, ValueError):
-            dumped["version"] = resolve_predefined_class(
-                predefined_model.name, "latest"
-            )._VERSION
-    return dumped
-
-
 class LuxonisLightningModule(pl.LightningModule):
     """Class representing the entire model.
 
@@ -810,10 +789,10 @@ class LuxonisLightningModule(pl.LightningModule):
         """Warn when the checkpoint was trained with a different
         predefined-model version than the config resolves to.
 
-        The pin is read from the checkpoint's top-level
-        `predefined_model` key only. It is deliberately not looked for
-        under `config.model.predefined_model`: that field is
-        `Field(exclude=True)`, so no checkpoint has ever contained it.
+        @type ckpt_predefined_model: Any | None
+        @param ckpt_predefined_model: The checkpoint's top-level
+            C{predefined_model} entry. C{None} for checkpoints saved
+            before predefined models were versioned.
         """
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
@@ -1315,3 +1294,27 @@ class LuxonisLightningModule(pl.LightningModule):
             checkpoint.pop("predefined_model", None)
         else:
             checkpoint["predefined_model"] = predefined_model
+
+
+def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
+    """Dump the configured predefined model with its version resolved to
+    a concrete number, so the checkpoint records the architecture it was
+    actually trained with.
+    """
+    predefined_model = cfg.model.predefined_model
+    if predefined_model is None:
+        return None
+    dumped = predefined_model.model_dump()
+    if dumped.get("version") == "latest":
+        from luxonis_train.config.predefined_versions import (
+            resolve_predefined_class,
+        )
+
+        # The version is taken from the resolved class instead of the
+        # registry key, as the key is not guaranteed to carry the `:vN`
+        # suffix.
+        with suppress(KeyError, ValueError):
+            dumped["version"] = resolve_predefined_class(
+                predefined_model.name, "latest"
+            )._VERSION
+    return dumped
