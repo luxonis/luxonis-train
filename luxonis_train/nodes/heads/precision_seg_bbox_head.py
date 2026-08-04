@@ -145,6 +145,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             "boundingbox": [],
             self.task.main_output: [],
         }
+        if self.keep_detections_pre_nms:
+            results["detections_pre_nms"] = preds_combined
 
         for i, pred in enumerate(preds):
             height, width = self.original_in_shape[-2:]

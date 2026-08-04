@@ -120,11 +120,13 @@ class PrecisionBBoxHead(BaseDetectionHead):
             predicts_objectness=False,
         )
 
-        return {
+        packet: Packet[Tensor] = {
             "features": features_list,
             "boundingbox": boxes,
-            "detections_pre_nms": detections_pre_nms,
         }
+        if self.keep_detections_pre_nms:
+            packet["detections_pre_nms"] = detections_pre_nms
+        return packet
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
