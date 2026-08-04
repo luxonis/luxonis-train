@@ -649,12 +649,17 @@ def build_training_plan(
         tuple[LRScheduler | ReduceLROnPlateau | None, str | None]
     ] = []
     bypass_configs: list[Any] | None = None
+    # `LearningRateMonitor` suffixes its key with the group name, but
+    # only falls back to positional `pg1`, `pg2`, ... when there is
+    # more than one group. A lone group is left unnamed so its key
+    # stays the bare `lr-<optimizer>` of a plain config.
+    name_groups = sum(len(inner.groups) for inner in plan.inners) > 1
     for inner in plan.inners:
         torch_groups = [
             {
                 "params": list(group.parameters),
                 **group.options,
-                "name": group.name,
+                **({"name": group.name} if name_groups else {}),
             }
             for group in inner.groups
         ]

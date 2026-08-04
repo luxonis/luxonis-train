@@ -39,6 +39,20 @@ def test_every_parameter_group_carries_its_plan_name(opts: Params):
     assert set(actual) == {"Head/0", "default/Head"}
 
 
+def test_a_lone_group_is_left_unnamed(opts: Params):
+    """A plain configuration keeps the unsuffixed
+    ``LearningRateMonitor`` key it had before groups existed.
+    """
+    snapshot = build_snapshot(config([tiny_head_node()]), opts)
+    groups = [
+        group
+        for optimizer in snapshot.optimizers
+        for group in optimizer.param_groups
+    ]
+    assert len(groups) == 1
+    assert "name" not in groups[0]
+
+
 def test_group_names_are_unique_across_inner_optimizers(opts: Params):
     convolutions = [
         {
