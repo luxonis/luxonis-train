@@ -117,7 +117,7 @@ def test_predefined_models(
             img_dir = tmp_path / "images"
             video_path = tmp_path / "video.avi"
             video_writer = cv2.VideoWriter(
-                str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
+                str(video_path), cv2.VideoWriter.fourcc(*"XVID"), 1, (256, 256)
             )
             img_dir.mkdir()
             for i, (img, _) in enumerate(loader):
