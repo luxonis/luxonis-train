@@ -11,36 +11,6 @@ from luxonis_train.lightning.training_plan import StrategyRule
 from .base_strategy import BaseTrainingStrategy
 
 
-def _is_batch_norm_weight(
-    module: nn.Module,
-    module_name: str,
-    parameter: nn.Parameter,
-    parameter_name: str,
-) -> bool:
-    _ = module_name, parameter
-    return isinstance(module, nn.BatchNorm2d) and parameter_name == "weight"
-
-
-def _is_weight(
-    module: nn.Module,
-    module_name: str,
-    parameter: nn.Parameter,
-    parameter_name: str,
-) -> bool:
-    _ = module, module_name, parameter
-    return parameter_name == "weight"
-
-
-def _is_bias(
-    module: nn.Module,
-    module_name: str,
-    parameter: nn.Parameter,
-    parameter_name: str,
-) -> bool:
-    _ = module, module_name, parameter
-    return parameter_name == "bias"
-
-
 class TripleLRSGDStrategy(BaseTrainingStrategy):
     BATCH_NORM_TAG = "triple_lr/batch_norm_weights"
     WEIGHT_TAG = "triple_lr/weights"
@@ -170,3 +140,33 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
                         [warmup_start_lr, target_lr],
                     )
         self.step += 1
+
+
+def _is_batch_norm_weight(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module_name, parameter
+    return isinstance(module, nn.BatchNorm2d) and parameter_name == "weight"
+
+
+def _is_weight(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module, module_name, parameter
+    return parameter_name == "weight"
+
+
+def _is_bias(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module, module_name, parameter
+    return parameter_name == "bias"

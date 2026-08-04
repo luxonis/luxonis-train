@@ -459,12 +459,9 @@ def build_training_strategy(
     if training_strategy is None:
         return None
     logger.info(f"Using training strategy '{training_strategy.name}'")
-    # `optimizer` and `scheduler` have defaults, so they are never
-    # `None`; only warn about the ones the user actually configured.
-    # Compared against the defaults rather than `model_fields_set`,
-    # which misses in-place mutation and reports every field as set
-    # on a config rebuilt from `model_dump` (the tuner and the saved
-    # `training_config.yaml` both do that).
+    # Warn only about the fields the user actually changed. Compared
+    # against the defaults because `model_fields_set` reports every
+    # field as set on a config rebuilt from `model_dump`.
     defaults = {
         "optimizer": OptimizerConfig(),
         "scheduler": SchedulerConfig(),
@@ -490,12 +487,18 @@ def build_training_strategy(
         # abstract methods with stubs so it can be instantiated, then
         # mount it through the compatibility adapter.
         logger.warning(DEPRECATION_MESSAGE.format(name=training_strategy.name))
+
+        def no_base_configs(self: Any) -> Any:
+            # `resolve_training_plan` falls back to the config's
+            # optimizer and scheduler on `NotImplementedError`.
+            raise NotImplementedError
+
         stubs: dict[str, Any] = {}
         for method in getattr(cls, "__abstractmethods__", ()):  # type: ignore[union-attr]
             if method == "rules":
                 stubs["rules"] = lambda self: []
             elif method == "get_base_configs":
-                stubs["get_base_configs"] = _raise_not_implemented
+                stubs["get_base_configs"] = no_base_configs
         # `register=False`: the shim must not replace the original
         # class in the STRATEGIES registry.
         metaclass = cast(Any, type(cls))
