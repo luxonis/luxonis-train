@@ -247,25 +247,76 @@ jobs:
           LUXONISML_BUCKET: luxonis-test-bucket
           SUITE: ${{ matrix.suite }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
-        run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
+        run: >-
+          pytest -x -m "${SUITE}"
+          --cov --cov-report=xml:coverage-${SUITE}.xml
+          --junitxml=junit-${SUITE}.xml -o junit_family=legacy
 
       - name: Upload test results to Codecov
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3
+        if: ${{ always() }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
           fail_ci_if_error: false
+          files: junit-${{ matrix.suite }}.xml
           flags: ${{ matrix.suite }}
+          disable_search: true
+          handle_no_reports_found: true
+
+      - name: Upload coverage as artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-${{ matrix.suite }}
+          path: coverage-${{ matrix.suite }}.xml
+          if-no-files-found: ignore
+          overwrite: true
+
+  # Coverage is uploaded once, after every suite finished. Uploading each
+  # suite on its own makes Codecov report the partial runs as the total.
+  coverage:
+    needs: tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      # Required by codecov-action, it builds the path-fixing file network
+      # from the checked out repository.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: coverage-*
+          path: coverage
+          merge-multiple: true
+
+      - name: Collect coverage files
+        id: coverage-files
+        shell: bash
+        run: |
+          files=$(find coverage -type f -name 'coverage-*.xml' | sort | paste -sd, -)
+          if [[ -z "$files" ]]; then
+            echo "No coverage files found" >&2
+            exit 1
+          fi
+          echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-          flags: ${{ matrix.suite }}
-
-      - name: Upload coverage as artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: coverage-${{ matrix.suite }}
-          path: coverage.xml
-          overwrite: true
+          files: ${{ steps.coverage-files.outputs.files }}
+          flags: pytest
+          name: pytest
+          disable_search: true
