@@ -19,48 +19,42 @@ uv sync
 ```
 
 > [!NOTE]
-> This creates `.venv`, installs the package in editable mode, and installs
-> the default `dev` dependency group.
+> This creates a `.venv` with the package installed in editable mode, together with the `dev` dependencies.
 
-To include AIMET support locally, run:
+To also install the AIMET support, run:
 
 ```bash
 uv sync --extra aimet
 ```
 
-The `requirements*.txt` files are generated compatibility exports for users
-installing with pip. Do not edit them manually; after changing dependencies,
-run:
+The `requirements*.txt` files are exports of `uv.lock` for users installing with pip.
+Do not edit them manually. After changing the dependencies, run:
 
 ```bash
 scripts/export_requirements.sh
 ```
 
-A pre-commit hook runs it for you whenever the dependency files change, so
-usually you only need to review and stage the refreshed `uv.lock` and
-`requirements*.txt` before committing again.
+> [!NOTE]
+> A pre-commit hook runs the script for you - you only need to stage the refreshed files.
 
 ## Pre-commit Hooks
 
-We use pre-commit hooks to ensure code quality and consistency. The hooks are
-run by [`prek`](https://github.com/j178/prek), a drop-in replacement for
-`pre-commit` that reads the same `.pre-commit-config.yaml`.
+We use pre-commit hooks to ensure code quality and consistency.
+The hooks are run by [`prek`](https://github.com/j178/prek), a faster drop-in replacement for `pre-commit`.
 
 1. Run `uv run prek install` in the root directory.
 1. The hooks will now run automatically on `git commit`.
    - If a hook fails, it will print an error message and abort the commit.
    - Some hooks will also modify the files in-place to fix found issues.
 
-To run every hook manually, use `uv run prek run --all-files`.
+To run all the hooks manually, use `uv run prek run --all-files`.
 
-**Do not commit directly to `main`.** The `no-commit-to-branch` hook blocks it,
-and pull requests are the expected review path.
+**Do not commit directly to `main`** - the `no-commit-to-branch` hook blocks it.
 
 ## Documentation
 
-We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup
-language for documentation. To verify that your documentation is formatted
-correctly, run the following command:
+We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup language for documentation.
+To verify that your documentation is formatted correctly, run the following command:
 
 ```bash
 uv run --group docs pydoctor --docformat=epytext luxonis_train
@@ -74,10 +68,7 @@ uv run --group docs pydoctor --docformat=epytext luxonis_train
 
 ## Type Checking
 
-The codebase is type-checked using
-[pyright](https://github.com/microsoft/pyright), pinned in the `dev`
-dependency group so that it matches CI. To run type checking, use the
-following command in the root project directory:
+The codebase is type-checked using [pyright](https://github.com/microsoft/pyright), pinned in the `dev` dependency group to match CI. To run type checking, use the following command in the root project directory:
 
 ```bash
 uv run pyright --warnings --project pyproject.toml
@@ -91,9 +82,8 @@ uv run pyright --warnings --project pyproject.toml
 
 ## Tests
 
-We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are
-located in the `tests` directory. To run the tests with coverage, use the
-following command:
+We use [pytest](https://docs.pytest.org/en/stable/) for testing.
+The tests are located in the `tests` directory. To run the tests with coverage, use the following command:
 
 ```bash
 uv run pytest --cov=luxonis_train --cov-report=html
@@ -117,8 +107,7 @@ This command will run all tests and generate HTML coverage report.
 
 Our GitHub Actions workflow is run when a new PR is opened.
 
-1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the
-   [documentation](#documentation) must be built successfully.
+1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the [documentation](#documentation) must be built successfully.
 1. Next, the [type checking](#type-checking) is run.
 1. If all previous checks pass, the [tests](#tests) are run.
 
@@ -130,8 +119,7 @@ Our GitHub Actions workflow is run when a new PR is opened.
 
 ## Making and Submitting Changes
 
-1. Make changes in a new branch with a descriptive prefix such as `feat/`,
-   `fix/`, `docs/`, `ci/`, or `test/`.
+1. Make changes in a new branch with a descriptive prefix such as `feat/` or `fix/`.
 1. Test your changes locally.
 1. Commit your changes (pre-commit hooks will run).
 1. Push your branch and create a pull request.

@@ -108,10 +108,10 @@ def infer_from_video(
                 if name not in writers:
                     w, h = viz.shape[1], viz.shape[0]
                     writers[name] = cv2.VideoWriter(
-                        filename=str(save_dir / f"{name}.mp4"),  # type: ignore
-                        fourcc=cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
-                        fps=cap.get(cv2.CAP_PROP_FPS),  # type: ignore
-                        frameSize=(w, h),  # type: ignore
+                        filename=str(save_dir / f"{name}.mp4"),
+                        fourcc=cv2.VideoWriter.fourcc(*"mp4v"),
+                        fps=cap.get(cv2.CAP_PROP_FPS),
+                        frameSize=(w, h),
                     )
                 if name in writers:
                     writers[name].write(viz)

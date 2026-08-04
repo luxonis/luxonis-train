@@ -1,8 +1,7 @@
 name: Pip Install
 
-# The `requirements*.txt` exports are hash-pinned, so pip refuses to install
-# anything they do not pin themselves. Nothing in the uv-based CI touches
-# that path, so it gets its own job whenever the dependency files change.
+# Nothing else in CI installs from the `requirements*.txt` exports,
+# so this workflow checks that path stays usable for pip users.
 
 on:
   workflow_dispatch:
@@ -35,8 +34,6 @@ jobs:
         with:
           python-version-file: .python-version
 
-      # The index URLs come from the export itself, so this is verbatim what
-      # a user runs.
       - name: Install from the exported requirements
         run: pip install --no-cache-dir -r requirements.txt
 
