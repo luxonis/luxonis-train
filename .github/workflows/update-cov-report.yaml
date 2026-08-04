@@ -3,29 +3,108 @@ name: Update Coverage Report
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
 
 jobs:
   update-base-report:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        suite: [unit, predefined_light, predefined_heavy, combinations, misc]
 
     steps:
+      # Required by codecov-action, it builds the path-fixing file network
+      # from the checked out repository.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          persist-credentials: false
+
+      - name: Find the CI run of the merged pull request
+        id: ci-run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # A commit can be associated with more than one pull request and the
+          # order is not guaranteed, so match the one that actually produced
+          # $GITHUB_SHA instead of taking the first.
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq 'map(select(.merge_commit_sha == env.GITHUB_SHA)) | .[0].number // empty')
+          if [[ -z "$pr" ]]; then
+            echo "::error::No merged pull request produced $GITHUB_SHA" >&2
+            exit 1
+          fi
+
+          # Never query the runs without a head_sha, that silently matches the
+          # most recent successful CI run of any branch.
+          head_sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr" --jq '.head.sha // empty')
+          if [[ -z "$head_sha" ]]; then
+            echo "::error::Could not resolve the head commit of PR #$pr" >&2
+            exit 1
+          fi
+
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?head_sha=$head_sha&status=success" --jq '.workflow_runs[0].id // empty')
+          if [[ -z "$run_id" ]]; then
+            echo "::error::No successful CI run found for PR #$pr ($head_sha)" >&2
+            exit 1
+          fi
+
+          # The coverage was measured on the pull request's tree. If main moved
+          # on in the meantime, that tree is not what landed and uploading it
+          # would report coverage of source that is not in $GITHUB_SHA.
+          pr_tree=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head_sha" --jq '.commit.tree.sha // empty')
+          main_tree=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.commit.tree.sha // empty')
+          if [[ -z "$pr_tree" || -z "$main_tree" ]]; then
+            echo "::error::Could not compare the trees of $head_sha and $GITHUB_SHA" >&2
+            exit 1
+          fi
+
+          if [[ "$pr_tree" != "$main_tree" ]]; then
+            echo "::warning::PR #$pr was not merged as-is, skipping the coverage upload for $GITHUB_SHA"
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Using coverage from PR #$pr (run $run_id)"
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "upload=true" >> "$GITHUB_OUTPUT"
 
       - name: Download artifacts
+        if: ${{ steps.ci-run.outputs.upload == 'true' }}
         uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151
         with:
-          name: coverage-${{ matrix.suite }}
-          path: coverage.xml
+          run_id: ${{ steps.ci-run.outputs.run-id }}
+          name: coverage-.*
+          name_is_regexp: true
+          path: coverage
           workflow: ci.yaml
+          merge_multiple: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect coverage files
+        if: ${{ steps.ci-run.outputs.upload == 'true' }}
+        id: coverage-files
+        shell: bash
+        run: |
+          files=$(find coverage -type f -name 'coverage-*.xml' | sort | paste -sd, -)
+          if [[ -z "$files" ]]; then
+            echo "No coverage files found" >&2
+            exit 1
+          fi
+          echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage results to Codecov
+        if: ${{ steps.ci-run.outputs.upload == 'true' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          files: ${{ steps.coverage-files.outputs.files }}
+          flags: pytest
+          name: pytest
+          disable_search: true
