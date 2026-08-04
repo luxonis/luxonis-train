@@ -516,10 +516,6 @@ def build_training_strategy(
     )
 
 
-def _raise_not_implemented(self: Any) -> Any:
-    raise NotImplementedError
-
-
 def postprocess_metrics(
     name: str, values: Any, log_sub_metrics: bool = True
 ) -> dict[str, Tensor]:
