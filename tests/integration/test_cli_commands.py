@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import GeneratorType
 
+import numpy as np
 import pytest
 import yaml
 from luxonis_ml.data import LuxonisDataset
@@ -88,6 +89,37 @@ def test_cli_command_success(
             ],
             weights=str(ckpt),
         )
+
+
+def test_list_augmentations(
+    coco_dataset: LuxonisDataset, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured_augmentations: list[list[str]] = []
+
+    def mock_add_augmentation_footer(
+        image: np.ndarray, augmentations: list[str]
+    ) -> np.ndarray:
+        captured_augmentations.append(augmentations)
+        return image
+
+    monkeypatch.setattr(
+        "luxonis_ml.data.utils.visualizations.add_augmentation_footer",
+        mock_add_augmentation_footer,
+    )
+
+    next(
+        _yield_visualizations(
+            [
+                "loader.params.dataset_name",
+                coco_dataset.identifier,
+                "trainer.preprocessing.augmentations",
+                str([{"name": "HorizontalFlip", "params": {"p": 1.0}}]),
+            ],
+            config="configs/detection_light_model.yaml",
+            list_augmentations=True,
+        )
+    )
+    assert captured_augmentations == [["HorizontalFlip"]]
 
 
 @pytest.mark.parametrize(

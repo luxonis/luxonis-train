@@ -125,9 +125,7 @@ def _yield_visualizations(
 ) -> Iterator["np.ndarray"]:
     import cv2
     import numpy as np
-    from luxonis_ml.data.utils.augmentations_collector import (
-        AugmentationsCollector,
-    )
+    from luxonis_ml.data.utils.cli_utils import get_tracked_augmentations
     from luxonis_ml.data.utils.visualizations import (
         add_augmentation_footer,
         visualize,
@@ -137,10 +135,11 @@ def _yield_visualizations(
 
     def get_visualization_item(
         idx: int,
-    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], list[str]]:
         raw_loader = getattr(loader, "loader", None)
         if raw_loader is not None:
-            np_images, np_labels = raw_loader[idx]
+            sample = raw_loader[idx]
+            np_images, np_labels = sample
             if isinstance(np_images, np.ndarray):
                 np_images = {loader.image_source: np_images}
 
@@ -151,7 +150,11 @@ def _yield_visualizations(
             ):
                 np_labels = remap_keypoints(np_labels)
 
-            return np_images, np_labels
+            return (
+                np_images,
+                np_labels,
+                list(get_tracked_augmentations(sample.metadata) or {}),
+            )
 
         images, labels = loader[idx]
         if not isinstance(images, dict):
@@ -162,6 +165,7 @@ def _yield_visualizations(
                 for name, image in images.items()
             },
             {task: label.numpy() for task, label in labels.items()},
+            [],
         )
 
     opts = opts or []
@@ -170,23 +174,11 @@ def _yield_visualizations(
     model = create_model(config, opts)
 
     loader = model.loaders[view]
-    raw_loader = getattr(loader, "loader", None)
-    if list_augmentations and raw_loader is not None:
-        collector = AugmentationsCollector(
-            raw_loader.augmentations,  # type: ignore[attr-defined]
-            [
-                aug.model_dump()
-                for aug in model.cfg_preprocessing.get_active_augmentations()
-            ],
-        )
-        get_applied_augmentations = collector.get_applied_augmentations
-    else:
-        get_applied_augmentations = list
 
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
     for idx in range(len(loader)):
-        np_images, np_labels = get_visualization_item(idx)
+        np_images, np_labels, augmentations = get_visualization_item(idx)
         main_image = np_images[loader.image_source]
         main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
             np.uint8
@@ -204,7 +196,7 @@ def _yield_visualizations(
             categorical_encodings=categorical_encodings,
         )
         if list_augmentations:
-            viz = add_augmentation_footer(viz, get_applied_augmentations())
+            viz = add_augmentation_footer(viz, augmentations)
         yield viz
 
 

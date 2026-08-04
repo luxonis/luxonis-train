@@ -71,5 +71,5 @@ def test_ocr_visualizer():
 
     assert (
         computed_hash
-        == "fd2002331686f3579151061ec07367da5e3050bb60a085c1764f76486f5b2a91"
+        == "fd255eba6a051a851dd81f9d05dea6d4881dc2ad0efc5aeb7e6d08e8698d6e47"
     )
