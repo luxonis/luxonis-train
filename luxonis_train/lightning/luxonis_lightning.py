@@ -836,13 +836,13 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
+                computed = metric.compute()
                 values = postprocess_metrics(
                     metric_name,
-                    metric.compute(),
+                    metric.get_loggable_values(computed),
                     log_sub_metrics=self.cfg.trainer.log_sub_metrics,
                 )
                 metric.reset()
-
                 if isinstance(
                     self.trainer.strategy,
                     pl.strategies.DDPStrategy,  # type: ignore
@@ -878,6 +878,46 @@ class LuxonisLightningModule(pl.LightningModule):
                             sync_dist=True,
                         )
 
+                if self.trainer.is_global_zero:
+                    try:
+                        artifacts = metric.get_artifacts(computed)
+                    except Exception:
+                        logger.exception(
+                            "Failed to generate artifacts for metric "
+                            f"'{metric_name}'. Skipping artifact logging."
+                        )
+                        artifacts = {}
+
+                    for artifact_name, artifact in artifacts.items():
+                        if artifact.dim() != 3:
+                            logger.warning(
+                                "Skipping metric artifact "
+                                f"'{artifact_name}' from metric "
+                                f"'{metric_name}': expected shape "
+                                f"[C, H, W], got {tuple(artifact.shape)}."
+                            )
+                            continue
+
+                        try:
+                            image = (
+                                artifact.detach()
+                                .cpu()
+                                .numpy()
+                                .transpose(1, 2, 0)
+                            )
+                            self.tracker.log_image(
+                                name=f"{mode}/metrics/{self.current_epoch}/"
+                                f"{formatted_node_name}/{metric_name}/"
+                                f"{artifact_name}",
+                                img=image,
+                                step=self.current_epoch,
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Failed to log metric artifact "
+                                f"'{artifact_name}' from metric "
+                                f"'{metric_name}'. Skipping artifact logging."
+                            )
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
             loss=self._loss_accumulators[mode]["loss"],
@@ -968,9 +1008,10 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
+                computed = metric.compute()
                 values = postprocess_metrics(
                     metric_name,
-                    metric.compute(),
+                    metric.get_loggable_values(computed),
                     log_sub_metrics=self.cfg.trainer.log_sub_metrics,
                 )
                 for sub_name in values:
@@ -990,6 +1031,19 @@ class LuxonisLightningModule(pl.LightningModule):
                         metric_keys.add(
                             f"test/metric/{formatted_node_name}/{sub_name}"
                         )
+
+                for artifact_name in metric.get_artifact_names():
+                    for epoch_idx in sorted({0, *val_eval_epochs}):
+                        artifact_keys.add(
+                            f"val/metrics/{epoch_idx}/"
+                            f"{formatted_node_name}/{metric_name}/"
+                            f"{artifact_name}.png"
+                        )
+                    artifact_keys.add(
+                        f"test/metrics/{test_eval_epoch}/"
+                        f"{formatted_node_name}/{metric_name}/"
+                        f"{artifact_name}.png"
+                    )
 
             for viz_name in node.visualizers:
                 for epoch_idx in sorted({0, *val_eval_epochs}):

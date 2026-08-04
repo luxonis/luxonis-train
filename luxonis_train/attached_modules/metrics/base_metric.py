@@ -24,6 +24,8 @@ from luxonis_train.tasks import Task
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import get_signature
 
+MetricResult = Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
+
 
 @dataclass(kw_only=True, slots=True)
 class MetricState:
@@ -164,6 +166,28 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
               cannot be used as the main metric of the model.
         """
         return super().compute()
+
+    def get_loggable_values(
+        self,
+        values: MetricResult,
+    ) -> MetricResult:
+        """Return the subset of computed values suitable for metric
+        logging.
+        """
+        return values
+
+    def get_artifacts(
+        self,
+        values: MetricResult,
+    ) -> dict[str, Tensor]:
+        """Build image artifacts from an already computed metric
+        result.
+        """
+        return {}
+
+    def get_artifact_names(self) -> tuple[str, ...]:
+        """Return stable artifact names emitted by this metric."""
+        return ()
 
     def __eq__(self, other: object) -> bool:
         return self is other
