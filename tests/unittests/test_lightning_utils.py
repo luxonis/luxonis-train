@@ -1,8 +1,13 @@
-from torch import Tensor
+from typing import Any, cast
+
+from torch import Tensor, nn
 
 from luxonis_train import BaseNode
 from luxonis_train.attached_modules.metrics import MeanAveragePrecision, MIoU
-from luxonis_train.lightning.utils import _translate_predefined_metric_params
+from luxonis_train.lightning.utils import (
+    NodeWrapper,
+    _translate_predefined_metric_params,
+)
 from luxonis_train.tasks import Task, Tasks
 
 
@@ -56,3 +61,34 @@ def test_translate_predefined_metric_params_segmentation_iou_false():
     )
 
     assert params == {"num_classes": 3, "per_class": False}
+
+
+def test_node_wrapper_train_updates_self_and_attached_modules():
+    node = DummyNode(Tasks.CLASSIFICATION)
+    loss = nn.Dropout()
+    metric = nn.Dropout()
+    visualizer = nn.Dropout()
+    wrapper = NodeWrapper(
+        name="node",
+        module=node,
+        losses=cast(Any, {"loss": loss}),
+        metrics=cast(Any, {"metric": metric}),
+        visualizers=cast(Any, {"visualizer": visualizer}),
+        unfreeze_after=None,
+        lr_after_unfreeze=None,
+        finetuning=[],
+    )
+
+    wrapper.eval()
+    assert wrapper.training is False
+    assert node.training is False
+    assert loss.training is False
+    assert metric.training is False
+    assert visualizer.training is False
+
+    wrapper.train()
+    assert wrapper.training is True
+    assert node.training is True
+    assert loss.training is True
+    assert metric.training is True
+    assert visualizer.training is True

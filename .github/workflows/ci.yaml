@@ -54,8 +54,12 @@ on:
         required: true
   pull_request:
     paths:
-      - "requirements.txt"
+      - ".python-version"
       - "pyproject.toml"
+      - "uv.lock"
+      - "requirements*.txt"
+      - "scripts/**"
+      - ".pre-commit-config.yaml"
       - "luxonis_train/**"
       - "tests/**"
       - ".github/workflows/ci.yaml"
@@ -82,11 +86,16 @@ jobs:
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
-      - name: Install pre-commit
-        run: python -m pip install 'pre-commit<4.0.0'
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+      - name: Run pre-commit hooks
+        run: >-
+          uv run --locked --only-group dev prek run
+          --all-files --show-diff-on-failure --color=always
         env:
           # CI can run from a checked-out protected branch via workflow_call.
           # Keep this hook for local commits, but skip it for full CI lint runs.
@@ -104,11 +113,14 @@ jobs:
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
-      - name: Install dependencies
-        run: pip install pydoctor
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.28"
+          enable-cache: true
 
       - name: Build docs
-        run: pydoctor --docformat=epytext luxonis_train
+        run: uv run --locked --only-group docs pydoctor --docformat=epytext luxonis_train
 
   type-check:
     needs:
@@ -122,30 +134,29 @@ jobs:
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
+      - name: Sync dependencies
+        run: uv sync --locked --extra aimet --group dev
+
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Pyright check
-        uses: jakebailey/pyright-action@8ec14b5cfe41f26e5f41686a31eb6012758217ef
-        with:
-          level: warning
-          warnings: true
-          python-version: "3.10"
-          project: pyproject.toml
+        run: uv run --no-sync pyright --warnings --project pyproject.toml
 
   # Tests that the `luxonis-train.config.Config` works
   # even when the dependencies of `luxonis-train` are
@@ -165,31 +176,33 @@ jobs:
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync config test dependencies
+        run: uv sync --locked --only-group config-test
 
       - name: Install released version of LuxonisML
         if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
-        run: pip install luxonis-ml[utils]
+        run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
-      - name: Install dependencies for config test
-        run: |
-          pip install pytest-cov semver~=3.0
-          pip install -e . --no-deps
+      - name: Install package without runtime dependencies
+        run: uv pip install --python .venv -e . --no-deps
 
       - name: Test config without dependencies
         run: |
-          pytest -x tests/unittests/test_config.py \
+          uv run --no-sync pytest -x tests/unittests/test_config.py \
             --confcutdir=tests/unittests \
             --cov=luxonis_train/config \
             --cov-report=term-missing \
@@ -216,22 +229,26 @@ jobs:
           ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -e .[dev,aimet] --extra-index-url https://download.pytorch.org/whl/cu130
+      - name: Sync dependencies
+        run: uv sync --locked --extra aimet --group dev
+
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
           ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Authenticate to Google Cloud
         id: google-auth
@@ -248,7 +265,7 @@ jobs:
           SUITE: ${{ matrix.suite }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
         run: >-
-          pytest -x --cov --cov-report=xml:coverage-${SUITE}.xml
+          uv run --no-sync pytest -x --cov --cov-report=xml:coverage-${SUITE}.xml
           --junitxml=junit-${SUITE}.xml -o junit_family=legacy -m "${SUITE}"
 
       - name: Upload test results to Codecov

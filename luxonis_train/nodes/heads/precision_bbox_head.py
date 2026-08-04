@@ -107,10 +107,11 @@ class PrecisionBBoxHead(BaseDetectionHead):
                 )
             }
 
+        detections_pre_nms = self._prepare_bbox_inference_output(
+            classes_list, regressions_list
+        )
         boxes = non_max_suppression(
-            self._prepare_bbox_inference_output(
-                classes_list, regressions_list
-            ),
+            detections_pre_nms,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
@@ -119,10 +120,13 @@ class PrecisionBBoxHead(BaseDetectionHead):
             predicts_objectness=False,
         )
 
-        return {
+        packet: Packet[Tensor] = {
             "features": features_list,
             "boundingbox": boxes,
         }
+        if self.keep_detections_pre_nms:
+            packet["detections_pre_nms"] = detections_pre_nms
+        return packet
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:

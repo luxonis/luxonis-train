@@ -20,6 +20,7 @@ List of all the available metrics.
 - [MedianDistances](#mediandistances)
 - [OCRAccuracy](#ocraccuracy)
 - [ConfusionMatrix](#confusionmatrix)
+- [PrecisionRecallCurve](#precisionrecallcurve)
 
 ## Accuracy
 
@@ -161,3 +162,25 @@ Works with **classification, segmentation, object detection, instance keypoint d
 | Key             | Type    | Default value | Description                                                                |
 | --------------- | ------- | ------------- | -------------------------------------------------------------------------- |
 | `iou_threshold` | `float` | `0.45`        | `IoU` threshold for bounding boxes. Only relevant for `BOUNDIBGBOX` tasks. |
+
+## PrecisionRecallCurve
+
+Computes precision, recall, and F1 over a fixed grid of confidence thresholds and logs them as a three-panel figure (precision-recall, precision-confidence, recall-confidence). The scalar metric is the maximum F1 over the grid, with the confidence that achieves it logged as a sub-metric.
+
+Works with **object detection, instance keypoint detection and instance segmentation tasks**. Must be attached to a detection head, from which it re-runs NMS on the head's pre-NMS candidates - so its own NMS parameters are independent of the head's `conf_thres`.
+
+> [!NOTE]
+> **Important:** the metric's runtime grows with the number of NMS candidates above `nms_conf_threshold`. Raise `nms_conf_threshold` (or `min_confidence`) if validation is slow.
+
+**Params**
+
+| Key                      | Type                  | Default value | Description                                                                                                                              |
+| ------------------------ | --------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `confidence_thresholds`  | `list[float] \| None` | `None`        | Explicit, strictly increasing confidence grid. Mutually exclusive with the three parameters below                                        |
+| `num_thresholds`         | `int \| None`         | `101`         | Number of points in the generated grid                                                                                                   |
+| `min_confidence`         | `float \| None`       | `0.0`         | Lowest generated confidence threshold                                                                                                    |
+| `max_confidence`         | `float \| None`       | `1.0`         | Highest generated confidence threshold                                                                                                   |
+| `matching_iou_threshold` | `float`               | `0.5`         | `IoU` required for a prediction to match a ground-truth box                                                                              |
+| `nms_conf_threshold`     | `float`               | `1e-3`        | Confidence floor applied before NMS. Candidates below it are never counted. Effective floor is the larger of it and the lowest threshold |
+| `nms_iou_threshold`      | `float \| None`       | `None`        | `IoU` used by NMS. Defaults to the attached head's `iou_thres`                                                                           |
+| `max_detections`         | `int \| None`         | `None`        | Maximum detections retained by NMS. Defaults to the attached head's `max_det`                                                            |

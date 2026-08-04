@@ -3,17 +3,6 @@
 **This guide is intended for our internal development team.**
 It outlines our workflow and standards for contributing to this project.
 
-## Table Of Contents
-
-- [Pre-requisites](#pre-requisites)
-- [Pre-commit Hooks](#pre-commit-hooks)
-- [Documentation](#documentation)
-- [Type Checking](#type-checking)
-  - [Editor Support](#editor-support)
-- [Tests](#tests)
-- [GitHub Actions](#github-actions)
-- [Making and Reviewing Changes](#making-and-reviewing-changes)
-
 ## Pre-requisites
 
 Clone the repository and navigate to the root directory:
@@ -23,25 +12,44 @@ git clone git@github.com:luxonis/luxonis-train.git
 cd luxonis-train
 ```
 
-Install the development dependencies by running `pip install -r requirements-dev.txt` or install the package with the `dev` extra flag:
+Install [uv](https://docs.astral.sh/uv/) and sync the development environment:
 
 ```bash
-pip install -e .[dev]
+uv sync
 ```
 
 > [!NOTE]
-> This will install the package in editable mode (`-e`),
-> so you can make changes to the code and run them immediately.
+> This creates a `.venv` with the package installed in editable mode, together with the `dev` dependencies.
+
+To also install the AIMET support, run:
+
+```bash
+uv sync --extra aimet
+```
+
+The `requirements*.txt` files are exports of `uv.lock` for users installing with pip.
+Do not edit them manually. After changing the dependencies, run:
+
+```bash
+scripts/export_requirements.sh
+```
+
+> [!NOTE]
+> A pre-commit hook runs the script for you - you only need to stage the refreshed files.
 
 ## Pre-commit Hooks
 
-We use pre-commit hooks to ensure code quality and consistency:
+We use pre-commit hooks to ensure code quality and consistency.
+The hooks are run by [`prek`](https://github.com/j178/prek), a faster drop-in replacement for `pre-commit`.
 
-1. Install `pre-commit` (see [pre-commit.com](https://pre-commit.com/#install)).
-1. Clone the repository and run `pre-commit install` in the root directory.
-1. The `pre-commit` hook will now run automatically on `git commit`.
-   - If the hook fails, it will print an error message and abort the commit.
+1. Run `uv run prek install` in the root directory.
+1. The hooks will now run automatically on `git commit`.
+   - If a hook fails, it will print an error message and abort the commit.
    - Some hooks will also modify the files in-place to fix found issues.
+
+To run all the hooks manually, use `uv run prek run --all-files`.
+
+**Do not commit directly to `main`** - the `no-commit-to-branch` hook blocks it.
 
 ## Documentation
 
@@ -49,10 +57,10 @@ We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup languag
 To verify that your documentation is formatted correctly, run the following command:
 
 ```bash
-pydoctor --docformat=epytext luxonis_train
+uv run --group docs pydoctor --docformat=epytext luxonis_train
 ```
 
-**Editor Support:**
+### Editor Support
 
 - **PyCharm** - built in support for generating `epytext` docstrings
 - **Visual Studio Code** - [AI Docify](https://marketplace.visualstudio.com/items?itemName=AIC.docify) extension offers support for `epytext`
@@ -60,13 +68,13 @@ pydoctor --docformat=epytext luxonis_train
 
 ## Type Checking
 
-The codebase is type-checked using [pyright](https://github.com/microsoft/pyright) `v1.1.380`. To run type checking, use the following command in the root project directory:
+The codebase is type-checked using [pyright](https://github.com/microsoft/pyright), pinned in the `dev` dependency group to match CI. To run type checking, use the following command in the root project directory:
 
 ```bash
-pyright --warnings --level warning --pythonversion 3.10 luxonis_train
+uv run pyright --warnings --project pyproject.toml
 ```
 
-**Editor Support:**
+### Editor Support
 
 - **PyCharm** - [Pyright](https://plugins.jetbrains.com/plugin/24145-pyright) extension
 - **Visual Studio Code** - [Pyright](https://marketplace.visualstudio.com/items?itemName=ms-pyright.pyright) extension
@@ -78,7 +86,7 @@ We use [pytest](https://docs.pytest.org/en/stable/) for testing.
 The tests are located in the `tests` directory. To run the tests with coverage, use the following command:
 
 ```bash
-pytest --cov=luxonis_train --cov-report=html
+uv run pytest --cov=luxonis_train --cov-report=html
 ```
 
 This command will run all tests and generate HTML coverage report.
@@ -111,7 +119,7 @@ Our GitHub Actions workflow is run when a new PR is opened.
 
 ## Making and Submitting Changes
 
-1. Make changes in a new branch.
+1. Make changes in a new branch with a descriptive prefix such as `feat/` or `fix/`.
 1. Test your changes locally.
 1. Commit your changes (pre-commit hooks will run).
 1. Push your branch and create a pull request.

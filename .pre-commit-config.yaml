@@ -1,6 +1,16 @@
 default_language_version:
   python: python3
 repos:
+  - repo: local
+    hooks:
+      - id: export-requirements
+        name: Export pip compatibility requirements
+        entry: scripts/export_requirements.sh
+        language: system
+        pass_filenames: false
+        # Matches the outputs as well, so hand-edits to them get reverted.
+        files: ^(pyproject\.toml|uv\.lock|requirements(-[a-z]+)?\.txt|scripts/export_requirements\.sh)$
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.14
     hooks:
