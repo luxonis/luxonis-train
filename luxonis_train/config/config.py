@@ -588,10 +588,13 @@ class TrainerConfig(BaseModelExtraForbid):
                 # fail due to GradientAccumulationScheduler param verification
                 continue
 
-            callback.params["scheduling"] = {
-                int(k) if isinstance(k, str) and k.isdigit() else k: v
-                for k, v in scheduling.items()
-            }
+            callback.params["scheduling"] = cast(
+                ParamValue,
+                {
+                    int(k) if isinstance(k, str) and k.isdigit() else k: v
+                    for k, v in scheduling.items()
+                },
+            )
         return self
 
     @model_validator(mode="after")
