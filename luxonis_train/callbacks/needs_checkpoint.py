@@ -27,6 +27,7 @@ class NeedsCheckpoint(pl.Callback):
                     "Make sure that `ModelCheckpoint` callback is present "
                     "and at least one validation epoch has been performed."
                 )
+                return None
             return path
         path = pl_module.core.get_best_metric_checkpoint_path()
         if not path:
@@ -36,6 +37,7 @@ class NeedsCheckpoint(pl.Callback):
                 "at least one validation epoch has been performed and "
                 "the model has at least one metric."
             )
+            return None
         return path
 
     @staticmethod

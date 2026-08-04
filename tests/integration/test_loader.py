@@ -68,3 +68,12 @@ def test_dummy_loader(opts: Params):
     }
     model = LuxonisModel(config_file, opts, allow_empty_dataset=True)
     model.train()
+
+    # `complex_model.yaml` carries finetuning rules that build several
+    # inner optimizers inside one composite, so this is also the
+    # end-to-end guard for the automatic-optimization composite path.
+    assert model.lightning_module.automatic_optimization is True
+    assert len(model.pl_trainer.optimizers) == 1
+    runtime = model.lightning_module.training_plan
+    assert runtime is not None
+    assert len(runtime.inner_optimizers) > 1

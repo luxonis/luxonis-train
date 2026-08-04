@@ -23,14 +23,18 @@ from luxonis_train.config.config import (
     ArchiveConfig,
     AugmentationConfig,
     BlobconverterExportConfig,
+    FinetuningConfig,
     FreezingConfig,
     HubAIExportConfig,
     LoaderConfig,
     ModelConfig,
     NormalizeAugmentationConfig,
     OnnxExportConfig,
+    OptimizerConfig,
+    ParameterPattern,
     PredefinedModelConfig,
     PreprocessingConfig,
+    SchedulerConfig,
     StorageConfig,
     TrackerConfig,
     TunerConfig,
@@ -71,6 +75,78 @@ def test_config_load(path: Path):
     assert cfg.model is not None
     assert cfg.trainer is not None
     assert cfg.loader is not None
+
+
+def test_complex_model_conv2d_finetuning_uses_module_type_selector():
+    cfg = Config.get_config(Path("configs/complex_model.yaml"))
+    node = next(
+        node
+        for node in cfg.model.nodes
+        if node.name == "EfficientKeypointBBoxHead"
+    )
+
+    parameters = node.finetuning[1].parameters
+    assert parameters is not None
+    pattern = parameters[0]
+
+    assert pattern.name is None
+    assert pattern.module_type == "Conv2d"
+
+
+def test_parameter_pattern_helpers_and_validation():
+    with pytest.raises(ValueError, match="At least one"):
+        ParameterPattern()
+    with pytest.raises(ValueError, match=r"name.*empty"):
+        ParameterPattern(name="")
+    with pytest.raises(ValueError, match=r"module_type.*empty"):
+        ParameterPattern(module_type="")
+
+    pattern = ParameterPattern(name="fc", module_type="Linear")
+    assert pattern.matches("Linear", "classifier.fc.weight") is True
+    assert pattern.matches("Linear", "classifier.conv.weight") is False
+    assert pattern.matches("Conv2d", "classifier.fc.weight") is False
+
+
+def test_optimizer_scheduler_and_finetuning_config_helpers():
+    scheduler = SchedulerConfig(
+        name="SequentialLR",
+        params={
+            "schedulers": [{"name": "LinearLR", "params": {"total_iters": 2}}],
+            "milestones": [1],
+        },
+    )
+    sequential_params = scheduler.get_sequential_lr_params()
+
+    assert sequential_params.schedulers[0].name == "LinearLR"
+    assert sequential_params.milestones == [1]
+    assert scheduler.to_finetuning().name == "SequentialLR"
+    assert OptimizerConfig(name="SGD").to_finetuning().name == "SGD"
+
+    with pytest.raises(RuntimeError, match="not 'SequentialLR'"):
+        SchedulerConfig(name="StepLR").get_sequential_lr_params()
+    with pytest.raises(ValueError, match="requires 'schedulers'"):
+        SchedulerConfig(name="SequentialLR").get_sequential_lr_params()
+
+
+def test_finetuning_config_parameter_normalization():
+    existing = ParameterPattern(module_type="Linear")
+    cfg = FinetuningConfig(
+        parameters=cast(Any, ["fc", {"name": "head"}, existing])
+    )
+
+    assert cfg.parameters is not None
+    assert [(p.name, p.module_type) for p in cfg.parameters] == [
+        ("fc", None),
+        ("head", None),
+        (None, "Linear"),
+    ]
+
+    with pytest.raises(ValidationError):
+        FinetuningConfig(parameters=cast(Any, 1))
+    with pytest.raises(ValueError, match="at least one parameter pattern"):
+        FinetuningConfig(parameters=[])
+    with pytest.raises(TypeError, match="Parameter patterns must be"):
+        FinetuningConfig(parameters=cast(Any, [object()]))
 
 
 def test_public_config_exports_are_importable():
@@ -375,7 +451,7 @@ def test_preprocessing_normalization_and_resizing():
                     "scheduler": {"name": "CosineAnnealingLR"},
                 }
             ),
-            {"T_max": 7},
+            {},
         ),
         (
             TrainerConfig.model_validate(
@@ -673,7 +749,7 @@ def test_smart_cfg_auto_populate_without_dataset_fixture():
         }
     )
 
-    assert cfg.trainer.scheduler.params["T_max"] == 10
+    assert cfg.trainer.scheduler.params == {}
     assert (
         cfg.trainer.preprocessing.augmentations[0].params["out_width"] == 128
     )
@@ -865,6 +941,12 @@ def test_simple_predefined_model_branches():
         task_name="task",
         torchmetrics_task="multiclass",
         per_class_metrics=True,
+        finetuning={
+            "backbone": [
+                {"parameters": "conv", "optimizer": {"params": {"lr": 0.01}}}
+            ],
+            "head": [{"parameters": {"module_type": "Linear"}}],
+        },
     )
 
     nodes = model.nodes
@@ -879,6 +961,10 @@ def test_simple_predefined_model_branches():
     assert nodes[2].metrics[1].is_main_metric is True
     assert nodes[2].metrics[2].name == "ConfusionMatrix"
     assert nodes[2].visualizers[0].params == {"alpha": 1}
+    assert nodes[0].finetuning[0].parameters is not None
+    assert nodes[0].finetuning[0].parameters[0].name == "conv"
+    assert nodes[2].finetuning[0].parameters is not None
+    assert nodes[2].finetuning[0].parameters[0].module_type == "Linear"
 
     without_neck = ConcreteSimplePredefinedModel(
         backbone="Backbone",

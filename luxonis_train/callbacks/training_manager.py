@@ -1,39 +1,44 @@
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import BaseFinetuning
-from loguru import logger
-from torch.optim.optimizer import Optimizer
 from typing_extensions import override
 
 import luxonis_train as lxt
 
 
-class TrainingManager(BaseFinetuning):
-    @override
-    def freeze_before_training(
-        self, pl_module: "lxt.LuxonisLightningModule"
-    ) -> None:
-        for node_name, node, _, _ in pl_module.nodes.frozen_nodes():
-            logger.info(f"Freezing node '{node_name}'")
-            self.freeze(node, train_bn=False)
+class TrainingManager(pl.Callback):
+    """Drives the declarative freeze schedule and the per-step training-
+    strategy hook.
+
+    The freeze schedule is applied idempotently at ``setup`` time and at
+    the start of every training epoch, so it needs no checkpointed state
+    of its own: a resumed run converges to the scheduled state from the
+    restored epoch number, while group membership (static), group
+    learning rates (optimizer state dict) and scheduler state all round
+    trip through Lightning's regular checkpointing.
+    """
 
     @override
-    def finetune_function(
+    def setup(
         self,
+        trainer: pl.Trainer,
         pl_module: "lxt.LuxonisLightningModule",
-        epoch: int,
-        optimizer: Optimizer,
+        stage: str,
     ) -> None:
-        for (
-            node_name,
-            node,
-            e,
-            lr_after_unfreeze,
-        ) in pl_module.nodes.frozen_nodes():
-            if e == epoch:
-                logger.info(f"Unfreezing node '{node_name}'")
-                self.unfreeze_and_add_param_group(
-                    node, optimizer, lr_after_unfreeze, initial_denom_lr=1.0
-                )
+        _ = trainer
+        if stage != "fit":
+            return
+        # `trainer.current_epoch` is still 0 here even when resuming
+        # (the fit loop is restored later, in `restore_training_state`);
+        # the first `on_train_epoch_start` converges to the real epoch.
+        pl_module.nodes.freeze_schedule.apply(epoch=0)
+
+    @override
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
+        pl_module.nodes.freeze_schedule.apply(
+            epoch=trainer.current_epoch,
+            runtime=pl_module.training_plan,
+        )
 
     @override
     def on_after_backward(
