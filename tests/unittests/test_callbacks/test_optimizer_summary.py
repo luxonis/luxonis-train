@@ -86,7 +86,7 @@ def test_single_optimizer_single_group_covers_100_percent():
     (group,) = opt_info["groups"]
     assert group["n_tensors"] == summary["trainable_tensors"]
     assert group["n_params"] == summary["trainable_params"]
-    # Whole group covers 100% of trainable model params.
+    # Whole group covers 100% of model params.
     assert group["tensors_pct_of_model"] == 100.0
     assert group["params_pct_of_model"] == 100.0
 
@@ -156,14 +156,20 @@ def test_owner_percentages_sum_to_100_across_multiple_optimizers():
     assert abs(total_group_pct - 100.0) < 1e-9
 
 
-def test_frozen_params_appear_in_frozen_totals_not_in_percentages():
+def test_frozen_params_remain_in_optimizer_assignment_percentages():
     trainable = _tiny_module(4, 8, requires_grad=True)
     frozen = _tiny_module(8, 2, requires_grad=False)
     modules = {"trainable": trainable, "frozen": frozen}
 
-    opt = SGD([p for p in trainable.parameters() if p.requires_grad], lr=0.01)
+    # The training plan is a static partition: frozen parameters already
+    # belong to an optimizer group while waiting to be unfrozen.
+    opt = SGD([*trainable.parameters(), *frozen.parameters()], lr=0.01)
     summary = build_optimizer_summary([opt], [ConstantLR(opt)], modules)
 
+    assert summary["model_tensors"] == _n_tensors(trainable) + _n_tensors(
+        frozen
+    )
+    assert summary["model_params"] == _numel(trainable) + _numel(frozen)
     assert summary["trainable_tensors"] == _n_tensors(trainable)
     assert summary["trainable_params"] == _numel(trainable)
     assert summary["frozen_tensors"] == _n_tensors(frozen)
@@ -171,15 +177,19 @@ def test_frozen_params_appear_in_frozen_totals_not_in_percentages():
 
     (group,) = summary["optimizers"][0]["groups"]
     assert group["params_pct_of_model"] == 100.0
+    assert group["trainable_tensors"] == _n_tensors(trainable)
+    assert group["trainable_params"] == _numel(trainable)
+    assert group["frozen_tensors"] == _n_tensors(frozen)
+    assert group["frozen_params"] == _numel(frozen)
 
     owner_names = {o["name"] for o in group["owners"]}
-    assert owner_names == {"trainable"}
-    (owner,) = group["owners"]
-    # Owner denominator excludes frozen counts (it's per-owner trainable).
-    assert owner["n_tensors_of_owner"] == _n_tensors(trainable)
-    assert owner["n_params_of_owner"] == _numel(trainable)
-    assert owner["tensors_pct_of_owner"] == 100.0
-    assert owner["params_pct_of_owner"] == 100.0
+    assert owner_names == {"trainable", "frozen"}
+    owners = {owner["name"]: owner for owner in group["owners"]}
+    assert owners["trainable"]["params_pct_of_owner"] == 100.0
+    assert owners["trainable"]["frozen_params"] == 0
+    assert owners["frozen"]["params_pct_of_owner"] == 100.0
+    assert owners["frozen"]["trainable_params"] == 0
+    assert owners["frozen"]["frozen_params"] == _numel(frozen)
 
 
 def test_unclaimed_trainable_params_produce_sub_100_group_pct():
@@ -284,6 +294,8 @@ def test_empty_model_produces_safe_zero_totals():
     # external ones (since there's no other source of trainable params).
     assert summary["trainable_tensors"] == 1
     assert summary["trainable_params"] == 1
+    assert summary["model_tensors"] == 1
+    assert summary["model_params"] == 1
     (group,) = summary["optimizers"][0]["groups"]
     assert group["params_pct_of_model"] == 100.0
     (owner,) = group["owners"]
@@ -330,12 +342,12 @@ def test_plain_optimizer_summary_renders_all_optimizers():
     assert "Optimizer #0: SGD + ConstantLR  (1 parameter group(s))" in rendered
     assert "Optimizer #1: SGD + ConstantLR  (1 parameter group(s))" in rendered
     assert (
-        "Group #0: 2 tensors (50.0% of trainable)  •  "
-        "40 params (69.0% of trainable)" in rendered
+        "Group #0: 2 tensors (50.0% of model)  •  "
+        "40 params (69.0% of model)" in rendered
     )
     assert (
-        "Group #0: 2 tensors (50.0% of trainable)  •  "
-        "18 params (31.0% of trainable)" in rendered
+        "Group #0: 2 tensors (50.0% of model)  •  "
+        "18 params (31.0% of model)" in rendered
     )
     assert "      lr = 0.01\n" in rendered
     assert "      lr = 0.5\n" in rendered

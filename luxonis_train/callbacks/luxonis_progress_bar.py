@@ -429,19 +429,22 @@ def build_optimizer_summary(
     Two different denominators are used, chosen so that percentages sum
     naturally in the axis the reader cares about:
 
-        - B{Group-level} percentages are relative to the model's I{trainable}
-          parameters, so summing across all groups of all optimizers gives
-          100% (modulo unclaimed / external parameters).
-        - B{Owner-level} percentages inside each group are relative to that
-          I{owner's} own trainable parameters, so summing all appearances of
+        - B{Group-level} percentages are relative to all model parameters,
+          so summing across all groups of all optimizers gives 100% (modulo
+          unclaimed / external parameters).
+        - B{Owner-level} percentages inside each group are relative to all
+          parameters belonging to that owner, so summing all appearances of
           a single owner across the optimizers gives 100% — telling the
           reader how each node's parameters were split across groups.
 
-    Frozen parameters (C{requires_grad=False}) cannot enter any
-    optimizer group, so they are excluded from every denominator. The
-    header carries the frozen counts so users can still see the split.
+    Frozen parameters remain assigned to optimizer groups by the static
+    training plan. Assignment percentages therefore include them, while
+    every group separately reports how much of its assignment is currently
+    trainable or frozen.
     """
     param_owner: dict[int, str] = {}
+    owner_total_tensors: dict[str, int] = defaultdict(int)
+    owner_total_params: dict[str, int] = defaultdict(int)
     owner_trainable_tensors: dict[str, int] = defaultdict(int)
     owner_trainable_params: dict[str, int] = defaultdict(int)
     frozen_tensors = 0
@@ -453,6 +456,8 @@ def build_optimizer_summary(
                 continue
             seen.add(id(p))
             param_owner[id(p)] = owner_name
+            owner_total_tensors[owner_name] += 1
+            owner_total_params[owner_name] += p.numel()
             if p.requires_grad:
                 owner_trainable_tensors[owner_name] += 1
                 owner_trainable_params[owner_name] += p.numel()
@@ -462,7 +467,7 @@ def build_optimizer_summary(
 
     # Second pass: count "<external>" parameters that appear in any
     # optimizer group but weren't attributed to a known module, so we
-    # have a real denominator for their per-owner percentages.
+    # have real denominators and trainability totals for them.
     ext_seen: set[int] = set()
     for optimizer in optimizers:
         for group in optimizer.param_groups:
@@ -470,14 +475,24 @@ def build_optimizer_summary(
                 if id(p) in param_owner or id(p) in ext_seen:
                     continue
                 ext_seen.add(id(p))
-                owner_trainable_tensors["<external>"] += 1
-                owner_trainable_params["<external>"] += p.numel()
+                owner_total_tensors["<external>"] += 1
+                owner_total_params["<external>"] += p.numel()
+                if p.requires_grad:
+                    owner_trainable_tensors["<external>"] += 1
+                    owner_trainable_params["<external>"] += p.numel()
+                else:
+                    frozen_tensors += 1
+                    frozen_params += p.numel()
 
+    model_tensors = sum(owner_total_tensors.values())
+    model_params = sum(owner_total_params.values())
     trainable_tensors = sum(owner_trainable_tensors.values())
     trainable_params = sum(owner_trainable_params.values())
 
     summary: dict[str, Any] = {
         "n_optimizers": len(optimizers),
+        "model_tensors": model_tensors,
+        "model_params": model_params,
         "trainable_tensors": trainable_tensors,
         "trainable_params": trainable_params,
         "frozen_tensors": frozen_tensors,
@@ -497,12 +512,21 @@ def build_optimizer_summary(
         for g_idx, group in enumerate(optimizer.param_groups):
             per_owner_tensors: dict[str, int] = defaultdict(int)
             per_owner_numel: dict[str, int] = defaultdict(int)
+            per_owner_trainable_tensors: dict[str, int] = defaultdict(int)
+            per_owner_trainable_numel: dict[str, int] = defaultdict(int)
             total_numel = 0
+            total_trainable_tensors = 0
+            total_trainable_numel = 0
             for p in group["params"]:
                 owner = param_owner.get(id(p), "<external>")
                 per_owner_tensors[owner] += 1
                 per_owner_numel[owner] += p.numel()
                 total_numel += p.numel()
+                if p.requires_grad:
+                    per_owner_trainable_tensors[owner] += 1
+                    per_owner_trainable_numel[owner] += p.numel()
+                    total_trainable_tensors += 1
+                    total_trainable_numel += p.numel()
 
             hyperparams = {
                 k: v
@@ -515,17 +539,23 @@ def build_optimizer_summary(
                 {
                     "name": name,
                     "n_tensors": per_owner_tensors[name],
-                    "n_tensors_of_owner": owner_trainable_tensors[name],
+                    "n_tensors_of_owner": owner_total_tensors[name],
                     "tensors_pct_of_owner": _pct(
                         per_owner_tensors[name],
-                        owner_trainable_tensors[name],
+                        owner_total_tensors[name],
                     ),
                     "n_params": per_owner_numel[name],
-                    "n_params_of_owner": owner_trainable_params[name],
+                    "n_params_of_owner": owner_total_params[name],
                     "params_pct_of_owner": _pct(
                         per_owner_numel[name],
-                        owner_trainable_params[name],
+                        owner_total_params[name],
                     ),
+                    "trainable_tensors": per_owner_trainable_tensors[name],
+                    "trainable_params": per_owner_trainable_numel[name],
+                    "frozen_tensors": per_owner_tensors[name]
+                    - per_owner_trainable_tensors[name],
+                    "frozen_params": per_owner_numel[name]
+                    - per_owner_trainable_numel[name],
                 }
                 for name in sorted(
                     per_owner_numel,
@@ -539,10 +569,15 @@ def build_optimizer_summary(
                     "index": g_idx,
                     "n_tensors": n_tensors_group,
                     "n_params": total_numel,
+                    "trainable_tensors": total_trainable_tensors,
+                    "trainable_params": total_trainable_numel,
+                    "frozen_tensors": n_tensors_group
+                    - total_trainable_tensors,
+                    "frozen_params": total_numel - total_trainable_numel,
                     "tensors_pct_of_model": _pct(
-                        n_tensors_group, trainable_tensors
+                        n_tensors_group, model_tensors
                     ),
-                    "params_pct_of_model": _pct(total_numel, trainable_params),
+                    "params_pct_of_model": _pct(total_numel, model_params),
                     "hyperparams": hyperparams,
                     "owners": owners,
                 }
@@ -604,10 +639,16 @@ def _render_optimizer_summary_rich(summary: dict[str, Any]) -> None:
         for group in opt["groups"]:
             header_line = (
                 f"[white]{group['n_tensors']} tensors[/] "
-                f"[dim]({group['tensors_pct_of_model']:.1f}% of trainable)[/]"
+                f"[dim]({group['tensors_pct_of_model']:.1f}% of model)[/]"
                 f"  •  "
                 f"[white]{group['n_params']:,} params[/] "
-                f"[dim]({group['params_pct_of_model']:.1f}% of trainable)[/]"
+                f"[dim]({group['params_pct_of_model']:.1f}% of model)[/]"
+            )
+            activity_line = (
+                f"[green]trainable: {group['trainable_tensors']:,} tensors / "
+                f"{group['trainable_params']:,} params[/]  •  "
+                f"[dim]frozen: {group['frozen_tensors']:,} tensors / "
+                f"{group['frozen_params']:,} params[/]"
             )
             # `Columns` always measures as wide as the console, which would
             # stop the enclosing `Panel.fit`s from shrinking to their
@@ -621,7 +662,13 @@ def _render_optimizer_summary_rich(summary: dict[str, Any]) -> None:
             )
             group_panels.append(
                 Panel.fit(
-                    Group(Text(""), header_line, Text(""), side_by_side),
+                    Group(
+                        Text(""),
+                        header_line,
+                        activity_line,
+                        Text(""),
+                        side_by_side,
+                    ),
                     title=f"[bold]Group #{group['index']}[/]",
                     title_align="left",
                     border_style="blue",
@@ -669,9 +716,15 @@ def _render_optimizer_summary_plain(summary: dict[str, Any]) -> None:
             lines.append(
                 f"  Group #{group['index']}: "
                 f"{group['n_tensors']} tensors "
-                f"({group['tensors_pct_of_model']:.1f}% of trainable)  •  "
+                f"({group['tensors_pct_of_model']:.1f}% of model)  •  "
                 f"{group['n_params']:,} params "
-                f"({group['params_pct_of_model']:.1f}% of trainable)"
+                f"({group['params_pct_of_model']:.1f}% of model)"
+            )
+            lines.append(
+                f"    trainable: {group['trainable_tensors']:,} tensors / "
+                f"{group['trainable_params']:,} params  |  "
+                f"frozen: {group['frozen_tensors']:,} tensors / "
+                f"{group['frozen_params']:,} params"
             )
             lines.append("    hyperparameters:")
             if group["hyperparams"]:
@@ -692,6 +745,12 @@ def _render_optimizer_summary_plain(summary: dict[str, Any]) -> None:
                         f"        params  "
                         f"{o['n_params']:,}/{o['n_params_of_owner']:,} "
                         f"({o['params_pct_of_owner']:.1f}% of owner)"
+                    )
+                    lines.append(
+                        f"        trainable {o['trainable_tensors']:,} "
+                        f"tensors / {o['trainable_params']:,} params  |  "
+                        f"frozen {o['frozen_tensors']:,} tensors / "
+                        f"{o['frozen_params']:,} params"
                     )
             else:
                 lines.append("      -")
@@ -743,6 +802,16 @@ def _render_owners_panel(owners: list[dict[str, Any]]) -> RenderableType:
             "params",
             f"{o['n_params']:,}/{o['n_params_of_owner']:,}",
             f"({o['params_pct_of_owner']:.1f}%)",
+        )
+        stat_grid.add_row(
+            "trainable",
+            f"{o['trainable_tensors']:,} tensors",
+            f"{o['trainable_params']:,} params",
+        )
+        stat_grid.add_row(
+            "frozen",
+            f"{o['frozen_tensors']:,} tensors",
+            f"{o['frozen_params']:,} params",
         )
         outer.add_row(Text(o["name"], style="bold green"))
         outer.add_row(stat_grid)
