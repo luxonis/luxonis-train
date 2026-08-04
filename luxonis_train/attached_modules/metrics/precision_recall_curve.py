@@ -238,7 +238,10 @@ class PrecisionRecallCurve(BaseMetric):
         predictions = non_max_suppression(
             detections_pre_nms,
             n_classes=self.node.n_classes,
-            conf_thres=_exclusive_threshold(self.nms_conf_threshold),
+            conf_thres=_exclusive_threshold(
+                self.nms_conf_threshold,
+                detections_pre_nms.dtype,
+            ),
             iou_thres=self.nms_iou_threshold,
             bbox_format="xyxy",
             max_det=self.max_detections,
@@ -515,21 +518,20 @@ class PrecisionRecallCurve(BaseMetric):
         return figure
 
 
-def _exclusive_threshold(value: float) -> float:
+def _exclusive_threshold(value: float, dtype: torch.dtype) -> float:
     """Convert an inclusive confidence floor to an exclusive one.
 
     C{non_max_suppression} keeps candidates scoring strictly above
-    C{conf_thres}, while the curve counts use C{>=}. Returning the
-    largest C{float32} below C{value} keeps candidates scoring exactly
-    C{value} in both. A floor of C{0} is the exception: C{conf_thres}
-    may not be negative, so candidates scoring exactly zero are always
-    dropped.
+    C{conf_thres}, while the curve counts use C{>=}. Compute the
+    predecessor in the prediction dtype before returning it as a float,
+    so it does not round back to C{value}. A floor of C{0} cannot
+    include zero-scoring predictions.
     """
     if value <= 0.0:
         return 0.0
     return float(
         torch.nextafter(
-            torch.tensor(value, dtype=torch.float32),
-            torch.tensor(float("-inf"), dtype=torch.float32),
+            torch.tensor(value, dtype=dtype),
+            torch.tensor(float("-inf"), dtype=dtype),
         )
     )

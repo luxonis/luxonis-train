@@ -9,6 +9,9 @@ import torch
 from torch import Size, Tensor
 
 from luxonis_train.attached_modules.metrics import PrecisionRecallCurve
+from luxonis_train.attached_modules.metrics.precision_recall_curve import (
+    _exclusive_threshold,
+)
 from luxonis_train.lightning.luxonis_lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import (
     log_metric_artifacts,
@@ -405,6 +408,19 @@ def test_prediction_at_lowest_threshold_is_counted() -> None:
 
     torch.testing.assert_close(metric.true_positives, torch.tensor([1, 0, 0]))
     assert float(metric.compute()["recall"][0]) == 1.0
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_exclusive_threshold_preserves_floor_in_low_precision(
+    dtype: torch.dtype,
+) -> None:
+    """The NMS threshold predecessor must use the prediction dtype.
+
+    A float32 predecessor can round back to 0.5 in low precision.
+    """
+    score = torch.tensor(0.5, dtype=dtype)
+
+    assert score > _exclusive_threshold(0.5, dtype)
 
 
 def test_greedy_matching_is_class_aware_and_uses_each_target_once() -> None:
