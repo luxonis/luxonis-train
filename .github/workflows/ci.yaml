@@ -143,6 +143,12 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked --extra aimet --group dev
 
+      # Release branches must resolve the published LuxonisML rather than
+      # the locked one, since that is what users get from PyPI.
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
@@ -235,6 +241,12 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --locked --extra aimet --group dev
+
+      # Release branches must resolve the published LuxonisML rather than
+      # the locked one, since that is what users get from PyPI.
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}

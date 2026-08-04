@@ -73,13 +73,6 @@ docs = ["pydoctor~=25.10"]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.uv]
-# `opencv-python-headless` (via `albumentations`, `albucore`, `roboflow`) ships
-# the same top-level `cv2` as the `opencv-python` that `luxonis-ml` and
-# `grad-cam` require, so installing both leaves `cv2` a mix of the two decided
-# by install order. Drop the headless one; `opencv-python` satisfies everyone.
-override-dependencies = ["opencv-python-headless; sys_platform == 'never'"]
-
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },

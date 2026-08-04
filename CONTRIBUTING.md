@@ -63,7 +63,7 @@ language for documentation. To verify that your documentation is formatted
 correctly, run the following command:
 
 ```bash
-uv run --only-group docs pydoctor --docformat=epytext luxonis_train
+uv run --group docs pydoctor --docformat=epytext luxonis_train
 ```
 
 ### Editor Support
