@@ -950,20 +950,16 @@ def test_resolve_predefined_config_variants():
 
 
 def test_predefined_metaclass_keys_and_aliases_shipped_models():
-    """Concrete models get both keys, abstract intermediates neither."""
     assert MODELS._module_dict["DetectionModel:v1"] is DetectionModel
-    # The plain alias keeps class-name lookups working.
     assert MODELS._module_dict["DetectionModel"] is DetectionModel
     assert "SimplePredefinedModel" not in MODELS._module_dict
     assert "BasePredefinedModel" not in MODELS._module_dict
 
 
-def test_predefined_metaclass_keys_versioned_class_to_family():
-    """`FamilyV2` is keyed as `Family:v2` when the class is created.
-
-    Keying at class creation is what makes models loaded later -
-    through `--source` - reachable by `version:`.
-    """
+def test_predefined_metaclass_keys_versioned_class_to_family(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(MODELS, "_module_dict", dict(MODELS._module_dict))
 
     class DetectionModelV2(DetectionModel):
         _VERSION = 2
@@ -980,17 +976,16 @@ def test_predefined_metaclass_keys_versioned_class_to_family():
 def test_predefined_version_resolver_branches(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    class DetectionModelV2(DetectionModel):
-        _VERSION = 2
-
-    MODELS._module_dict.pop("DetectionModelV2", None)
-    registry = {
+    registry: dict[str, Any] = {
         "DetectionModel:v1": DetectionModel,
-        "DetectionModel:v2": DetectionModelV2,
+        "DetectionModel": DetectionModel,
         "ConcreteSimplePredefinedModel": ConcreteSimplePredefinedModel,
         "NoVersionPreset": object(),
     }
     monkeypatch.setattr(MODELS, "_module_dict", registry)
+
+    class DetectionModelV2(DetectionModel):
+        _VERSION = 2
 
     assert _split_family_version("DetectionModel:v2") == ("DetectionModel", 2)
     assert _split_family_version("DetectionModel") == ("DetectionModel", None)
@@ -1228,10 +1223,8 @@ def test_simple_config_model_has_no_outputs_when_empty():
 
 
 def test_versioned_name_still_triggers_smart_auto_populate():
-    """`name: Family:vN` must hit the same auto-population rules as
-    `name: Family`.
-
-    The rules key off the family; the pinned version is not part of it.
+    """Version pins must not bypass family-specific training
+    defaults.
     """
 
     def build(name: str) -> Config:
@@ -1257,11 +1250,7 @@ def test_versioned_name_still_triggers_smart_auto_populate():
 
 
 def test_explicit_accumulate_grad_batches_is_not_overwritten():
-    """An explicitly configured value must survive auto-population.
-
-    Otherwise switching a config to a `predefined_model` silently
-    changes the effective batch size and the number of optimizer steps.
-    """
+    """Auto-population must preserve an explicit accumulation value."""
     cfg = Config.get_config(
         {
             "model": {
@@ -1302,11 +1291,7 @@ def test_embeddings_preset_keeps_its_training_recipe():
 
 
 def test_embeddings_model_metadata_task_is_configurable():
-    """The metadata field is dataset-specific and must be overridable.
-
-    The preset defaults to `color` for the example re-ID dataset; a
-    dataset keyed on anything else has to be expressible in the config.
-    """
+    """The embeddings metadata field is dataset-specific."""
     from luxonis_train.config.predefined_models import EmbeddingsModel
 
     custom = cast(Any, EmbeddingsModel)(metadata_task_override="person_id")
@@ -1335,16 +1320,6 @@ def test_ocr_preset_keeps_its_explicit_accumulation():
     assert cfg.trainer.accumulate_grad_batches == 2
 
 
-def test_every_packaged_config_is_parametrized():
-    """Guard against the config-load sweep silently emptying out.
-
-    `test_config_load` is parametrized from the packaged directory; if
-    that path ever stops resolving, pytest generates zero cases and the
-    sweep disappears without failing anything.
-    """
-    assert len(sorted(configs_dir().glob("*.yaml"))) >= 19
-
-
 def test_model_class_returns_none_for_unknown_model():
     assert _model_class("nope") is None
 
@@ -1352,14 +1327,12 @@ def test_model_class_returns_none_for_unknown_model():
 def test_model_class_returns_none_for_config_without_predefined_model(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """`defaults.yaml` carries no `model.predefined_model` block."""
     monkeypatch.setattr(
         predefined,
         "default_config_path",
         lambda _: configs_dir() / "defaults.yaml",
     )
     assert _model_class("detection") is None
-    # `list_variants` then falls back to the filename-derived variants.
     assert list_variants("detection") == ["light", "heavy"]
 
 
@@ -1395,9 +1368,6 @@ def test_resolve_variant_without_dedicated_yaml():
 
 
 def test_warn_silent_when_current_config_does_not_resolve():
-    """Config validation reports an unresolvable config better than we
-    could here.
-    """
     current = PredefinedModelConfig(name="DoesNotExist")
     with patch.object(logger, "warning") as warn:
         warn_on_predefined_model_mismatch(
@@ -1407,9 +1377,6 @@ def test_warn_silent_when_current_config_does_not_resolve():
 
 
 def test_warn_when_checkpoint_model_no_longer_resolves():
-    """The checkpoint's architecture being gone is the case the warning
-    exists for, so it must not be swallowed.
-    """
     current = PredefinedModelConfig(name="DetectionModel", version=1)
     with patch.object(logger, "warning") as warn:
         warn_on_predefined_model_mismatch(

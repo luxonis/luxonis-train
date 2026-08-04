@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -113,13 +112,7 @@ class LuxonisLightningModule(pl.LightningModule):
     logger: LuxonisTrackerPL
 
     _ckpt_predefined_model: dict[str, Any] | None = None
-    """Predefined-model pin read from the loaded checkpoint.
-
-    `ModelConfig.predefined_model` is excluded from the dumped config,
-    so a run reconstructed from a checkpoint (`--weights` without
-    `--config`) has none in `self.cfg`. Keeping it here lets
-    `on_save_checkpoint` carry the pin over instead of dropping it.
-    """
+    """Predefined-model pin read from the loaded checkpoint."""
 
     __call__: Callable[..., tuple[Tensor, ...]]
 
@@ -672,7 +665,13 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
         self._ckpt_predefined_model = ckpt.get("predefined_model")
-        self._warn_on_predefined_model_mismatch(self._ckpt_predefined_model)
+        from luxonis_train.config.predefined_versions import (
+            warn_on_predefined_model_mismatch,
+        )
+
+        warn_on_predefined_model_mismatch(
+            self.cfg.model.predefined_model, self._ckpt_predefined_model
+        )
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
@@ -782,25 +781,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 f"but current config requests only {self.cfg.trainer.epochs} epochs. "
                 "Please set a number of epochs that is higher than the previously-trained epoch number."
             )
-
-    def _warn_on_predefined_model_mismatch(
-        self, ckpt_predefined_model: Any | None
-    ) -> None:
-        """Warn when the checkpoint was trained with a different
-        predefined-model version than the config resolves to.
-
-        @type ckpt_predefined_model: Any | None
-        @param ckpt_predefined_model: The checkpoint's top-level
-            C{predefined_model} entry. C{None} for checkpoints saved
-            before predefined models were versioned.
-        """
-        from luxonis_train.config.predefined_versions import (
-            warn_on_predefined_model_mismatch,
-        )
-
-        warn_on_predefined_model_mismatch(
-            self.cfg.model.predefined_model, ckpt_predefined_model
-        )
 
     def _evaluation_step(
         self,
@@ -1297,10 +1277,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
 
 def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
-    """Dump the configured predefined model with its version resolved to
-    a concrete number, so the checkpoint records the architecture it was
-    actually trained with.
-    """
+    """Dump a predefined model with ``latest`` resolved to a version."""
     predefined_model = cfg.model.predefined_model
     if predefined_model is None:
         return None
@@ -1310,11 +1287,7 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
             resolve_predefined_class,
         )
 
-        # The version is taken from the resolved class instead of the
-        # registry key, as the key is not guaranteed to carry the `:vN`
-        # suffix.
-        with suppress(KeyError, ValueError):
-            dumped["version"] = resolve_predefined_class(
-                predefined_model.name, "latest"
-            )._VERSION
+        dumped["version"] = resolve_predefined_class(
+            predefined_model.name, "latest"
+        )._VERSION
     return dumped

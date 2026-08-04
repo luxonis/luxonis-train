@@ -47,19 +47,11 @@ management_group = Group.create_ordered("Management")
 
 
 def _split_model_version(model: str) -> tuple[str, str | None]:
-    """Split ``family:vN`` (or ``family:latest``) into ``(family,
-    version)``.
-
-    Returns the version portion unchanged (as a string) so callers can
-    tell "no colon" from "``:latest``". The version is not parsed to an
-    int here — it is passed straight through as a config override.
-    """
+    """Split a model name from its optional CLI version suffix."""
     if ":" not in model:
         return model, None
     family, _, version_str = model.partition(":")
     digits = version_str[1:]
-    # `isdigit` also accepts superscripts and non-ASCII decimals, which
-    # `int()` then rejects; require plain ASCII digits.
     if version_str.startswith("v") and digits.isascii() and digits.isdigit():
         return family, digits
     if version_str == "latest":
@@ -75,9 +67,7 @@ def _resolve_config(
     model: str | None,
     variant: str | None,
 ) -> tuple[PathType | Params | None, list[str]]:
-    """Resolve `--config` / `--model` / `--variant` to a config and any
-    overrides needed on top of it.
-    """
+    """Resolve CLI model selection to a config and overrides."""
     if model is None:
         if variant is not None:
             raise ValueError(
@@ -86,9 +76,12 @@ def _resolve_config(
         return config, []
     if config is not None:
         raise ValueError("'--config' and '--model' are mutually exclusive.")
-    family, _ = _split_model_version(model)
+    family, version = _split_model_version(model)
     resolved = resolve_predefined_config(family, variant)
-    return str(resolved.path), resolved.opts
+    opts = list(resolved.opts)
+    if version is not None and version != "latest":
+        opts[:0] = ["model.predefined_model.version", version]
+    return str(resolved.path), opts
 
 
 def create_model(
@@ -101,17 +94,10 @@ def create_model(
     variant: str | None = None,
 ) -> "LuxonisModel":
     opts = list(opts or [])
-    if model is not None:
-        _, version = _split_model_version(model)
-        if version is not None and version != "latest":
-            opts += ["model.predefined_model.version", version]
-    resolved, variant_opts = _resolve_config(config, model, variant)
-    opts += variant_opts
+    resolved, model_opts = _resolve_config(config, model, variant)
+    opts += model_opts
 
     if resolved is None and weights is None:
-        # Without any of these the config is built purely from defaults
-        # (or blows up deep inside `luxonis_ml`), neither of which is
-        # ever what the caller meant.
         raise ValueError(
             "No model source given. Pass '--config', '--model', or "
             "'--weights' (a checkpoint carries its own config)."
@@ -727,13 +713,6 @@ def list_models():
         Console().print("[yellow]No packaged predefined models found.[/]")
         return
 
-    def _load_class_family(model: str) -> str | None:
-        try:
-            data = yaml.safe_load(default_config_path(model).read_text())
-            return data["model"]["predefined_model"]["name"]
-        except Exception:
-            return None
-
     table = Table(
         title="Packaged predefined models",
         caption="[dim]* default when the option is omitted[/]",
@@ -744,25 +723,21 @@ def list_models():
     table.add_column("Versions", style="green")
     for name, file_variants in entries.items():
         default = file_variants[0]
-        # Not just the variants with a dedicated YAML - `--variant` can
-        # select any variant the backing class declares.
         variants = list_variants(name)
         rendered_variants = []
         for v in variants:
             label = v if v is not None else "<default>"
             rendered_variants.append(f"{label}*" if v == default else label)
-        class_family = _load_class_family(name)
-        if class_family is not None:
-            versions = list_versions(class_family)
-            if versions:
-                latest = max(versions)
-                version_str = ", ".join(
-                    f"v{v}*" if v == latest else f"v{v}" for v in versions
-                )
-            else:
-                version_str = "-"
+        config = yaml.safe_load(default_config_path(name).read_text())
+        class_family = config["model"]["predefined_model"]["name"]
+        versions = list_versions(class_family)
+        if versions:
+            latest = max(versions)
+            version_str = ", ".join(
+                f"v{v}*" if v == latest else f"v{v}" for v in versions
+            )
         else:
-            version_str = "?"
+            version_str = "-"
         table.add_row(name, ", ".join(rendered_variants), version_str)
 
     Console().print(table)

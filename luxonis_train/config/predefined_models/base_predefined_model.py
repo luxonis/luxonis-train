@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from luxonis_ml.typing import Kwargs, Params, check_type
 from luxonis_ml.utils.registry import Registry
@@ -20,11 +20,7 @@ from luxonis_train.variants import VariantBase, VariantMeta
 def model_family_name(
     cls: "type[BasePredefinedModel]", class_name: str | None = None
 ) -> str:
-    """Return the stable registry family for a predefined model class.
-
-    Breaking versions are named C{FamilyV2}, C{FamilyV3}, and so on,
-    while users continue to address them as C{Family}.
-    """
+    """Return the stable family name for a versioned model class."""
     name = class_name or cls.__name__
     version_suffix = f"V{cls._VERSION}"
     if name.endswith(version_suffix):
@@ -33,26 +29,13 @@ def model_family_name(
 
 
 class PredefinedModelMeta(VariantMeta):
-    """Registers predefined models under versioned C{Family:vN} keys.
-
-    C{AutoRegisterMeta} registers every subclass under its plain class
-    name. That entry is replaced here by two: the canonical C{Family:vN}
-    key that L{luxonis_train.config.predefined_versions} resolves
-    against, and a plain C{Family} alias pointing at the most recently
-    registered version, so that looking a model up by its class name
-    keeps working.
-
-    Keying happens when the class is created, so custom models loaded
-    through C{--source} are keyed the same way as the shipped ones and
-    can either add a new version of a shipped family or override an
-    existing one.
-    """
+    """Register models under C{Family:vN} and latest-family aliases."""
 
     def __new__(
         cls,
         name: str,
         bases: tuple[type, ...],
-        attrs: dict[str, type],
+        attrs: dict[str, Any],
         register: bool = True,
         register_name: str | None = None,
         registry: Registry | None = None,
@@ -72,8 +55,7 @@ class PredefinedModelMeta(VariantMeta):
         registry = registry if registry is not None else new_class.REGISTRY
         registry._module_dict.pop(register_name or name, None)
 
-        # Abstract intermediates (`SimplePredefinedModel`) cannot be
-        # instantiated from a config and must not claim a family name.
+        # Abstract intermediates must not claim a family name.
         if getattr(new_class, "__abstractmethods__", None):
             return new_class
 
@@ -88,13 +70,7 @@ class BasePredefinedModel(
     VariantBase, metaclass=PredefinedModelMeta, registry=MODELS, register=False
 ):
     _VERSION: int = 1
-    """Version marker for this predefined-model class.
-
-    Subclasses that introduce breaking architecture changes should
-    increment this to 2, 3, ... . Registration composes the registry key
-    as ``f"{family}:v{cls._VERSION}"`` in
-    :mod:`luxonis_train.config.predefined_models` at import time.
-    """
+    """Registry version for this predefined-model class."""
 
     @property
     @abstractmethod

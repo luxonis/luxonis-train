@@ -1,10 +1,4 @@
-"""Version-aware lookup for predefined-model classes.
-
-Registry keys follow the pattern ``ClassName:vN`` (e.g.
-``DetectionModel:v1``). The prefix before ``:v`` is the "family" and is
-what users refer to in `predefined_model.name` in a YAML config, or via
-``--model detection:v1`` on the CLI.
-"""
+"""Version-aware lookup for predefined-model classes."""
 
 import re
 from typing import TYPE_CHECKING, Any
@@ -22,11 +16,7 @@ _VERSIONED_KEY = re.compile(r"^(?P<family>.+):v(?P<version>\d+)$")
 
 
 def _split_family_version(key_or_name: str) -> tuple[str, int | None]:
-    """``DetectionModel:v2`` -> ("DetectionModel", 2).
-
-    Bare
-    ``DetectionModel`` -> ("DetectionModel", None).
-    """
+    """Split the optional ``:vN`` suffix from a registry key."""
     match = _VERSIONED_KEY.match(key_or_name)
     if match is None:
         return key_or_name, None
@@ -34,30 +24,17 @@ def _split_family_version(key_or_name: str) -> tuple[str, int | None]:
 
 
 def family_name(name: str) -> str:
-    """Strip an optional ``:vN`` suffix off a predefined-model name.
-
-    ``DetectionModel:v1`` and ``DetectionModel`` both name the
-    ``DetectionModel`` family, so anything keying behaviour off the
-    configured name has to compare against this rather than the raw
-    string.
-    """
+    """Strip an optional ``:vN`` suffix from a model name."""
     return _split_family_version(name)[0]
 
 
 def _plain_key_version(registered: Any) -> int | None:
     version = getattr(registered, "_VERSION", None)
-    if isinstance(version, int):
-        return version
-    return None
+    return version if isinstance(version, int) else None
 
 
 def list_versions(family: str) -> dict[int, str]:
-    """Enumerate ``{version: registered_key}`` for one family.
-
-    Shipped presets are registered under versioned keys. Custom presets
-    loaded after startup may still be registered under their plain class
-    name, so expose that plain key as its class' ``_VERSION``.
-    """
+    """Map available versions in a family to their registry keys."""
     versions: dict[int, str] = {}
     for registered_key, registered in MODELS._module_dict.items():
         f, v = _split_family_version(registered_key)
@@ -109,13 +86,7 @@ def _resolve_predefined_key(name: str, version: int | str = "latest") -> str:
 def resolve_predefined_class(
     name: str, version: int | str = "latest"
 ) -> type["BasePredefinedModel"]:
-    """Look up a predefined-model class by ``(name, version)``.
-
-    ``name`` may be a family (``DetectionModel``) or an explicit key
-    with the ``:vN`` suffix (``DetectionModel:v1``). When the explicit
-    form is used, ``version`` must be ``"latest"`` or match the pinned
-    version, else a ``ValueError`` is raised.
-    """
+    """Look up a predefined-model class by name and version."""
     return MODELS.get(_resolve_predefined_key(name, version))
 
 
@@ -126,13 +97,7 @@ def resolved_class_name(name: str, version: int | str = "latest") -> str:
 def warn_on_predefined_model_mismatch(
     current: "PredefinedModelConfig | None", ckpt_predefined: Any
 ) -> None:
-    """Log a warning if ``current`` and ``ckpt_predefined`` resolve to
-    different concrete predefined-model classes.
-
-    ``ckpt_predefined`` is whatever was stored under the checkpoint's
-    ``predefined_model`` key. Missing / not-a-dict is treated as a no-op
-    (pre-versioning checkpoints).
-    """
+    """Warn when config and checkpoint resolve to different classes."""
     if not isinstance(ckpt_predefined, dict) or current is None:
         return
     if "name" not in ckpt_predefined:
@@ -140,8 +105,7 @@ def warn_on_predefined_model_mismatch(
     try:
         current_class = resolved_class_name(current.name, current.version)
     except (KeyError, ValueError):
-        # The config itself does not resolve. Config validation reports
-        # that with a better message than we could here.
+        # Config validation reports this with better context.
         return
     try:
         ckpt_class = resolved_class_name(
@@ -149,10 +113,6 @@ def warn_on_predefined_model_mismatch(
             ckpt_predefined.get("version", "latest"),
         )
     except (KeyError, ValueError) as e:
-        # The architecture the checkpoint was trained with is gone
-        # (renamed family, dropped version). Warn instead of staying
-        # silent, otherwise the only symptom is an opaque state-dict
-        # load failure later on.
         logger.warning(
             f"The checkpoint was trained with predefined model "
             f"`{ckpt_predefined['name']}` "

@@ -1,9 +1,4 @@
-"""Resolver for packaged predefined-model config YAMLs.
-
-Enables `luxonis_train train --model detection --variant light` (and
-equivalents on other commands) by mapping `(model, variant)` to a YAML
-shipped in the `luxonis_train.configs` package.
-"""
+"""Resolve packaged predefined-model configs."""
 
 from importlib.resources import files
 from pathlib import Path
@@ -14,10 +9,7 @@ import yaml
 if TYPE_CHECKING:
     from luxonis_train.config.predefined_models import BasePredefinedModel
 
-# Anchored inside `luxonis_train` on purpose: a top-level `configs`
-# package would be shadowed by any other `configs` directory on
-# `sys.path` (a user's own project layout, most commonly) and would
-# clobber files with any other distribution shipping that name.
+# A generic top-level `configs` package is easily shadowed on `sys.path`.
 CONFIGS_PACKAGE = "luxonis_train.configs"
 
 VARIANT_ORDER = ("light", "medium", "heavy")
@@ -33,12 +25,7 @@ _SUFFIX = "_model.yaml"
 
 
 class ResolvedPredefinedConfig(NamedTuple):
-    """A packaged config together with the overrides needed to realize
-    the request.
-
-    `opts` is non-empty when the requested variant has no dedicated YAML
-    and has to be selected on the predefined model instead.
-    """
+    """A packaged config path and its required overrides."""
 
     path: Path
     opts: list[str]
@@ -90,12 +77,7 @@ def _sort_variants(variants: list[str | None]) -> list[str | None]:
 
 
 def list_predefined_models() -> dict[str, list[str | None]]:
-    """Enumerate `(model, [variants])` pairs from packaged YAMLs.
-
-    A variant of `None` means the model has a single unvarianted config.
-    Only variants backed by a dedicated YAML are listed; see
-    `list_variants` for everything the model's class can be asked for.
-    """
+    """List models and the variants backed by packaged YAMLs."""
     result: dict[str, list[str | None]] = {}
     for filename in _iter_config_files():
         model, variant = _parse(filename)
@@ -116,13 +98,7 @@ def default_config_path(model: str) -> Path:
 
 
 def _model_class(model: str) -> "type[BasePredefinedModel] | None":
-    """Resolve the predefined-model class named by `model`'s default
-    YAML.
-
-    Returns `None` when the config does not use a predefined model or
-    the class cannot be resolved; callers fall back to the filename-
-    derived variants in that case.
-    """
+    """Resolve the class used by a packaged config, if available."""
     if model not in list_predefined_models():
         return None
     try:
@@ -131,8 +107,7 @@ def _model_class(model: str) -> "type[BasePredefinedModel] | None":
     except (OSError, KeyError, TypeError, yaml.YAMLError):
         return None
 
-    # Imported lazily: this module is imported when the CLI starts,
-    # while registering the predefined models pulls in torch.
+    # Registering predefined models pulls in torch, so keep this lazy.
     import luxonis_train.config.predefined_models  # noqa: F401
     from luxonis_train.config.predefined_versions import (
         resolve_predefined_class,
@@ -145,13 +120,7 @@ def _model_class(model: str) -> "type[BasePredefinedModel] | None":
 
 
 def list_variants(model: str) -> list[str | None]:
-    """Every variant selectable for `model`.
-
-    The packaged YAMLs only cover a couple of variants per model, but
-    the backing predefined-model class usually declares more (e.g.
-    `DetectionModel` has `medium` with no YAML of its own). All of them
-    are reachable from `--variant`, so all of them are listed here.
-    """
+    """List every variant selectable for a packaged model."""
     variants = list(list_predefined_models().get(model, []))
     cls = _model_class(model)
     if cls is None:
@@ -161,7 +130,6 @@ def list_variants(model: str) -> list[str | None]:
     except NotImplementedError:
         return variants
     for variant in class_variants:
-        # A single unvarianted YAML already stands for the class default.
         if variant == default_variant and None in variants:
             continue
         if variant not in variants:
@@ -178,15 +146,7 @@ def _variant_labels(model: str) -> str:
 def resolve_predefined_config(
     model: str, variant: str | None
 ) -> ResolvedPredefinedConfig:
-    """Resolve a `(model, variant)` pair to a packaged YAML.
-
-    Variants without a dedicated YAML are served by the model's default
-    config plus a `model.predefined_model.variant` override, so the
-    `--model`/`--variant` form covers exactly the same variants as
-    writing the config by hand.
-
-    Raises `ValueError` with a listing of available options on miss.
-    """
+    """Resolve a model and variant to a packaged YAML and overrides."""
     available = list_predefined_models()
     if model not in available:
         raise ValueError(
