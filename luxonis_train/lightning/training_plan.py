@@ -242,7 +242,6 @@ class StrategyRule:
 class Rule:
     """One parameter-claiming rule of the partition."""
 
-    source: str  # "node" | "strategy" | "default"
     label: str
     selector: Selector
     optimizer: OptimizerSpec
@@ -318,12 +317,7 @@ class _GroupDraft:
 
 
 def _unique_name(name: str, used: set[str]) -> str:
-    """Return C{name}, suffixed if needed to keep it unique among
-    C{used}, and record it there.
-
-    The suffix uses only characters accepted by the trackers the names
-    are logged to.
-    """
+    """Add C{name} to C{used}, suffixing it if necessary."""
     unique = name
     index = 2
     while unique in used:
@@ -403,13 +397,8 @@ class _PlanBuilder:
         inners: list[InnerSpec] = []
         handles_by_node: dict[str, list[GroupHandle]] = {}
         handles_by_tag: dict[str, list[GroupHandle]] = {}
-        # Group names reach `LearningRateMonitor`, which rejects an
-        # optimizer holding two groups of the same name - and the
-        # composite presents every inner's groups as one list. Drafts
-        # are keyed uniquely, but their names are built by joining a
-        # label and a scope with '/', which pathological node names can
-        # make ambiguous. Uniqueness is enforced here so it cannot
-        # depend on what a config happens to call its nodes.
+        # LearningRateMonitor requires names to be unique across the
+        # composite optimizer, not just within each inner optimizer.
         used_names: set[str] = set()
         for inner_index, (inner_key, (optimizer_name, scheduler)) in enumerate(
             self._inners.items()
@@ -488,7 +477,6 @@ def resolve_training_plan(
     any_node_rules = any(node.finetuning for node in nodes.values())
 
     tail = Rule(
-        source="default",
         label="default",
         selector=_match_all,
         optimizer=tail_optimizer,
@@ -510,7 +498,6 @@ def resolve_training_plan(
     for node in nodes.values():
         for index, finetuning in enumerate(node.finetuning):
             rule = Rule(
-                source="node",
                 label=f"{node.name}/{index}",
                 selector=pattern_selector(
                     finetuning.parameters or [ParameterPattern(name=".*")]
@@ -549,7 +536,6 @@ def resolve_training_plan(
         builder.mark_claimed(opaque_ids)
         for strategy_rule in strategy.rules():
             rule = Rule(
-                source="strategy",
                 label=f"strategy/{strategy_rule.tag}",
                 selector=strategy_rule.selector,
                 optimizer=OptimizerSpec.from_config(strategy_rule.optimizer),
@@ -665,10 +651,6 @@ def build_training_plan(
     bypass_configs: list[Any] | None = None
     for inner in plan.inners:
         torch_groups = [
-            # `name` is not an optimizer option - it is what
-            # `LearningRateMonitor` reports the group as, turning
-            # positional `lr-Adam/pg2` series into named ones. Set last
-            # so the plan's name always wins.
             {
                 "params": list(group.parameters),
                 **group.options,

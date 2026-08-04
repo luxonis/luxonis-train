@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -8,7 +7,6 @@ from luxonis_ml.typing import Params
 import luxonis_train as lxt
 from luxonis_train.lightning.training_plan import (
     _unique_name,
-    unwrap_optimizers,
 )
 
 from ._helpers import build_snapshot, config, node, tiny_head_node
@@ -20,13 +18,8 @@ FINETUNING = [
     }
 ]
 
-PG_SUFFIX = re.compile(r"pg\d+")
-
 
 def test_every_parameter_group_carries_its_plan_name(opts: Params):
-    """Every group Lightning sees must expose the plan's name for it, so
-    that `LearningRateMonitor` reports a label instead of a position.
-    """
     snapshot = build_snapshot(
         config([tiny_head_node(FINETUNING)]),
         opts,
@@ -43,17 +36,10 @@ def test_every_parameter_group_carries_its_plan_name(opts: Params):
         for group in optimizer.param_groups
     ]
     assert actual == planned
-    # The rule's own group and the node's tail are told apart by name.
     assert set(actual) == {"Head/0", "default/Head"}
 
 
 def test_group_names_are_unique_across_inner_optimizers(opts: Params):
-    """Group names must be unique globally, not merely per inner.
-
-    `LearningRateMonitor` rejects an optimizer holding two groups of the
-    same name, and the composite presents every inner's groups as one
-    list.
-    """
     convolutions = [
         {
             "parameters": [{"module_type": "Conv2d"}],
@@ -99,9 +85,6 @@ def test_colliding_names_are_disambiguated(
 
 
 def test_unknown_group_options_are_still_rejected(opts: Params):
-    """Allowing `name` through the group-option check must not turn it
-    into a hole for genuinely invalid options.
-    """
     with pytest.raises(TypeError, match="nonsense"):
         build_snapshot(
             config(
@@ -126,10 +109,6 @@ def test_unknown_group_options_are_still_rejected(opts: Params):
 def test_learning_rate_monitor_logs_one_named_series_per_group(
     opts: Params, tmp_path: Path
 ):
-    """The end-to-end complaint: with several parameter groups, the
-    tracker used to receive positional `lr-SGD/pg1`, `lr-SGD/pg2` keys
-    that could not be traced back to a group.
-    """
     model = lxt.LuxonisModel(
         config([tiny_head_node(FINETUNING)]),
         opts
@@ -137,6 +116,7 @@ def test_learning_rate_monitor_logs_one_named_series_per_group(
             "loader.params.n_classes": 10,
             "trainer.epochs": 1,
             "trainer.accelerator": "cpu",
+            "trainer.n_workers": 0,
             "trainer.n_sanity_val_steps": 0,
             "tracker.save_directory": str(tmp_path),
             "trainer.callbacks": [
@@ -158,20 +138,7 @@ def test_learning_rate_monitor_logs_one_named_series_per_group(
     tracker.log_metrics = spy
     model.train()
 
-    # `LearningRateMonitor` prefixes each series with the scheduler
-    # config name; only the suffix identifies the group.
     learning_rates = {
         key.split("/", 1)[1] for key in logged if key.startswith("lr")
     }
-    assert learning_rates, "`LearningRateMonitor` logged no learning rate"
-
-    optimizers = unwrap_optimizers(model.lightning_module.trainer.optimizers)
-    assert learning_rates == {
-        group["name"]
-        for optimizer in optimizers
-        for group in optimizer.param_groups
-    }
-    # The complaint verbatim: positional `pg1`/`pg2` series are gone.
-    assert not any(
-        PG_SUFFIX.fullmatch(key.rsplit("/", 1)[-1]) for key in learning_rates
-    )
+    assert learning_rates == {"Head/0", "default/Head"}
