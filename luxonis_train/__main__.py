@@ -178,9 +178,7 @@ def _yield_visualizations(
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
     for idx in range(len(loader)):
-        np_images, np_labels, applied_augmentations = get_visualization_item(
-            idx
-        )
+        np_images, np_labels, augmentations = get_visualization_item(idx)
         main_image = np_images[loader.image_source]
         main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
             np.uint8
@@ -198,7 +196,7 @@ def _yield_visualizations(
             categorical_encodings=categorical_encodings,
         )
         if list_augmentations:
-            viz = add_augmentation_footer(viz, applied_augmentations)
+            viz = add_augmentation_footer(viz, augmentations)
         yield viz
 
 

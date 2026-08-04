@@ -248,9 +248,8 @@ jobs:
           SUITE: ${{ matrix.suite }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
         run: >-
-          pytest -x -m "${SUITE}"
-          --cov --cov-report=xml:coverage-${SUITE}.xml
-          --junitxml=junit-${SUITE}.xml -o junit_family=legacy
+          pytest -x --cov --cov-report=xml:coverage-${SUITE}.xml
+          --junitxml=junit-${SUITE}.xml -o junit_family=legacy -m "${SUITE}"
 
       - name: Upload test results to Codecov
         if: ${{ always() }}
@@ -273,8 +272,8 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
-  # Coverage is uploaded once, after every suite finished. Uploading each
-  # suite on its own makes Codecov report the partial runs as the total.
+  # Coverage is uploaded once, after all the suites have finished. Uploading
+  # each suite on its own makes Codecov report the partial runs as the total.
   coverage:
     needs: tests
     runs-on: ubuntu-latest

@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 import yaml
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.data.utils import visualizations
 from luxonis_ml.typing import Kwargs, Params
 from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
@@ -95,14 +94,18 @@ def test_cli_command_success(
 def test_list_augmentations(
     coco_dataset: LuxonisDataset, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    captured: list[list[str]] = []
-    add_footer = visualizations.add_augmentation_footer
+    captured_augmentations: list[list[str]] = []
 
-    def capture(image: np.ndarray, augmentations: list[str]) -> np.ndarray:
-        captured.append(augmentations)
-        return add_footer(image, augmentations)
+    def mock_add_augmentation_footer(
+        image: np.ndarray, augmentations: list[str]
+    ) -> np.ndarray:
+        captured_augmentations.append(augmentations)
+        return image
 
-    monkeypatch.setattr(visualizations, "add_augmentation_footer", capture)
+    monkeypatch.setattr(
+        "luxonis_ml.data.utils.visualizations.add_augmentation_footer",
+        mock_add_augmentation_footer,
+    )
 
     next(
         _yield_visualizations(
@@ -116,7 +119,7 @@ def test_list_augmentations(
             list_augmentations=True,
         )
     )
-    assert captured == [["HorizontalFlip"]]
+    assert captured_augmentations == [["HorizontalFlip"]]
 
 
 @pytest.mark.parametrize(
