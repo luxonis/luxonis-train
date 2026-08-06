@@ -1622,9 +1622,6 @@ pytest-cov==7.1.0 \
 pytest-order==1.5.0 \
     --hash=sha256:667ba2b7303fe2c529848663e0a41dfb0cc4d64f09f87272e4a9a1751efb52b2 \
     --hash=sha256:96acd7587b5a2855dcaa4a898288103d202894a61afd813adbc9b77aab04d90d
-pytest-rerunfailures==16.4 \
-    --hash=sha256:8222d17c37eb7b9e4d6fc96a3c724ff4e1a5c97a5cc7cbb2c19e9282cfd21a11 \
-    --hash=sha256:f69b5beb39622c90d1e44bd945d826eff6db545dcf0b68f52b7e4ad15eaf6d6c
 pytest-subtests==0.15.0 \
     --hash=sha256:cb495bde05551b784b8f0b8adfaa27edb4131469a27c339b80fd8d6ba33f887c \
     --hash=sha256:da2d0ce348e1f8d831d5a40d81e3aeac439fec50bd5251cbb7791402696a9493
