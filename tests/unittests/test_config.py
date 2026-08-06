@@ -939,6 +939,15 @@ def test_resolve_predefined_config_variants():
     variantless = resolve_predefined_config("anomaly_detection", None)
     assert variantless.path.name == "anomaly_detection_model.yaml"
 
+    versioned = resolve_predefined_config("detection:v1", "light")
+    assert versioned.opts == ["model.predefined_model.version", "1"]
+
+    latest = resolve_predefined_config("detection:latest", "light")
+    assert latest.opts == []
+
+    with pytest.raises(ValueError, match="Malformed model spec"):
+        resolve_predefined_config("detection:bad", None)
+
     with pytest.raises(ValueError, match="Unknown predefined model 'nope'"):
         resolve_predefined_config("nope", None)
 

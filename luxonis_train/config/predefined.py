@@ -31,6 +31,22 @@ class ResolvedPredefinedConfig(NamedTuple):
     opts: list[str]
 
 
+def parse_model_spec(model: str) -> tuple[str, str | None]:
+    """Split a model name from its optional version suffix."""
+    if ":" not in model:
+        return model, None
+    family, _, version = model.partition(":")
+    digits = version[1:]
+    if version.startswith("v") and digits.isascii() and digits.isdigit():
+        return family, digits
+    if version == "latest":
+        return family, version
+    raise ValueError(
+        f"Malformed model spec '{model}'. Expected '<name>', "
+        f"'<name>:vN' (e.g. detection:v1), or '<name>:latest'."
+    )
+
+
 def configs_dir() -> Path:
     """Return the directory holding the packaged preset YAMLs."""
     return Path(str(files(CONFIGS_PACKAGE)))
@@ -147,6 +163,7 @@ def resolve_predefined_config(
     model: str, variant: str | None
 ) -> ResolvedPredefinedConfig:
     """Resolve a model and variant to a packaged YAML and overrides."""
+    model, version = parse_model_spec(model)
     available = list_predefined_models()
     if model not in available:
         raise ValueError(
@@ -156,17 +173,20 @@ def resolve_predefined_config(
     file_variants = available[model]
 
     if variant is None:
-        return ResolvedPredefinedConfig(default_config_path(model), [])
-    if variant in file_variants:
-        return ResolvedPredefinedConfig(
-            _config_path(_filename(model, variant)), []
+        path = default_config_path(model)
+        opts = []
+    elif variant in file_variants:
+        path = _config_path(_filename(model, variant))
+        opts = []
+    elif variant in list_variants(model):
+        path = default_config_path(model)
+        opts = ["model.predefined_model.variant", variant]
+    else:
+        raise ValueError(
+            f"Variant '{variant}' is not available for model '{model}'. "
+            f"Available variants: {_variant_labels(model)}."
         )
-    if variant in list_variants(model):
-        return ResolvedPredefinedConfig(
-            default_config_path(model),
-            ["model.predefined_model.variant", variant],
-        )
-    raise ValueError(
-        f"Variant '{variant}' is not available for model '{model}'. "
-        f"Available variants: {_variant_labels(model)}."
-    )
+
+    if version is not None and version != "latest":
+        opts[:0] = ["model.predefined_model.version", version]
+    return ResolvedPredefinedConfig(path, opts)

@@ -8,7 +8,7 @@ You can create your own config or use/edit one of the examples.
 > The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../config/predefined_models/README.md).
 
 > [!TIP]
-> These configs ship with the `luxonis-train` PyPI package, so you can select one directly on the CLI without pointing at a YAML file. Any command that accepts `--config` also accepts `--model` and optional `--variant`. For example, `luxonis_train train --model detection --variant light` is equivalent to `--config luxonis_train/configs/detection_light_model.yaml`. `--variant` accepts every variant the predefined model declares, not just the ones with a YAML of their own — `--model detection --variant medium` works even though no `detection_medium_model.yaml` ships. Run `luxonis_train list-models` to see the available names.
+> These configs ship with the `luxonis-train` PyPI package, so you can select one without pointing at a YAML file. On the CLI, any command that accepts `--config` also accepts `--model` and optional `--variant`. For example, `luxonis_train train --model detection --variant light` is equivalent to `--config luxonis_train/configs/detection_light_model.yaml`. The same model is available from Python with `LuxonisModel(model="detection", variant="light")`. `variant` accepts every variant the predefined model declares, not just the ones with a YAML of their own — `model="detection", variant="medium"` works even though no `detection_medium_model.yaml` ships. Run `luxonis_train list-models` to see the available names.
 
 ## Table Of Contents
 

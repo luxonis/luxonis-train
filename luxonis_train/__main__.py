@@ -15,6 +15,7 @@ from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.config.predefined import (
     list_predefined_models,
+    parse_model_spec,
     resolve_predefined_config,
 )
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
@@ -46,46 +47,8 @@ annotation_group = Group.create_ordered("Annotation")
 management_group = Group.create_ordered("Management")
 
 
-def _split_model_version(model: str) -> tuple[str, str | None]:
-    """Split a model name from its optional CLI version suffix."""
-    if ":" not in model:
-        return model, None
-    family, _, version_str = model.partition(":")
-    digits = version_str[1:]
-    if version_str.startswith("v") and digits.isascii() and digits.isdigit():
-        return family, digits
-    if version_str == "latest":
-        return family, "latest"
-    raise ValueError(
-        f"Malformed model spec '{model}'. Expected '<name>', "
-        f"'<name>:vN' (e.g. detection:v1), or '<name>:latest'."
-    )
-
-
-def _resolve_config(
-    config: PathType | Params | None,
-    model: str | None,
-    variant: str | None,
-) -> tuple[PathType | Params | None, list[str]]:
-    """Resolve CLI model selection to a config and overrides."""
-    if model is None:
-        if variant is not None:
-            raise ValueError(
-                "'--variant' requires '--model' to be specified as well."
-            )
-        return config, []
-    if config is not None:
-        raise ValueError("'--config' and '--model' are mutually exclusive.")
-    family, version = _split_model_version(model)
-    resolved = resolve_predefined_config(family, variant)
-    opts = list(resolved.opts)
-    if version is not None and version != "latest":
-        opts[:0] = ["model.predefined_model.version", version]
-    return str(resolved.path), opts
-
-
 def create_model(
-    config: PathType | Params | None,
+    config: PathType | Params | None = None,
     opts: list[str] | None = None,
     weights: PathType | None = None,
     allow_empty_dataset: bool = False,
@@ -93,23 +56,15 @@ def create_model(
     model: str | None = None,
     variant: str | None = None,
 ) -> "LuxonisModel":
-    opts = list(opts or [])
-    resolved, model_opts = _resolve_config(config, model, variant)
-    opts += model_opts
-
-    if resolved is None and weights is None:
-        raise ValueError(
-            "No model source given. Pass '--config', '--model', or "
-            "'--weights' (a checkpoint carries its own config)."
-        )
-
     importlib.reload(sys.modules["luxonis_train"])
 
     from luxonis_train import LuxonisModel
 
     return LuxonisModel(
-        resolved,
-        opts or None,
+        config,
+        opts,
+        model=model,
+        variant=variant,
         weights=weights,
         allow_empty_dataset=allow_empty_dataset,
     )
@@ -772,7 +727,7 @@ def info(*, model: str, variant: str | None = None):
     importlib.import_module("luxonis_train.nodes")
     importlib.import_module("luxonis_train.config.predefined_models")
 
-    family, requested_version = _split_model_version(model)
+    family, requested_version = parse_model_spec(model)
     config = yaml.safe_load(
         resolve_predefined_config(family, variant).path.read_text()
     )

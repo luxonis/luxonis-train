@@ -1,50 +1,89 @@
 import importlib
 import subprocess
 import sys
-from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from luxonis_ml.typing import Params
 
-from luxonis_train.__main__ import (
-    _resolve_config,
-    _split_model_version,
-    create_model,
-    info,
-)
+from luxonis_train import LuxonisModel
+from luxonis_train.__main__ import create_model, info
+from luxonis_train.config import Config
 from luxonis_train.config.predefined import (
     CONFIGS_PACKAGE,
     list_predefined_models,
     list_variants,
+    parse_model_spec,
     resolve_predefined_config,
 )
 
 
-def test_cli_resolver_passes_plain_config():
-    assert _resolve_config("foo.yaml", None, None) == ("foo.yaml", [])
-    assert _resolve_config(None, None, None) == (None, [])
+def test_resolver_returns_packaged_config_and_overrides():
+    resolved = resolve_predefined_config("detection:v1", "medium")
 
-
-def test_cli_resolver_rejects_conflicting_selection():
-    with pytest.raises(ValueError, match="'--variant' requires '--model'"):
-        _resolve_config(None, None, "light")
-    with pytest.raises(
-        ValueError, match="'--config' and '--model' are mutually exclusive"
-    ):
-        _resolve_config("foo.yaml", "detection", None)
-
-
-def test_cli_resolver_returns_packaged_config_and_overrides():
-    resolved, opts = _resolve_config(None, "detection:v1", "medium")
-
-    assert isinstance(resolved, str)
-    assert resolved.endswith("detection_light_model.yaml")
-    assert Path(resolved).exists()
-    assert opts == [
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.path.exists()
+    assert resolved.opts == [
         "model.predefined_model.version",
         "1",
         "model.predefined_model.variant",
         "medium",
     ]
+
+
+@pytest.mark.parametrize(
+    ("opts", "expected_opts"),
+    [
+        (
+            ["trainer.epochs", "1"],
+            [
+                "trainer.epochs",
+                "1",
+                "model.predefined_model.version",
+                "1",
+                "model.predefined_model.variant",
+                "medium",
+            ],
+        ),
+        (
+            {
+                "trainer.epochs": 1,
+                "model.predefined_model.variant": "heavy",
+            },
+            {
+                "trainer.epochs": 1,
+                "model.predefined_model.version": "1",
+                "model.predefined_model.variant": "medium",
+            },
+        ),
+    ],
+)
+def test_luxonis_model_resolves_packaged_config(
+    opts: list[str] | Params,
+    expected_opts: list[str] | Params,
+):
+    with (
+        patch.object(
+            Config, "get_config", side_effect=RuntimeError("config resolved")
+        ) as get_config,
+        pytest.raises(RuntimeError, match="config resolved"),
+    ):
+        LuxonisModel(
+            model="detection:v1",
+            variant="medium",
+            opts=opts,
+        )
+
+    config_path, resolved_opts = get_config.call_args.args
+    assert config_path.name == "detection_light_model.yaml"
+    assert resolved_opts == expected_opts
+
+
+def test_luxonis_model_rejects_conflicting_selection():
+    with pytest.raises(ValueError, match="'variant' requires 'model'"):
+        LuxonisModel(variant="light")
+    with pytest.raises(ValueError, match="'cfg' and 'model'"):
+        LuxonisModel("foo.yaml", model="detection")
 
 
 @pytest.mark.parametrize(
@@ -57,7 +96,7 @@ def test_cli_resolver_returns_packaged_config_and_overrides():
     ],
 )
 def test_split_model_version(model: str, expected: tuple[str, str | None]):
-    assert _split_model_version(model) == expected
+    assert parse_model_spec(model) == expected
 
 
 @pytest.mark.parametrize(
@@ -65,7 +104,7 @@ def test_split_model_version(model: str, expected: tuple[str, str | None]):
 )
 def test_split_model_version_rejects_malformed(model: str):
     with pytest.raises(ValueError, match="Malformed model spec"):
-        _split_model_version(model)
+        parse_model_spec(model)
 
 
 def test_list_models_cli_command_runs_and_lists_models():

@@ -183,6 +183,18 @@ luxonis_train train --model detection:v1 --variant light
 
 Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a preset builds.
 
+The Python API accepts the same packaged model selection directly:
+
+```python
+from luxonis_train import LuxonisModel
+
+model = LuxonisModel(
+    model="detection:v1",
+    variant="medium",
+    opts={"loader.params.dataset_name": "my_dataset"},
+)
+```
+
 Presets are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file. A few lines are enough, since it can build on the same predefined model:
 
 ```yaml

@@ -34,6 +34,7 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
+from luxonis_train.config.predefined import resolve_predefined_config
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import get_main_metric
 from luxonis_train.loaders import (
@@ -91,9 +92,11 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: PathType | Params | Config | None,
+        cfg: PathType | Params | Config | None = None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
+        model: str | None = None,
+        variant: str | None = None,
         weights: PathType | dict[str, Any] | None = None,
         allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
@@ -105,10 +108,16 @@ class LuxonisModel:
 
         @type cfg: str | dict[str, Any] | Config
         @param cfg: Path to config file or config dict used to setup
-            training.
+            training. Mutually exclusive with `model`.
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
-        @param opts: Argument dict provided through command line, used
-            for config overriding.
+        @param opts: Configuration overrides supplied as a dotted-key
+            mapping or alternating key-value sequence.
+        @type model: str | None
+        @param model: Name of a packaged predefined model, optionally
+            suffixed with a version (for example `detection:v1`).
+        @type variant: str | None
+        @param variant: Variant of the packaged predefined model.
+            Defaults to the model's default variant.
         @type allow_empty_dataset: bool
         @param allow_empty_dataset: If set to True, the model will be
             initialized even if the dataset is empty or cannot be
@@ -120,6 +129,34 @@ class LuxonisModel:
             in the config file, the weights provided here will take
             precedence.
         """
+        if model is None:
+            if variant is not None:
+                raise ValueError(
+                    "'variant' requires 'model' to be specified as well."
+                )
+        else:
+            if cfg is not None:
+                raise ValueError("'cfg' and 'model' are mutually exclusive.")
+            resolved = resolve_predefined_config(model, variant)
+            cfg = resolved.path
+            if isinstance(opts, dict):
+                model_opts = dict(
+                    zip(
+                        resolved.opts[::2],
+                        resolved.opts[1::2],
+                        strict=True,
+                    )
+                )
+                opts = opts | model_opts
+            elif resolved.opts:
+                opts = [*(opts or ()), *resolved.opts]
+
+        if cfg is None and weights is None:
+            raise ValueError(
+                "No model source given. Pass a config, packaged model, or "
+                "weights (a checkpoint carries its own config)."
+            )
+
         if weights is not None:
             if isinstance(weights, dict):
                 if "state_dict" not in weights:
