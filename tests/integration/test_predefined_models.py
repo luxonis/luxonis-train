@@ -46,7 +46,7 @@ def _predefined_model_params() -> list[ParameterSet]:
 
 @pytest.mark.predefined_light
 def test_model_construction():
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
     model = LuxonisModel(
         cfg,
         {

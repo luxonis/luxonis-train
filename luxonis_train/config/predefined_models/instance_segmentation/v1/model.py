@@ -1,7 +1,9 @@
 from luxonis_ml.typing import Params
 from typing_extensions import override
 
-from .base_predefined_model import SimplePredefinedModel
+from luxonis_train.config.predefined_models.base_predefined_model import (
+    SimplePredefinedModel,
+)
 
 
 class InstanceSegmentationModel(SimplePredefinedModel):

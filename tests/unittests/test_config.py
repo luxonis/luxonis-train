@@ -3,8 +3,10 @@ from enum import Enum
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
+from unittest.mock import patch
 
 import pytest
+from loguru import logger
 from luxonis_ml.typing import Params
 from pydantic import ValidationError
 
@@ -17,6 +19,7 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
     TrainerConfig,
+    predefined,
 )
 from luxonis_train.config.config import (
     AIMETConfig,
@@ -40,10 +43,19 @@ from luxonis_train.config.config import (
     TunerConfig,
     _validate_quantization_mode,
 )
+from luxonis_train.config.predefined import (
+    VARIANT_ORDER,
+    _model_class,
+    configs_dir,
+    list_predefined_models,
+    list_variants,
+    resolve_predefined_config,
+)
 from luxonis_train.config.predefined_models import (
     AnomalyDetectionModel,
     ClassificationModel,
     DetectionModel,
+    EmbeddingsModel,
     FOMOModel,
     InstanceSegmentationModel,
     KeypointDetectionModel,
@@ -53,6 +65,14 @@ from luxonis_train.config.predefined_models import (
 from luxonis_train.config.predefined_models.base_predefined_model import (
     SimplePredefinedModel,
 )
+from luxonis_train.config.predefined_versions import (
+    _split_family_version,
+    list_versions,
+    resolve_predefined_class,
+    resolved_class_name,
+    warn_on_predefined_model_mismatch,
+)
+from luxonis_train.registry import MODELS
 
 BASE_MODEL_CFG: Params = {
     "model": {"nodes": [{"name": "Backbone"}]},
@@ -67,7 +87,7 @@ class ConcreteSimplePredefinedModel(SimplePredefinedModel):
 
 
 @pytest.mark.parametrize(
-    "path", sorted(Path("configs").glob("*.yaml")), ids=lambda path: path.name
+    "path", sorted(configs_dir().glob("*.yaml")), ids=lambda path: path.name
 )
 def test_config_load(path: Path):
     cfg = Config.get_config(path)
@@ -78,7 +98,7 @@ def test_config_load(path: Path):
 
 
 def test_complex_model_conv2d_finetuning_uses_module_type_selector():
-    cfg = Config.get_config(Path("configs/complex_model.yaml"))
+    cfg = Config.get_config(configs_dir() / "complex_model.yaml")
     node = next(
         node
         for node in cfg.model.nodes
@@ -171,7 +191,9 @@ def test_public_config_exports_are_importable():
 
 
 def test_config_dump_roundtrip_without_dataset_fixture(tmp_path: Path):
-    model_config_path = Path("configs", "detection_light_model.yaml")
+    model_config_path = Path(
+        "luxonis_train", "configs", "detection_light_model.yaml"
+    )
     temp_config_path = tmp_path / "config.yaml"
 
     cfg = Config.get_config(
@@ -881,11 +903,145 @@ def test_predefined_model_loading_can_exclude_attachments():
     assert head.visualizers == []
 
 
+def test_list_predefined_models_covers_known_presets():
+    entries = list_predefined_models()
+
+    assert "detection" in entries
+    assert "anomaly_detection" in entries
+    assert "embeddings" in entries
+
+    assert entries["detection"][0] in VARIANT_ORDER
+    assert set(entries["detection"]) == {"light", "heavy"}
+
+    assert entries["anomaly_detection"] == [None]
+    assert entries["embeddings"] == [None]
+
+    for excluded in (
+        "defaults",
+        "complex",
+        "example_export",
+        "example_tuning",
+    ):
+        assert excluded not in entries
+
+
+def test_resolve_predefined_config_variants():
+    resolved = resolve_predefined_config("detection", "light")
+    assert isinstance(resolved.path, Path)
+    assert resolved.path.exists()
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == []
+
+    default = resolve_predefined_config("detection", None)
+    expected_variant = list_predefined_models()["detection"][0]
+    assert default.path.name == f"detection_{expected_variant}_model.yaml"
+
+    variantless = resolve_predefined_config("anomaly_detection", None)
+    assert variantless.path.name == "anomaly_detection_model.yaml"
+
+    versioned = resolve_predefined_config("detection:v1", "light")
+    assert versioned.opts == ["model.predefined_model.version", "1"]
+
+    latest = resolve_predefined_config("detection:latest", "light")
+    assert latest.opts == []
+
+    with pytest.raises(ValueError, match="Malformed model spec"):
+        resolve_predefined_config("detection:bad", None)
+
+    with pytest.raises(ValueError, match="Unknown predefined model 'nope'"):
+        resolve_predefined_config("nope", None)
+
+    with pytest.raises(
+        ValueError,
+        match="Variant 'nope' is not available for model 'detection'",
+    ):
+        resolve_predefined_config("detection", "nope")
+
+
+def test_predefined_metaclass_keys_and_aliases_shipped_models():
+    assert MODELS._module_dict["DetectionModel:v1"] is DetectionModel
+    assert MODELS._module_dict["DetectionModel"] is DetectionModel
+    assert "SimplePredefinedModel" not in MODELS._module_dict
+    assert "BasePredefinedModel" not in MODELS._module_dict
+
+
+def test_predefined_metaclass_keys_versioned_class_to_family(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(MODELS, "_module_dict", dict(MODELS._module_dict))
+
+    class DetectionModelV2(DetectionModel):
+        _VERSION = 2
+
+    assert "DetectionModelV2" not in MODELS._module_dict
+    assert MODELS._module_dict["DetectionModel:v2"] is DetectionModelV2
+    assert resolve_predefined_class("DetectionModel", 2) is DetectionModelV2
+    assert (
+        resolve_predefined_class("DetectionModel", "latest")
+        is DetectionModelV2
+    )
+
+
+def test_predefined_version_resolver_branches(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry: dict[str, Any] = {
+        "DetectionModel:v1": DetectionModel,
+        "DetectionModel": DetectionModel,
+        "ConcreteSimplePredefinedModel": ConcreteSimplePredefinedModel,
+        "NoVersionPreset": object(),
+    }
+    monkeypatch.setattr(MODELS, "_module_dict", registry)
+
+    class DetectionModelV2(DetectionModel):
+        _VERSION = 2
+
+    assert _split_family_version("DetectionModel:v2") == ("DetectionModel", 2)
+    assert _split_family_version("DetectionModel") == ("DetectionModel", None)
+    assert list_versions("ConcreteSimplePredefinedModel") == {
+        1: "ConcreteSimplePredefinedModel"
+    }
+    assert list_versions("NoVersionPreset") == {}
+
+    assert resolve_predefined_class("DetectionModel") is DetectionModelV2
+    assert resolve_predefined_class("DetectionModel", 1) is DetectionModel
+    assert (
+        resolve_predefined_class("DetectionModel:v2", "latest")
+        is DetectionModelV2
+    )
+    assert resolved_class_name("DetectionModel") == "DetectionModel:v2"
+
+    with pytest.raises(ValueError, match="conflicts with version=1"):
+        resolve_predefined_class("DetectionModel:v2", 1)
+
+    with pytest.raises(ValueError, match="No predefined model registered"):
+        resolve_predefined_class("DoesNotExist")
+
+    with pytest.raises(
+        ValueError, match=r"Version 99.+Available versions: \[1, 2\]"
+    ):
+        resolve_predefined_class("DetectionModel", 99)
+
+    current = PredefinedModelConfig(name="DetectionModel", version=2)
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 1
+
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(None, {"name": "DetectionModel"})
+        warn_on_predefined_model_mismatch(current, None)
+        warn_on_predefined_model_mismatch(current, {"version": 1})
+    assert warn.call_count == 0
+
+
 @pytest.mark.parametrize(
     ("model_cls", "expected_default", "expected_nodes"),
     [
         (AnomalyDetectionModel, "light", ["RecSubNet", "DiscSubNetHead"]),
         (ClassificationModel, "light", ["ResNet", "ClassificationHead"]),
+        (EmbeddingsModel, "default", ["GhostFaceNet", "GhostFaceNetHead"]),
         (
             DetectionModel,
             "light",
@@ -1073,3 +1229,178 @@ def test_pydantic_validation_errors_are_raised():
 def test_simple_config_model_has_no_outputs_when_empty():
     model = ModelConfig()
     assert model.outputs == []
+
+
+def test_versioned_name_still_triggers_smart_auto_populate():
+    """Version pins must not bypass family-specific training
+    defaults.
+    """
+
+    def build(name: str) -> Config:
+        return Config.get_config(
+            {
+                "model": {
+                    "predefined_model": {"name": name, "variant": "light"}
+                },
+                "trainer": {"batch_size": 4},
+            }
+        )
+
+    plain = build("InstanceSegmentationModel")
+    pinned = build("InstanceSegmentationModel:v1")
+    assert plain.model.predefined_model is not None
+    assert pinned.model.predefined_model is not None
+
+    loss_params = cast(
+        dict[str, Any], pinned.model.predefined_model.params["loss_params"]
+    )
+    assert loss_params == plain.model.predefined_model.params["loss_params"]
+    assert loss_params["bbox_loss_weight"] == 7.5 * 16
+
+
+def test_explicit_accumulate_grad_batches_is_not_overwritten():
+    """Auto-population must preserve an explicit accumulation value."""
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "variant": "light",
+                }
+            },
+            "trainer": {"batch_size": 16, "accumulate_grad_batches": 1},
+        }
+    )
+    assert cfg.trainer.accumulate_grad_batches == 1
+
+
+def test_accumulate_grad_batches_auto_populated_when_unset():
+    cfg = Config.get_config(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "variant": "light",
+                }
+            },
+            "trainer": {"batch_size": 16},
+        }
+    )
+    assert cfg.trainer.accumulate_grad_batches == 4
+
+
+def test_embeddings_preset_keeps_its_training_recipe():
+    """The embeddings preset trains without gradient accumulation."""
+    from luxonis_train.config.predefined import resolve_predefined_config
+
+    cfg = Config.get_config(
+        str(resolve_predefined_config("embeddings", None).path)
+    )
+    assert cfg.trainer.accumulate_grad_batches == 1
+
+
+def test_embeddings_model_metadata_task_is_configurable():
+    """The embeddings metadata field is dataset-specific."""
+    from luxonis_train.config.predefined_models import EmbeddingsModel
+
+    custom = cast(Any, EmbeddingsModel)(metadata_task_override="person_id")
+    head = custom.nodes[1]
+    assert head.metadata_task_override == "person_id"
+    assert head.alias == "person_id-embeddings"
+
+    default = cast(Any, EmbeddingsModel)()
+    assert default.nodes[1].metadata_task_override == "color"
+    assert default.nodes[1].alias == "color-embeddings"
+
+
+def test_ocr_preset_keeps_its_explicit_accumulation():
+    """The OCR preset deliberately pairs a small batch with explicit
+    accumulation and gradient clipping.
+
+    Auto-population used to overwrite the configured 2 with 64/4 = 16,
+    quadrupling the effective batch the config asks for.
+    """
+    from luxonis_train.config.predefined import resolve_predefined_config
+
+    cfg = Config.get_config(
+        str(resolve_predefined_config("ocr_recognition", None).path)
+    )
+    assert cfg.trainer.batch_size == 4
+    assert cfg.trainer.accumulate_grad_batches == 2
+
+
+def test_model_class_returns_none_for_unknown_model():
+    assert _model_class("nope") is None
+
+
+def test_model_class_returns_none_for_config_without_predefined_model(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        predefined,
+        "default_config_path",
+        lambda _: configs_dir() / "defaults.yaml",
+    )
+    assert _model_class("detection") is None
+    assert list_variants("detection") == ["light", "heavy"]
+
+
+def test_model_class_returns_none_when_class_cannot_be_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from luxonis_train.config import predefined_versions
+
+    def unresolvable(*_args: Any, **_kwargs: Any) -> Any:
+        raise ValueError("gone")
+
+    monkeypatch.setattr(
+        predefined_versions, "resolve_predefined_class", unresolvable
+    )
+    assert _model_class("detection") is None
+
+
+@pytest.mark.parametrize(
+    ("model", "variant"),
+    [("anomaly_detection", "light"), ("embeddings", "default")],
+)
+def test_named_default_variant_resolves_to_unvarianted_config(
+    model: str, variant: str
+):
+    """A named class default remains selectable when its YAML has no
+    variant suffix.
+    """
+    assert variant in list_variants(model)
+
+    resolved = resolve_predefined_config(model, variant)
+
+    assert resolved.path.name == f"{model}_model.yaml"
+    assert resolved.opts == ["model.predefined_model.variant", variant]
+
+
+def test_list_variants_includes_variants_without_a_yaml():
+    assert list_variants("detection") == ["light", "medium", "heavy"]
+
+
+def test_resolve_variant_without_dedicated_yaml():
+    resolved = resolve_predefined_config("detection", "medium")
+    assert resolved.path.name == "detection_light_model.yaml"
+    assert resolved.opts == ["model.predefined_model.variant", "medium"]
+
+
+def test_warn_silent_when_current_config_does_not_resolve():
+    current = PredefinedModelConfig(name="DoesNotExist")
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "DetectionModel", "version": 1}
+        )
+    assert warn.call_count == 0
+
+
+def test_warn_when_checkpoint_model_no_longer_resolves():
+    current = PredefinedModelConfig(name="DetectionModel", version=1)
+    with patch.object(logger, "warning") as warn:
+        warn_on_predefined_model_mismatch(
+            current, {"name": "RemovedModel", "version": 1}
+        )
+    assert warn.call_count == 1
+    assert "RemovedModel" in warn.call_args.args[0]

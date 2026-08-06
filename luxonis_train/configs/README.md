@@ -5,7 +5,10 @@ The configuration file consists of a few major blocks that are described below.
 You can create your own config or use/edit one of the examples.
 
 > [!NOTE]
-> The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../luxonis_train/config/predefined_models/README.md).
+> The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../config/predefined_models/README.md).
+
+> [!TIP]
+> These configs ship with the `luxonis-train` PyPI package, so you can select one without pointing at a YAML file. On the CLI, any command that accepts `--config` also accepts `--model` and optional `--variant`. For example, `luxonis_train train --model detection --variant light` is equivalent to `--config luxonis_train/configs/detection_light_model.yaml`. The same model is available from Python with `LuxonisModel(model="detection", variant="light")`. `variant` accepts every variant the predefined model declares, not just the ones with a YAML of their own. For example, `model="detection", variant="medium"` works even though no `detection_medium_model.yaml` ships. Run `luxonis_train list-models` to see the available names.
 
 ## Table Of Contents
 
@@ -51,7 +54,7 @@ You can create your own config or use/edit one of the examples.
 The `Model` section is a crucial part of the configuration and **must always be defined by the user**. There are two ways to create a model:
 
 1. **Manual Configuration** – Define the model by specifying the appropriate nodes.
-1. **Predefined Model** – Use a predefined model by specifying its name and parameters (see [Predefined models](../luxonis_train/config/predefined_models/README.md)).
+1. **Predefined Model:** Use a predefined model by specifying its name and parameters (see [Predefined models](../config/predefined_models/README.md)).
 
 ### Configuration Options
 
@@ -66,7 +69,7 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Nodes
 
-For all available node names and their `params`, see [nodes](../luxonis_train/nodes/README.md).
+For all available node names and their `params`, see [nodes](../nodes/README.md).
 
 | Key                          | Type                   | Default value | Description                                                                                                                                                                                                                                                                                                                                               |
 | ---------------------------- | ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -88,7 +91,7 @@ For all available node names and their `params`, see [nodes](../luxonis_train/no
 #### Losses
 
 At least one node must have a loss attached to it.
-For all supported loss functions and their `params`, see [losses](../luxonis_train/attached_modules/losses/README.md).
+For all supported loss functions and their `params`, see [losses](../attached_modules/losses/README.md).
 
 | Key      | Type    | Default value | Description                              |
 | -------- | ------- | ------------- | ---------------------------------------- |
@@ -100,7 +103,7 @@ For all supported loss functions and their `params`, see [losses](../luxonis_tra
 #### Metrics
 
 In this section, you configure which metrics should be used for which node.
-You can see the list of all currently supported metrics and their parameters [here](../luxonis_train/attached_modules/metrics/README.md).
+You can see the list of all currently supported metrics and their parameters [here](../attached_modules/metrics/README.md).
 
 | Key              | Type   | Default value | Description                                                                            |
 | ---------------- | ------ | ------------- | -------------------------------------------------------------------------------------- |
@@ -111,7 +114,7 @@ You can see the list of all currently supported metrics and their parameters [he
 #### Visualizers
 
 In this section, you configure which visualizers should be used for which node. Visualizers are responsible for creating images during training.
-You can see the list of all currently supported visualizers and their parameters [here](../luxonis_train/attached_modules/visualizers/README.md).
+You can see the list of all currently supported visualizers and their parameters [here](../attached_modules/visualizers/README.md).
 
 | Key      | Type   | Default value | Description                              |
 | -------- | ------ | ------------- | ---------------------------------------- |
@@ -363,7 +366,7 @@ trainer:
 ### Callbacks
 
 Callbacks sections contain a list of callbacks.
-More information on callbacks and a list of available ones can be found [here](../luxonis_train/callbacks/README.md).
+More information on callbacks and a list of available ones can be found [here](../callbacks/README.md).
 Each callback is a dictionary with the following fields:
 
 | Key      | Type   | Default value | Description                |
@@ -442,7 +445,7 @@ trainer:
 ### Training Strategy
 
 Defines the training strategy to be used.
-More information on training strategies and a list of available ones can be found [here](../luxonis_train/strategies/README.md).
+More information on training strategies and a list of available ones can be found [here](../strategies/README.md).
 
 | Key      | Type   | Default value | Description                   |
 | -------- | ------ | ------------- | ----------------------------- |
@@ -704,7 +707,7 @@ tuner:
 ## ENVIRON
 
 A special section of the config file where you can specify environment variables.
-For more info on the variables, see [Credentials](../README.md#credentials).
+For more info on the variables, see [Credentials](../../README.md#credentials).
 
 > [!WARNING]
 > This is not a recommended way due to possible leakage of secrets!

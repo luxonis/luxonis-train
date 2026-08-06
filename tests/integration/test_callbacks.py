@@ -10,7 +10,7 @@ from luxonis_train.core import LuxonisModel
 
 
 def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
-    config_file = "configs/segmentation_light_model.yaml"
+    config_file = "luxonis_train/configs/segmentation_light_model.yaml"
     opts |= {
         "rich_logging": False,
         "trainer.seed": 42,

@@ -13,7 +13,7 @@ def test_convert_basic(
     """Export + archive, without blobconverter or hubai exporter
     defined.
     """
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "loader.params.dataset_name": coco_dataset.identifier,
         "model.name": "test_convert_basic",
@@ -36,7 +36,7 @@ def test_convert_basic(
 def test_convert_with_blobconverter(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "loader.params.dataset_name": coco_dataset.identifier,
         "model.name": "test_convert_blob",
@@ -66,7 +66,7 @@ def test_convert_with_blobconverter(
 def test_convert_with_hubai(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path, platform: str
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "loader.params.dataset_name": coco_dataset.identifier,
         "model.name": f"test_convert_hubai_{platform}",
@@ -103,7 +103,7 @@ def test_convert_saves_to_default_directory(
     """Test that convert uses default save directory when not
     specified.
     """
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "loader.params.dataset_name": coco_dataset.identifier,
         "model.name": "test_convert_default_dir",
