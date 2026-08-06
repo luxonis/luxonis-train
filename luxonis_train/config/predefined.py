@@ -142,12 +142,10 @@ def list_variants(model: str) -> list[str | None]:
     if cls is None:
         return variants
     try:
-        default_variant, class_variants = cls.get_variants()
+        _, class_variants = cls.get_variants()
     except NotImplementedError:
         return variants
     for variant in class_variants:
-        if variant == default_variant and None in variants:
-            continue
         if variant not in variants:
             variants.append(variant)
     return _sort_variants(variants)

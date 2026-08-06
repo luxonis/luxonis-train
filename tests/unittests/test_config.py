@@ -1359,11 +1359,22 @@ def test_model_class_returns_none_when_class_cannot_be_resolved(
     assert _model_class("detection") is None
 
 
-def test_list_variants_skips_class_default_for_unvarianted_config():
-    """A single unvarianted YAML already stands for the class
-    default.
+@pytest.mark.parametrize(
+    ("model", "variant"),
+    [("anomaly_detection", "light"), ("embeddings", "default")],
+)
+def test_named_default_variant_resolves_to_unvarianted_config(
+    model: str, variant: str
+):
+    """A named class default remains selectable when its YAML has no
+    variant suffix.
     """
-    assert list_variants("embeddings") == [None]
+    assert variant in list_variants(model)
+
+    resolved = resolve_predefined_config(model, variant)
+
+    assert resolved.path.name == f"{model}_model.yaml"
+    assert resolved.opts == ["model.predefined_model.variant", variant]
 
 
 def test_list_variants_includes_variants_without_a_yaml():

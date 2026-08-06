@@ -13,6 +13,7 @@ from luxonis_train.config.predefined_versions import (
     resolve_predefined_class,
     warn_on_predefined_model_mismatch,
 )
+from luxonis_train.core.utils.export_utils import replace_weights
 from luxonis_train.lightning import luxonis_lightning
 from luxonis_train.lightning.luxonis_lightning import (
     LuxonisLightningModule,
@@ -128,6 +129,47 @@ def test_checkpoint_pin_survives_resaving_without_config():
     _add_checkpoint_metadata(_checkpoint_module(pin), checkpoint)
 
     assert checkpoint["predefined_model"] == pin
+
+
+def test_temporary_weight_swap_restores_checkpoint_pin_before_resave():
+    """A configless module restored to checkpoint A's weights must not
+    save checkpoint B's pin after a temporary weight swap.
+    """
+    original_pin = {"name": "DetectionModel", "version": 1}
+    temporary_pin = {"name": "DetectionModel", "version": 2}
+    module = _checkpoint_module(original_pin)
+    original_state = {"nodes.backbone.weight": object()}
+
+    def load_checkpoint(checkpoint: dict[str, Any]) -> None:
+        module._ckpt_predefined_model = checkpoint.get("predefined_model")
+
+    with (
+        patch.object(
+            LuxonisLightningModule,
+            "state_dict",
+            return_value=original_state,
+        ),
+        patch.object(
+            LuxonisLightningModule,
+            "load_checkpoint",
+            side_effect=load_checkpoint,
+        ),
+        patch.object(
+            LuxonisLightningModule, "load_state_dict"
+        ) as restore_state,
+    ):
+        with replace_weights(
+            module,
+            {"state_dict": {}, "predefined_model": temporary_pin},
+        ):
+            assert module._ckpt_predefined_model == temporary_pin
+
+        restore_state.assert_called_once_with(original_state)
+
+    checkpoint: dict[str, Any] = {"state_dict": {}}
+    _add_checkpoint_metadata(module, checkpoint)
+
+    assert checkpoint["predefined_model"] == original_pin
 
 
 def test_checkpoint_removes_stale_pin_when_none_is_known():
