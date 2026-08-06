@@ -44,7 +44,7 @@ Get started with `LuxonisTrain` in just a few steps:
 
 1. **Pick a bundled model preset**
 
-   Every predefined model ships with the wheel — no file download needed. List the presets with:
+   Every predefined model ships with the wheel. List the presets with:
 
    ```bash
    luxonis_train list-models
@@ -62,7 +62,7 @@ Get started with `LuxonisTrain` in just a few steps:
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
 
-   `--model detection --variant light` runs the `detection_light_model.yaml` preset that ships inside the installed `luxonis_train` package — you never edit that file. Everything after the options is an override applied on top of it, which is how the preset is pointed at your data. Once you have your own dataset registered, the usual form is:
+   `--model detection --variant light` runs the `detection_light_model.yaml` preset that ships inside the installed `luxonis_train` package. Everything after the options is an override applied on top of it, which is how the preset is pointed at your data. Once you have your own dataset registered, the usual form is:
 
    ```bash
    luxonis_train train                  \
@@ -70,7 +70,7 @@ Get started with `LuxonisTrain` in just a few steps:
      loader.params.dataset_name "my_dataset"
    ```
 
-   To change more than a handful of fields, write your own config file and pass it with `--config` instead — see [Configuration](#configuration).
+   To change more than a handful of fields, write your own config file and pass it with `--config` instead. See [Configuration](#configuration).
 
 1. **Monitor progress with `TensorBoard`**
 
@@ -183,7 +183,7 @@ luxonis_train train --model detection:v1 --variant light
 
 Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a preset builds.
 
-Presets are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file — a few lines are enough, since it can build on the same predefined model:
+Presets are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file. A few lines are enough, since it can build on the same predefined model:
 
 ```yaml
 model:
@@ -422,7 +422,7 @@ luxonis_train train --config my_config.yaml
 luxonis_train train --model detection --variant light
 ```
 
-The `--model` form trains the packaged preset as it ships, which is rarely what you want on its own — at the very least it has to be pointed at your dataset. Overrides do that without a config file of your own:
+The `--model` form trains the packaged preset as it ships, which is rarely what you want on its own. At the very least you need to provide your own dataset. Overrides do that without a config file of your own:
 
 ```bash
 luxonis_train train                  \
@@ -447,8 +447,14 @@ luxonis_train train                  \
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel(
-  "my_config.yaml",
-  {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"}
+    "my_config.yaml",
+    {
+        "loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"
+        "trainer": {
+            "epochs": 300,
+            "batch_size": 8,
+        },
+    },
 )
 model.train()
 ```
