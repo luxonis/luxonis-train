@@ -84,11 +84,7 @@ from .utils.train_utils import create_trainer
 
 
 class LuxonisModel:
-    """Common logic of the core components.
-
-    This class contains common logic of the core components (trainer,
-    evaluator, exporter, etc.).
-    """
+    """Train, evaluate, and export a configured model."""
 
     def __init__(
         self,
@@ -101,12 +97,10 @@ class LuxonisModel:
         allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
-        """Construct a new Core instance.
+        """Load the configuration and initialize the training
+        components.
 
-        Loads the config and initializes loaders, dataloaders,
-        augmentations, lightning components, etc.
-
-        @type cfg: str | dict[str, Any] | Config
+        @type cfg: str | dict[str, Any] | Config | None
         @param cfg: Path to config file or config dict used to setup
             training. Mutually exclusive with `model`.
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
@@ -124,17 +118,16 @@ class LuxonisModel:
             created. This is useful either for debugging or for running
             commands that don't require a dataset (e.g. export with
             existing weights).
-        @type weights: str | None
+        @type weights: str | dict[str, Any] | None
         @param weights: Path to the weights. If user specifies weights
             in the config file, the weights provided here will take
             precedence.
         """
-        if model is None:
-            if variant is not None:
-                raise ValueError(
-                    "'variant' requires 'model' to be specified as well."
-                )
-        else:
+        if variant is not None and model is None:
+            raise ValueError(
+                "'variant' requires 'model' to be specified as well."
+            )
+        if model is not None:
             if cfg is not None:
                 raise ValueError("'cfg' and 'model' are mutually exclusive.")
             resolved = resolve_predefined_config(model, variant)
@@ -149,7 +142,7 @@ class LuxonisModel:
                 )
                 opts = opts | model_opts
             elif resolved.opts:
-                opts = [*(opts or ()), *resolved.opts]
+                opts = [*(opts or []), *resolved.opts]
 
         if cfg is None and weights is None:
             raise ValueError(

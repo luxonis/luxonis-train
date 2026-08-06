@@ -171,22 +171,22 @@ def resolve_predefined_config(
             f"Available: {', '.join(available)}."
         )
     file_variants = available[model]
+    opts = []
+    if version is not None and version != "latest":
+        opts = ["model.predefined_model.version", version]
 
     if variant is None:
-        path = default_config_path(model)
-        opts = []
-    elif variant in file_variants:
-        path = _config_path(_filename(model, variant))
-        opts = []
-    elif variant in list_variants(model):
-        path = default_config_path(model)
-        opts = ["model.predefined_model.variant", variant]
-    else:
-        raise ValueError(
-            f"Variant '{variant}' is not available for model '{model}'. "
-            f"Available variants: {_variant_labels(model)}."
+        return ResolvedPredefinedConfig(default_config_path(model), opts)
+    if variant in file_variants:
+        return ResolvedPredefinedConfig(
+            _config_path(_filename(model, variant)), opts
         )
-
-    if version is not None and version != "latest":
-        opts[:0] = ["model.predefined_model.version", version]
-    return ResolvedPredefinedConfig(path, opts)
+    if variant in list_variants(model):
+        return ResolvedPredefinedConfig(
+            default_config_path(model),
+            [*opts, "model.predefined_model.variant", variant],
+        )
+    raise ValueError(
+        f"Variant '{variant}' is not available for model '{model}'. "
+        f"Available variants: {_variant_labels(model)}."
+    )

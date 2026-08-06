@@ -95,14 +95,14 @@ def test_luxonis_model_rejects_conflicting_selection():
         ("detection:latest", ("detection", "latest")),
     ],
 )
-def test_split_model_version(model: str, expected: tuple[str, str | None]):
+def test_parse_model_spec(model: str, expected: tuple[str, str | None]):
     assert parse_model_spec(model) == expected
 
 
 @pytest.mark.parametrize(
     "model", ["detection:bad", "detection:2", "detection:v²", "detection:v٣"]
 )
-def test_split_model_version_rejects_malformed(model: str):
+def test_parse_model_spec_rejects_malformed(model: str):
     with pytest.raises(ValueError, match="Malformed model spec"):
         parse_model_spec(model)
 

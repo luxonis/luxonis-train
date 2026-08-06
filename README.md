@@ -42,9 +42,9 @@ Get started with `LuxonisTrain` in just a few steps:
 
    This will create the `luxonis_train` executable in your `PATH`.
 
-1. **Pick a bundled model preset**
+1. **Pick a bundled predefined model**
 
-   Every predefined model ships with the wheel. List the presets with:
+   Every predefined model ships with the wheel. List them with:
 
    ```bash
    luxonis_train list-models
@@ -62,7 +62,7 @@ Get started with `LuxonisTrain` in just a few steps:
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
 
-   `--model detection --variant light` runs the `detection_light_model.yaml` preset that ships inside the installed `luxonis_train` package. Everything after the options is an override applied on top of it, which is how the preset is pointed at your data. Once you have your own dataset registered, the usual form is:
+   `--model detection --variant light` runs the bundled `detection_light_model.yaml` configuration. Everything after the options is an override applied on top of it, which is how you point the configuration at your data. Once you have your own dataset registered, the usual form is:
 
    ```bash
    luxonis_train train                  \
@@ -167,12 +167,12 @@ Specific usage examples can be found in the respective sections below.
 **Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`). The two are mutually exclusive and answer different questions:
 
 - `--config my_config.yaml` runs **your** config file.
-- `--model detection --variant light` runs the matching **packaged** preset (here `detection_light_model.yaml`), read straight from the installed package. There is no local file to download or edit, and a config file in your working directory is not picked up.
+- `--model detection --variant light` runs the matching **packaged** configuration (here `detection_light_model.yaml`), read straight from the installed package. There is no local file to download or edit, and a config file in your working directory is not picked up.
 
-Both forms accept the same `key value` overrides, so a preset can be adapted from the command line:
+Both forms accept the same `key value` overrides, so you can adapt a packaged configuration from the command line:
 
 ```bash
-# Train the packaged detection preset on your own dataset
+# Train the packaged detection model on your own dataset
 luxonis_train train                  \
   --model detection --variant light  \
   loader.params.dataset_name "my_dataset"
@@ -181,7 +181,7 @@ luxonis_train train                  \
 luxonis_train train --model detection:v1 --variant light
 ```
 
-Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a preset builds.
+Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a predefined model contains.
 
 The Python API accepts the same packaged model selection directly:
 
@@ -195,7 +195,7 @@ model = LuxonisModel(
 )
 ```
 
-Presets are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file. A few lines are enough, since it can build on the same predefined model:
+Packaged configurations are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file. A few lines are enough, since it can build on the same predefined model:
 
 ```yaml
 model:
@@ -430,11 +430,11 @@ Once your configuration file and dataset are ready, start the training process.
 # your own config file
 luxonis_train train --config my_config.yaml
 
-# or one of the packaged presets, unmodified
+# or a packaged predefined model, unmodified
 luxonis_train train --model detection --variant light
 ```
 
-The `--model` form trains the packaged preset as it ships, which is rarely what you want on its own. At the very least you need to provide your own dataset. Overrides do that without a config file of your own:
+The `--model` form trains the packaged configuration as it ships, which is rarely what you want on its own. At the very least you need to provide your own dataset. Overrides do that without a config file of your own:
 
 ```bash
 luxonis_train train                  \
