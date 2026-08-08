@@ -37,6 +37,7 @@ from luxonis_train.nodes.heads import (
     PrecisionBBoxHead,
     PrecisionSegmentBBoxHead,
 )
+from luxonis_train.nodes.heads.base_detection_head import BaseDetectionHead
 from luxonis_train.nodes.necks.reppan_neck import RepPANNeck
 from luxonis_train.nodes.necks.svtr_neck.blocks import (
     Attention,
@@ -51,15 +52,17 @@ from .contract_cases import (
     ContractCase,
 )
 from .shape_contracts import (
+    Bindings,
     ShapeContract,
     ShapeSpec,
+    assert_contract,
     assert_matches_contract,
     discover_module_types,
+    documented_outputs,
     get_forward_owner,
     parse_forward_arguments,
     parse_forward_returns,
     parse_shape_contract,
-    validate_constraints,
 )
 
 MODULE_TYPES = discover_module_types()
@@ -70,45 +73,11 @@ FORWARD_MODULE_TYPES = [
 ]
 
 
-def _assert_contract(
-    module_type: type[nn.Module],
-    inputs: dict[str, Any],
-    outputs: dict[str, Any],
-    bindings: dict[str, int | Sequence[int]],
-    *,
-    mode: str | None = None,
-) -> None:
-    shape_contract = parse_shape_contract(module_type)
-    expected_outputs = shape_contract.outputs
-    if mode is not None:
-        assert shape_contract.modes is not None
-        expected_outputs = shape_contract.modes[mode]["outputs"]
-    assert_matches_contract(
-        inputs, shape_contract.inputs, bindings, path="inputs"
-    )
-    assert_matches_contract(
-        outputs, expected_outputs, bindings, path="outputs"
-    )
-    validate_constraints(shape_contract.constraints, bindings)
-
-
 def _build_cases(factory: CaseFactory) -> list[ContractCase]:
     built = factory()
     if isinstance(built, ContractCase):
         return [built]
     return list(built)
-
-
-def _documented_outputs(
-    module_type: type[nn.Module], mode: str | None
-) -> dict[str, ShapeSpec]:
-    contract = parse_shape_contract(module_type)
-    if mode is None:
-        return contract.outputs
-    assert contract.modes is not None, (
-        f"{module_type.__qualname__} documents no {mode} outputs"
-    )
-    return contract.modes[mode]["outputs"]
 
 
 def _as_output_mapping(result: Any, documented: dict[str, ShapeSpec]) -> Any:
@@ -132,18 +101,19 @@ def test_documented_shapes_hold_at_runtime(
 ):
     cases = _build_cases(factory)
     assert cases, f"{module_type.__qualname__} contributed no contract case"
+    contract = parse_shape_contract(module_type)
     for index, case in enumerate(cases):
-        documented = _documented_outputs(module_type, case.mode)
+        documented = documented_outputs(contract, case.mode)
         outputs = case.outputs
         if outputs is None:
             with torch.no_grad():
                 outputs = case.module(**case.inputs)
         try:
-            _assert_contract(
+            assert_contract(
                 module_type,
                 case.inputs,
                 _as_output_mapping(outputs, documented),
-                dict(case.bindings),
+                case.bindings,
                 mode=case.mode,
             )
         except AssertionError as error:
@@ -340,9 +310,9 @@ def test_pyproject_registers_the_directive_for_every_pydoctor_run():
     syntax error, because the directive is never registered.
     """
     pyproject = Path(__file__).resolve().parents[3] / "pyproject.toml"
-    settings = pyproject.read_text(encoding="utf-8").split("[tool.pydoctor]")
-    assert len(settings) == 2, "pyproject.toml has no [tool.pydoctor] section"
-    section = settings[1].split("\n[", 1)[0]
+    parts = pyproject.read_text(encoding="utf-8").split("[tool.pydoctor]")
+    assert len(parts) == 2, "pyproject.toml has no [tool.pydoctor] section"
+    section = parts[1].split("\n[", 1)[0]
 
     declared = f"{LuxonisTrainSystem.__module__}.{LuxonisTrainSystem.__name__}"
     assert f'system-class = "{declared}"' in section
@@ -449,7 +419,7 @@ def test_conv_block_shape_contract(
     output = module(x)
     height_out = (height + 2 * padding - kernel_size) // stride + 1
     width_out = (width + 2 * padding - kernel_size) // stride + 1
-    _assert_contract(
+    assert_contract(
         ConvBlock,
         {"x": x},
         {"output": output},
@@ -492,7 +462,7 @@ def test_prediction_block_shape_contracts(
         reg_max=reg_max,
     ).eval()
     features, classes, regressions = precise(x)
-    _assert_contract(
+    assert_contract(
         PreciseDecoupledBlock,
         {"x": x},
         {
@@ -512,7 +482,7 @@ def test_prediction_block_shape_contracts(
 
     efficient = EfficientDecoupledBlock(channels, n_classes).eval()
     features, classes, regressions = efficient(x)
-    _assert_contract(
+    assert_contract(
         EfficientDecoupledBlock,
         {"x": x},
         {
@@ -534,7 +504,7 @@ def test_prediction_block_shape_contracts(
     "factory",
     [
         lambda channels: SqueezeExciteBlock(channels, max(channels // 2, 1)),
-        lambda _channels: DropPath(0.25).eval(),
+        lambda _: DropPath(0.25),
     ],
 )
 @settings(max_examples=8)
@@ -553,7 +523,7 @@ def test_preserving_block_shape_contracts(
 ):
     module = factory(channels).eval()
     x = torch.randn(batch, channels, height, width)
-    _assert_contract(
+    assert_contract(
         type(module),
         {"x": x},
         {"output": module(x)},
@@ -564,11 +534,11 @@ def test_preserving_block_shape_contracts(
 @pytest.mark.parametrize(
     "factory",
     [
-        lambda length, channels: Attention(channels, n_heads=2),
+        lambda _, channels: Attention(channels, n_heads=2),
         lambda length, channels: ConvMixer(
             channels, height=2, width=length // 2, n_heads=2
         ),
-        lambda length, channels: SVTRBlock(channels, n_heads=2),
+        lambda _, channels: SVTRBlock(channels, n_heads=2),
     ],
 )
 @settings(max_examples=8)
@@ -585,7 +555,7 @@ def test_sequence_block_shape_contracts(
 ):
     module = factory(length, channels).eval()
     x = torch.randn(batch, length, channels)
-    _assert_contract(
+    assert_contract(
         type(module),
         {"x": x},
         {"output": module(x)},
@@ -602,7 +572,7 @@ def test_sequence_block_shape_contracts(
 def test_rope_shape_contract(height: int, width: int, head_dim: int):
     module = RopePositionEmbedding(head_dim, num_heads=1)
     sin, cos = module(H=height, W=width)
-    _assert_contract(
+    assert_contract(
         RopePositionEmbedding,
         {},
         {"sin": sin, "cos": cos},
@@ -610,19 +580,29 @@ def test_rope_shape_contract(height: int, width: int, head_dim: int):
     )
 
 
+DETECTION_HEADS: list[tuple[type[BaseDetectionHead], dict[str, Any]]] = [
+    (EfficientBBoxHead, {}),
+    (EfficientKeypointBBoxHead, {}),
+    (PrecisionBBoxHead, {"reg_max": 4}),
+    (PrecisionSegmentBBoxHead, {"n_masks": 4, "n_proto": 8, "reg_max": 4}),
+]
+
+
+@pytest.mark.parametrize(
+    ("head_type", "extra_kwargs"),
+    DETECTION_HEADS,
+    ids=[head_type.__qualname__ for head_type, _ in DETECTION_HEADS],
+)
 @settings(max_examples=4)
 @given(batch=st.integers(1, 3))
-def test_detection_head_shape_contracts(batch: int):
+def test_detection_head_shape_contracts(
+    head_type: type[BaseDetectionHead],
+    extra_kwargs: dict[str, Any],
+    batch: int,
+):
     sizes = [Size((8, 8, 8)), Size((8, 4, 4))]
-    kwargs = {
-        "n_heads": 2,
-        "in_sizes": sizes,
-        "original_in_shape": Size((3, 64, 64)),
-        "n_classes": 2,
-        "n_keypoints": 2,
-    }
     inputs = [torch.randn(batch, *size) for size in sizes]
-    bindings: dict[str, int | Sequence[int]] = {
+    bindings: Bindings = {
         "B": batch,
         "N": 2,
         "C": (8, 8),
@@ -634,77 +614,24 @@ def test_detection_head_shape_contracts(batch: int):
         "reg_max": 4,
         "n_masks": 4,
     }
-
-    efficient = EfficientBBoxHead(**kwargs)
-    _assert_contract(
-        EfficientBBoxHead,
-        {"inputs": inputs},
-        efficient(inputs),
-        bindings.copy(),
-    )
-    efficient.eval()
-    efficient.export = True
-    _assert_contract(
-        EfficientBBoxHead,
-        {"inputs": inputs},
-        efficient(inputs),
-        bindings.copy(),
-        mode="export",
+    head = head_type(
+        n_heads=2,
+        in_sizes=sizes,
+        original_in_shape=Size((3, 64, 64)),
+        n_classes=2,
+        n_keypoints=2,
+        **extra_kwargs,
     )
 
-    keypoints = EfficientKeypointBBoxHead(**kwargs)
-    _assert_contract(
-        EfficientKeypointBBoxHead,
-        {"inputs": inputs},
-        keypoints(inputs),
-        bindings.copy(),
-    )
-    keypoints.eval()
-    keypoints.export = True
-    _assert_contract(
-        EfficientKeypointBBoxHead,
-        {"inputs": inputs},
-        keypoints(inputs),
-        bindings.copy(),
-        mode="export",
-    )
+    assert_contract(head_type, {"inputs": inputs}, head(inputs), bindings)
 
-    precision = PrecisionBBoxHead(reg_max=4, **kwargs)
-    _assert_contract(
-        PrecisionBBoxHead,
+    head.eval()
+    head.export = True
+    assert_contract(
+        head_type,
         {"inputs": inputs},
-        precision(inputs),
-        bindings.copy(),
-    )
-    precision.eval()
-    precision.export = True
-    _assert_contract(
-        PrecisionBBoxHead,
-        {"inputs": inputs},
-        precision(inputs),
-        bindings.copy(),
-        mode="export",
-    )
-
-    segmentation = PrecisionSegmentBBoxHead(
-        n_masks=4,
-        n_proto=8,
-        reg_max=4,
-        **kwargs,
-    )
-    _assert_contract(
-        PrecisionSegmentBBoxHead,
-        {"inputs": inputs},
-        segmentation(inputs),
-        bindings.copy(),
-    )
-    segmentation.eval()
-    segmentation.export = True
-    _assert_contract(
-        PrecisionSegmentBBoxHead,
-        {"inputs": inputs},
-        segmentation(inputs),
-        bindings.copy(),
+        head(inputs),
+        bindings,
         mode="export",
     )
 

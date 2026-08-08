@@ -16,7 +16,7 @@ from torch import Tensor, nn
 # `base` or `min_period` and `max_period`.
 # Slight changes to the forward() method to make it ONNX-convertible
 class RopePositionEmbedding(nn.Module):
-    """Rope Position Embedding module."""
+    """Axial rotary position embedding, without learnable weights."""
 
     periods: Tensor
 

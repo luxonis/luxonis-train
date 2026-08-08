@@ -12,7 +12,7 @@ from .utils import ModuleFactory, autopad
 
 
 class PreciseDecoupledBlock(nn.Module):
-    """Precise Decoupled Block module."""
+    """Detection head branch predicting classes and DFL distributions."""
 
     __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
 

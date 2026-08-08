@@ -5,7 +5,7 @@ from .blocks import ConvBlock, DropPath
 
 
 class GenericResidualBlock(nn.Module):
-    """Generic Residual Block module."""
+    """Residual wrapper adding a projected shortcut around a block."""
 
     @typechecked
     def __init__(

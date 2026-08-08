@@ -4,7 +4,7 @@ This module is named by ``system-class`` in the ``[tool.pydoctor]``
 section of ``pyproject.toml``, so every PyDoctor invocation registers the
 ``shape-contract`` directive, including a bare ``uv run pydoctor``.
 
-It is imported by PyDoctor and by nothing else, so the ``pydoctor`` and
+Nothing in the package itself imports it, so the ``pydoctor`` and
 ``docutils`` dependencies it pulls in stay confined to the docs and dev
 dependency groups. Do not import it from ``luxonis_train.__init__``.
 """

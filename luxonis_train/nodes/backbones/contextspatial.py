@@ -77,7 +77,7 @@ class ContextSpatial(BaseNode):
 
 
 class SpatialPath(nn.Module):
-    """Spatial Path module."""
+    """BiSeNet branch preserving spatial detail at stride 8."""
 
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
@@ -138,7 +138,7 @@ class SpatialPath(nn.Module):
 
 
 class ContextPath(nn.Module):
-    """Context Path module."""
+    """BiSeNet branch upsampling the backbone's global context."""
 
     def __init__(self, backbone: nn.Module):
         super().__init__()

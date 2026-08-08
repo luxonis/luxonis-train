@@ -123,43 +123,6 @@ def _up_case(module: nn.Module) -> ContractCase:
     )
 
 
-def _pan_up_block_base() -> ContractCase:
-    return _up_case(
-        PANUpBlockBase(
-            in_channels=UP_IN_CHANNELS,
-            out_channels=UP_OUT_CHANNELS,
-            encode_block=ConvBlock(
-                in_channels=UP_SKIP_CHANNELS + UP_OUT_CHANNELS,
-                out_channels=UP_OUT_CHANNELS,
-                kernel_size=1,
-            ),
-        )
-    )
-
-
-def _rep_up_block() -> ContractCase:
-    return _up_case(
-        RepUpBlock(
-            in_channels=UP_IN_CHANNELS,
-            in_channels_next=UP_SKIP_CHANNELS,
-            out_channels=UP_OUT_CHANNELS,
-            n_repeats=2,
-        )
-    )
-
-
-def _csp_up_block() -> ContractCase:
-    return _up_case(
-        CSPUpBlock(
-            in_channels=UP_IN_CHANNELS,
-            in_channels_next=UP_SKIP_CHANNELS,
-            out_channels=UP_OUT_CHANNELS,
-            n_repeats=2,
-            e=0.5,
-        )
-    )
-
-
 def _down_case(module: nn.Module) -> ContractCase:
     return ContractCase(
         module=module.eval(),
@@ -179,45 +142,6 @@ def _down_case(module: nn.Module) -> ContractCase:
             "H": DOWN_HEIGHT,
             "W": DOWN_WIDTH,
         },
-    )
-
-
-def _pan_down_block_base() -> ContractCase:
-    return _down_case(
-        PANDownBlockBase(
-            in_channels=DOWN_IN_CHANNELS,
-            downsample_out_channels=DOWN_MID_CHANNELS,
-            encode_block=ConvBlock(
-                in_channels=DOWN_MID_CHANNELS + DOWN_SKIP_CHANNELS,
-                out_channels=DOWN_OUT_CHANNELS,
-                kernel_size=1,
-            ),
-        )
-    )
-
-
-def _rep_down_block() -> ContractCase:
-    return _down_case(
-        RepDownBlock(
-            in_channels=DOWN_IN_CHANNELS,
-            downsample_out_channels=DOWN_MID_CHANNELS,
-            in_channels_next=DOWN_SKIP_CHANNELS,
-            out_channels=DOWN_OUT_CHANNELS,
-            n_repeats=2,
-        )
-    )
-
-
-def _csp_down_block() -> ContractCase:
-    return _down_case(
-        CSPDownBlock(
-            in_channels=DOWN_IN_CHANNELS,
-            downsample_out_channels=DOWN_MID_CHANNELS,
-            in_channels_next=DOWN_SKIP_CHANNELS,
-            out_channels=DOWN_OUT_CHANNELS,
-            n_repeats=2,
-            e=0.5,
-        )
     )
 
 
@@ -271,17 +195,6 @@ def _sequence_case(module: nn.Module) -> ContractCase:
     )
 
 
-def _conv_mixer() -> ContractCase:
-    return _sequence_case(
-        ConvMixer(
-            SEQUENCE_CHANNELS,
-            height=SEQUENCE_HEIGHT,
-            width=SEQUENCE_WIDTH,
-            n_heads=2,
-        )
-    )
-
-
 def _attention() -> list[ContractCase]:
     return [
         _sequence_case(
@@ -322,14 +235,73 @@ CASES: dict[
     type[nn.Module], Callable[[], ContractCase | list[ContractCase]]
 ] = {
     RepPANNeck: _reppan_neck,
-    PANUpBlockBase: _pan_up_block_base,
-    RepUpBlock: _rep_up_block,
-    CSPUpBlock: _csp_up_block,
-    PANDownBlockBase: _pan_down_block_base,
-    RepDownBlock: _rep_down_block,
-    CSPDownBlock: _csp_down_block,
+    PANUpBlockBase: lambda: _up_case(
+        PANUpBlockBase(
+            in_channels=UP_IN_CHANNELS,
+            out_channels=UP_OUT_CHANNELS,
+            encode_block=ConvBlock(
+                in_channels=UP_SKIP_CHANNELS + UP_OUT_CHANNELS,
+                out_channels=UP_OUT_CHANNELS,
+                kernel_size=1,
+            ),
+        )
+    ),
+    RepUpBlock: lambda: _up_case(
+        RepUpBlock(
+            in_channels=UP_IN_CHANNELS,
+            in_channels_next=UP_SKIP_CHANNELS,
+            out_channels=UP_OUT_CHANNELS,
+            n_repeats=2,
+        )
+    ),
+    CSPUpBlock: lambda: _up_case(
+        CSPUpBlock(
+            in_channels=UP_IN_CHANNELS,
+            in_channels_next=UP_SKIP_CHANNELS,
+            out_channels=UP_OUT_CHANNELS,
+            n_repeats=2,
+            e=0.5,
+        )
+    ),
+    PANDownBlockBase: lambda: _down_case(
+        PANDownBlockBase(
+            in_channels=DOWN_IN_CHANNELS,
+            downsample_out_channels=DOWN_MID_CHANNELS,
+            encode_block=ConvBlock(
+                in_channels=DOWN_MID_CHANNELS + DOWN_SKIP_CHANNELS,
+                out_channels=DOWN_OUT_CHANNELS,
+                kernel_size=1,
+            ),
+        )
+    ),
+    RepDownBlock: lambda: _down_case(
+        RepDownBlock(
+            in_channels=DOWN_IN_CHANNELS,
+            downsample_out_channels=DOWN_MID_CHANNELS,
+            in_channels_next=DOWN_SKIP_CHANNELS,
+            out_channels=DOWN_OUT_CHANNELS,
+            n_repeats=2,
+        )
+    ),
+    CSPDownBlock: lambda: _down_case(
+        CSPDownBlock(
+            in_channels=DOWN_IN_CHANNELS,
+            downsample_out_channels=DOWN_MID_CHANNELS,
+            in_channels_next=DOWN_SKIP_CHANNELS,
+            out_channels=DOWN_OUT_CHANNELS,
+            n_repeats=2,
+            e=0.5,
+        )
+    ),
     SVTRNeck: _svtr_neck,
-    ConvMixer: _conv_mixer,
+    ConvMixer: lambda: _sequence_case(
+        ConvMixer(
+            SEQUENCE_CHANNELS,
+            height=SEQUENCE_HEIGHT,
+            width=SEQUENCE_WIDTH,
+            n_heads=2,
+        )
+    ),
     Attention: _attention,
     SVTRBlock: _svtr_block,
 }

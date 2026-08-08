@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks import (
 
 
 class AffineActivation(nn.Module):
-    """Affine Activation module."""
+    """Hard-swish followed by a learned scale and bias."""
 
     def __init__(self):
         super().__init__()
@@ -47,7 +47,7 @@ class AffineActivation(nn.Module):
 
 
 class AffineBlock(nn.Module):
-    """Affine Block module."""
+    """Learned scalar scale and bias applied to every element."""
 
     @typechecked
     def __init__(self, scale_value: float = 1.0, bias_value: float = 0.0):
@@ -88,7 +88,7 @@ with suppress(ImportError):
 
     @QuantizationMixin.implements(AffineBlock)
     class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
-        """Quantized Affine Block module."""
+        """`AffineBlock` with AIMET input and output quantizers."""
 
         def __quant_init__(self):
             super().__quant_init__()
@@ -137,7 +137,7 @@ with suppress(ImportError):
 
 
 class LCNetV3Block(nn.Module):
-    """L C Net V3 Block module."""
+    """Reparametrizable depthwise-pointwise block of PP-LCNetV3."""
 
     @typechecked
     def __init__(
@@ -206,7 +206,7 @@ class LCNetV3Block(nn.Module):
 
 
 class LCNetV3Layer(nn.Sequential):
-    """L C Net V3 Layer module."""
+    """One PP-LCNetV3 stage, a run of `LCNetV3Block` blocks."""
 
     def __init__(
         self,

@@ -22,19 +22,10 @@ class ProjectionNode(BaseNode, register=False):
     """Concrete node projecting the input onto other channels."""
 
     def __init__(self, in_channels: int, out_channels: int, **kwargs):
-        """Initialize the node.
-
-        Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            **kwargs: Forwarded to `BaseNode`.
-
-        """
         super().__init__(**kwargs)
         self.conv = nn.Conv2d(in_channels, out_channels, 3, padding=1)
 
     def forward(self, inputs: Tensor) -> Tensor:
-        """Project the input features."""
         return self.conv(inputs)
 
 
@@ -42,7 +33,6 @@ class ScalingNode(BaseNode, register=False):
     """Concrete node preserving the shape of its input."""
 
     def forward(self, inputs: Tensor) -> Tensor:
-        """Scale the input features."""
         return inputs * 2.0
 
 

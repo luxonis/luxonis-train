@@ -12,9 +12,10 @@ import ast
 import importlib
 import inspect
 import math
+import operator
 import pkgutil
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
@@ -32,19 +33,40 @@ from luxonis_train._shape_contract import (
     parse_shape_contract as parse_contract_source,
 )
 
+Bindings = Mapping[str, int | Sequence[int]]
+
 __all__ = [
+    "Bindings",
     "ShapeContract",
     "ShapeContractError",
     "ShapeError",
     "ShapeSpec",
+    "assert_contract",
     "assert_matches_contract",
     "discover_module_types",
+    "documented_outputs",
     "get_forward_owner",
     "parse_forward_arguments",
     "parse_forward_returns",
     "parse_shape_contract",
     "validate_constraints",
 ]
+
+_ARITHMETIC: dict[type[ast.operator], Callable[[int, int], int]] = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+}
+_COMPARISONS: dict[type[ast.cmpop], Callable[[Any, Any], bool]] = {
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
 
 
 def discover_module_types() -> list[type[nn.Module]]:
@@ -97,6 +119,40 @@ def parse_shape_contract(module_type: type[nn.Module]) -> ShapeContract:
     return replace(contract, errors=_parse_forward_errors(lines))
 
 
+def documented_outputs(
+    contract: ShapeContract, mode: str | None
+) -> dict[str, ShapeSpec]:
+    """Return the outputs a contract documents for one forward mode."""
+    if mode is None:
+        return contract.outputs
+    if contract.modes is None or mode not in contract.modes:
+        raise AssertionError(f"No documented {mode} outputs")
+    return contract.modes[mode]["outputs"]
+
+
+def assert_contract(
+    module_type: type[nn.Module],
+    inputs: Any,
+    outputs: Any,
+    bindings: Bindings,
+    *,
+    mode: str | None = None,
+) -> None:
+    """Assert that real tensors match a module's documented contract.
+
+    The bindings are copied, so a caller can reuse one mapping across
+    several modes without the symbols bound by one run leaking into the
+    next.
+    """
+    contract = parse_shape_contract(module_type)
+    bound = dict(bindings)
+    assert_matches_contract(inputs, contract.inputs, bound, path="inputs")
+    assert_matches_contract(
+        outputs, documented_outputs(contract, mode), bound, path="outputs"
+    )
+    validate_constraints(contract.constraints, bound)
+
+
 def parse_forward_arguments(module_type: type[nn.Module]) -> dict[str, str]:
     """Parse the Google-style Args section of a forward method."""
     _, lines = _forward_doc(module_type)
@@ -140,7 +196,7 @@ def _parse_google_entries(lines: list[str], section: str) -> dict[str, str]:
     except ValueError:
         return {}
     entries: dict[str, str] = {}
-    current: str | None = None
+    current = ""
     for line in lines[start:]:
         if line and not line.startswith(" "):
             break
@@ -149,12 +205,10 @@ def _parse_google_entries(lines: list[str], section: str) -> dict[str, str]:
             line,
         )
         if match:
-            name = match.group("name")
-            assert isinstance(name, str)
-            current_name = name.lstrip("*")
-            entries[current_name] = match.group("text").strip()
-            current = current_name
-        elif current is not None and line.strip():
+            name, text = match.group("name", "text")
+            current = name.lstrip("*")
+            entries[current] = text.strip()
+        elif current and line.strip():
             entries[current] = f"{entries[current]} {line.strip()}".strip()
     return entries
 
@@ -390,37 +444,23 @@ def _evaluate_node(
     if isinstance(node, ast.BinOp):
         left = _evaluate_node(node.left, bindings)
         right = _evaluate_node(node.right, bindings)
-        if not isinstance(left, int) or not isinstance(right, int):
-            raise AssertionError("Shape arithmetic only accepts integers")
-        operations = {
-            ast.Add: lambda: left + right,
-            ast.Sub: lambda: left - right,
-            ast.Mult: lambda: left * right,
-            ast.FloorDiv: lambda: left // right,
-            ast.Mod: lambda: left % right,
-        }
-        operation = operations.get(type(node.op))
+        operation = _ARITHMETIC.get(type(node.op))
         if operation is None:
             raise AssertionError("Unsupported shape arithmetic")
-        return operation()
+        if not isinstance(left, int) or not isinstance(right, int):
+            raise AssertionError("Shape arithmetic only accepts integers")
+        return operation(left, right)
     if (
         isinstance(node, ast.Compare)
         and len(node.ops) == len(node.comparators) == 1
     ):
-        left = _evaluate_node(node.left, bindings)
-        right = _evaluate_node(node.comparators[0], bindings)
-        comparisons = {
-            ast.Eq: lambda: left == right,
-            ast.NotEq: lambda: left != right,
-            ast.Lt: lambda: left < right,
-            ast.LtE: lambda: left <= right,
-            ast.Gt: lambda: left > right,
-            ast.GtE: lambda: left >= right,
-        }
-        comparison = comparisons.get(type(node.ops[0]))
+        comparison = _COMPARISONS.get(type(node.ops[0]))
         if comparison is None:
             raise AssertionError("Unsupported shape comparison")
-        return comparison()
+        return comparison(
+            _evaluate_node(node.left, bindings),
+            _evaluate_node(node.comparators[0], bindings),
+        )
     if isinstance(node, ast.BoolOp):
         values = [
             bool(_evaluate_node(value, bindings)) for value in node.values

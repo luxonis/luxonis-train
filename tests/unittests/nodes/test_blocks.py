@@ -36,7 +36,7 @@ from luxonis_train.nodes.blocks.unet import (
 )
 from luxonis_train.nodes.blocks.utils import forward_gather
 
-from .test_shape_contracts import _assert_contract
+from .shape_contracts import assert_contract
 
 
 def _assert_maps_features(
@@ -55,7 +55,7 @@ def _assert_maps_features(
     """
     batch, channels, height, width = x.shape
     spatial = height if out_size is None else out_size
-    _assert_contract(
+    assert_contract(
         module_type,
         {"x": x},
         {"output": module(x)},
@@ -72,25 +72,14 @@ def _assert_maps_features(
 
 
 @pytest.mark.parametrize(
-    ("kernel_size", "padding", "expected"),
-    [
-        (1, 2, 2),
-        (2, None, 1),
-        ((2, 4), None, (1, 2)),
-    ],
+    ("kernel_size", "padding", "expected"), [(1, 2, 2), (2, None, 1)]
 )
-def test_autopad(
-    kernel_size: int | tuple[int, ...],
-    padding: int | tuple[int, ...] | None,
-    expected: int | tuple[int, ...],
-):
-    if isinstance(kernel_size, int):
-        assert padding is None or isinstance(padding, int)
-        result = autopad(kernel_size, padding)
-    else:
-        assert padding is None or isinstance(padding, tuple)
-        result = autopad(kernel_size, padding)
-    assert result == expected
+def test_autopad_int(kernel_size: int, padding: int | None, expected: int):
+    assert autopad(kernel_size, padding) == expected
+
+
+def test_autopad_tuple():
+    assert autopad((2, 4)) == (1, 2)
 
 
 @pytest.mark.parametrize(
@@ -133,7 +122,7 @@ def test_prediction_blocks():
 
     precise = PreciseDecoupledBlock(8, 8, 8, n_classes=3, reg_max=4)
     features, classes, regressions = precise(x)
-    _assert_contract(
+    assert_contract(
         PreciseDecoupledBlock,
         {"x": x},
         {
@@ -146,7 +135,7 @@ def test_prediction_blocks():
 
     efficient = EfficientDecoupledBlock(8, n_classes=3)
     features, classes, regressions = efficient(x)
-    _assert_contract(
+    assert_contract(
         EfficientDecoupledBlock,
         {"x": x},
         {
@@ -165,7 +154,7 @@ def test_prediction_blocks():
     )
 
     distributions = regressions.repeat(1, 4, 1, 1)
-    _assert_contract(
+    assert_contract(
         DFL,
         {"x": distributions},
         {"output": DFL(reg_max=4)(distributions)},
@@ -295,13 +284,13 @@ def test_feature_processing_blocks():
         x,
         out_channels=4,
     )
-    _assert_contract(
+    assert_contract(
         FeatureFusionBlock,
         {"x1": x, "x2": x},
         {"output": FeatureFusionBlock(16, 8)(x, x)},
         {"B": 2, "C1": 8, "C2": 8, "C_out": 8, "H": 8, "W": 8},
     )
-    _assert_contract(
+    assert_contract(
         UpscaleOnline,
         {"x": x, "output_height": 12, "output_width": 10},
         {"output": UpscaleOnline()(x, 12, 10)},
@@ -374,7 +363,7 @@ def test_forward_gather_and_encoders():
         out_size=4,
     )
     encoder = UNetEncoder(3, 4, [1, 2], n_convolutions=1)
-    _assert_contract(
+    assert_contract(
         UNetEncoder,
         {"x": x},
         {"features": encoder(x)},
@@ -440,7 +429,7 @@ def test_decoders():
         n_repeats=1,
     )
     skip = torch.randn(2, 8, 8, 8)
-    _assert_contract(
+    assert_contract(
         UNetDecoderBlock,
         {"x": x, "skip_x": skip},
         {"output": unet_block(x, skip)},
@@ -471,7 +460,7 @@ def test_decoders():
     # `UNetDecoder.forward` pops the deepest feature off the list it is
     # given, so the documented inputs are kept in a separate list.
     documented_inputs = list(inputs)
-    _assert_contract(
+    assert_contract(
         UNetDecoder,
         {"inputs": documented_inputs},
         {"output": unet(inputs)},

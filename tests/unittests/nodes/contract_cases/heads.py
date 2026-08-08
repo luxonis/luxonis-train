@@ -341,97 +341,37 @@ def _ocr_ctc_head() -> list[ContractCase]:
     return cases
 
 
-def _efficient_bbox_head() -> list[ContractCase]:
+def _detection_cases(
+    head_type: type[BaseDetectionHead],
+    *,
+    kwargs: dict[str, Any] | None = None,
+    training: dict[str, int] | None = None,
+    export: dict[str, int] | None = None,
+) -> list[ContractCase]:
+    """Build the training and the export case of a detection head.
+
+    The default `Outputs` group documents what the head returns while
+    training, so the training case carries the outputs produced there
+    rather than letting the runner re-run an evaluating module.
+    """
     inputs = _detection_inputs()
-    training = EfficientBBoxHead(**_detection_kwargs()).train()
-    export = EfficientBBoxHead(**_detection_kwargs()).eval()
-    export.export = True
+    head_kwargs = _detection_kwargs() | (kwargs or {})
+    training_head = head_type(**head_kwargs).train()
+    export_head = head_type(**head_kwargs).eval()
+    export_head.export = True
     return [
         ContractCase(
-            module=training,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(A=DETECTION_ANCHORS),
-            outputs=training(inputs),
-        ),
-        ContractCase(
-            module=export,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(),
-            mode="export",
-        ),
-    ]
-
-
-def _efficient_keypoint_bbox_head() -> list[ContractCase]:
-    inputs = _detection_inputs()
-    training = EfficientKeypointBBoxHead(**_detection_kwargs()).train()
-    export = EfficientKeypointBBoxHead(**_detection_kwargs()).eval()
-    export.export = True
-    return [
-        ContractCase(
-            module=training,
+            module=training_head,
             inputs={"inputs": inputs},
             bindings=_detection_bindings(
-                A=DETECTION_ANCHORS, n_keypoints=N_KEYPOINTS
+                A=DETECTION_ANCHORS, **(training or {})
             ),
-            outputs=training(inputs),
+            outputs=training_head(inputs),
         ),
         ContractCase(
-            module=export,
+            module=export_head,
             inputs={"inputs": inputs},
-            bindings=_detection_bindings(n_keypoints=N_KEYPOINTS),
-            mode="export",
-        ),
-    ]
-
-
-def _precision_bbox_head() -> list[ContractCase]:
-    inputs = _detection_inputs()
-    training = PrecisionBBoxHead(
-        reg_max=REG_MAX, **_detection_kwargs()
-    ).train()
-    export = PrecisionBBoxHead(reg_max=REG_MAX, **_detection_kwargs()).eval()
-    export.export = True
-    return [
-        ContractCase(
-            module=training,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(reg_max=REG_MAX),
-            outputs=training(inputs),
-        ),
-        ContractCase(
-            module=export,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(),
-            mode="export",
-        ),
-    ]
-
-
-def _precision_segment_bbox_head() -> list[ContractCase]:
-    inputs = _detection_inputs()
-    extra: dict[str, Any] = {
-        "n_masks": N_MASKS,
-        "n_proto": 8,
-        "reg_max": REG_MAX,
-    }
-    kwargs = _detection_kwargs() | extra
-    training = PrecisionSegmentBBoxHead(**kwargs).train()
-    export = PrecisionSegmentBBoxHead(**kwargs).eval()
-    export.export = True
-    return [
-        ContractCase(
-            module=training,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(
-                A=DETECTION_ANCHORS, n_masks=N_MASKS, reg_max=REG_MAX
-            ),
-            outputs=training(inputs),
-        ),
-        ContractCase(
-            module=export,
-            inputs={"inputs": inputs},
-            bindings=_detection_bindings(n_masks=N_MASKS),
+            bindings=_detection_bindings(**(export or {})),
             mode="export",
         ),
     ]
@@ -444,13 +384,26 @@ CASES: dict[
     ClassificationHead: _classification_head,
     DDRNetSegmentationHead: _ddrnet_segmentation_head,
     DiscSubNetHead: _discsubnet_head,
-    EfficientBBoxHead: _efficient_bbox_head,
-    EfficientKeypointBBoxHead: _efficient_keypoint_bbox_head,
+    EfficientBBoxHead: lambda: _detection_cases(EfficientBBoxHead),
+    EfficientKeypointBBoxHead: lambda: _detection_cases(
+        EfficientKeypointBBoxHead,
+        training={"n_keypoints": N_KEYPOINTS},
+        export={"n_keypoints": N_KEYPOINTS},
+    ),
     FOMOHead: _fomo_head,
     GhostFaceNetHead: _ghostfacenet_head,
     OCRCTCHead: _ocr_ctc_head,
-    PrecisionBBoxHead: _precision_bbox_head,
-    PrecisionSegmentBBoxHead: _precision_segment_bbox_head,
+    PrecisionBBoxHead: lambda: _detection_cases(
+        PrecisionBBoxHead,
+        kwargs={"reg_max": REG_MAX},
+        training={"reg_max": REG_MAX},
+    ),
+    PrecisionSegmentBBoxHead: lambda: _detection_cases(
+        PrecisionSegmentBBoxHead,
+        kwargs={"n_masks": N_MASKS, "n_proto": 8, "reg_max": REG_MAX},
+        training={"n_masks": N_MASKS, "reg_max": REG_MAX},
+        export={"n_masks": N_MASKS},
+    ),
     SegmentationHead: _segmentation_head,
     TransformerClassificationHead: _transformer_classification_head,
     TransformerSegmentationHead: _transformer_segmentation_head,

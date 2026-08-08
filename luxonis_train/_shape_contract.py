@@ -45,9 +45,8 @@ present but holding no tensors, in some configurations. Such an entry is
 skipped by the test-side matcher instead of being reported as an
 undocumented structure.
 
-Shapes and constraints are LaTeX math. The supported constructs are the
-ones :func:`parse_math_expression` translates, that is integer literals,
-symbols, ``\left\lfloor \frac{a}{b} \right\rfloor``,
+Shapes and constraints are LaTeX math. The supported constructs are
+integer literals, symbols, ``\left\lfloor \frac{a}{b} \right\rfloor``,
 ``\left\lceil \frac{a}{b} \right\rceil``, ``\land``, ``\lor``, ``\le``,
 ``\ge``, ``\ne``, ``=``, ``<``, ``>``, ``+``, ``-``, ``\cdot`` and
 ``\operatorname{mod}``. Anything else is rejected.
@@ -599,24 +598,8 @@ def _split_dimensions(text: str) -> list[str]:
     return dimensions
 
 
-def parse_math_expression(text: str) -> int | str:
-    """Translate a LaTeX math expression into a Python expression.
-
-    Args:
-        text: The LaTeX source of a dimension or a constraint.
-
-    Returns:
-        An integer literal, or a Python expression over shape symbols.
-
-    Raises:
-        ShapeContractError: If the expression uses an unsupported
-            construct.
-
-    """
-    return _parse_math_expression(text)
-
-
 def _parse_math_expression(text: str) -> int | str:
+    """Translate a LaTeX math expression into a Python expression."""
     text = text.strip()
     try:
         return int(text)

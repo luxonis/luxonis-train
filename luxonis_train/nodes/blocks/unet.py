@@ -9,7 +9,7 @@ from .utils import forward_gather
 
 
 class EncoderBlock(nn.Sequential):
-    """Encoder Block module."""
+    """Optional max-pool followed by a stack of convolutions."""
 
     @typechecked
     def __init__(
@@ -49,7 +49,7 @@ class EncoderBlock(nn.Sequential):
 
 
 class SimpleEncoder(nn.Sequential):
-    """Simple Encoder module."""
+    """Encoder halving the resolution once per width multiplier."""
 
     @typechecked
     def __init__(
@@ -99,7 +99,7 @@ class SimpleEncoder(nn.Sequential):
 
 
 class UNetEncoder(SimpleEncoder):
-    """U Net Encoder module."""
+    """Encoder keeping every stage output for the decoder skips."""
 
     def forward(self, x: Tensor) -> list[Tensor]:
         r"""Collect features from each U-Net encoder stage.
@@ -129,7 +129,11 @@ class UNetEncoder(SimpleEncoder):
 
 
 class BaseDecoderBlock(nn.Module):
-    """Base Decoder Block module."""
+    """Upsampling block followed by a stack of convolutions.
+
+    Subclasses decide how many channels reach ``conv``, which is what
+    distinguishes a plain decoder from one that concatenates a skip.
+    """
 
     @typechecked
     def __init__(
@@ -160,7 +164,7 @@ class BaseDecoderBlock(nn.Module):
 
 
 class SimpleDecoderBlock(BaseDecoderBlock):
-    """Simple Decoder Block module."""
+    """Decoder block without a skip connection."""
 
     @typechecked
     def __init__(
@@ -211,7 +215,7 @@ class SimpleDecoderBlock(BaseDecoderBlock):
 
 
 class UNetDecoderBlock(BaseDecoderBlock):
-    """U Net Decoder Block module."""
+    """Decoder block concatenating the matching encoder features."""
 
     @typechecked
     def __init__(
@@ -266,7 +270,7 @@ class UNetDecoderBlock(BaseDecoderBlock):
 
 
 class BaseDecoder(nn.Module):
-    """Base Decoder module."""
+    """Stack of decoder blocks mirroring the encoder widths."""
 
     @typechecked
     def __init__(
@@ -301,7 +305,7 @@ class BaseDecoder(nn.Module):
 
 
 class SimpleDecoder(BaseDecoder):
-    """Simple Decoder module."""
+    """Decoder consuming only the deepest encoder feature map."""
 
     @typechecked
     def __init__(
@@ -345,7 +349,7 @@ class SimpleDecoder(BaseDecoder):
 
 
 class UNetDecoder(BaseDecoder):
-    """U Net Decoder module."""
+    """Decoder consuming the full encoder pyramid through skips."""
 
     @typechecked
     def __init__(

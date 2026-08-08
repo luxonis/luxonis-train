@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks.blocks import ConvBlock
 
 
 class OriginalGhostModuleV2(nn.Module):
-    """Original Ghost Module V2 module."""
+    """Half the features from a conv, half from a cheap depthwise one."""
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class OriginalGhostModuleV2(nn.Module):
 
 
 class AttentionGhostModuleV2(OriginalGhostModuleV2):
-    """Attention Ghost Module V2 module."""
+    """`OriginalGhostModuleV2` gated by a decoupled attention branch."""
 
     def __init__(
         self,
@@ -158,7 +158,7 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
 
 
 class GhostBottleneckV2(nn.Module):
-    """Ghost Bottleneck V2 module."""
+    """Residual bottleneck built from two ghost modules."""
 
     def __init__(
         self,
@@ -273,7 +273,7 @@ class GhostBottleneckV2(nn.Module):
 
 
 class GhostBottleneckLayer(nn.Sequential):
-    """Ghost Bottleneck Layer module."""
+    """One GhostFaceNet stage, a run of `GhostBottleneckV2` blocks."""
 
     def __init__(
         self,

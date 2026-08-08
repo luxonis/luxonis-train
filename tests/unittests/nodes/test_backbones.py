@@ -58,7 +58,7 @@ from luxonis_train.nodes.backbones.rexnetv1 import (
 from luxonis_train.nodes.blocks import ResNetBlock
 from luxonis_train.registry import NODES
 
-from .test_shape_contracts import _assert_contract
+from .shape_contracts import assert_contract
 
 IN_SIZE = Size((3, 64, 64))
 
@@ -71,7 +71,7 @@ def _assert_pyramid(
 ) -> None:
     """Check a backbone returning a feature pyramid."""
     batch, channels, height, width = next(iter(inputs.values())).shape
-    _assert_contract(
+    assert_contract(
         module_type,
         inputs,
         {"features": outputs},
@@ -126,7 +126,7 @@ def test_context_spatial_paths(monkeypatch: pytest.MonkeyPatch):
     }
 
     spatial = SpatialPath(3, 128)
-    _assert_contract(
+    assert_contract(
         SpatialPath,
         {"x": x},
         {"output": spatial(x)},
@@ -137,16 +137,14 @@ def test_context_spatial_paths(monkeypatch: pytest.MonkeyPatch):
     for _ in range(2):
         # The second call reuses the refinement blocks that the first
         # one created lazily.
-        _assert_contract(
-            ContextPath, {"x": x}, {"features": context(x)}, dict(image)
-        )
+        assert_contract(ContextPath, {"x": x}, {"features": context(x)}, image)
 
     node = ContextSpatial(
         context_backbone=_ContextBackbone(),
         in_sizes=IN_SIZE,
     )
-    _assert_contract(
-        ContextSpatial, {"inputs": x}, {"features": node(x)}, dict(image)
+    assert_contract(
+        ContextSpatial, {"inputs": x}, {"features": node(x)}, image
     )
 
     monkeypatch.setattr(NODES, "get", lambda _: _ContextBackbone)
@@ -254,11 +252,11 @@ def test_efficientvit_block_options():
         expand_ratio=2,
         use_residual=True,
     ).eval()
-    _assert_contract(
+    assert_contract(
         MobileBottleneckBlock,
         {"x": x},
         {"output": block(x)},
-        dict(preserving),
+        preserving,
     )
 
     attention = LightweightMLABlock(
@@ -269,11 +267,11 @@ def test_efficientvit_block_options():
         scale_factors=(),
         use_residual=False,
     ).eval()
-    _assert_contract(
+    assert_contract(
         LightweightMLABlock,
         {"x": x},
         {"output": attention(x)},
-        dict(preserving),
+        preserving,
     )
 
     linear_input = torch.randn(1, 6, 2, 3, dtype=torch.float16)
@@ -347,7 +345,7 @@ def test_micronet_block_edges():
         groups_1=(0, 4),
         groups_2=(2, 2),
     ).eval()
-    _assert_contract(
+    assert_contract(
         MicroBlock,
         {"inputs": x},
         {"output": block(x)},
@@ -507,7 +505,7 @@ def test_recsubnet():
 
     x = torch.randn(2, 3, 16, 16)
     output = node(x)
-    _assert_contract(
+    assert_contract(
         RecSubNet,
         {"x": x},
         output,
@@ -552,7 +550,7 @@ def test_rexnet_and_linear_bottlenecks():
     )
 
     features = torch.randn(2, 8, 8, 8)
-    _assert_contract(
+    assert_contract(
         LinearBottleneck,
         {"x": features},
         {"output": LinearBottleneck(8, 8, t=1)(features)},
@@ -566,7 +564,7 @@ def test_rexnet_and_linear_bottlenecks():
             "W_out": 8,
         },
     )
-    _assert_contract(
+    assert_contract(
         LinearBottleneck,
         {"x": features},
         {"output": LinearBottleneck(8, 16, t=6, stride=2)(features)},
@@ -664,7 +662,7 @@ def test_dinov3(monkeypatch: pytest.MonkeyPatch):
         in_sizes=Size((3, 32, 32)),
     )
     x = torch.randn(2, 3, 32, 32)
-    _assert_contract(
+    assert_contract(
         DinoV3,
         {"inputs": x},
         {"features": dense(x)},
@@ -686,7 +684,7 @@ def test_dinov3(monkeypatch: pytest.MonkeyPatch):
         original_in_shape=Size((3, 32, 32)),
         in_sizes=Size((3, 32, 32)),
     )
-    _assert_contract(
+    assert_contract(
         DinoV3,
         {"inputs": x},
         {"features": sequence(x)},
@@ -716,7 +714,7 @@ def test_rope_position_embedding(normalize_coords: str):
         rescale_coords=1.2,
     )
     sin, cos = rope(H=2, W=3)
-    _assert_contract(
+    assert_contract(
         RopePositionEmbedding,
         {"H": 2, "W": 3},
         {"sin": sin, "cos": cos},

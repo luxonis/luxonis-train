@@ -8,7 +8,7 @@ from luxonis_train.nodes.necks.reppan_neck import RepPANNeck
 from luxonis_train.nodes.necks.svtr_neck import SVTRNeck
 from luxonis_train.nodes.necks.svtr_neck.blocks import Attention, SVTRBlock
 
-from .test_shape_contracts import _assert_contract
+from .shape_contracts import assert_contract
 
 
 @pytest.mark.parametrize(
@@ -41,7 +41,7 @@ def test_reppan_neck(
     outputs = node(inputs)
 
     output_channels = (4, 8, 8, 8) if n_heads == 4 else (8,) * n_heads
-    _assert_contract(
+    assert_contract(
         RepPANNeck,
         {"inputs": inputs},
         {"features": outputs},
@@ -113,7 +113,7 @@ def test_svtr_neck(
     node.initialize_weights("yolo")
 
     x = torch.randn(2, 16, 4, 4)
-    _assert_contract(
+    assert_contract(
         SVTRNeck,
         {"x": x},
         {"output": node(x)},
@@ -130,7 +130,7 @@ def test_svtr_attention_options():
         kernel_size=3,
         qk_scale=0.5,
     )
-    _assert_contract(
+    assert_contract(
         Attention,
         {"x": x},
         {"output": global_attention(x)},

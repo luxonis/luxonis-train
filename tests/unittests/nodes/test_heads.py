@@ -29,7 +29,7 @@ from luxonis_train.nodes.heads.precision_seg_bbox_head import (
 )
 from luxonis_train.utils import DatasetMetadata
 
-from .test_shape_contracts import _assert_contract
+from .shape_contracts import assert_contract
 
 ORIGINAL_IN_SHAPE = Size((3, 32, 32))
 DETECTION_SIZES = [Size((8, 8, 8)), Size((8, 4, 4))]
@@ -66,7 +66,7 @@ def test_classification_head_and_base_head(monkeypatch: pytest.MonkeyPatch):
     ).eval()
 
     inputs = torch.randn(2, 8, 4, 4)
-    _assert_contract(
+    assert_contract(
         ClassificationHead,
         {"inputs": inputs},
         {"logits": node(inputs)},
@@ -111,20 +111,20 @@ def test_segmentation_heads():
     }
 
     segmentation = SegmentationHead(**kwargs).eval()
-    _assert_contract(
+    assert_contract(
         SegmentationHead,
         {"inputs": inputs},
         {"logits": segmentation(inputs)},
-        dict(bindings),
+        bindings,
     )
     assert segmentation.get_custom_head_config() == {"is_softmax": False}
 
     bisenet = BiSeNetHead(intermediate_channels=8, **kwargs).eval()
-    _assert_contract(
+    assert_contract(
         BiSeNetHead,
         {"inputs": inputs},
         {"logits": bisenet(inputs)},
-        dict(bindings),
+        bindings,
     )
     assert bisenet.get_custom_head_config() == {"is_softmax": False}
 
@@ -135,7 +135,7 @@ def test_transformer_heads():
         **_head_kwargs(Size((8,))),
     ).eval()
     x = torch.randn(2, 8)
-    _assert_contract(
+    assert_contract(
         TransformerClassificationHead,
         {"x": x},
         {"logits": classification(x)},
@@ -154,7 +154,7 @@ def test_transformer_heads():
         )
     ).eval()
     features = [torch.randn(2, 8, 4, 4), torch.randn(2, 16, 4, 4)]
-    _assert_contract(
+    assert_contract(
         TransformerSegmentationHead,
         {"x": features},
         {"logits": segmentation(features)},
@@ -188,21 +188,21 @@ def test_ddrnet_segmentation_head_modes():
         inter_mode="pixel_shuffle",
         **kwargs,
     ).eval()
-    _assert_contract(
+    assert_contract(
         DDRNetSegmentationHead,
         {"inputs": inputs},
         {"logits": head(inputs)},
-        dict(bindings),
+        bindings,
     )
     assert head.get_weights_url().endswith("ddrnet_head_23slim_coco.ckpt")
     assert head.get_custom_head_config() == {"is_softmax": False}
 
     head.export = True
-    _assert_contract(
+    assert_contract(
         DDRNetSegmentationHead,
         {"inputs": inputs},
         {"labels": head(inputs)},
-        dict(bindings),
+        bindings,
         mode="export",
     )
     assert head(inputs).dtype == torch.int32
@@ -253,15 +253,15 @@ def test_discsubnet_head():
     inputs = {"reconstruction": reconstruction, "original": original}
 
     output = node(**inputs)
-    _assert_contract(DiscSubNetHead, inputs, output, dict(bindings))
+    assert_contract(DiscSubNetHead, inputs, output, bindings)
     assert output["reconstruction"] is reconstruction
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         DiscSubNetHead,
         inputs,
         node(**inputs),
-        dict(bindings),
+        bindings,
         mode="export",
     )
     assert DiscSubNetHead.get_variants()[0] == "n"
@@ -278,9 +278,7 @@ def test_fomo_head_modes(use_nms: bool):
     inputs = torch.randn(2, 8, 4, 4)
     bindings = {"B": 2, "C_in": 8, "H": 4, "W": 4, "n_classes": 2}
 
-    _assert_contract(
-        FOMOHead, {"inputs": inputs}, node(inputs), dict(bindings)
-    )
+    assert_contract(FOMOHead, {"inputs": inputs}, node(inputs), bindings)
 
     node.eval()
     output = node(inputs)
@@ -295,11 +293,11 @@ def test_fomo_head_modes(use_nms: bool):
     assert empty[0].shape == (0, 1, 4)
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         FOMOHead,
         {"inputs": inputs},
         node(inputs),
-        dict(bindings),
+        bindings,
         mode="export",
     )
 
@@ -312,7 +310,7 @@ def test_ghostfacenet_head():
     ).eval()
     node.initialize_weights("none")
     x = torch.randn(2, 16, 2, 2)
-    _assert_contract(
+    assert_contract(
         GhostFaceNetHead,
         {"x": x},
         {"embedding": node(x)},
@@ -331,7 +329,7 @@ def test_ocr_ctc_head(mid_channels: int | None):
     node.initialize_weights("none")
     inputs = torch.randn(2, 16, 1, 6)
 
-    _assert_contract(
+    assert_contract(
         OCRCTCHead,
         {"x": inputs},
         {"logits": node(inputs)},
@@ -390,7 +388,7 @@ def test_efficient_bbox_head_modes():
     inputs = _detection_inputs()
     assert node.n_heads == 2
     assert node.stride.tolist() == [8, 16]
-    _assert_contract(
+    assert_contract(
         EfficientBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -412,7 +410,7 @@ def test_efficient_bbox_head_modes():
     assert node.keep_detections_pre_nms
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         EfficientBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -456,7 +454,7 @@ def test_efficient_keypoint_bbox_head_modes():
         **_detection_kwargs(),
     )
     inputs = _detection_inputs()
-    _assert_contract(
+    assert_contract(
         EfficientKeypointBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -477,7 +475,7 @@ def test_efficient_keypoint_bbox_head_modes():
     ]
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         EfficientKeypointBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -496,7 +494,7 @@ def test_precision_bbox_head_modes(reg_max: int):
         **_detection_kwargs(),
     )
     inputs = _detection_inputs()
-    _assert_contract(
+    assert_contract(
         PrecisionBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -514,7 +512,7 @@ def test_precision_bbox_head_modes(reg_max: int):
     assert node.get_custom_head_config()["subtype"] == "yolov8"
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         PrecisionBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -535,7 +533,7 @@ def test_precision_segment_bbox_head_modes():
         **_detection_kwargs(),
     )
     inputs = _detection_inputs()
-    _assert_contract(
+    assert_contract(
         PrecisionSegmentBBoxHead,
         {"inputs": inputs},
         node(inputs),
@@ -550,7 +548,7 @@ def test_precision_segment_bbox_head_modes():
     assert len(output["instance_segmentation"]) == 2
 
     node.export = True
-    _assert_contract(
+    assert_contract(
         PrecisionSegmentBBoxHead,
         {"inputs": inputs},
         node(inputs),

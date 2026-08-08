@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks import DropPath
 
 
 class ConvMixer(nn.Module):
-    """Conv Mixer module."""
+    """Token mixer folding the sequence back to 2D for a depthwise conv."""
 
     @typechecked
     def __init__(
@@ -64,7 +64,7 @@ class ConvMixer(nn.Module):
 
 
 class Attention(nn.Module):
-    """Attention module."""
+    """Multi-head self-attention, globally or over a local window."""
 
     @typechecked
     def __init__(
@@ -173,7 +173,7 @@ class Attention(nn.Module):
 
 
 class SVTRBlock(nn.Module):
-    """S V T R Block module."""
+    """Transformer block of SVTR: a token mixer plus an MLP."""
 
     @typechecked
     def __init__(

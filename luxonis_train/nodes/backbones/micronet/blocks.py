@@ -475,7 +475,7 @@ def _make_divisible(value: int, divisor: int) -> int:
 
 
 class SpatialSepConvSF(nn.Module):
-    """Spatial Sep Conv S F module."""
+    """Spatially separable convolution ending in a channel shuffle."""
 
     def __init__(
         self,
@@ -533,7 +533,7 @@ class SpatialSepConvSF(nn.Module):
 
 
 class Stem(nn.Module):
-    """Stem module."""
+    """First MicroNet stage, a separable convolution and ReLU6."""
 
     def __init__(
         self, in_channels: int, stride: int, outs: tuple[int, int] = (4, 4)
@@ -567,7 +567,7 @@ class Stem(nn.Module):
 
 
 class DepthSpatialSepConv(nn.Module):
-    """Depth Spatial Sep Conv module."""
+    """Depthwise convolution factorized over the two spatial axes."""
 
     def __init__(
         self,

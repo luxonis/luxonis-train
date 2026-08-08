@@ -197,7 +197,7 @@ class ReXNetV1_lite(BaseNode):
 
 
 class LinearBottleneck(nn.Module):
-    """Linear Bottleneck module."""
+    """Inverted bottleneck adding the residual to the leading channels."""
 
     def __init__(
         self,
