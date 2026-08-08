@@ -165,11 +165,23 @@ a quick check that every docstring parses, run PyDoctor with no arguments:
 uv run pydoctor
 ```
 
-Do not pass `--docformat` on the command line. The package is mid-migration,
-so the global docformat must stay Epytext and `luxonis_train.nodes` selects
-Google through its own `__docformat__` declaration. Forcing
-`--docformat google` reports every Epytext docstring in the rest of the
-package as a syntax error.
+To check a subtree, pass the package or the directory, never a shell glob:
+
+```bash
+uv run pydoctor luxonis_train/nodes      # works
+uv run pydoctor luxonis_train/nodes/*    # broken
+```
+
+A glob hands PyDoctor each subpackage as a separate top-level root, so the
+relative imports in `luxonis_train/nodes/__init__.py` have no parent and
+PyDoctor reports `relative import level (1) too high`. It also picks up
+`__pycache__` and `README.md` as modules.
+
+Do not pass `--docformat` on the command line either. The package is
+mid-migration, so the global docformat must stay Epytext and
+`luxonis_train.nodes` selects Google through its own `__docformat__`
+declaration. Forcing `--docformat google` reports every Epytext docstring in
+the rest of the package as a syntax error.
 
 CI builds the published site through `tools/build_pydoctor_docs.py`, which
 adds the project metadata and the versioned output layout. Run it the same way
