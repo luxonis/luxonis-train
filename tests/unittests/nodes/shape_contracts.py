@@ -2,10 +2,10 @@
 
 """Torch-facing helpers on top of the shape contract grammar.
 
-The grammar itself lives in `tools.shape_contract`, which the docs build
-uses as well. This module only knows about `torch`, about Google-style
-docstring sections, and about matching real tensors against a parsed
-contract.
+The grammar itself lives in `luxonis_train._shape_contract`, which the
+docs build uses as well. This module only knows about `torch`, about
+Google-style docstring sections, and about matching real tensors against
+a parsed contract.
 """
 
 import ast
@@ -21,14 +21,16 @@ from typing import Any
 from torch import Tensor, nn
 
 import luxonis_train.nodes
-from tools.shape_contract import (
+from luxonis_train._shape_contract import (
     ShapeContract,
     ShapeContractError,
     ShapeError,
     ShapeSpec,
     unwrap_optional,
 )
-from tools.shape_contract import parse_shape_contract as parse_contract_source
+from luxonis_train._shape_contract import (
+    parse_shape_contract as parse_contract_source,
+)
 
 __all__ = [
     "ShapeContract",

@@ -53,6 +53,8 @@ symbols, ``\left\lfloor \frac{a}{b} \right\rfloor``,
 ``\operatorname{mod}``. Anything else is rejected.
 """
 
+__docformat__ = "google"
+
 import re
 import textwrap
 from collections.abc import Sequence
@@ -529,6 +531,20 @@ def _parse_math_path(text: str) -> str:
 
 
 def _parse_math_symbol(text: str) -> str:
+    # A role and an index share one subscript, as in
+    # `C_{\mathrm{in}, i}`. Writing this as two subscripts would be
+    # invalid LaTeX and would not render.
+    role_indexed = re.fullmatch(
+        r"(?P<base>.+)_\{\\mathrm\{(?P<role>[A-Za-z0-9_]+)\}, "
+        r"(?P<index>i|\d+)\}",
+        text,
+    )
+    if role_indexed:
+        return (
+            f"{_parse_math_symbol(role_indexed.group('base'))}_"
+            f"{role_indexed.group('role')}"
+            f"[{role_indexed.group('index')}]"
+        )
     indexed = re.fullmatch(r"(?P<base>.+)_\{(?P<index>i|\d+)\}", text)
     if indexed:
         return (

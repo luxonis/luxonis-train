@@ -146,8 +146,8 @@ find them with the rest of the callable contract. An entry written as
 the tests can execute it against the failing call to check that the documented
 error really is raised.
 
-The grammar has a single implementation, `tools/shape_contract.py`. The
-documentation build and the test suite both go through it, so a contract that
+The grammar has a single implementation, `luxonis_train/_shape_contract.py`.
+The documentation build and the test suite both go through it, so a contract that
 the tests accept is exactly one the documentation build accepts, and there is
 no second grammar to keep in sync. The directive validates the body and emits
 standard Docutils nodes with semantic `shape-contract`, `shape-inputs`,
@@ -157,9 +157,23 @@ rendered documentation parse the same structure. A subclass that inherits a
 repository-defined `forward` method also inherits its argument and shape
 documentation.
 
-The build is driven by `tools/build_pydoctor_docs.py`, which sets the global
-docformat and the custom PyDoctor system class that registers the directive.
-Build the API documentation locally with:
+The `[tool.pydoctor]` section of `pyproject.toml` names the custom PyDoctor
+system class that registers the directive, so any invocation picks it up. For
+a quick check that every docstring parses, run PyDoctor with no arguments:
+
+```bash
+uv run pydoctor
+```
+
+Do not pass `--docformat` on the command line. The package is mid-migration,
+so the global docformat must stay Epytext and `luxonis_train.nodes` selects
+Google through its own `__docformat__` declaration. Forcing
+`--docformat google` reports every Epytext docstring in the rest of the
+package as a syntax error.
+
+CI builds the published site through `tools/build_pydoctor_docs.py`, which
+adds the project metadata and the versioned output layout. Run it the same way
+locally with:
 
 ```bash
 uv run --group docs python tools/build_pydoctor_docs.py --mode current --output apidocs

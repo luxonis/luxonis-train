@@ -55,8 +55,8 @@ Inside `luxonis_train.nodes` the following are mandatory:
 - Every repository-defined `forward` method has Google-style `Args` and
   `Returns` sections, followed by a machine-readable `.. shape-contract::`
   block. `CONTRIBUTING.md` describes the grammar and
-  `tools/shape_contract.py` implements it; that module is the final authority
-  on what is accepted.
+  `luxonis_train/_shape_contract.py` implements it; that module is the final
+  authority on what is accepted.
 - `Args` entries do not repeat the type from the signature. Write
   `x: Feature map to project.`, not `x (Tensor): Feature map to project.`.
 - Every contract has a runtime case registered under

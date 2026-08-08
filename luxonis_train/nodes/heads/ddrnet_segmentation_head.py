@@ -136,7 +136,7 @@ class DDRNetSegmentationHead(BaseHead):
 
             Outputs
                 :math:`\mathrm{logits}`
-                    :math:`(B,n_{\mathrm{classes}},H_{\mathrm{image}},W_{\mathrm{image}})`
+                    :math:`(B, n_{\mathrm{classes}}, H_{\mathrm{image}}, W_{\mathrm{image}})`
 
             Export outputs
                 :math:`\mathrm{labels}`
@@ -146,7 +146,7 @@ class DDRNetSegmentationHead(BaseHead):
                 :math:`n_{\mathrm{classes}}`
                     Number of predicted classes.
 
-        """
+        """  # noqa: E501
         x: Tensor = self.relu(self.bn1(inputs))
         x = self.conv1(x)
         x = self.relu(self.bn2(x))

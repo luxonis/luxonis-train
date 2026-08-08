@@ -77,13 +77,13 @@ class BiSeNetHead(BaseHead):
 
             Outputs
                 :math:`\mathrm{logits}`
-                    :math:`(B,n_{\mathrm{classes}},H_{\mathrm{image}},W_{\mathrm{image}})`
+                    :math:`(B, n_{\mathrm{classes}}, H_{\mathrm{image}}, W_{\mathrm{image}})`
 
             Symbols
                 :math:`n_{\mathrm{classes}}`
                     Number of predicted classes.
 
-        """
+        """  # noqa: E501
         x = self.conv_3x3(inputs)
         x = self.conv_1x1(x)
         return self.upscale(x)

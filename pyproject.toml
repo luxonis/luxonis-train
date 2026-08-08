@@ -98,6 +98,20 @@ include = ["luxonis_train*"]
 [tool.setuptools.dynamic]
 version = { attr = "luxonis_train.__version__" }
 
+# Keep these settings here rather than only in tools/build_pydoctor_docs.py,
+# so that a bare `uv run pydoctor` registers the `shape-contract` directive
+# too. Without `system-class` every contract is reported as a syntax error.
+# The package is mid-migration, so the global docformat stays Epytext and
+# the migrated modules declare `__docformat__ = "google"` themselves.
+[tool.pydoctor]
+add-package = ["luxonis_train"]
+docformat = "epytext"
+project-name = "luxonis-train"
+project-url = "https://github.com/luxonis/luxonis-train"
+html-output = "apidocs"
+theme = "readthedocs"
+system-class = "luxonis_train._pydoctor.LuxonisTrainSystem"
+
 [tool.ruff]
 target-version = "py310"
 line-length = 79
@@ -198,7 +212,6 @@ reportMatchNotExhaustive = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
 addopts = "--disable-warnings -vv --basetemp=tests/tmp/"
 filterwarnings = [
   "ignore::DeprecationWarning",

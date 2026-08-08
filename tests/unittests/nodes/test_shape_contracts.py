@@ -1,6 +1,7 @@
 import builtins
 import inspect
 from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +12,14 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from torch import Size, nn
 
+from luxonis_train._pydoctor import LuxonisTrainSystem
+from luxonis_train._shape_contract import (
+    ShapeContractError,
+    register_shape_contract_directive,
+)
+from luxonis_train._shape_contract import (
+    parse_shape_contract as parse_contract_source,
+)
 from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
     RopePositionEmbedding,
 )
@@ -33,13 +42,6 @@ from luxonis_train.nodes.necks.svtr_neck.blocks import (
     Attention,
     ConvMixer,
     SVTRBlock,
-)
-from tools.shape_contract import (
-    ShapeContractError,
-    register_shape_contract_directive,
-)
-from tools.shape_contract import (
-    parse_shape_contract as parse_contract_source,
 )
 
 from .contract_cases import (
@@ -327,6 +329,27 @@ def test_shape_contract_directive_rejects_invalid_grammar(
     assert message in errors[-1].astext()
     with pytest.raises(ShapeContractError):
         parse_contract_source(source, context="test contract")
+
+
+def test_pyproject_registers_the_directive_for_every_pydoctor_run():
+    """The docs build must not be the only path that knows the grammar.
+
+    PyDoctor only learns about `shape-contract` through the system class
+    named in `[tool.pydoctor]`. Without that entry a plain
+    `uv run pydoctor` reports every contract in the package as a docstring
+    syntax error, because the directive is never registered.
+    """
+    pyproject = Path(__file__).resolve().parents[3] / "pyproject.toml"
+    settings = pyproject.read_text(encoding="utf-8").split("[tool.pydoctor]")
+    assert len(settings) == 2, "pyproject.toml has no [tool.pydoctor] section"
+    section = settings[1].split("\n[", 1)[0]
+
+    declared = f"{LuxonisTrainSystem.__module__}.{LuxonisTrainSystem.__name__}"
+    assert f'system-class = "{declared}"' in section
+    # Forcing a single docformat would misparse the half of the package
+    # that is still Epytext, so the global default stays Epytext and the
+    # migrated packages opt in with their own `__docformat__`.
+    assert 'docformat = "epytext"' in section
 
 
 def test_shape_contract_supports_optional_entries():

@@ -213,11 +213,11 @@ class RepPANNeck(BaseNode):
 
             Inputs
                 :math:`\mathrm{inputs}_{i}` (:math:`i = 0, \ldots, N - 1`)
-                    :math:`(B, C_{\mathrm{in}}_{i}, H_{i}, W_{i})`
+                    :math:`(B, C_{\mathrm{in}, i}, H_{i}, W_{i})`
 
             Outputs
                 :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
-                    :math:`(B, C_{\mathrm{out}}_{i}, H_{i}, W_{i})`
+                    :math:`(B, C_{\mathrm{out}, i}, H_{i}, W_{i})`
 
             Constraints
                 - :math:`2 \le N \land N \le 4`

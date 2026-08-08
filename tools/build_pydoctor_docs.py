@@ -4,7 +4,6 @@
 import argparse
 import ast
 import json
-import os
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
@@ -14,7 +13,7 @@ PACKAGE = "luxonis_train"
 PROJECT_NAME = "luxonis-train"
 PROJECT_URL = "https://github.com/luxonis/luxonis-train"
 PAGES_URL = "https://luxonis.github.io/luxonis-train"
-SYSTEM_CLASS = "tools.pydoctor_extensions.LuxonisTrainSystem"
+SYSTEM_CLASS = "luxonis_train._pydoctor.LuxonisTrainSystem"
 
 # The package is mid-migration from Epytext to Google docstrings. The
 # modules that have moved declare `__docformat__ = "google"` themselves,
@@ -118,7 +117,7 @@ def build_pydoctor(
         command += ["--html-base-url", base_url]
     command.append(str(repo_root / PACKAGE))
 
-    completed = subprocess.run(command, check=False, env=build_env(repo_root))
+    completed = subprocess.run(command, check=False)
     if completed.returncode == 0:
         return
     if completed.returncode == 2 and (destination / "index.html").is_file():
@@ -128,27 +127,6 @@ def build_pydoctor(
         )
         return
     raise subprocess.CalledProcessError(completed.returncode, command)
-
-
-def build_env(repo_root: Path) -> dict[str, str]:
-    """Return an environment where `tools` is importable.
-
-    Args:
-        repo_root: Directory holding the `tools` package.
-
-    Returns:
-        A copy of the current environment with the repository root
-        prepended to `PYTHONPATH`, so that pydoctor can import the
-        class named by `--system-class`.
-
-    """
-    env = dict(os.environ)
-    entries = [str(repo_root)]
-    existing = env.get("PYTHONPATH")
-    if existing:
-        entries.append(existing)
-    env["PYTHONPATH"] = os.pathsep.join(entries)
-    return env
 
 
 def read_project_version(repo_root: Path) -> str:
