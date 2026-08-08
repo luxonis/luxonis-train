@@ -10,6 +10,10 @@ from luxonis_train.typing import Packet
 
 
 class DiscSubNetHead(BaseHead):
+    """DiscSubNetHead: A discriminative sub-network that detects and
+    segments anomalies in images.
+    """
+
     task = Tasks.ANOMALY_DETECTION
 
     in_channels: int
@@ -34,20 +38,20 @@ class DiscSubNetHead(BaseHead):
         of anomalies by distinguishing between the reconstructed image
         and the input.
 
-        @type base_channels: int
-        @param base_channels: The base number of filters used in the
-            encoder and decoder blocks.
-        @type width_multipliers: list[float]
-        @param width_multipliers: A list of multipliers that determine
-            the number of filters in each block of the encoder and
-            decoder. Each multiplier is applied to the base_channels to
-            calculate the number of filters for that block. For example,
-            if base_channels is 32 and width_multipliers is [1, 2], the
-            first block will have 32 filters and the second block will
-            have 64 filters.
-        @type out_channels: int
-        @param out_channels: Number of output channels for the decoder.
-            Defaults to 2 (for segmentation masks).
+        Args:
+            base_channels: The base number of filters used in the
+                encoder and decoder blocks.
+            width_multipliers: A list of multipliers that determine the
+                number of filters in each block of the encoder and
+                decoder. Each multiplier is applied to the base_channels
+                to calculate the number of filters for that block. For
+                example, if base_channels is 32 and width_multipliers is
+                [1, 2], the first block will have 32 filters and the
+                second block will have 64 filters.
+            out_channels: Number of output channels for the decoder.
+                Defaults to 2 (for segmentation masks).
+            **kwargs: Base head arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -61,7 +65,38 @@ class DiscSubNetHead(BaseHead):
     def forward(
         self, reconstruction: Tensor, original: Tensor
     ) -> Packet[Tensor]:
-        """Perform the forward pass through the encoder and decoder."""
+        r"""Compare reconstructed and original images for anomalies.
+
+        Args:
+            reconstruction: Reconstructed image batch.
+            original: Original image batch used as the reconstruction target.
+
+        Returns:
+            Packet containing anomaly segmentation and reconstruction outputs.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{reconstruction}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+                :math:`\mathrm{original}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{segmentation}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+                :math:`\mathrm{reconstruction}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Export outputs
+                :math:`\mathrm{segmentation}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         x = torch.cat([reconstruction, original], dim=1)
         seg_out = self.decoder_segment(self.encoder_segment(x))
 

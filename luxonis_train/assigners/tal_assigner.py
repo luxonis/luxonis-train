@@ -152,7 +152,8 @@ class TaskAlignedAssigner(nn.Module):
                 ),
             )
 
-        # Compute alignment metric between all bboxes and optionally incorporate pose OKS
+        # Compute alignment metric between all bboxes and optionally
+        # incorporate pose OKS
         align_metric, overlaps = self._get_alignment_metric(
             pred_scores,
             pred_bboxes,
@@ -176,7 +177,8 @@ class TaskAlignedAssigner(nn.Module):
         # Final positive candidates
         mask_pos = is_in_topk * is_in_gts * mask_gt
 
-        # If an anchor box is assigned to multiple gts, the one with the highest IoU is selected
+        # If an anchor box is assigned to multiple gts, the one with the
+        # highest IoU is selected
         assigned_gt_idx, mask_pos_sum, mask_pos = fix_collisions(
             mask_pos, overlaps, self.n_max_boxes
         )

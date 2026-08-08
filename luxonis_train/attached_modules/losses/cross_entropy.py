@@ -42,7 +42,8 @@ class CrossEntropyLoss(BaseLoss):
                     logger.warning(
                         "`CrossEntropyLoss` expects at least 2 classes. "
                         "Attempting to fix by adding a dummy channel. "
-                        "If you want to be sure, use `BCEWithLogitsLoss` instead."
+                        "If you want to be sure, use `BCEWithLogitsLoss` "
+                        "instead."
                     )
                     self._was_logged = True
                 predictions = torch.cat(
@@ -54,7 +55,8 @@ class CrossEntropyLoss(BaseLoss):
 
         if target.ndim != predictions.ndim - 1:
             raise RuntimeError(
-                f"Target tensor dimension should equeal to preds dimension - 1 ({predictions.ndim - 1}) "
-                f"but is ({target.ndim})."
+                f"Target tensor dimension should equeal to preds "
+                f"dimension - 1 ({predictions.ndim - 1}) but is "
+                f"({target.ndim})."
             )
         return self.criterion(predictions, target)

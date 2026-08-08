@@ -23,16 +23,15 @@ class BaseDetectionHead(BaseHead):
         max_det: int,
         **kwargs,
     ):
-        """
+        """YOLO-like multi-head instance detection head.
 
-        @type n_heads: int
-        @param n_heads: Number of output heads.
-        @type conf_thres: float
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
+        Args:
+            n_heads: Number of output heads.
+            conf_thres: Confidence threshold for NMS.
+            iou_thres: IoU threshold for NMS.
+            max_det: Maximum number of detections retained after NMS.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -57,19 +56,16 @@ class BaseDetectionHead(BaseHead):
 
     @property
     def keep_detections_pre_nms(self) -> bool:
-        """Whether the pre-NMS candidates are part of the output packet.
-
-        @type: bool
-        """
+        """Whether the pre-NMS candidates are part of the output packet."""
         return self._keep_detections_pre_nms
 
     def request_detections_pre_nms(self) -> None:
         """Ask the head to add the decoded pre-NMS candidates to its
-        output packet under the C{"detections_pre_nms"} key.
+        output packet under the ``"detections_pre_nms"`` key.
 
-        The candidate tensor is of shape C{[B, n_anchors, 5 +
-        n_classes]}, which is large enough to matter for peak memory, so
-        attached modules that need it have to opt in.
+        The candidate tensor is of shape ``[B, n_anchors, 5 + n_classes]``,
+        which is large enough to matter for peak memory, so attached
+        modules that need it have to opt in.
         """
         self._keep_detections_pre_nms = True
 

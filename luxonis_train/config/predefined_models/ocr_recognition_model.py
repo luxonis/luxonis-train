@@ -59,7 +59,10 @@ class OCRRecognitionModel(SimplePredefinedModel):
             "english": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
             "english_lowercase": "abcdefghijklmnopqrstuvwxyz",
             "numeric": "0123456789",
-            "alphanumeric": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+            "alphanumeric": (
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            ),
             "alphanumeric_lowercase": "abcdefghijklmnopqrstuvwxyz0123456789",
             "punctuation": " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
             "ascii": "".join(chr(i) for i in range(32, 127)),
@@ -70,7 +73,8 @@ class OCRRecognitionModel(SimplePredefinedModel):
                 raise ValueError(
                     f"Invalid alphabet name '{alphabet}'. "
                     f"Available options are: {list(alphabets.keys())}. "
-                    f"Alternatively, you can provide a custom alphabet as a list of characters."
+                    f"Alternatively, you can provide a custom alphabet "
+                    f"as a list of characters."
                 )
             logger.info(f"Using predefined alphabet '{alphabet}'.")
             alphabet = list(alphabets[alphabet])

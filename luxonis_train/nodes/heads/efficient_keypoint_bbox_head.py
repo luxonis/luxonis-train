@@ -14,6 +14,8 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    """Head for object and keypoint detection."""
+
     parser = "YOLOExtendedParser"
     task = Tasks.INSTANCE_KEYPOINTS
 
@@ -27,21 +29,19 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ):
         """Head for object and keypoint detection.
 
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-        Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+        Adapted from `YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications
+        <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
-        @param n_heads: Number of output heads. Defaults to C{3}.
-            B{Note:} Should be same also on neck in most cases.
-        @type n_heads: int
+        Args:
+            n_heads: Number of output heads. Defaults to ``3``.
+                **Note:** Should be same also on neck in most cases.
+            conf_thres: Threshold for confidence. Defaults to ``0.25``.
+            iou_thres: Threshold for IoU. Defaults to ``0.45``.
+            max_det: Maximum number of detections retained after NMS.
+                Defaults to ``300``.
+            **kwargs: Base detection head arguments.
 
-        @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
-        @type conf_thres: float
-
-        @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
-        @type iou_thres: float
-
-        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
-        @type max_det: int
         """
         super().__init__(
             n_heads=n_heads,
@@ -83,6 +83,49 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         )
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        r"""Decode feature maps into boxes and keypoints.
+
+        Args:
+            inputs: Feature pyramid ordered from highest to lowest
+                spatial resolution.
+
+        Returns:
+            Raw box and keypoint predictions during training, or decoded
+            predictions during export.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+                :math:`\mathrm{class}_{\mathrm{scores}}`
+                    :math:`(B, A, n_{\mathrm{classes}})`
+                :math:`\mathrm{distributions}`
+                    :math:`(B, A, 4)`
+                :math:`\mathrm{keypoints}_{\mathrm{raw}}`
+                    :math:`(B, A, 3 \cdot n_{\mathrm{keypoints}})`
+
+            Export outputs
+                :math:`\mathrm{boundingbox}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, 5 + n_{\mathrm{classes}}, H_{i}, W_{i})`
+                :math:`\mathrm{keypoints}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, 3 \cdot n_{\mathrm{keypoints}}, H_{i} \cdot W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+                :math:`A`
+                    Total number of flattened spatial predictions.
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+                :math:`n_{\mathrm{keypoints}}`
+                    Number of predicted keypoints.
+
+        """  # noqa: E501
         features_list, classes_list, regressions_list = super()._forward(
             inputs
         )

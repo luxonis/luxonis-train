@@ -65,7 +65,8 @@ def default_annotate(
     for task in required_labels:
         if task not in ALLOWED_ANNOTATE_LABELS:
             raise ValueError(
-                f"Unsupported task: {task}. Please create a custom annotate() method for head {head.name}."
+                f"Unsupported task: {task}. Please create a custom "
+                f"annotate() method for head {head.name}."
             )
 
     for i in range(batch_size):

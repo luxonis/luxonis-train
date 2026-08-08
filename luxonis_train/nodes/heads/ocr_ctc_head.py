@@ -11,6 +11,8 @@ from luxonis_train.utils import OCRDecoder, OCREncoder
 
 
 class OCRCTCHead(BaseHead):
+    """OCR CTC head."""
+
     in_channels: int
     task = Tasks.OCR
 
@@ -26,24 +28,23 @@ class OCRCTCHead(BaseHead):
     ):
         """OCR CTC head.
 
-        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-            blob/main/ppocr/modeling/heads/rec_ctc_head.py>}
-        @see: U{Original code
-            <https://github.com/PaddlePaddle/PaddleOCR>}
-        @license: U{Apache License, Version 2.0
-            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
-            >}
-        @type alphabet: list[str]
-        @param alphabet: List of characters.
-        @type ignore_unknown: bool
-        @param ignore_unknown: Whether to ignore unknown characters.
-            Defaults to True.
-        @type mid_channels: int
-        @param mid_channels: Number of middle channels. Defaults to
-            None.
-        @type return_feats: bool
-        @param return_feats: Whether to return features. Defaults to
-            False.
+        Args:
+            alphabet: List of characters.
+            ignore_unknown: Whether to ignore unknown characters.
+                Defaults to True.
+            mid_channels: Number of middle channels. Defaults to None.
+            return_feats: Whether to return features. Defaults to False.
+            **kwargs: Base head arguments.
+
+        See Also:
+            `Adapted from
+            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/modeling/heads/rec_ctc_head.py>`_
+            `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
+
+        License:
+            `Apache License, Version 2.0
+            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+
         """
         super().__init__(**kwargs)
         if len(set(alphabet)) != len(alphabet):  # pragma: no cover
@@ -64,6 +65,29 @@ class OCRCTCHead(BaseHead):
             )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Predict per-column character logits for CTC decoding.
+
+        Args:
+            x: Feature tensor to decode.
+
+        Returns:
+            Character logits for each image column.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, 1, W)`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B, W, \mathrm{alphabet}_{\mathrm{size}})`
+
+            Symbols
+                :math:`\mathrm{alphabet}_{\mathrm{size}}`
+                    Number of OCR symbols including the CTC blank.
+
+        """
         x = x.squeeze(2).permute(0, 2, 1)
         predictions = self.block(x)
 

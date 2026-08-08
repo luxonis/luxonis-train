@@ -17,13 +17,13 @@ class PANUpBlockBase(ABC, nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, encode_block: nn.Module
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type encode_block: nn.Module
-        @param encode_block: Encode block that is used.
+        """RepPANNeck up block.
+
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            encode_block: Encode block that is used.
+
         """
         super().__init__()
 
@@ -43,6 +43,30 @@ class PANUpBlockBase(ABC, nn.Module):
         self.encode_block = encode_block
 
     def forward(self, x0: Tensor, x1: Tensor) -> tuple[Tensor, Tensor]:
+        r"""Upsample and fuse adjacent pyramid levels.
+
+        Args:
+            x0: Lower-resolution pyramid feature to upsample.
+            x1: Higher-resolution pyramid feature to fuse.
+
+        Returns:
+            Fused output and the reduced feature map used by the next level.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x_0`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+                :math:`x_1`
+                    :math:`(B, C_{\mathrm{skip}}, 2 \cdot H, 2 \cdot W)`
+
+            Outputs
+                :math:`\mathrm{reduced}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, 2 \cdot H, 2 \cdot W)`
+
+        """
         conv_out = self.conv(x0)
         upsample_out = self.upsample(conv_out)
         concat_out = torch.cat([upsample_out, x1], dim=1)
@@ -51,6 +75,8 @@ class PANUpBlockBase(ABC, nn.Module):
 
 
 class RepUpBlock(PANUpBlockBase):
+    """RepPANNeck up block for smaller networks that uses RepBlock."""
+
     def __init__(
         self,
         in_channels: int,
@@ -60,15 +86,13 @@ class RepUpBlock(PANUpBlockBase):
     ):
         """RepPANNeck up block for smaller networks that uses RepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        Args:
+            in_channels: Number of input channels.
+            in_channels_next: Number of input channels of next input
+                which is used in concat.
+            out_channels: Number of output channels.
+            n_repeats: Number of RepVGGBlock repeats.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -83,6 +107,8 @@ class RepUpBlock(PANUpBlockBase):
 
 
 class CSPUpBlock(PANUpBlockBase):
+    """RepPANNeck up block for larger networks that uses CSPStackRepBlock."""
+
     def __init__(
         self,
         in_channels: int,
@@ -94,17 +120,14 @@ class CSPUpBlock(PANUpBlockBase):
         """RepPANNeck up block for larger networks that uses
         CSPStackRepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        @type e: float
-        @param e: Factor that controls number of intermediate channels.
+        Args:
+            in_channels: Number of input channels.
+            in_channels_next: Number of input channels of next input
+                which is used in concat.
+            out_channels: Number of output channels.
+            n_repeats: Number of RepVGGBlock repeats.
+            e: Factor that controls number of intermediate channels.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -127,19 +150,14 @@ class PANDownBlockBase(ABC, nn.Module):
         downsample_out_channels: int,
         encode_block: nn.Module,
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        """RepPANNeck down block.
+
+        Args:
+            in_channels: Number of input channels.
+            downsample_out_channels: Number of output channels after
+                downsample.
+            encode_block: Encode block that is used.
+
         """
         super().__init__()
 
@@ -153,12 +171,42 @@ class PANDownBlockBase(ABC, nn.Module):
         self.encode_block = encode_block
 
     def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
+        r"""Downsample and fuse adjacent pyramid levels.
+
+        Args:
+            x0: Higher-resolution pyramid feature to downsample.
+            x1: Lower-resolution pyramid feature to fuse.
+
+        Returns:
+            Fused feature at the lower pyramid resolution.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x_0`
+                    :math:`(B, C_{\mathrm{in}}, 2 \cdot H, 2 \cdot W)`
+                :math:`x_1`
+                    :math:`(B, C_{\mathrm{skip}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+
+            Symbols
+                :math:`H`
+                    Height of the lower-resolution pyramid level.
+                :math:`W`
+                    Width of the lower-resolution pyramid level.
+
+        """
         x = self.downsample(x0)
         x = torch.cat([x, x1], dim=1)
         return self.encode_block(x)
 
 
 class RepDownBlock(PANDownBlockBase):
+    """RepPANNeck down block for smaller networks that uses RepBlock."""
+
     def __init__(
         self,
         in_channels: int,
@@ -170,18 +218,15 @@ class RepDownBlock(PANDownBlockBase):
         """RepPANNeck down block for smaller networks that uses
         RepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        Args:
+            in_channels: Number of input channels.
+            downsample_out_channels: Number of output channels after
+                downsample.
+            in_channels_next: Number of input channels of next input
+                which is used in concat.
+            out_channels: Number of output channels.
+            n_repeats: Number of RepVGGBlock repeats.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -196,6 +241,8 @@ class RepDownBlock(PANDownBlockBase):
 
 
 class CSPDownBlock(PANDownBlockBase):
+    """RepPANNeck up block for larger networks that uses CSPStackRepBlock."""
+
     def __init__(
         self,
         in_channels: int,
@@ -208,20 +255,16 @@ class CSPDownBlock(PANDownBlockBase):
         """RepPANNeck up block for larger networks that uses
         CSPStackRepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        @type e: float
-        @param e: Factor that controls number of intermediate channels.
+        Args:
+            in_channels: Number of input channels.
+            downsample_out_channels: Number of output channels after
+                downsample.
+            in_channels_next: Number of input channels of next input
+                which is used in concat.
+            out_channels: Number of output channels.
+            n_repeats: Number of RepVGGBlock repeats.
+            e: Factor that controls number of intermediate channels.
+
         """
         super().__init__(
             in_channels=in_channels,

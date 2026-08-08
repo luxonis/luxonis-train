@@ -21,22 +21,26 @@ class EfficientRep(BaseNode):
     Supports the version with RepBlock and CSPStackRepBlock (for
     larger networks)
 
-    Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications
-    <https://arxiv.org/pdf/2209.02976.pdf>}.
+    Adapted from `YOLOv6: A Single-Stage Object Detection Framework for
+    Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
     Variants
     ========
     The variant determines the depth and width multipliers,
     block used and intermediate channel scaling factor.
 
-    The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
+    The depth multiplier determines the number of blocks in each stage
+    and the width multiplier determines the number of channels.
 
     The following variants are available:
-      - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
-      - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
-      - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-      - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+      - "n" or "nano" (default): depth_multiplier=0.33,
+        width_multiplier=0.25, block=RepBlock, e=None
+      - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50,
+        block=RepBlock, e=None
+      - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75,
+        block=CSPStackRepBlock, e=2/3
+      - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0,
+        block=CSPStackRepBlock, e=1/2
     """
 
     in_channels: int
@@ -52,26 +56,25 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """
-        @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block.
-            If unspecified, defaults to [64, 128, 256, 512, 1024].
-        @type n_repeats: list[int] | None
-        @param n_repeats: List of number of repeats of RepVGGBlock. If
-            unspecified, defaults to [1, 6, 12, 18, 6].
-        @type depth_mul: float
-        @param depth_mul: Depth multiplier. If provided, overrides the
-            variant value.
-        @type width_mul: float
-        @param width_mul: Width multiplier. If provided, overrides the
-            variant value.
-        @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
-        @param block: Base block used when building the backbone. If
-            provided, overrides the variant value.
-        @type csp_e: float | None
-        @param csp_e: Factor that controls number of intermediate
-            channels if block="CSPStackRepBlock". If provided, overrides
-            the variant value.
+        """EfficientRep backbone for object detection.
+
+        Args:
+            channels_list: List of number of channels for each block. If
+                unspecified, defaults to [64, 128, 256, 512, 1024].
+            n_repeats: List of number of repeats of RepVGGBlock. If
+                unspecified, defaults to [1, 6, 12, 18, 6].
+            depth_multiplier: Depth multiplier. If provided, overrides
+                the variant value.
+            width_multiplier: Width multiplier. If provided, overrides
+                the variant value.
+            block: Base block used when building the backbone. If
+                provided, overrides the variant value.
+            csp_e: Factor that controls number of intermediate channels
+                if block="CSPStackRepBlock". If provided, overrides the
+                variant value.
+            weights: Weights to load into the backbone.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(weights=weights, **kwargs)
 
@@ -128,6 +131,30 @@ class EfficientRep(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale EfficientRep feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         outputs: list[Tensor] = []
         x = self.repvgg_encoder(inputs)
         for block in self.blocks:

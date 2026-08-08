@@ -20,6 +20,12 @@ from .base_detection_head import BaseDetectionHead
 
 
 class PrecisionBBoxHead(BaseDetectionHead):
+    """Adapted from `Real-Time Flying Object Detection with YOLOv8
+    <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage
+    Object Detection Framework for Industrial Applications
+    <https://arxiv.org/pdf/2209.02976.pdf>`_.
+    """
+
     task = Tasks.BOUNDINGBOX
 
     def __init__(
@@ -31,22 +37,19 @@ class PrecisionBBoxHead(BaseDetectionHead):
         reg_max: int = 16,
         **kwargs,
     ):
-        """
-        Adapted from U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
+        """Adapted from `Real-Time Flying Object Detection with YOLOv8
+        <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A
+        Single-Stage Object Detection Framework for Industrial
+        Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
-        @type n_heads: Literal[2, 3, 4]
-        @param n_heads: Number of output heads.
-        @type conf_thres: float
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels.
+        Args:
+            n_heads: Number of output heads.
+            conf_thres: Confidence threshold for NMS.
+            iou_thres: IoU threshold for NMS.
+            max_det: Maximum number of detections retained after NMS.
+            reg_max: Maximum number of regression channels.
+            **kwargs: Base detection head arguments.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -93,6 +96,39 @@ class PrecisionBBoxHead(BaseDetectionHead):
         return features_list, classes_list, regressions_list
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        r"""Predict distributional boxes and class scores.
+
+        Args:
+            inputs: Feature pyramid ordered from highest to lowest
+                spatial resolution.
+
+        Returns:
+            Per-level predictions during training, or decoded boxes
+            during export.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, n_{\mathrm{classes}} + 4 \cdot \mathrm{reg}_{\mathrm{max}}, H_{i}, W_{i})`
+
+            Export outputs
+                :math:`\mathrm{boundingbox}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, 5 + n_{\mathrm{classes}}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+                :math:`\mathrm{reg}_{\mathrm{max}}`
+                    Number of distribution bins per box side.
+
+        """  # noqa: E501
         features_list, classes_list, regressions_list = self.forward_heads(
             inputs
         )

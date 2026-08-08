@@ -115,7 +115,8 @@ def test_freezing_parametrized(
     for tag, expected_seq in expected_lrs.items():
         actual_vals = ea.Scalars(tag)
         assert len(actual_vals) == len(expected_seq), (
-            f"{tag}: expected {len(expected_seq)} entries, got {len(actual_vals)}"
+            f"{tag}: expected {len(expected_seq)} entries, "
+            f"got {len(actual_vals)}"
         )
         for (exp_step, exp_val), actual in zip(
             expected_seq, actual_vals, strict=True
@@ -125,5 +126,6 @@ def test_freezing_parametrized(
                 f"{tag}: expected step {exp_step}, got {act_step}"
             )
             assert abs(act_val - exp_val) < 1e-6, (
-                f"{tag} @ step {act_step}: expected LR {exp_val:.6f}, got {act_val:.6f}"
+                f"{tag} @ step {act_step}: expected LR {exp_val:.6f}, "
+                f"got {act_val:.6f}"
             )

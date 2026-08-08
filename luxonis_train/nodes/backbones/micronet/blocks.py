@@ -7,6 +7,8 @@ from luxonis_train.nodes.blocks import ConvBlock
 
 
 class MicroBlock(nn.Module):
+    """MicroBlock: The basic building block of MicroNet."""
+
     def __init__(
         self,
         in_channels: int,
@@ -28,36 +30,26 @@ class MicroBlock(nn.Module):
         different combinations of these components based on the network
         design.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Size of the convolution kernel. Defaults to
-            3.
-        @type stride: int
-        @param stride: Stride of the convolution. Defaults to 1.
-        @type expansion_ratios: tuple[int, int]
-        @param expansion_ratios: Expansion ratios for the intermediate
-            channels. Defaults to (2, 2).
-        @type groups_1: tuple[int, int]
-        @param groups_1: Groups for the first set of convolutions.
-            Defaults to (0, 6).
-        @type groups_2: tuple[int, int]
-        @param groups_2: Groups for the second set of convolutions.
-            Defaults to (1, 1).
-        @type use_dynamic_shift: tuple[int, int, int]
-        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in
-            different positions. Defaults to (2, 0, 1).
-        @type reduction_factor: int
-        @param reduction_factor: Reduction factor for the squeeze-and-
-            excitation-like operation. Defaults to 1.
-        @type init_a: tuple[float, float]
-        @param init_a: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (1.0, 1.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (0.0, 0.0).
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Size of the convolution kernel. Defaults to 3.
+            stride: Stride of the convolution. Defaults to 1.
+            expand_ratio: Expansion ratios for the intermediate
+                channels. Defaults to (2, 2).
+            groups_1: Groups for the first set of convolutions.
+                Defaults to (0, 6).
+            groups_2: Groups for the second set of convolutions.
+                Defaults to (1, 1).
+            dy_shift: Flags to use Dynamic Shift-Max in different
+                positions. Defaults to (2, 0, 1).
+            reduction_factor: Reduction factor for the
+                squeeze-and-excitation-like operation. Defaults to 1.
+            init_a: Initialization parameters for Dynamic Shift-Max.
+                Defaults to (1.0, 1.0).
+            init_b: Initialization parameters for Dynamic Shift-Max.
+                Defaults to (0.0, 0.0).
+
         """
         super().__init__()
 
@@ -112,6 +104,25 @@ class MicroBlock(nn.Module):
             )
 
     def forward(self, inputs: Tensor) -> Tensor:
+        r"""Transform features with a MicroNet building block.
+
+        Args:
+            inputs: Feature map supplied to the MicroNet block.
+
+        Returns:
+            Feature map produced by the MicroNet block.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         out = self.layers(inputs)
         if self.use_residual:
             out += inputs
@@ -291,20 +302,42 @@ class MicroBlock(nn.Module):
 
 
 class ChannelShuffle(nn.Module):
+    """Shuffle the channels of the input tensor."""
+
     def __init__(self, groups: int):
         """Shuffle the channels of the input tensor.
 
         This operation is used to mix information between groups after
         grouped convolutions.
 
-        @type groups: int
-        @param groups: Number of groups to divide the channels into
-            before shuffling.
+        Args:
+            groups: Number of groups to divide the channels into before
+                shuffling.
+
         """
         super().__init__()
         self.groups = groups
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Redistribute features across channel groups.
+
+        Args:
+            x: Feature map whose channel groups will be shuffled.
+
+        Returns:
+            Feature map with channels redistributed across groups.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+        """
         batch_size, channels, height, width = x.size()
         channels_per_group = channels // self.groups
         x = x.view(batch_size, self.groups, channels_per_group, height, width)
@@ -313,6 +346,8 @@ class ChannelShuffle(nn.Module):
 
 
 class DYShiftMax(nn.Module):
+    """Dynamic Shift-Max activation function."""
+
     def __init__(
         self,
         in_channels: int,
@@ -330,28 +365,21 @@ class DYShiftMax(nn.Module):
         adaptively fuses and selects channel information based on the
         input.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type init_a: tuple[float, float]
-        @param init_a: Initial values for the 'a' parameters. Defaults
-            to (0.0, 0.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initial values for the 'b' parameters. Defaults
-            to (0.0, 0.0).
-        @type use_relu: bool
-        @param use_relu: Whether to use ReLU activation. Defaults to
-            True.
-        @type groups: int
-        @param groups: Number of groups for channel shuffling. Defaults
-            to 6.
-        @type reduction: int
-        @param reduction: Reduction factor for the squeeze operation.
-            Defaults to 4.
-        @type expansion: bool
-        @param expansion: Whether to use expansion in grouping. Defaults
-            to False.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            init_a: Initial values for the 'a' parameters. Defaults to
+                (0.0, 0.0).
+            init_b: Initial values for the 'b' parameters. Defaults to
+                (0.0, 0.0).
+            use_relu: Whether to use ReLU activation. Defaults to True.
+            groups: Number of groups for channel shuffling. Defaults
+                to 6.
+            reduction: Reduction factor for the squeeze operation.
+                Defaults to 4.
+            expansion: Whether to use expansion in grouping. Defaults
+                to False.
+
         """
         super().__init__()
         self.exp: Literal[2, 4] = 4 if use_relu else 2
@@ -385,6 +413,25 @@ class DYShiftMax(nn.Module):
         self.index = index_splits.view(in_channels).long()
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply dynamic channel-wise shift-max activation.
+
+        Args:
+            x: Feature map whose channel shifts will be combined.
+
+        Returns:
+            Feature map after dynamic shift-max activation.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+        """
         batch_size, channels, _, _ = x.shape
         x_out = x
 
@@ -428,6 +475,8 @@ def _make_divisible(value: int, divisor: int) -> int:
 
 
 class SpatialSepConvSF(nn.Module):
+    """Spatial Sep Conv S F module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -461,10 +510,31 @@ class SpatialSepConvSF(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply spatially separable filtering and channel shuffle.
+
+        Args:
+            x: Feature map to filter and shuffle.
+
+        Returns:
+            Filtered feature map with shuffled channels.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         return self.conv(x)
 
 
 class Stem(nn.Module):
+    """Stem module."""
+
     def __init__(
         self, in_channels: int, stride: int, outs: tuple[int, int] = (4, 4)
     ):
@@ -474,10 +544,31 @@ class Stem(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Extract the initial MicroNet features.
+
+        Args:
+            x: Image batch or feature map entering MicroNet.
+
+        Returns:
+            Initial MicroNet feature map.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         return self.stem(x)
 
 
 class DepthSpatialSepConv(nn.Module):
+    """Depth Spatial Sep Conv module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -514,4 +605,23 @@ class DepthSpatialSepConv(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Factorize spatial filtering across both axes.
+
+        Args:
+            x: Feature map to filter along the vertical and horizontal axes.
+
+        Returns:
+            Spatially filtered feature map.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         return self.conv(x)

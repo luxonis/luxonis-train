@@ -62,6 +62,7 @@ on:
       - ".pre-commit-config.yaml"
       - "luxonis_train/**"
       - "tests/**"
+      - "tools/**"
       - ".github/workflows/ci.yaml"
       - "!**/*.md"
 
@@ -120,7 +121,9 @@ jobs:
           enable-cache: true
 
       - name: Build docs
-        run: uv run --locked --only-group docs pydoctor --docformat=epytext luxonis_train
+        run: >-
+          uv run --locked --only-group docs python tools/build_pydoctor_docs.py
+          --mode current --output /tmp/luxonis-train-apidocs
 
   type-check:
     needs:

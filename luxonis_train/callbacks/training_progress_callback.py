@@ -15,17 +15,28 @@ class TrainingProgressCallback(pl.Callback):
     """Publish training progress metrics.
 
     Metrics published:
-        - C{train/epoch_progress_percent}: Percentage of current epoch completed
-        - C{train/epoch_duration_sec}: Time elapsed so far in current epoch (updated per batch)
-        - C{train/epoch_completion_sec}: Total duration of completed training epoch in seconds
-        - C{train/batch_total_sec}: Time spent processing one training batch
-        - C{val/epoch_progress_percent}: Percentage of current validation epoch completed
-        - C{val/epoch_duration_sec}: Time elapsed so far in current validation epoch
-        - C{val/epoch_completion_sec}: Total duration of completed validation epoch in seconds
-        - C{val/batch_total_sec}: Time spent processing one validation batch
-        - C{test/epoch_progress_percent}: Percentage of current test epoch completed
-        - C{test/epoch_duration_sec}: Time elapsed so far in current test epoch
-        - C{test/epoch_completion_sec}: Total duration of completed test epoch in seconds
+        - C{train/epoch_progress_percent}: Percentage of current epoch
+          completed
+        - C{train/epoch_duration_sec}: Time elapsed so far in current
+          epoch (updated per batch)
+        - C{train/epoch_completion_sec}: Total duration of completed
+          training epoch in seconds
+        - C{train/batch_total_sec}: Time spent processing one training
+          batch
+        - C{val/epoch_progress_percent}: Percentage of current
+          validation epoch completed
+        - C{val/epoch_duration_sec}: Time elapsed so far in current
+          validation epoch
+        - C{val/epoch_completion_sec}: Total duration of completed
+          validation epoch in seconds
+        - C{val/batch_total_sec}: Time spent processing one validation
+          batch
+        - C{test/epoch_progress_percent}: Percentage of current test
+          epoch completed
+        - C{test/epoch_duration_sec}: Time elapsed so far in current
+          test epoch
+        - C{test/epoch_completion_sec}: Total duration of completed test
+          epoch in seconds
         - C{test/batch_total_sec}: Time spent processing one test batch
     """
 

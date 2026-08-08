@@ -148,8 +148,9 @@ class SegmentationVisualizer(BaseVisualizer):
                 )
             elif len(colors) != self.n_classes:
                 logger.warning(
-                    f"Number of colors ({len(colors)}) does not match number of "
-                    f"classes ({self.n_classes}). Using random colors instead."
+                    f"Number of colors ({len(colors)}) does not match "
+                    f"number of classes ({self.n_classes}). Using "
+                    f"random colors instead."
                 )
             self._warn_colors = False
         colors = [self.colormap[i] for i in range(self.n_classes)]

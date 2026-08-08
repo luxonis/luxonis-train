@@ -48,40 +48,62 @@ class GPUStatsMonitor(pl.Callback):
         stage. C{GPUStatsMonitor} is a callback and in order to use it
         you need to assign a logger in the C{Trainer}.
 
-        GPU stats are mainly based on C{nvidia-smi --query-gpu} command. The description of the queries is as follows:
+        GPU stats are mainly based on C{nvidia-smi --query-gpu} command.
+        The description of the queries is as follows:
 
-            - C{fan.speed} - The fan speed value is the percent of maximum speed that the device's fan is currently
-              intended to run at. It ranges from 0 to 100 %. Note: The reported speed is the intended fan speed.
-              If the fan is physically blocked and unable to spin, this output will not match the actual fan speed.
-              Many parts do not report fan speeds because they rely on cooling via fans in the surrounding enclosure.
-            - C{memory.used} - Total memory allocated by active contexts.
+            - C{fan.speed} - The fan speed value is the percent of
+              maximum speed that the device's fan is currently intended
+              to run at. It ranges from 0 to 100 %. Note: The reported
+              speed is the intended fan speed. If the fan is physically
+              blocked and unable to spin, this output will not match the
+              actual fan speed. Many parts do not report fan speeds
+              because they rely on cooling via fans in the surrounding
+              enclosure.
+            - C{memory.used} - Total memory allocated by active
+              contexts.
             - C{memory.free} - Total free memory.
-            - C{utilization.gpu} - Percent of time over the past sample period during which one or more kernels was
-              executing on the GPU. The sample period may be between 1 second and 1/6 second depending on the product.
-            - C{utilization.memory} - Percent of time over the past sample period during which global (device) memory was
-              being read or written. The sample period may be between 1 second and 1/6 second depending on the product.
+            - C{utilization.gpu} - Percent of time over the past sample
+              period during which one or more kernels was executing on
+              the GPU. The sample period may be between 1 second and 1/6
+              second depending on the product.
+            - C{utilization.memory} - Percent of time over the past
+              sample period during which global (device) memory was
+              being read or written. The sample period may be between 1
+              second and 1/6 second depending on the product.
             - C{temperature.gpu} - Core GPU temperature, in degrees C.
-            - C{temperature.memory} - HBM memory temperature, in degrees C.
+            - C{temperature.memory} - HBM memory temperature, in degrees
+              C.
 
         @type memory_utilization: bool
-        @param memory_utilization: Set to C{True} to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to C{True}.
+        @param memory_utilization: Set to C{True} to monitor used, free
+            and percentage of memory utilization at the start and end of
+            each step. Defaults to C{True}.
         @type gpu_utilization: bool
-        @param gpu_utilization: Set to C{True} to monitor percentage of GPU utilization at the start and end of each step. Defaults to C{True}.
+        @param gpu_utilization: Set to C{True} to monitor percentage of
+            GPU utilization at the start and end of each step. Defaults
+            to C{True}.
         @type intra_step_time: bool
-        @param intra_step_time: Set to C{True} to monitor the time of each step. Defaults to {False}.
+        @param intra_step_time: Set to C{True} to monitor the time of
+            each step. Defaults to {False}.
         @type inter_step_time: bool
-        @param inter_step_time: Set to C{True} to monitor the time between the end of one step and the start of the next step. Defaults to C{False}.
+        @param inter_step_time: Set to C{True} to monitor the time
+            between the end of one step and the start of the next step.
+            Defaults to C{False}.
         @type fan_speed: bool
-        @param fan_speed: Set to C{True} to monitor percentage of fan speed. Defaults to C{False}.
+        @param fan_speed: Set to C{True} to monitor percentage of fan
+            speed. Defaults to C{False}.
         @type temperature: bool
-        @param temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius. Defaults to C{False}.
-        @raises MisconfigurationException: If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
+        @param temperature: Set to C{True} to monitor the memory and gpu
+            temperature in degree Celsius. Defaults to C{False}.
+        @raises MisconfigurationException: If NVIDIA driver is not
+            installed, not running on GPUs, or C{Trainer} has no logger.
         """
         super().__init__()
 
         if shutil.which("nvidia-smi") is None:
             raise MisconfigurationException(
-                "Cannot use GPUStatsMonitor callback because NVIDIA driver is not installed."
+                "Cannot use GPUStatsMonitor callback because NVIDIA "
+                "driver is not installed."
             )
 
         self._log_stats = AttributeDict(
@@ -115,16 +137,19 @@ class GPUStatsMonitor(pl.Callback):
     ) -> None:
         if not trainer.logger:
             raise MisconfigurationException(
-                "Cannot use GPUStatsMonitor callback with Trainer that has no logger."
+                "Cannot use GPUStatsMonitor callback with Trainer that "
+                "has no logger."
             )
 
         if not CUDAAccelerator.is_available():
             raise MisconfigurationException(
-                "You are using GPUStatsMonitor teh CUDA Accelerator is not available."
+                "You are using GPUStatsMonitor teh CUDA Accelerator is "
+                "not available."
             )
 
         # The logical device IDs for selected devices
-        # ignoring mypy check because `trainer.data_parallel_device_ids` is None when using CPU
+        # ignoring mypy check because `trainer.data_parallel_device_ids`
+        # is None when using CPU
         self._device_ids = sorted(set(trainer.device_ids))
 
         # The unmasked real GPU IDs
@@ -217,7 +242,8 @@ class GPUStatsMonitor(pl.Callback):
         gpu_ids = ",".join(self._gpu_ids)
         result = subprocess.run(
             [
-                # it's ok to supress the warning here since we ensure nvidia-smi exists during init
+                # it's ok to supress the warning here since we ensure
+                # nvidia-smi exists during init
                 shutil.which("nvidia-smi"),  # type: ignore
                 f"--query-gpu={gpu_query}",
                 f"--format={format}",

@@ -57,8 +57,12 @@ aimet = ["aimet-torch~=2.36"]
 
 [dependency-groups]
 config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
+docs = ["pydoctor~=25.10"]
+lint = ["prek~=0.4"]
 dev = [
-  "prek~=0.4",
+  { include-group = "lint" },
+  { include-group = "docs" },
+  "hypothesis~=6.160",
   "pyright~=1.1",
   "pytest-cov~=7.1",
   "pytest-order~=1.5",
@@ -69,7 +73,6 @@ dev = [
   "pytest-xdist~=3.8",
   "ruff~=0.16",
 ]
-docs = ["pydoctor~=25.10"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
@@ -157,7 +160,6 @@ ignore = [
   "D205",
   "D212",
   "D213",
-  "E501",
   "ICN002",
   "NPY002",
   "PLC0415",
@@ -183,12 +185,6 @@ unfixable = ["B905"]
 "__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
 
-[tool.docformatter]
-black = true
-style = "epytext"
-wrap-summaries = 72
-wrap-descriptions = 72
-
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
@@ -202,6 +198,7 @@ reportMatchNotExhaustive = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--disable-warnings -vv --basetemp=tests/tmp/"
 filterwarnings = [
   "ignore::DeprecationWarning",

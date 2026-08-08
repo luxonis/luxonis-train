@@ -200,5 +200,6 @@ def test_unique_initializers_numerical_equivalence(
             out_normal_arr, out_unique_arr, rtol=1e-5, atol=1e-6
         ), (
             f"Output {i} differs for {config_name}. "
-            f"Max absolute difference: {np.max(np.abs(out_normal_arr - out_unique_arr))}"
+            "Max absolute difference: "
+            f"{np.max(np.abs(out_normal_arr - out_unique_arr))}"
         )

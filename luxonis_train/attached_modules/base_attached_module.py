@@ -35,8 +35,9 @@ class BaseAttachedModule(
 
     Additionally, the following attributes can be overridden:
         - L{supported_tasks}: List of task types that the module supports.
-          Used to determine which labels to extract from the dataset and to validate
-          compatibility with the node based on the node's tasks.
+          Used to determine which labels to extract from the dataset and
+          to validate compatibility with the node based on the node's
+          tasks.
 
 
     @type supported_tasks: list[Task] | None
@@ -208,16 +209,21 @@ class BaseAttachedModule(
                 else:
                     required_labels = self.required_labels
                     if len(required_labels) == 1:
-                        label_name = f"{self.node.task_name}/{next(iter(required_labels))}"
+                        only_label = next(iter(required_labels))
+                        label_name = f"{self.node.task_name}/{only_label}"
                     else:
+                        expected = [
+                            f"target_{label}" for label in self.required_labels
+                        ]
                         raise RuntimeError(
-                            f"Module '{self.name}' is using the wildcard '{kwarg_name}' "
-                            f"argument in the `forward` or `update` signature, "
-                            f"but its task '{self.task.name}' requires more than one label "
-                            f"({self.required_labels}). "
-                            "Unable to determine which of the labels to use. Please specify "
-                            "the labels using the 'target_{task_type}' pattern "
-                            f"({[f'target_{label}' for label in self.required_labels]})."
+                            f"Module '{self.name}' is using the wildcard "
+                            f"'{kwarg_name}' argument in the `forward` or "
+                            f"`update` signature, but its task "
+                            f"'{self.task.name}' requires more than one "
+                            f"label ({self.required_labels}). "
+                            "Unable to determine which of the labels to "
+                            "use. Please specify the labels using the "
+                            f"'target_{{task_type}}' pattern ({expected})."
                         )
                 _add_to_kwargs(
                     label_name, kwarg_name, labels, parameter, "label"
@@ -257,8 +263,10 @@ class BaseAttachedModule(
         with suppress(RuntimeError):
             if not isinstance(self.node, node_type):
                 raise IncompatibleError(
-                    f"Module '{self.name}' is attached to the '{self.node.name}' node, "
-                    f"but '{self.name}' is only compatible with nodes of type '{node_type.__name__}'."
+                    f"Module '{self.name}' is attached to the "
+                    f"'{self.node.name}' node, but '{self.name}' is only "
+                    f"compatible with nodes of type "
+                    f"'{node_type.__name__}'."
                 )
 
     def _argument_is_optional(self, parameter: Parameter) -> bool:

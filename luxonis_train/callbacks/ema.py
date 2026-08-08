@@ -172,14 +172,15 @@ class EMACallback(pl.Callback):
 
             if missing_in_checkpoint:
                 logger.warning(
-                    "EMA checkpoint is missing keys present in the current model. "
-                    "Keeping freshly initialized EMA values for: "
+                    "EMA checkpoint is missing keys present in the "
+                    "current model. Keeping freshly initialized EMA "
+                    "values for: "
                     f"{self._format_key_list(missing_in_checkpoint)}"
                 )
             if extra_in_checkpoint:
                 logger.warning(
-                    "EMA checkpoint contains keys not present in the current model. "
-                    "Ignoring: "
+                    "EMA checkpoint contains keys not present in the "
+                    "current model. Ignoring: "
                     f"{self._format_key_list(extra_in_checkpoint)}"
                 )
             if incompatible_shapes:

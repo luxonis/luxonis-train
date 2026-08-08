@@ -93,7 +93,8 @@ class ParameterPattern(BaseModelExtraForbid):
     def validate_pattern(self) -> Self:
         if self.name is None and self.module_type is None:
             raise ValueError(
-                "At least one of `name` or `module_type` must be specified for parameter pattern."
+                "At least one of `name` or `module_type` must be "
+                "specified for parameter pattern."
             )
         if self.name == "":
             raise ValueError("Parameter pattern `name` cannot be empty.")
@@ -125,7 +126,8 @@ class SchedulerConfig(ConfigItem):
 
         if "schedulers" not in self.params or "milestones" not in self.params:
             raise ValueError(
-                "SequentialLR requires 'schedulers' and 'milestones' parameters."
+                "SequentialLR requires 'schedulers' and 'milestones' "
+                "parameters."
             )
         return SequentialLRParams(**self.params)  # type: ignore
 
@@ -259,9 +261,10 @@ class ModelConfig(BaseModelExtraForbid):
                 if not logged_general_warning:
                     logger.warning(
                         f"Field `inputs` not specified for node '{name}'. "
-                        "Assuming the model follows a linear multi-head topology "
-                        "(backbone -> (neck?) -> head1, head2, ...). "
-                        "If this is incorrect, please specify the `inputs` field explicitly."
+                        "Assuming the model follows a linear multi-head "
+                        "topology (backbone -> (neck?) -> head1, "
+                        "head2, ...). If this is incorrect, please "
+                        "specify the `inputs` field explicitly."
                     )
                     logged_general_warning = True
 
@@ -362,8 +365,9 @@ class ModelConfig(BaseModelExtraForbid):
 
                     if invalid_parts:
                         error_message = (
-                            f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
-                            "Please rename to remove any '/' characters."
+                            f"The {', '.join(invalid_parts)} contain a "
+                            "'/', which is not allowed. Please rename "
+                            "to remove any '/' characters."
                         )
                         raise ValueError(error_message)
 
@@ -392,7 +396,8 @@ class ModelConfig(BaseModelExtraForbid):
                         if module.alias in names:
                             new_alias = f"{module.alias}_{node_index}"
                             logger.warning(
-                                f"Duplicate name: {module.alias}. Renaming to {new_alias}."
+                                f"Duplicate name: {module.alias}. "
+                                f"Renaming to {new_alias}."
                             )
                             module.alias = new_alias
                             node_index += 1
@@ -515,10 +520,11 @@ class PreprocessingConfig(BaseModelExtraForbid):
         if norm:
             if self.normalize.active:
                 logger.warning(
-                    "Normalize is being used in both trainer.preprocessing.augmentations "
-                    "and trainer.preprocessing.normalize. "
-                    "Parameters from trainer.preprocessing.augmentations list will override "
-                    "those in trainer.preprocessing.normalize."
+                    "Normalize is being used in both "
+                    "trainer.preprocessing.augmentations and "
+                    "trainer.preprocessing.normalize. Parameters from "
+                    "trainer.preprocessing.augmentations list will "
+                    "override those in trainer.preprocessing.normalize."
                 )
             self.normalize.params = norm.params
             self.augmentations.remove(norm)
@@ -543,8 +549,9 @@ class PreprocessingConfig(BaseModelExtraForbid):
             aug.params.setdefault("p", 1.0)
             if aug_h != train_h or aug_w != train_w:
                 logger.warning(
-                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
-                    f"but its (height, width) doesn't match "
+                    f"Augmentation '{aug.name}' is marked as "
+                    f"'use_for_resizing' but its (height, width) "
+                    f"doesn't match "
                     f"train_image_size ({train_h}, {train_w}). "
                     f"Overriding to match train_image_size."
                 )
@@ -553,9 +560,10 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
             if self.keep_aspect_ratio and aug.params["p"] == 1:
                 logger.warning(
-                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing'. "
-                    f"The 'keep_aspect_ratio' preprocessing parameter is ignored "
-                    f"when a custom resizing augmentation is used."
+                    f"Augmentation '{aug.name}' is marked as "
+                    f"'use_for_resizing'. The 'keep_aspect_ratio' "
+                    f"preprocessing parameter is ignored when a custom "
+                    f"resizing augmentation is used."
                 )
 
         return self
@@ -737,14 +745,17 @@ class TrainerConfig(BaseModelExtraForbid):
                     redundant.append(cb.name)
             if redundant:
                 logger.warning(
-                    f"Deactivated {redundant} because 'ConvertOnTrainEnd' is active "
-                    "and already includes export and archive functionality."
+                    f"Deactivated {redundant} because "
+                    "'ConvertOnTrainEnd' is active and already includes "
+                    "export and archive functionality."
                 )
         elif has_export and has_archive:
             logger.warning(
-                "Both 'ExportOnTrainEnd' and 'ArchiveOnTrainEnd' callbacks are set. "
-                "Consider using 'ConvertOnTrainEnd' instead, which combines both "
-                "and also handles platform-specific conversions (blobconverter/HubAI SDK)."
+                "Both 'ExportOnTrainEnd' and 'ArchiveOnTrainEnd' "
+                "callbacks are set. Consider using 'ConvertOnTrainEnd' "
+                "instead, which combines both and also handles "
+                "platform-specific conversions "
+                "(blobconverter/HubAI SDK)."
             )
         return self
 
@@ -774,8 +785,9 @@ class HubAIExportConfig(BaseModelExtraForbid):
     def validate_platform(self) -> Self:
         if self.active and self.platform is None:
             raise ValueError(
-                "The `platform` field is required when `hubai.active` is True. "
-                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4'."
+                "The `platform` field is required when `hubai.active` "
+                "is True. Please specify a target platform: 'rvc2', "
+                "'rvc3', 'rvc4'."
             )
         if self.platform == "hailo":
             raise NotImplementedError(
@@ -1051,7 +1063,9 @@ class Config(LuxonisConfig):
                     {"out_width": train_size[0], "out_height": train_size[1]}
                 )
                 logger.warning(
-                    "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
+                    "`Mosaic4` augmentation detected. Automatically "
+                    "set `out_width` and `out_height` to match "
+                    "`train_image_size`."
                 )
 
         # Rule: If all views are the same, set n_validation_batches
@@ -1116,11 +1130,13 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    f"InstanceSegmentationModel: Updated loss_params: {loss_params}"
+                    f"InstanceSegmentationModel: Updated loss_params: "
+                    f"{loss_params}"
                 )
                 logger.info(
                     f"InstanceSegmentationModel: Set gradient "
-                    f"accumulation schedule to: {gradient_accumulation_schedule}"
+                    f"accumulation schedule to: "
+                    f"{gradient_accumulation_schedule}"
                 )
             elif model_name == "KeypointDetectionModel":
                 loss_params.update(
@@ -1137,7 +1153,8 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    f"KeypointDetectionModel: Updated loss_params: {loss_params}"
+                    f"KeypointDetectionModel: Updated loss_params: "
+                    f"{loss_params}"
                 )
                 logger.info(
                     f"KeypointDetectionModel: Set gradient accumulation "
@@ -1162,7 +1179,8 @@ class Config(LuxonisConfig):
                         )
                         logger.info(
                             f"GradientAccumulationScheduler callback "
-                            f"updated with scheduling: {gradient_accumulation_schedule}"
+                            f"updated with scheduling: "
+                            f"{gradient_accumulation_schedule}"
                         )
                         break
 

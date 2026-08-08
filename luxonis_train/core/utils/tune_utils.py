@@ -11,7 +11,9 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
     for aug_name in aug_names:
         if aug_name == "Normalize":
             logger.warning(
-                f"'{aug_name}' should be tuned directly by adding '...normalize.active_categorical' to the tuner params, skipping."
+                f"'{aug_name}' should be tuned directly by adding "
+                f"'...normalize.active_categorical' to the tuner "
+                f"params, skipping."
             )
             continue
         try:
@@ -19,7 +21,8 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
             aug_indices.append(index)
         except ValueError:
             logger.warning(
-                f"Augmentation '{aug_name}' not found under trainer augemntations, skipping."
+                f"Augmentation '{aug_name}' not found under trainer "
+                f"augemntations, skipping."
             )
             continue
     return aug_indices
@@ -38,7 +41,8 @@ def get_trial_params(
             case "subset", [list(whole_set), int(subset_size)]:
                 if key_name.split(".")[-1] != "augmentations":
                     raise ValueError(
-                        "Subset sampling currently only supported for augmentations"
+                        "Subset sampling currently only supported "
+                        "for augmentations"
                     )
                 whole_set_indices = _augs_to_indices(all_augs, whole_set)
                 subset = random.sample(whole_set_indices, subset_size)

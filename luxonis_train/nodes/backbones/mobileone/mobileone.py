@@ -14,41 +14,55 @@ from luxonis_train.nodes.blocks.utils import forward_gather
 class MobileOne(BaseNode):
     """MobileOne: An efficient CNN backbone for mobile devices.
 
-    The architecture focuses on reducing memory access costs and improving parallelism
-    while allowing aggressive parameter scaling for better representation capacity.
-    Different variants (S0-S4) offer various accuracy-latency tradeoffs.
+    The architecture focuses on reducing memory access costs and
+    improving parallelism while allowing aggressive parameter scaling
+    for better representation capacity. Different variants (S0-S4) offer
+    various accuracy-latency tradeoffs.
 
     Key features:
-      - Designed for low latency on mobile while maintaining high accuracy
-      - Uses re-parameterizable branches during training that get folded at inference
-      - Employs trivial over-parameterization branches for improved accuracy
-      - Simple feed-forward structure at inference with no branches/skip connections
-      - Variants achieve <1ms inference time on iPhone 12 with up to 75.9% top-1 ImageNet accuracy
-      - Outperforms other efficient architectures like MobileNets on image classification,
-          object detection and semantic segmentation tasks
-      - Uses only basic operators available across platforms (no custom activations)
+      - Designed for low latency on mobile while maintaining high
+        accuracy
+      - Uses re-parameterizable branches during training that get folded
+        at inference
+      - Employs trivial over-parameterization branches for improved
+        accuracy
+      - Simple feed-forward structure at inference with no branches/skip
+        connections
+      - Variants achieve <1ms inference time on iPhone 12 with up to
+        75.9% top-1 ImageNet accuracy
+      - Outperforms other efficient architectures like MobileNets on
+        image classification, object detection and semantic
+        segmentation tasks
+      - Uses only basic operators available across platforms (no custom
+        activations)
 
 
-    Reference: U{MobileOne: An Improved One millisecond Mobile Backbone
-    <https://arxiv.org/abs/2206.04040>}
+    Reference: `MobileOne: An Improved One millisecond Mobile Backbone
+    <https://arxiv.org/abs/2206.04040>`_
 
-    Source: U{<https://github.com/apple/ml-mobileone>}
+    Source: https://github.com/apple/ml-mobileone
 
     Variants
     ========
     Each variant specifies a predefined set of values for:
-      - width multipliers - A tuple of 4 float values specifying the width multipliers for each stage of the network. If the use of SE blocks is disabled, the last two values are ignored.
-      - number of convolution branches - An integer specifying the number of linear convolution branches in MobileOne block.
-      - use of SE blocks - A boolean specifying whether to use SE blocks in the network.
+      - width multipliers - A tuple of 4 float values specifying the
+        width multipliers for each stage of the network. If the use of
+        SE blocks is disabled, the last two values are ignored.
+      - number of convolution branches - An integer specifying the
+        number of linear convolution branches in MobileOne block.
+      - use of SE blocks - A boolean specifying whether to use SE blocks
+        in the network.
 
     Available variants are:
-        - s0 (default): width_multipliers=(0.75, 1.0, 1.0, 2.0), n_conv_branches=4, use_se=False
+        - s0 (default): width_multipliers=(0.75, 1.0, 1.0, 2.0),
+          n_conv_branches=4, use_se=False
         - s1: width_multipliers=(1.5, 1.5, 2.0, 2.5)
         - s2: width_multipliers=(1.5, 2.0, 2.5, 4.0)
         - s3: width_multipliers=(2.0, 2.5, 3.0, 4.0)
         - s4: width_multipliers=(3.0, 3.5, 3.5, 4.0), use_se=True
 
-    @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
+    License:
+        `Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>`_
     """
 
     in_channels: int
@@ -66,13 +80,16 @@ class MobileOne(BaseNode):
         use_se: bool = False,
         **kwargs,
     ):
-        """
-        @type width_multipliers: tuple[float, float, float, float]
-        @param width_multipliers: Width multipliers for each stage.
-        @type n_conv_branches: int
-        @param n_conv_branches: Number of linear convolution branches in MobileOne block.
-        @type use_se: bool
-        @param use_se: Whether to use C{Squeeze-and-Excitation} blocks in the network. Default is C{False}.
+        """MobileOne backbone.
+
+        Args:
+            width_multipliers: Width multipliers for each stage.
+            n_conv_branches: Number of linear convolution branches in
+                MobileOne block.
+            use_se: Whether to use ``Squeeze-and-Excitation`` blocks in
+                the network. Default is ``False``.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -116,6 +133,30 @@ class MobileOne(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale MobileOne feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         return forward_gather(inputs, self.stages)
 
     @override
@@ -150,14 +191,14 @@ class MobileOne(BaseNode):
     ) -> nn.Sequential:
         """Build a stage of MobileOne model.
 
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks in this stage.
-        @type n_se_blocks: int
-        @param n_se_blocks: Number of SE blocks in this stage.
-        @rtype: nn.Sequential
-        @return: A stage of MobileOne model.
+        Args:
+            out_channels: Number of output channels.
+            n_blocks: Number of blocks in this stage.
+            n_se_blocks: Number of SE blocks in this stage.
+
+        Returns:
+            A stage of MobileOne model.
+
         """
         # Get strides for all layers
         strides = [2] + [1] * (n_blocks - 1)

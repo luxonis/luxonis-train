@@ -8,8 +8,9 @@ from .utils import batch_iou, bbox_iou, candidates_in_gt, fix_collisions
 class ATSSAssigner(nn.Module):
     def __init__(self, n_classes: int, topk: int = 9):
         """Adaptive Training Sample Selection Assigner, adapted
-        from U{Bridging the Gap Between Anchor-based and Anchor-free Detection via
-        Adaptive Training Sample Selection<https://arxiv.org/pdf/1912.02424.pdf>}.
+        from U{Bridging the Gap Between Anchor-based and Anchor-free
+        Detection via Adaptive Training Sample
+        Selection<https://arxiv.org/pdf/1912.02424.pdf>}.
         Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/
         ppyoloe/assigner/atss_assigner.py} and
         U{https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/
@@ -104,7 +105,8 @@ class ATSSAssigner(nn.Module):
         # Final positive candidates
         mask_pos = is_pos * is_in_gts * mask_gt
 
-        # If an anchor box is assigned to multiple gts, the one with the highest IoU is selected
+        # If an anchor box is assigned to multiple gts, the one with the
+        # highest IoU is selected
         assigned_gt_idx, mask_pos_sum, mask_pos = fix_collisions(
             mask_pos, overlaps, self.n_max_boxes
         )

@@ -21,10 +21,11 @@ class SegmentationHead(BaseHead):
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):
-        """
-        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}.
+        """Adapted from: `https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py
+        <https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py>`_.
 
-        @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
+        License:
+            `BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>`_
         """
         super().__init__(**kwargs)
         h, w = self.original_in_shape[1:]
@@ -52,6 +53,29 @@ class SegmentationHead(BaseHead):
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
+        r"""Project features into dense class logits.
+
+        Args:
+            inputs: Input feature map.
+
+        Returns:
+            Dense class logits for each image.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B, n_{\mathrm{classes}}, H_{\mathrm{image}}, W_{\mathrm{image}})`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """  # noqa: E501
         return self.head(inputs)
 
     @override

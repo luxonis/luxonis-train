@@ -35,10 +35,12 @@ OVERFIT_MODELS = [
     ("classification_light_model", None, 1.0),
     ("detection_light_model", _DETECTION_LOSS_PARAMS, 5.0),
     ("segmentation_light_model", None, 1.0),
-    # Instance seg sums 4 weighted losses (bbox 7.5 + seg 7.5 + dfl 1.5 + cls 0.5 = 17.0 total weight).
+    # Instance seg sums 4 weighted losses
+    # (bbox 7.5 + seg 7.5 + dfl 1.5 + cls 0.5 = 17.0 total weight).
     # With 200 epochs at lr=1e-3 the total converges to ~6.4, not near zero.
     ("instance_segmentation_light_model", _INSTANCE_SEG_LOSS_PARAMS, 8.0),
-    # Keypoint model sums 4 weighted losses (iou 7.5 + kpt_regr 12.0 + vis 1.0 + cls 0.5 = 21.0 total weight).
+    # Keypoint model sums 4 weighted losses
+    # (iou 7.5 + kpt_regr 12.0 + vis 1.0 + cls 0.5 = 21.0 total weight).
     # With 200 epochs at lr=1e-3 the total converges to ~9.1, not near zero.
     ("keypoint_bbox_light_model", _KEYPOINT_LOSS_PARAMS, 12.0),
     ("fomo_light_model", None, 1.0),
@@ -102,7 +104,8 @@ def test_overfit_convergence(
 
     final_loss = model.pl_trainer.callback_metrics["train/loss"].item()
     assert final_loss < loss_threshold, (
-        f"{config_name} loss did not converge: {final_loss:.4f} >= {loss_threshold}"
+        f"{config_name} loss did not converge: "
+        f"{final_loss:.4f} >= {loss_threshold}"
     )
 
 

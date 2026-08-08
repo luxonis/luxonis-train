@@ -15,20 +15,27 @@ from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 class RepPANNeck(BaseNode):
     """Implementation of the RepPANNeck module.
 
-    Supports the version with RepBlock and CSPStackRepBlock (for larger networks)
+    Supports the version with RepBlock and CSPStackRepBlock (for larger
+    networks)
 
-    Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+    Adapted from `YOLOv6: A Single-Stage Object Detection Framework for
+    Industrial Applications
+    <https://arxiv.org/pdf/2209.02976.pdf>`_.
     It has the balance of feature fusion ability and hardware efficiency.
 
-    Variants
-    ========
-    The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
+    Variant configurations:
+    The variant determines the depth and width multipliers, block used
+    and intermediate channel scaling factor.
     Available variants:
-        - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock
-        - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock
-        - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-        - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+
+    - "n" or "nano" (default): depth_multiplier=0.33,
+      width_multiplier=0.25, block=RepBlock
+    - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50,
+      block=RepBlock
+    - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75,
+      block=CSPStackRepBlock, e=2/3
+    - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0,
+      block=CSPStackRepBlock, e=1/2
     """
 
     in_channels: list[int]
@@ -47,26 +54,27 @@ class RepPANNeck(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """
-        @type n_heads: Literal[2,3,4]
-        @param n_heads: Number of output heads. Defaults to 3. B{Note: Should be same
-            also on head in most cases.}
-        @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block.
-            Defaults to C{[256, 128, 128, 256, 256, 512]}.
-        @type n_repeats: list[int] | None
-        @param n_repeats: List of number of repeats of RepVGGBlock.
-            Defaults to C{[12, 12, 12, 12]}.
-        @type depth_multiplier: float
-        @param depth_multiplier: Depth multiplier. Defaults to C{0.33} ("n" variant).
-        @type width_multiplier: float
-        @param width_muliplier: Width multiplier. Defaults to C{0.25} ("n" variant).
-        @type block: Literal["RepBlock", "CSPStackRepBlock"]
-        @param block: Base block used when building the backbone.
-            Defaults to C{"RepBlock"} ("n" variant).
-        @tpe e: float | None
-        @param e: Factor that controls number of intermediate channels.
-            Only used when block="CSPStackRepBlock". Defaults to C{None}.
+        """RepPANNeck module.
+
+        Args:
+            n_heads: Number of output heads. Defaults to 3. **Note: Should
+                be same also on head in most cases.**
+            channels_list: List of number of channels for each block.
+                Defaults to ``[256, 128, 128, 256, 256, 512]``.
+            n_repeats: List of number of repeats of RepVGGBlock. Defaults
+                to ``[12, 12, 12, 12]``.
+            depth_multiplier: Depth multiplier. Defaults to ``0.33`` ("n"
+                variant).
+            width_multiplier: Width multiplier. Defaults to ``0.25``
+                ("n" variant).
+            block: Base block used when building the backbone. Defaults to
+                ``"RepBlock"`` ("n" variant).
+            e: Factor that controls number of intermediate channels.
+                Only used when block="CSPStackRepBlock". Defaults to
+                ``None``.
+            weights: Weights to load into the neck.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(weights=weights, **kwargs)
 
@@ -188,6 +196,37 @@ class RepPANNeck(BaseNode):
             curr_n_repeats = n_repeats_down_blocks[i]
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
+        r"""Fuse a feature pyramid along top-down and bottom-up paths.
+
+        Args:
+            inputs: Feature pyramid ordered from highest to lowest
+                spatial resolution.
+
+        Returns:
+            Feature maps produced by the configured stages.
+
+        Raises:
+            ValueError: If adjacent feature scales are not powers of
+                two. The message contains "Expected width and height".
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{\mathrm{in}}_{i}, H_{i}, W_{i})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{\mathrm{out}}_{i}, H_{i}, W_{i})`
+
+            Constraints
+                - :math:`2 \le N \land N \le 4`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """
         x = inputs[-1]
         up_block_outs: list[Tensor] = []
         for up_block, input_ in zip(

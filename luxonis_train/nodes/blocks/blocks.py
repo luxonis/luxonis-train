@@ -12,6 +12,8 @@ from .utils import ModuleFactory, autopad
 
 
 class PreciseDecoupledBlock(nn.Module):
+    """Precise Decoupled Block module."""
+
     __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
 
     @typechecked
@@ -60,6 +62,36 @@ class PreciseDecoupledBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        r"""Predict class and distributional box logits on one feature level.
+
+        Args:
+            x: Detection feature map for one pyramid level.
+
+        Returns:
+            Feature map, class scores, and distributional box
+            regressions for this level.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}`
+                    :math:`(B, n_{\mathrm{classes}} + 4 \cdot \mathrm{reg}_{\mathrm{max}}, H, W)`
+                :math:`\mathrm{classes}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+                :math:`\mathrm{regressions}`
+                    :math:`(B, 4 \cdot \mathrm{reg}_{\mathrm{max}}, H, W)`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+                :math:`\mathrm{reg}_{\mathrm{max}}`
+                    Number of distribution bins per box side.
+
+        """  # noqa: E501
         regressions = self.regression_branch(x)
         classes = self.classification_branch(x)
         features = torch.cat([regressions, classes], dim=1)
@@ -67,6 +99,8 @@ class PreciseDecoupledBlock(nn.Module):
 
 
 class EfficientDecoupledBlock(nn.Module):
+    """Efficient Decoupled block used for class and regression predictions."""
+
     __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
 
     @typechecked
@@ -74,12 +108,10 @@ class EfficientDecoupledBlock(nn.Module):
         """Efficient Decoupled block used for class and regression
         predictions.
 
-        @type n_classes: int
-        @param n_classes: Number of classes.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type prior_probability: float
-        @param prior_probability: ???
+        Args:
+            n_classes: Number of classes.
+            in_channels: Number of input channels.
+
         """
         super().__init__()
 
@@ -123,6 +155,33 @@ class EfficientDecoupledBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        r"""Predict classes and box coordinates on one feature level.
+
+        Args:
+            x: Detection feature map for one pyramid level.
+
+        Returns:
+            Feature map, class scores, and box regressions for this level.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+                :math:`\mathrm{classes}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+                :math:`\mathrm{regressions}`
+                    :math:`(B, 4, H, W)`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         features = self.decoder(x)
 
         classes = self.class_branch(features)
@@ -132,19 +191,19 @@ class EfficientDecoupledBlock(nn.Module):
 
 
 class SegProto(nn.Sequential):
+    """Initialize the segmentation prototype generator."""
+
     @typechecked
     def __init__(
         self, in_channels: int, mid_channels: int = 256, out_channels: int = 32
     ):
         """Initialize the segmentation prototype generator.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type mid_channels: int
-        @param mid_channels: Number of intermediate channels. Defaults
-            to 256.
-        @type out_channels: int
-        @param out_channels: Number of output channels. Defaults to 32.
+        Args:
+            in_channels: Number of input channels.
+            mid_channels: Number of intermediate channels. Defaults to 256.
+            out_channels: Number of output channels. Defaults to 32.
+
         """
         super().__init__(
             ConvBlock(
@@ -180,6 +239,28 @@ class SegProto(nn.Sequential):
             ),
         )
 
+    def forward(self, x: Tensor) -> Tensor:
+        r"""Generate mask prototypes from segmentation features.
+
+        Args:
+            x: Segmentation feature map used to generate prototypes.
+
+        Returns:
+            Mask prototype feature maps.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, 2 \cdot H, 2 \cdot W)`
+
+        """
+        return super().forward(x)
+
 
 class DFL(nn.Module):
     """The DFL (Distribution Focal Loss) module processes input tensors
@@ -189,11 +270,11 @@ class DFL(nn.Module):
 
     @typechecked
     def __init__(self, reg_max: int = 16):
-        """
+        """Distribution Focal Loss projection module.
 
-        @type reg_max: int
-        @param reg_max: Maximum number of regression outputs. Defaults
-            to 16.
+        Args:
+            reg_max: Maximum number of regression outputs. Defaults to 16.
+
         """
         super().__init__()
         self.conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
@@ -204,6 +285,29 @@ class DFL(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Convert distribution logits into box distances.
+
+        Args:
+            x: Distribution logits for the four box coordinates.
+
+        Returns:
+            Expected box distance for each side and spatial prediction.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, 4 \cdot \mathrm{reg}_{\mathrm{max}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, 4, H, W)`
+
+            Symbols
+                :math:`\mathrm{reg}_{\mathrm{max}}`
+                    Number of distribution bins per box side.
+
+        """
         n, _, h, w = x.size()
         x = x.view(n, 4, -1, h * w).permute(0, 2, 1, 3)
         x = self.softmax(x)
@@ -211,6 +315,8 @@ class DFL(nn.Module):
 
 
 class ConvBlock(nn.Module):
+    """Conv2d + Optional BN + Activation."""
+
     @typechecked
     def __init__(
         self,
@@ -228,28 +334,21 @@ class ConvBlock(nn.Module):
     ):
         """Conv2d + Optional BN + Activation.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type padding: int | str
-        @param padding: Padding. Defaults to 0.
-        @type dilation: int
-        @param dilation: Dilation. Defaults to 1.
-        @type groups: int
-        @param groups: Groups. Defaults to 1.
-        @type bias: bool
-        @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None | bool
-        @param activation: Activation function. Defaults to `nn.ReLu` if
-            not explicitly set to C{None} or C{False}.
-        @type use_norm: bool
-        @param use_norm: Whether to use batch normalization. Defaults to
-            True.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size.
+            stride: Stride. Defaults to 1.
+            padding: Padding. Defaults to 0.
+            dilation: Dilation. Defaults to 1.
+            groups: Groups. Defaults to 1.
+            bias: Whether to use bias. Defaults to False.
+            activation: Activation function. Defaults to ``nn.ReLu`` if
+                not explicitly set to ``None`` or ``False``.
+            use_norm: Whether to use batch normalization. Defaults to
+                True.
+            norm_momentum: Batch normalization momentum.
+
         """
         super().__init__()
 
@@ -286,6 +385,25 @@ class ConvBlock(nn.Module):
             self.activation = activation
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply convolution, normalization, and activation.
+
+        Args:
+            x: Feature map to convolve.
+
+        Returns:
+            Convolved feature map after optional normalization and activation.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
@@ -293,6 +411,12 @@ class ConvBlock(nn.Module):
 
 
 class SqueezeExciteBlock(nn.Sequential):
+    """Squeeze and Excite block, Adapted from `Squeeze-and-Excitation
+    Networks <https://arxiv.org/pdf/1709.01507.pdf>`_. Code adapted from
+    `https://github.com/apple/ml-mobileone/blob/main/mobileone.py
+    <https://github.com/apple/ml-mobileone/blob/main/mobileone.py>`_.
+    """
+
     @typechecked
     def __init__(
         self,
@@ -302,17 +426,19 @@ class SqueezeExciteBlock(nn.Sequential):
         activation: nn.Module | None = None,
     ):
         """Squeeze and Excite block,
-        Adapted from U{Squeeze-and-Excitation Networks<https://arxiv.org/pdf/1709.01507.pdf>}.
-        Code adapted from U{https://github.com/apple/ml-mobileone/blob/main/mobileone.py}.
+        Adapted from `Squeeze-and-Excitation Networks
+        <https://arxiv.org/pdf/1709.01507.pdf>`_.
+        Code adapted from
+        `https://github.com/apple/ml-mobileone/blob/main/mobileone.py
+        <https://github.com/apple/ml-mobileone/blob/main/mobileone.py>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type intermediate_channels: int
-        @param intermediate_channels: Number of intermediate channels.
-        @type hard_sigmoid: bool
-        @param hard_sigmoid: Whether to use hard sigmoid function. Defaults to False.
-        @type activation: L{nn.Module} | None
-        @param activation: Activation function. Defaults to L{nn.ReLU}.
+        Args:
+            in_channels: Number of input channels.
+            intermediate_channels: Number of intermediate channels.
+            hard_sigmoid: Whether to use hard sigmoid function. Defaults
+                to False.
+            activation: Activation function. Defaults to ``nn.ReLU``.
+
         """
         super().__init__(
             nn.AdaptiveAvgPool2d(1),
@@ -333,11 +459,34 @@ class SqueezeExciteBlock(nn.Sequential):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Reweight channels with squeeze-and-excitation attention.
+
+        Args:
+            x: Feature map whose channels will be recalibrated.
+
+        Returns:
+            Feature map reweighted by learned channel gates.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+        """
         return x * super().forward(x)
 
 
 # TODO: Maybe a better name?
 class GeneralReparametrizableBlock(Reparametrizable):
+    """GeneralReparametrizableBlock is a basic rep-style block,
+    including training and deploy status.
+    """
+
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -359,36 +508,30 @@ class GeneralReparametrizableBlock(Reparametrizable):
         """GeneralReparametrizableBlock is a basic rep-style block,
         including training and deploy status.
 
-        @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size. Defaults to ``3``.
+            stride: Stride. Defaults to ``1``.
+            padding: Padding. Defaults to ``1``.
+            groups: Groups. Defaults to ``1``.
+            n_branches: Number of convolutional branches. During
+                reparametrization, the branches are fused to a single
+                convolutional layer. Defaults to ``1``.
+            refine_block: A block to refine the output. Placed after the
+                convolutional branches and before the activation
+                function. Can be one of the following: - torch module -
+                string ``"se"`` which will use `SqueezeExciteBlock` - None
+                for no operation Defaults to ``None``.
+            activation: Activation function. By default ``nn.ReLU``. If
+                ``False`` or ``None`` then no activation.
+            use_scale_layer: Whether to add a learnable 1x1 scale branch.
+            scale_layer_padding: Optional padding for the scale branch.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to C{3}.
-        @type stride: int
-        @param stride: Stride. Defaults to C{1}.
-        @type padding: int
-        @param padding: Padding. Defaults to C{1}.
-        @type groups: int
-        @param groups: Groups. Defaults to C{1}.
-        @type n_branches: int
-        @param n_branches: Number of convolutional branches.
-            During reparametrization, the branches are fused to a single
-            convolutional layer. Defaults to C{1}.
-        @type refine_block: nn.Module | Literal["se"] | None
-        @param refine_block: A block to refine the output.
-            Placed after the convolutional branches and before the
-            activation function.
-            Can be one of the following:
-              - torch module
-              - string `"se"` which will use L{SqueezeExciteBlock}
-              - None for no operation
-            Defaults to C{None}.
-        @type activation: nn.Module | None | bool
-        @param activation: Activation function. By default C{nn.ReLU}.
-            If C{False} or C{None} then no activation.
+        See Also:
+            `https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py
+            <https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py>`_.
+
         """
         super().__init__()
 
@@ -447,6 +590,25 @@ class GeneralReparametrizableBlock(Reparametrizable):
         self.fused_branch: nn.Conv2d | None = None
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply the training or deployed Rep-style convolution.
+
+        Args:
+            x: Feature map to convolve through the Rep-style branches.
+
+        Returns:
+            Feature map produced by the active Rep-style representation.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         if self.fused_branch is None:
             out = 0
 
@@ -582,8 +744,8 @@ class GeneralReparametrizableBlock(Reparametrizable):
 class BlockRepeater(nn.Sequential):
     """Module which repeats a given block n times.
 
-    If the block has an `out_channels` and `in_channels` argument, the
-    `in_channels` of the next block will be set to the `out_channels` of
+    If the block has an ``out_channels`` and ``in_channels`` argument, the
+    ``in_channels`` of the next block will be set to the ``out_channels`` of
     the previous block. This allows for repeating blocks which change
     the number of channels.
     """
@@ -592,13 +754,13 @@ class BlockRepeater(nn.Sequential):
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
-        """
-        @type module: C{type[nn.Module]}
-        @param module: Module to repeat.
-        @type n_repeats: int
-        @param n_repeats: Number of blocks to repeat. Defaults to C{1}.
-        @param kwargs: Additional keyword arguments to be passed to the
-            module.
+        """Stack of repeated blocks.
+
+        Args:
+            module: Module to repeat.
+            n_repeats: Number of blocks to repeat. Defaults to ``1``.
+            kwargs: Additional keyword arguments to be passed to the module.
+
         """
         blocks = [module(**kwargs)]
 
@@ -609,6 +771,28 @@ class BlockRepeater(nn.Sequential):
             blocks.append(module(**kwargs))
 
         super().__init__(*blocks)
+
+    def forward(self, x: Tensor) -> Tensor:
+        r"""Apply the configured block sequence.
+
+        Args:
+            x: Feature map passed through the repeated blocks.
+
+        Returns:
+            Output of the final repeated block.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
+        return super().forward(x)
 
 
 class CSPStackRepBlock(nn.Module):
@@ -625,16 +809,14 @@ class CSPStackRepBlock(nn.Module):
         n_blocks: int = 1,
         e: float = 0.5,
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks to repeat. Defaults to C{1}.
-        @type e: float
-        @param e: Factor for number of intermediate channels. Defaults
-            to C{0.5}.
+        """Cross-stage partial block with a stack of repeated blocks.
+
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            n_blocks: Number of blocks to repeat. Defaults to ``1``.
+            e: Factor for number of intermediate channels. Defaults to ``0.5``.
+
         """
         super().__init__()
         intermediate_channels = int(out_channels * e)
@@ -664,6 +846,25 @@ class CSPStackRepBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Fuse the main and residual CSP branches.
+
+        Args:
+            x: Feature map supplied to both CSP branches.
+
+        Returns:
+            Feature map produced by merging the CSP branches.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         out_1 = self.conv_1(x)
         out_1 = self.rep_stack(out_1)
         out_2 = self.conv_2(x)
@@ -672,6 +873,8 @@ class CSPStackRepBlock(nn.Module):
 
 
 class BottleRep(nn.Module):
+    """RepVGG bottleneck module."""
+
     @typechecked
     def __init__(
         self,
@@ -683,18 +886,16 @@ class BottleRep(nn.Module):
     ):
         """RepVGG bottleneck module.
 
-        @type block: Callable[..., nn.Module]
-        @param block: Block to use. Defaults to
-            L{GeneralReparametrizableBlock}.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type weight: bool
-        @param weight: If using learnable or static shortcut weight.
-            Defaults to C{True}.
-        @param kwargs: Additional keyword arguments to be passed to the
-            module.
+        Args:
+            module: Block to use. Defaults to
+                `GeneralReparametrizableBlock`.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            weight: If using learnable or static shortcut weight.
+                Defaults to ``True``.
+            kwargs: Additional keyword arguments to be passed to the
+                module.
+
         """
         super().__init__()
         self.conv_1 = module(
@@ -707,12 +908,35 @@ class BottleRep(nn.Module):
         self.alpha = nn.Parameter(torch.ones(1)) if weight else 1.0
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply the RepVGG bottleneck and residual connection.
+
+        Args:
+            x: Feature map for the bottleneck and residual branches.
+
+        Returns:
+            Output of the bottleneck and residual merge.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         out = self.conv_1(x)
         out = self.conv_2(out)
         return out + self.alpha * x if self.shortcut else out
 
 
 class SpatialPyramidPoolingBlock(nn.Module):
+    """Spatial Pyramid Pooling block with ReLU activation on three
+    different scales.
+    """
+
     @typechecked
     def __init__(
         self, in_channels: int, out_channels: int, kernel_size: int = 5
@@ -720,12 +944,11 @@ class SpatialPyramidPoolingBlock(nn.Module):
         """Spatial Pyramid Pooling block with ReLU activation on three
         different scales.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to C{5}.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size. Defaults to ``5``.
+
         """
         super().__init__()
 
@@ -737,6 +960,25 @@ class SpatialPyramidPoolingBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Aggregate features over three pooling scales.
+
+        Args:
+            x: Feature map to pool at three scales.
+
+        Returns:
+            Feature map enriched with pooled context.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         x = self.conv1(x)
         # apply max-pooling at three different scales
         y1 = self.max_pool(x)
@@ -748,15 +990,21 @@ class SpatialPyramidPoolingBlock(nn.Module):
 
 
 class AttentionRefinmentBlock(nn.Module):
+    """Attention Refinment block adapted from
+    `https://github.com/taveraantonio/BiseNetv1
+    <https://github.com/taveraantonio/BiseNetv1>`_.
+    """
+
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
         """Attention Refinment block adapted from
-        U{https://github.com/taveraantonio/BiseNetv1}.
+        `https://github.com/taveraantonio/BiseNetv1
+        <https://github.com/taveraantonio/BiseNetv1>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+
         """
         super().__init__()
 
@@ -778,24 +1026,49 @@ class AttentionRefinmentBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Refine features with channel attention.
+
+        Args:
+            x: Context feature map to refine.
+
+        Returns:
+            Channel-refined context feature map.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+
+        """
         x = self.conv(x)
         attention = self.attention(x)
         return x * attention
 
 
 class FeatureFusionBlock(nn.Module):
+    """Feature Fusion block adapted from:
+    `https://github.com/taveraantonio/BiseNetv1
+    <https://github.com/taveraantonio/BiseNetv1>`_.
+    """
+
     @typechecked
     def __init__(
         self, in_channels: int, out_channels: int, reduction: int = 1
     ):
-        """Feature Fusion block adapted from: U{https://github.com/taveraantonio/BiseNetv1}.
+        """Feature Fusion block adapted from:
+        `https://github.com/taveraantonio/BiseNetv1
+        <https://github.com/taveraantonio/BiseNetv1>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type reduction: int
-        @param reduction: Reduction factor. Defaults to C{1}.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            reduction: Reduction factor. Defaults to ``1``.
+
         """
         super().__init__()
 
@@ -817,6 +1090,28 @@ class FeatureFusionBlock(nn.Module):
         )
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
+        r"""Fuse spatial and context features with attention.
+
+        Args:
+            x1: Spatial-path feature map.
+            x2: Context-path feature map at the same resolution.
+
+        Returns:
+            Attention-weighted fusion of the spatial and context paths.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x_1`
+                    :math:`(B, C_1, H, W)`
+                :math:`x_2`
+                    :math:`(B, C_2, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+
+        """
         fusion = torch.cat([x1, x2], dim=1)
         x = self.conv_1x1(fusion)
         attention = self.attention(x)
@@ -830,9 +1125,9 @@ class UpscaleOnline(nn.Module):
     known when the input is received. Only the interpolation mode is set
     in advance.
 
-    @type mode: str
-    @param mode: Interpolation mode for resizing. Defaults to
-        "bilinear".
+    Args:
+        mode: Interpolation mode for resizing. Defaults to "bilinear".
+
     """
 
     @typechecked
@@ -843,16 +1138,37 @@ class UpscaleOnline(nn.Module):
     def forward(
         self, x: Tensor, output_height: int, output_width: int
     ) -> Tensor:
-        """Upscale the input tensor to the specified height and width.
+        r"""Resize a feature map to the requested spatial dimensions.
 
-        @type x: Tensor
-        @param x: Input tensor to be upscaled.
-        @type output_height: int
-        @param output_height: Desired height of the output tensor.
-        @type output_width: int
-        @param output_width: Desired width of the output tensor.
-        @return: Upscaled tensor.
-        """
+        Args:
+            x: Feature map to resize.
+            output_height: Requested output height.
+            output_width: Requested output width.
+
+        Returns:
+            Feature map at the requested height and width.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, \mathrm{output}_{\mathrm{height}}, \mathrm{output}_{\mathrm{width}})`
+
+            Constraints
+                - :math:`\mathrm{output}_{\mathrm{height}} > 0`
+                - :math:`\mathrm{output}_{\mathrm{width}} > 0`
+
+            Symbols
+                :math:`\mathrm{output}_{\mathrm{height}}`
+                    Requested output height.
+                :math:`\mathrm{output}_{\mathrm{width}}`
+                    Requested output width.
+
+        """  # noqa: E501
         return F.interpolate(
             x, size=[output_height, output_width], mode=self.mode
         )
@@ -871,20 +1187,33 @@ class DropPath(nn.Module):
     ...   def forward(self, x):
     ...     return x + self.drop_path(self.conv_bn_act(x))
 
-    @see: U{Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>}
-    @license: U{Apache License 2.0 <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>}
+    Args:
+        drop_prob: Probability of zeroing out individual vectors
+            (channel dimension) of each feature map. Defaults to 0.0.
+        scale_by_keep: Whether to scale the output by the keep
+            probability. Enabled by default to maintain output mean &
+            std in the same range as without DropPath. Defaults to True.
 
-    @type drop_prob: float
-    @param drop_prob: Probability of zeroing out individual vectors
-        (channel dimension) of each feature map. Defaults to 0.0.
-    @type scale_by_keep: bool
-    @param scale_by_keep: Whether to scale the output by the keep
-        probability. Enabled by default to maintain output mean &
-        std in the same range as without DropPath. Defaults to True.
+    See Also:
+        `Original code (TIMM)
+        <https://github.com/rwightman/pytorch-image-models>`_
+
+    License:
+        `Apache License 2.0
+        <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>`_
+
     """
 
     @typechecked
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
+        """Initialize stochastic depth.
+
+        Args:
+            drop_prob: Probability of dropping a path.
+            scale_by_keep: Whether to divide retained paths by their keep
+                probability.
+
+        """
         super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
@@ -893,16 +1222,13 @@ class DropPath(nn.Module):
         """Drop paths (Stochastic Depth) per sample when applied in the
         main path of residual blocks.
 
-        @type x: Tensor
-        @param x: Input tensor.
-        @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to
-            0.0.
-        @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep
-            probability. Defaults to True.
-        @return: Tensor with dropped paths based on the provided drop
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Tensor with dropped paths based on the provided drop
             probability.
+
         """
         keep_prob = 1 - self.drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
@@ -912,23 +1238,43 @@ class DropPath(nn.Module):
         return x * random_tensor
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply stochastic depth to a feature map.
+
+        Args:
+            x: Residual-branch feature map subject to stochastic depth.
+
+        Returns:
+            Regularized feature map, or the unchanged input when disabled.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+        """
         if self.drop_prob == 0.0 or not self.training:
             return x
         return self.drop_path(x)
 
 
 class ConvStack(BlockRepeater):
+    """Stack of ConvBlocks."""
+
     def __init__(
         self, in_channels: int, out_channels: int, *, n_repeats: int = 2
     ):
         """Stack of ConvBlocks.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of ConvBlocks to stack.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            n_repeats: Number of ConvBlocks to stack.
+
         """
         super().__init__(
             ConvBlock,

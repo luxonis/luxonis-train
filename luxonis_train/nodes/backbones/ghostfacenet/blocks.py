@@ -11,6 +11,8 @@ from luxonis_train.nodes.blocks.blocks import ConvBlock
 
 
 class OriginalGhostModuleV2(nn.Module):
+    """Original Ghost Module V2 module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -44,6 +46,25 @@ class OriginalGhostModuleV2(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Generate intrinsic and inexpensive GhostNet features.
+
+        Args:
+            x: Feature map used to generate intrinsic and ghost features.
+
+        Returns:
+            Concatenated intrinsic and ghost features.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         x1 = self.primary_conv(x)
         x2 = self.cheap_operation(x1)
         out = torch.cat([x1, x2], dim=1)
@@ -51,6 +72,8 @@ class OriginalGhostModuleV2(nn.Module):
 
 
 class AttentionGhostModuleV2(OriginalGhostModuleV2):
+    """Attention Ghost Module V2 module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -103,6 +126,26 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Generate GhostNet features with spatial attention.
+
+        Args:
+            x: Feature map used to generate intrinsic, ghost, and
+                attention features.
+
+        Returns:
+            Attention-gated GhostNet feature map.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         x1 = self.primary_conv(x)
         x2 = self.cheap_operation(x1)
         out = torch.cat([x1, x2], dim=1)
@@ -115,6 +158,8 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
 
 
 class GhostBottleneckV2(nn.Module):
+    """Ghost Bottleneck V2 module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -196,6 +241,25 @@ class GhostBottleneckV2(nn.Module):
             )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply a GhostNetV2 bottleneck.
+
+        Args:
+            x: Feature map supplied to the GhostNetV2 bottleneck.
+
+        Returns:
+            Feature map produced by the GhostNetV2 bottleneck.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         residual = x
         x = self.ghost1(x)
         if self.stride > 1:
@@ -209,6 +273,8 @@ class GhostBottleneckV2(nn.Module):
 
 
 class GhostBottleneckLayer(nn.Sequential):
+    """Ghost Bottleneck Layer module."""
+
     def __init__(
         self,
         width_multiplier: int,
@@ -255,3 +321,25 @@ class GhostBottleneckLayer(nn.Sequential):
         self.output_channel = input_channel
 
         super().__init__(*blocks)
+
+    def forward(self, x: Tensor) -> Tensor:
+        r"""Apply a residual GhostNet bottleneck layer.
+
+        Args:
+            x: Feature map supplied to the GhostNet layer.
+
+        Returns:
+            Feature map produced by the residual GhostNet layer.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
+        return super().forward(x)

@@ -79,13 +79,13 @@ def infer_upscale_factor(
             )
         case (int(wf), float(hf)):
             raise ValueError(
-                f"Width upscale factor is an integer, but height upscale factor is not. "
-                f"Width: {wf}, height: {hf}."
+                f"Width upscale factor is an integer, but height "
+                f"upscale factor is not. Width: {wf}, height: {hf}."
             )
         case (float(wf), int(hf)):
             raise ValueError(
-                f"Height upscale factor is an integer, but width upscale factor is not. "
-                f"Width: {wf}, height: {hf}."
+                f"Height upscale factor is an integer, but width "
+                f"upscale factor is not. Width: {wf}, height: {hf}."
             )
         case (float(wf), float(hf)):
             raise ValueError(
@@ -243,7 +243,10 @@ def clean_url(url: str) -> str:
 
 
 def url2file(url: str) -> str:
-    """Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt."""
+    """Convert URL to filename.
+
+    For example, C{https://url.com/file.txt?auth} becomes C{file.txt}.
+    """
     return Path(clean_url(url)).name
 
 

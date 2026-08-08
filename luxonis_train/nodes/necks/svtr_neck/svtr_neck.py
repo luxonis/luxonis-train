@@ -12,16 +12,13 @@ from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
 class SVTRNeck(BaseNode):
     """SVTR neck.
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
+    See Also:
+        `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/modeling/necks/rnn.py>`_
+        `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
+
+    License:
+        `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+
     """
 
     in_channels: int
@@ -112,6 +109,25 @@ class SVTRNeck(BaseNode):
         self.out_channels = dims
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Convert a convolutional feature map into an OCR sequence.
+
+        Args:
+            x: Convolutional feature map to convert into an OCR sequence.
+
+        Returns:
+            Sequence-ready OCR feature map with singleton height.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+
+        """
         z = x.clone().detach() if self.use_guide else x
         h = z
 

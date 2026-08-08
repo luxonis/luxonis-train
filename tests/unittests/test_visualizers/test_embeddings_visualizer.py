@@ -84,6 +84,6 @@ def test_embeddings_visualizer(
         f"(threshold: {MAX_MEAN_PIXEL_DIFF})"
     )
     assert scatter_diff < MAX_MEAN_PIXEL_DIFF, (
-        f"Scatter plot differs from reference by {scatter_diff:.2f} mean pixel value "
-        f"(threshold: {MAX_MEAN_PIXEL_DIFF})"
+        f"Scatter plot differs from reference by {scatter_diff:.2f} "
+        f"mean pixel value (threshold: {MAX_MEAN_PIXEL_DIFF})"
     )

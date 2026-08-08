@@ -1,16 +1,11 @@
 from torch import Tensor
 
-from luxonis_train.attached_modules.visualizers.base_visualizer import (
-    BaseVisualizer,
-)
-from luxonis_train.attached_modules.visualizers.instance_segmentation_visualizer import (
-    InstanceSegmentationVisualizer,
-)
-from luxonis_train.attached_modules.visualizers.keypoint_visualizer import (
-    KeypointVisualizer,
-)
-from luxonis_train.attached_modules.visualizers.utils import Color, get_color
 from luxonis_train.tasks import Tasks
+
+from .base_visualizer import BaseVisualizer
+from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
+from .keypoint_visualizer import KeypointVisualizer
+from .utils import Color, get_color
 
 
 class InstanceSegKeypointVisualizer(BaseVisualizer):

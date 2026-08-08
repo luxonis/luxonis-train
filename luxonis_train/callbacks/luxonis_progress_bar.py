@@ -100,7 +100,8 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
 
         # Log only to file
         logger.bind(file_only=True).info(
-            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
+            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] "
+            f"Duration: {duration:.2f}s | Train Loss: {loss_str}"
         )
 
     def format_matrix_for_printing(
@@ -261,7 +262,8 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         if self._console is None:  # pragma: no cover
             raise RuntimeError(
                 "Console is not initialized for the `LuxonisRichProgressBar`. "
-                "Consider setting `rich_logging` to `False` in the configuration."
+                "Consider setting `rich_logging` to `False` in the "
+                "configuration."
             )
         return self._console
 

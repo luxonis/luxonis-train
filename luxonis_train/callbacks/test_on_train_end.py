@@ -27,7 +27,8 @@ class TestOnTrainEnd(NeedsCheckpoint):
         checkpoint = self.get_checkpoint(pl_module)
         if checkpoint is None:  # pragma: no cover
             logger.warning(
-                "Best model checkpoint not found. Using last checkpoint for testing."
+                "Best model checkpoint not found. Using last checkpoint "
+                "for testing."
             )
         # `trainer.test` would delete the paths so we need to save them
         best_paths = {
@@ -44,7 +45,8 @@ class TestOnTrainEnd(NeedsCheckpoint):
             finalize_tracker=False,
         )
 
-        # .test() moves pl_module to "cpu", we move it back to original device after
+        # .test() moves pl_module to "cpu", we move it back to the
+        # original device after
         pl_module.to(device_before)
 
         # Restore the paths

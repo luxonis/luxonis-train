@@ -31,19 +31,26 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         skip_stal: bool = False,
         **kwargs,
     ):
-        """BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
+        """BBox loss adapted from U{Real-Time Flying Object Detection
+        with YOLOv8 <https://arxiv.org/pdf/2305.09972>} and from
+        U{YOLOv6: A Single-Stage Object Detection Framework for
+        Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
         @type tal_topk: int
-        @param tal_topk: Number of anchors considered in selection. Defaults to 10.
+        @param tal_topk: Number of anchors considered in selection.
+            Defaults to 10.
         @type class_loss_weight: float
-        @param class_loss_weight: Weight for classification loss. Defaults to 0.5. For optimal results, multiply with accumulate_grad_batches.
+        @param class_loss_weight: Weight for classification loss.
+            Defaults to 0.5. For optimal results, multiply with
+            accumulate_grad_batches.
         @type bbox_loss_weight: float
-        @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5. For optimal results, multiply with accumulate_grad_batches.
+        @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5.
+            For optimal results, multiply with accumulate_grad_batches.
         @type dfl_loss_weight: float
-        @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
+        @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5.
+            For optimal results, multiply with accumulate_grad_batches.
         @type skip_stal: bool
         @param skip_stal: If True, disables the
             Small-Target-Aware Label Assignment candidate expansion.

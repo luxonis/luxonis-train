@@ -13,52 +13,9 @@ class MicroNet(BaseNode):
     # TODO: Check docs, add source
     """MicroNet backbone.
 
-    Variants
-    ========
-    The variant determines the architecture of the MicroNet backbone.
-    Available variants are:
-      - M1 (default):
-        - stem_channels: 6
-        - stem_groups: (3, 2)
-        - init_a: (1.0, 1.0)
-        - init_b: (0.0, 0.0)
-        - out_indices: [1, 2, 4, 7]
-        - strides: [2, 2, 2, 1, 2, 1, 1]
-        - out_channels: [8, 16, 16, 32, 64, 96, 576]
-        - kernel_sizes: [3, 3, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), (1, 6), (1, 6), (1, 6)]
-        - groups_1: [(0, 6), (0, 8), (0, 16), (4, 4), (8, 8), (8, 8), (12, 12)]
-        - groups_2: [(2, 2), (4, 4), (4, 4), (4, 4), (8, 9), (8, 8), (0, 0)]
-        - dy_shifts: [(2, 0, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1)]
-        - reduction_factors: [1, 1, 1, 1, 1, 2, 2]
-      - M2:
-        - stem_channels: 8
-        - stem_groups: (4, 2)
-        - init_a: (1.0, 1.0)
-        - init_b: (0.0, 0.0)
-        - out_indices: [1, 3, 6, 9]
-        - strides: [2, 2, 1, 2, 1, 1, 2, 1, 1]
-        - out_channels: [12, 16, 24, 32, 32, 64, 96, 128, 768]
-        - kernel_sizes: [3, 3, 3, 5, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), ...]
-        - groups_1: [(0, 8), (0, 12), (0, 16), (6, 6), (8, 8), (8, 8), (8, 8), (12, 12), (16, 16)]
-        - groups_2: [(4, 4), (4, 4), (4, 4), (4, 4), (8, 8), (8, 8), (8, 8), (0, 0)]
-        - dy_shifts: [(2, 0, 1), (2, 2, 1), ...]
-        - reduction_factors: [1, 1, 1, 1, 2, 2, 2, 2, 2]
-      - M3:
-        - stem_channels: 12
-        - stem_groups: (4, 3)
-        - init_a: (1.0, 0.5)
-        - init_b: (0.0, 0.5)
-        - out_indices: [1, 3, 8, 12]
-        - strides: [2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1]
-        - out_channels: [16, 24, 24, 32, 32, 64, 80, 80, 120, 120, 144, 864]
-        - kernel_sizes: [3, 3, 3, 5, 5, 5, 5, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), ...]
-        - groups_1: [(0, 12), (0, 16), (0, 24), (6, 6), (8, 8), (8, 8), (8, 8), (10, 10), (10, 10), (12, 12), (12, 12), (12, 12)]
-        - groups_2: [(4, 4), (4, 4), (4, 4), (4, 4), (4, 4), (8, 8), (8, 8), (8, 8), (10, 10), (10, 10), (12, 12), (0, 0)]
-        - dy_shifts: [(0, 2, 0), ...]
-        - reduction_factors: [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2]
+    Variant configurations:
+    M1, M2, and M3 define progressively larger channel layouts. The complete
+    parameter sets are returned by :meth:`get_variants`.
     """
 
     @typechecked
@@ -78,9 +35,16 @@ class MicroNet(BaseNode):
         specified variant. It consists of a stem layer followed by
         multiple MicroBlocks.
 
-        @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. If provided,
-            overrides the variant value.
+        Args:
+            stem_channels: Number of output channels in the stem.
+            stem_groups: Group configuration used by the stem.
+            init_a: Scale initialization for dynamic shift activations.
+            init_b: Bias initialization for dynamic shift activations.
+            out_indices: Indices of the output layers. If provided,
+                overrides the variant value.
+            layer_params: Per-layer MicroBlock configuration.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
         out_indices = out_indices or [1, 2, 4, 7]
@@ -104,6 +68,30 @@ class MicroNet(BaseNode):
             in_channels = params["out_channels"]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale MicroNet feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         outs: list[Tensor] = []
         for i, layer in enumerate(self.layers):
             inputs = layer(inputs)

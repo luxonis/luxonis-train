@@ -50,23 +50,28 @@ def test_opset_bump_equivalence(
     conversions.
 
     Performed tests:
-        - Successful export of the model in previous opset version and newer opset version
+        - Successful export of the model in previous opset version and
+          newer opset version
         - Converted models can be executed and output formats are the same
         - Outputs are the same between both models on the same input
     """
     if target_opset == current_opset:
         pytest.skip(
-            "Opset version is not being upgraded, skipping test for bumping opset version"
+            "Opset version is not being upgraded, skipping test for "
+            "bumping opset version"
         )
     if config_name in BACKBONES:
         config = get_config(config_name, dinov3_weights)
         opts |= {
-            "loader.params.dataset_name": test_datasets.parking_lot_dataset.identifier
+            "loader.params.dataset_name": (
+                test_datasets.parking_lot_dataset.identifier
+            )
         }
         opset = get_opset_version(config)
         if opset is not None and opset > current_opset:
             pytest.skip(
-                f"Skipping for backbone {config_name} because the opset version is already set to higher than current opset"
+                f"Skipping for backbone {config_name} because the opset "
+                "version is already set to higher than current opset"
             )
     else:
         config, opts, _ = prepare_predefined_model_config(
@@ -146,5 +151,6 @@ def test_opset_bump_equivalence(
                 array_output_newer,
                 rtol=1e-4,
                 atol=1e-5,
-                err_msg=f"Output {i} differs between opset {current_opset} and {target_opset}",
+                err_msg=f"Output {i} differs between opset "
+                f"{current_opset} and {target_opset}",
             )

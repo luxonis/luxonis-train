@@ -30,20 +30,24 @@ class TorchMetricWrapper(BaseMetric):
         if n_classes is None and task != "binary":
             arg_name = "num_classes" if task == "multiclass" else "num_labels"
             raise ValueError(
-                f"'{self.name}' metric does not have the '{arg_name}' parameter set "
-                "and it is not possible to infer it from the other arguments. "
-                "You can either set the '{arg_name}' parameter explicitly, or use this metric with a node."
+                f"'{self.name}' metric does not have the '{arg_name}' "
+                "parameter set and it is not possible to infer it from "
+                "the other arguments. You can either set the "
+                "'{arg_name}' parameter explicitly, or use this metric "
+                "with a node."
             )
 
         if task == "binary" and n_classes is not None and n_classes > 1:
             raise ValueError(
-                f"Task type set to '{task}', but the dataset has more than 1 class. "
-                f"Set the `task` argument of '{self.name}' to either 'multiclass' or 'multilabel'."
+                f"Task type set to '{task}', but the dataset has more "
+                f"than 1 class. Set the `task` argument of "
+                f"'{self.name}' to either 'multiclass' or 'multilabel'."
             )
         if task != "binary" and n_classes == 1:
             raise ValueError(
-                f"Task type set to '{task}', but the dataset has only 1 class. "
-                f"Set the `task` argument of '{self.name}' to 'binary'."
+                f"Task type set to '{task}', but the dataset has only "
+                f"1 class. Set the `task` argument of '{self.name}' to "
+                f"'binary'."
             )
 
         if task == "multiclass":

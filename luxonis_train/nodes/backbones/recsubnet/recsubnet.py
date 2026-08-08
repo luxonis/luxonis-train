@@ -12,6 +12,10 @@ from luxonis_train.typing import Packet
 # an arbitrary head. This node is intended to be used specifically
 # with the DiscSubNetHead for anomaly detection tasks.
 class RecSubNet(BaseNode):
+    """RecSubNet: A reconstruction sub-network that consists of an
+    encoder and a decoder.
+    """
+
     in_channels: int
 
     def __init__(
@@ -24,25 +28,25 @@ class RecSubNet(BaseNode):
         """RecSubNet: A reconstruction sub-network that consists of an
         encoder and a decoder.
 
-        This model is designed to reconstruct the original image from an input image that contains noise or anomalies.
-        The encoder extracts relevant features from the noisy input, and the decoder attempts to reconstruct the clean
-        version of the image by eliminating the noise or anomalies.
+        This model is designed to reconstruct the original image from an
+        input image that contains noise or anomalies. The encoder
+        extracts relevant features from the noisy input, and the decoder
+        attempts to reconstruct the clean version of the image by
+        eliminating the noise or anomalies.
 
         This architecture is based on the paper:
-        "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
+        "Data-Efficient Image Transformers: A Deeper Look"
+        (https://arxiv.org/abs/2108.07610).
 
-        @type out_channels: int
-        @param out_channels: Number of output channels for the decoder. Defaults to 3.
+        Args:
+            out_channels: Number of output channels for the decoder.
+                Defaults to 3.
+            base_channels: The base width of the network. Determines the
+                number of filters in the encoder and decoder.
+            width_multipliers: Width multipliers for the encoder and
+                decoder stages.
+            **kwargs: Base node arguments.
 
-        @type base_channels: int
-        @param base_channels: The base width of the network.
-            Determines the number of filters in the encoder and decoder.
-
-        @type encoder: nn.Module
-        @param encoder: The encoder block to use. Defaults to Encoder.
-
-        @type decoder: nn.Module
-        @param decoder: The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
         width_multipliers = width_multipliers or [1, 2, 4, 8]
@@ -60,7 +64,27 @@ class RecSubNet(BaseNode):
         )
 
     def forward(self, x: Tensor) -> Packet[Tensor]:
-        """Perform the forward pass through the encoder and decoder."""
+        r"""Reconstruct an image through the encoder-decoder network.
+
+        Args:
+            x: Image batch to encode.
+
+        Returns:
+            Packet containing encoder features and the reconstructed image.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{reconstruction}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+                :math:`\mathrm{original}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+        """
         return {
             "reconstruction": self.decoder(self.encoder(x)),
             "original": x,

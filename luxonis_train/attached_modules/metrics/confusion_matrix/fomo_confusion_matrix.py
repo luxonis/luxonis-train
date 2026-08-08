@@ -14,8 +14,9 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
     def __init__(self, iou_threshold: float | None = None, **kwargs):
         if iou_threshold is not None and iou_threshold != 0.0:
             logger.warning(
-                "The `iou_threshold` parameter is ignored for FomoConfusionMatrix and is hardcoded to 0. "
-                "This is by design to align with FOMO's use case.",
+                "The `iou_threshold` parameter is ignored for "
+                "FomoConfusionMatrix and is hardcoded to 0. This is by "
+                "design to align with FOMO's use case.",
             )
         super().__init__(iou_threshold=0.0, **kwargs)
 

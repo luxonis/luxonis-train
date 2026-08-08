@@ -281,8 +281,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 if isinstance(metadata_override, str):
                     if len(metadata) != 1:
                         raise ValueError(
-                            f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
-                            "so the `metadata_task_override` must be a dictionary."
+                            f"Task '{Node.task}' of node "
+                            f"'{Node.__name__}' requires multiple "
+                            f"metadata labels: {metadata}, so the "
+                            "`metadata_task_override` must be a "
+                            "dictionary."
                         )
                     metadata_override = {
                         next(iter(metadata)).name: metadata_override
@@ -300,8 +303,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 typ = metadata_types[m_name]
                 if not m.check_type(typ):
                     raise ValueError(
-                        f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
-                        f"Expected type '{m.typ}', got '{typ.__name__}'."
+                        f"Metadata type mismatch for label '{m}' in "
+                        f"node '{node_cfg.identifier}'. Expected type "
+                        f"'{m.typ}', got '{typ.__name__}'."
                     )
 
     def _get_freezing(
@@ -331,8 +335,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 for input_source in node.input_sources:
                     if input_source not in input_shapes:
                         raise ValueError(
-                            f"Node '{node.identifier}' requires input source '{input_source}', "
-                            "which is not provided by the loader."
+                            f"Node '{node.identifier}' requires input "
+                            f"source '{input_source}', which is not "
+                            "provided by the loader."
                         )
 
                     loader_input_shapes[node.identifier][input_source] = Size(
@@ -776,17 +781,23 @@ def compute_visualization_buffer(
     `max_log_images` frames.
 
     @type seq_buffer: list[dict[str, dict[str, Tensor]]]
-    @param seq_buffer: Previously buffered visualizations; each item maps node names to
-                        dicts of viz names to Tensors of shape [N, …].
+    @param seq_buffer: Previously buffered visualizations; each item
+        maps node names to dicts of viz names to Tensors of shape
+        [N, …].
     @type visualizations: dict[str, dict[str, Tensor]]
-    @param visualizations: Current batch's visualizations with the same nested structure.
+    @param visualizations: Current batch's visualizations with the same
+        nested structure.
     @type logged_idxs: list[int]
-    @param logged_idxs: List of batch indices already logged by the smart (class-balanced) logger.
+    @param logged_idxs: List of batch indices already logged by the
+        smart (class-balanced) logger.
     @type max_log_images: int
-    @param max_log_images: Total number of images we aim to log per epoch.
-    @return: A dict `{ node_name: { viz_name: Tensor[...] } }` containing up to the remaining
-             number of images needed to reach `max_log_images`, excluding any indices in
-             `logged_idxs`. Returns `None` if the buffer is already full or no leftovers exist.
+    @param max_log_images: Total number of images we aim to log per
+        epoch.
+    @return: A dict `{ node_name: { viz_name: Tensor[...] } }`
+        containing up to the remaining number of images needed to reach
+        `max_log_images`, excluding any indices in `logged_idxs`.
+        Returns `None` if the buffer is already full or no leftovers
+        exist.
     """
     if seq_buffer:
         first_map = seq_buffer[0]

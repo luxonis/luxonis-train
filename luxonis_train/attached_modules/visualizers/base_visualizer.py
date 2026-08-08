@@ -64,12 +64,13 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         Takes an image and the prepared inputs from the `prepare` method and
         produces visualizations. Visualizations can be either:
 
-            - A single image (I{e.g.} for classification, weight visualization).
-            - A tuple of two images, representing (labels, predictions) (I{e.g.} for
-              bounding boxes, keypoints).
+            - A single image (I{e.g.} for classification, weight
+              visualization).
+            - A tuple of two images, representing (labels, predictions)
+              (I{e.g.} for bounding boxes, keypoints).
             - A tuple of an image and a list of images,
-              representing (labels, multiple visualizations) (I{e.g.} for segmentation,
-              depth estimation).
+              representing (labels, multiple visualizations) (I{e.g.}
+              for segmentation, depth estimation).
             - A list of images, representing unrelated visualizations.
 
         @type target_canvas: Tensor
@@ -79,10 +80,12 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         @type args: Unpack[Ts]
         @param args: Prepared inputs from the `prepare` method.
 
-        @rtype: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]
+        @rtype: Tensor | tuple[Tensor, Tensor] |
+            tuple[Tensor, list[Tensor]] | list[Tensor]
         @return: Visualizations.
 
-        @raise IncompatibleError: If the inputs are not compatible with the module.
+        @raise IncompatibleError: If the inputs are not compatible with
+            the module.
         """
         ...
 

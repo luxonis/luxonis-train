@@ -17,6 +17,13 @@ from .precision_bbox_head import PrecisionBBoxHead
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
+    """Head for instance segmentation and object detection. Adapted from
+    `Real-Time Flying Object Detection with YOLOv8
+    <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage
+    Object Detection Framework for Industrial Applications
+    <https://arxiv.org/pdf/2209.02976.pdf>`_.
+    """
+
     task: Task = Tasks.INSTANCE_SEGMENTATION
     parser: str = "YOLOExtendedParser"
 
@@ -30,25 +37,21 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         max_det: int = 300,
         **kwargs,
     ):
-        """
-        Head for instance segmentation and object detection.
-        Adapted from U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
+        """Head for instance segmentation and object detection. Adapted
+        from `Real-Time Flying Object Detection with YOLOv8
+        <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A
+        Single-Stage Object Detection Framework for Industrial
+        Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
-        @type n_heads: Literal[2, 3, 4]
-        @param n_heads: Number of output heads. Defaults to 3.
-        @type n_masks: int
-        @param n_masks: Number of masks.
-        @type n_proto: int
-        @param n_proto: Number of prototypes for segmentation.
-        @type conf_thres: flaot
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
+        Args:
+            n_heads: Number of output heads. Defaults to 3.
+            n_masks: Number of masks.
+            n_proto: Number of prototypes for segmentation.
+            conf_thres: Confidence threshold for NMS.
+            iou_thres: IoU threshold for NMS.
+            max_det: Maximum number of detections retained after NMS.
+            **kwargs: Base detection head arguments.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -87,6 +90,51 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self.n_masks = n_masks
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        r"""Predict boxes, classes, and instance masks.
+
+        Args:
+            inputs: Feature pyramid ordered from highest to lowest
+                spatial resolution.
+
+        Returns:
+            Per-level box and mask predictions during training, or
+            decoded instances during export.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, n_{\mathrm{classes}} + 4 \cdot \mathrm{reg}_{\mathrm{max}}, H_{i}, W_{i})`
+                :math:`\mathrm{prototypes}`
+                    :math:`(B, n_{\mathrm{masks}}, 2 \cdot H_{0}, 2 \cdot W_{0})`
+                :math:`\mathrm{mask}_{\mathrm{coeficients}}`
+                    :math:`(B, n_{\mathrm{masks}}, A)`
+
+            Export outputs
+                :math:`\mathrm{boundingbox}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, 5 + n_{\mathrm{classes}}, H_{i}, W_{i})`
+                :math:`\mathrm{masks}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, n_{\mathrm{masks}}, H_{i}, W_{i})`
+                :math:`\mathrm{prototypes}`
+                    :math:`(B, n_{\mathrm{masks}}, 2 \cdot H_{0}, 2 \cdot W_{0})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+                :math:`A`
+                    Total number of flattened spatial predictions.
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+                :math:`n_{\mathrm{masks}}`
+                    Number of mask coefficients or prototypes.
+                :math:`\mathrm{reg}_{\mathrm{max}}`
+                    Number of distribution bins per box side.
+
+        """  # noqa: E501
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
             head(x)
@@ -185,26 +233,23 @@ def refine_and_apply_masks(
     """Refine and apply masks to bounding boxes based on the mask head
     outputs.
 
-    @type mask_prototypes: Tensor
-    @param mask_prototypes: Tensor of shape [mask_dim, mask_height,
-        mask_width].
-    @type predicted_masks: Tensor
-    @param predicted_masks: Tensor of shape [n_masks, mask_dim], where
-        n_masks is the number of detected masks.
-    @type bounding_boxes: Tensor
-    @param bounding_boxes: Tensor of shape [n_masks, 4], containing
-        bounding box coordinates.
-    @type height: int
-    @param height: Height of the input image.
-    @type width: int
-    @param width: Width of the input image.
-    @type upsample: bool
-    @param upsample: If True, upsample the masks to the target image
-        dimensions. Default is False.
-    @rtype: Tensor
-    @return: A binary mask tensor of shape [n_masks, height, width],
-        where the masks are cropped according to their respective
-        bounding boxes.
+    Args:
+        mask_prototypes: Tensor of shape
+            [mask_dim, mask_height, mask_width].
+        predicted_masks: Tensor of shape [n_masks, mask_dim], where
+            n_masks is the number of detected masks.
+        bounding_boxes: Tensor of shape [n_masks, 4], containing
+            bounding box coordinates.
+        height: Height of the input image.
+        width: Width of the input image.
+        upsample: If True, upsample the masks to the target image
+            dimensions. Default is False.
+
+    Returns:
+        A binary mask tensor of shape [n_masks, height, width], where
+        the masks are cropped according to their respective bounding
+        boxes.
+
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:
         return torch.zeros(

@@ -18,10 +18,13 @@ class ClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
-        """
-        @type dropout_rate: float
-        @param dropout_rate: Dropout rate before last layer, range C{[0,
-            1]}. Defaults to C{0.2}.
+        """Classification head.
+
+        Args:
+            dropout_rate: Dropout rate before last layer, range
+                ``[0, 1]``. Defaults to ``0.2``.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -33,6 +36,29 @@ class ClassificationHead(BaseHead):
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
+        r"""Pool image features and predict class logits.
+
+        Args:
+            inputs: Input feature map.
+
+        Returns:
+            Class logits for each image.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B, n_{\mathrm{classes}})`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         return self.head(inputs)
 
     @override

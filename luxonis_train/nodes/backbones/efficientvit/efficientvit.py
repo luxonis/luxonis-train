@@ -18,21 +18,27 @@ class EfficientViT(BaseNode):
     """EfficientViT backbone implementation based on a lightweight
     transformer architecture.
 
-    This implementation is inspired by the architecture described in the paper:
-    "EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction"
+    This implementation is inspired by the architecture described in the
+    paper: "EfficientViT: Multi-Scale Linear Attention for
+    High-Resolution Dense Prediction"
     (https://arxiv.org/abs/2205.14756).
 
-    The EfficientViT model is designed to provide a balance between computational efficiency
-    and performance, making it suitable for deployment on edge devices with limited resources.
+    The EfficientViT model is designed to provide a balance between
+    computational efficiency and performance, making it suitable for
+    deployment on edge devices with limited resources.
 
-    Variants
-    ========
-    The variant determines the width, depth, and dimension of the network.
-    Available variants are:
-      - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16
-      - "s" or "small": width_list=[16, 32, 64, 128, 256], depth_list=[1, 2, 3, 3, 4], dim=16
-      - "m" or "medium": width_list=[24, 48, 96, 192, 384], depth_list=[1, 3, 4, 4, 6], dim=32
-      - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
+    Variant configurations:
+    The variant determines the width, depth, and dimension of the
+    network. Available variants are:
+
+    - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128],
+      depth_list=[1, 2, 2, 2, 2], dim=16
+    - "s" or "small": width_list=[16, 32, 64, 128, 256],
+      depth_list=[1, 2, 3, 3, 4], dim=16
+    - "m" or "medium": width_list=[24, 48, 96, 192, 384],
+      depth_list=[1, 3, 4, 4, 6], dim=32
+    - "l" or "large": width_list=[32, 64, 128, 256, 512],
+      depth_list=[1, 4, 6, 6, 9], dim=32
     """
 
     in_channels: int
@@ -46,15 +52,16 @@ class EfficientViT(BaseNode):
         expand_ratio: int = 4,
         **kwargs,
     ):
-        """
-        @type width_list: list[int]
-        @param width_list: List of number of channels for each block.
-        @type depth_list: list[int]
-        @param depth_list: List of number of layers in each block.
-        @type dim: int | None
-        @param dim: Dimension of the transformer.
-        @type expand_ratio: int
-        @param expand_ratio: Expansion ratio for the L{MobileBottleneckBlock}. Defaults to C{4}.
+        """EfficientViT backbone based on a lightweight transformer.
+
+        Args:
+            width_list: List of number of channels for each block.
+            depth_list: List of number of layers in each block.
+            dim: Dimension of the transformer.
+            expand_ratio: Expansion ratio for the `MobileBottleneckBlock`.
+                Defaults to ``4``.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
         width_list = width_list or [8, 16, 32, 64, 128]
@@ -135,6 +142,30 @@ class EfficientViT(BaseNode):
             self.encoder_blocks.append(encoder_blocks)
 
     def forward(self, x: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale EfficientViT feature pyramid.
+
+        Args:
+            x: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         outputs = []
         for block in self.feature_extractor:
             x = block(x)

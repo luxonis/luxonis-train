@@ -185,7 +185,8 @@ class LuxonisModel:
 
         setup_logging(file=self.log_file, use_rich=self.cfg.rich_logging)
 
-        # NOTE: overriding logger in pl so it uses our logger to log device info
+        # NOTE: overriding logger in pl so it uses our logger to log
+        # device info
         rank_zero_module.log = logger
 
         if self.cfg.trainer.seed is not None:
@@ -213,7 +214,8 @@ class LuxonisModel:
             }
             if model_tasks and None not in model_tasks:
                 logger.info(
-                    f"Using {model_tasks} to filter task names from the dataset"
+                    f"Using {model_tasks} to filter task names from "
+                    f"the dataset"
                 )
                 self.cfg.loader.params["filter_task_names"] = sorted(
                     model_tasks  # type: ignore
@@ -272,7 +274,8 @@ class LuxonisModel:
 
         for name, loader in self.loaders.items():
             logger.info(
-                f"{name.capitalize()} loader - view: {loader.view}, size: {len(loader)}"
+                f"{name.capitalize()} loader - view: {loader.view}, "
+                f"size: {len(loader)}"
             )
             if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
@@ -386,8 +389,9 @@ class LuxonisModel:
                 )
             if self.cfg.model.weights is not None:
                 logger.warning(
-                    "Weights provided in the command line, but config weights are set. "
-                    "Ignoring weights provided in config."
+                    "Weights provided in the command line, but config "
+                    "weights are set. Ignoring weights provided in "
+                    "config."
                 )
             self.lightning_module.load_checkpoint(ckpt)
         self._exported_models: dict[str, Path] = {}
@@ -476,7 +480,8 @@ class LuxonisModel:
         """
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
-                f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
+                f"Setting matmul precision to "
+                f"{self.cfg.trainer.matmul_precision}"
             )
             torch.set_float32_matmul_precision(
                 self.cfg.trainer.matmul_precision
@@ -491,9 +496,10 @@ class LuxonisModel:
             )
         elif weights and self.cfg.trainer.resume_training is False:
             logger.info(
-                "Weights argument was given and resume_training is set to False. "
-                "Training will start from the provided weights while resetting "
-                "optimizer, scheduler, and epoch state."
+                "Weights argument was given and resume_training is set "
+                "to False. Training will start from the provided "
+                "weights while resetting optimizer, scheduler, and "
+                "epoch state."
             )
             self.lightning_module.load_checkpoint(weights)
 
@@ -512,7 +518,8 @@ class LuxonisModel:
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
 
         else:  # pragma: no cover
-            # Every time exception happens in the Thread, this hook will activate
+            # Every time exception happens in the Thread, this hook
+            # will activate
             def thread_exception_hook(args: ExceptHookArgs) -> None:
                 self.error_message = str(args.exc_value)
 
@@ -818,7 +825,8 @@ class LuxonisModel:
                     infer_from_directory(self, image_files, save_dir)
                 else:
                     raise ValueError(
-                        f"Source path {source_path} is not a valid file or directory."
+                        f"Source path {source_path} is not a valid "
+                        f"file or directory."
                     )
             else:
                 infer_from_dataset(self, view, save_dir)
@@ -916,7 +924,9 @@ class LuxonisModel:
             for cb in cfg.trainer.callbacks:
                 if cb.name in unsupported_callbacks:
                     logger.warning(
-                        f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
+                        f"Callback '{cb.name}' is not supported for "
+                        f"tunning and is removed from the callbacks "
+                        f"list."
                     )
                 else:
                     filtered_callbacks.append(cb)
@@ -951,7 +961,9 @@ class LuxonisModel:
                 main_metric = get_main_metric(cfg)
                 if main_metric is None:  # pragma: no cover
                     raise ValueError(
-                        "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
+                        "You have to specify the `main_metric` in the "
+                        "`model.metrics` section of the config when "
+                        "using a custom metric for tuning."
                     )
                 all_mlflow_logging_keys = self.get_mlflow_logging_keys()
                 search_name = (
@@ -971,8 +983,10 @@ class LuxonisModel:
                 )
                 if monitor is None:
                     raise ValueError(
-                        f"Could not find monitor key for main metric '{main_metric.metric_name}' "
-                        f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
+                        f"Could not find monitor key for main metric "
+                        f"'{main_metric.metric_name}' attached to "
+                        f"'{main_metric.node_name}' in the MLFlow "
+                        f"logging keys."
                     )
 
             pruner_callback = PyTorchLightningPruningCallback(
@@ -1018,7 +1032,8 @@ class LuxonisModel:
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = get_tracker_init_params(cfg_tracker)
-        # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
+        # NOTE: wandb doesn't allow multiple concurrent runs, handle
+        # this separately
         tracker_params["is_wandb"] = False
         tracker_params["run_name"] = (
             tracker_params["run_name"] or self.tracker.run_name
@@ -1030,7 +1045,8 @@ class LuxonisModel:
             **tracker_params,
         )
         if self.parent_tracker.is_mlflow:  # pragma: no cover
-            # Experiment needs to be interacted with to create actual MLFlow run
+            # Experiment needs to be interacted with to create actual
+            # MLFlow run
             self.parent_tracker.experiment["mlflow"].active_run()
 
         logger.info("Starting tuning...")
@@ -1072,14 +1088,16 @@ class LuxonisModel:
             _objective, n_trials=cfg_tuner.n_trials, timeout=cfg_tuner.timeout
         )
         logger.info(
-            f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
+            f"Best study parameters: {study.best_params}. "
+            f"Cost: {study.best_value}."
         )
 
         study_df = study.trials_dataframe()
         study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
 
         logger.info(
-            f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
+            f"Optuna study results saved to "
+            f"{self.run_save_dir / 'tuner_study.csv'}."
         )
 
         self.parent_tracker.log_hyperparams(study.best_params)
@@ -1279,8 +1297,9 @@ class LuxonisModel:
         conversion_artifacts: dict[str, Path] = {}
         if self.cfg.exporter.blobconverter.active:
             logger.warning(
-                "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
-                "Please consider using the HubAI SDK instead."
+                "blobconverter is deprecated and only supports RVC2 "
+                "legacy conversion to `.blob`. Please consider using "
+                "the HubAI SDK instead."
             )
             try:
                 blob_path = blobconverter_export(
@@ -1303,8 +1322,9 @@ class LuxonisModel:
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
                 logger.warning(
-                    "`blobconverter` not installed. Skipping .blob model conversion. "
-                    "Ensure `blobconverter` is installed in your environment."
+                    "`blobconverter` not installed. Skipping .blob "
+                    "model conversion. Ensure `blobconverter` is "
+                    "installed in your environment."
                 )
 
         if self.cfg.exporter.hubai.active:
@@ -1672,7 +1692,8 @@ class LuxonisModel:
         """
         Return a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
+        2) "artifacts"  -> Keys expected to be logged as artifacts
+        (e.g. confusion_matrix.json, visualizations).
         """
         return self.lightning_module.get_mlflow_logging_keys()
 
@@ -1694,7 +1715,7 @@ class LuxonisModel:
             and not self._weights_provided_during_init
         ):
             logger.warning(
-                "Weights provided on the command line, but config weights are set. "
-                "Ignoring weights provided in config."
+                "Weights provided on the command line, but config "
+                "weights are set. Ignoring weights provided in config."
             )
         return safe_download(weights)

@@ -324,7 +324,9 @@ def test_precision_recall_curve_run_update_routing() -> None:
 def _record_nms(
     monkeypatch: pytest.MonkeyPatch,
 ) -> list[dict[str, Any]]:
-    import luxonis_train.attached_modules.metrics.precision_recall_curve as module
+    from luxonis_train.attached_modules.metrics import (
+        precision_recall_curve as module,
+    )
 
     calls: list[dict[str, Any]] = []
     original = module.non_max_suppression

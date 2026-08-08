@@ -11,6 +11,8 @@ from luxonis_train.nodes.blocks import (
 
 
 class AffineActivation(nn.Module):
+    """Affine Activation module."""
+
     def __init__(self):
         super().__init__()
         self.activation = nn.Hardswish()
@@ -18,10 +20,35 @@ class AffineActivation(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         # WARN: Is the order correct (activation -> affine)?
+        r"""Apply hard-swish followed by a learned affine transform.
+
+        Args:
+            x: Tensor whose elements will be activated and calibrated.
+
+        Returns:
+            Activated tensor with learned scaling and bias.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`S`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`S`
+
+            Symbols
+                :math:`S`
+                    Arbitrary tensor shape preserved by the operation.
+
+        """
         return self.affine(self.activation(x))
 
 
 class AffineBlock(nn.Module):
+    """Affine Block module."""
+
     @typechecked
     def __init__(self, scale_value: float = 1.0, bias_value: float = 0.0):
         super().__init__()
@@ -30,6 +57,29 @@ class AffineBlock(nn.Module):
         self.bias = nn.Parameter(torch.full((1,), bias_value))
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Scale and shift every tensor element.
+
+        Args:
+            x: Tensor to scale and shift.
+
+        Returns:
+            Tensor with the learned scale and bias applied.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`S`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`S`
+
+            Symbols
+                :math:`S`
+                    Arbitrary tensor shape preserved by the operation.
+
+        """
         return self.scale * x + self.bias
 
 
@@ -38,6 +88,8 @@ with suppress(ImportError):
 
     @QuantizationMixin.implements(AffineBlock)
     class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
+        """Quantized Affine Block module."""
+
         def __quant_init__(self):
             super().__quant_init__()
 
@@ -47,6 +99,29 @@ with suppress(ImportError):
 
         def forward(self, x: Tensor) -> Tensor:
             # Quantize input tensors
+            r"""Apply the quantized affine transform.
+
+            Args:
+                x: Tensor to quantize, scale, and shift.
+
+            Returns:
+                Quantized tensor with the affine transform applied.
+
+            .. shape-contract::
+
+                Inputs
+                    :math:`x`
+                        :math:`S`
+
+                Outputs
+                    :math:`\mathrm{output}`
+                        :math:`S`
+
+                Symbols
+                    :math:`S`
+                        Arbitrary tensor shape preserved by the operation.
+
+            """
             if self.input_quantizers[0]:
                 x = self.input_quantizers[0](x)
 
@@ -62,6 +137,8 @@ with suppress(ImportError):
 
 
 class LCNetV3Block(nn.Module):
+    """L C Net V3 Block module."""
+
     @typechecked
     def __init__(
         self,
@@ -106,10 +183,31 @@ class LCNetV3Block(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply an LCNetV3 depthwise-pointwise block.
+
+        Args:
+            x: Feature map supplied to the LCNetV3 block.
+
+        Returns:
+            Feature map produced by the LCNetV3 block.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         return self.pw_conv(self.se(self.dw_conv(x)))
 
 
 class LCNetV3Layer(nn.Sequential):
+    """L C Net V3 Layer module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -143,6 +241,28 @@ class LCNetV3Layer(nn.Sequential):
             )
             in_channels = out_channel
         super().__init__(*layer)
+
+    def forward(self, x: Tensor) -> Tensor:
+        r"""Apply a sequence of LCNetV3 blocks.
+
+        Args:
+            x: Feature map supplied to the LCNetV3 block sequence.
+
+        Returns:
+            Output of the final LCNetV3 block.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
+        return super().forward(x)
 
 
 def scale_up(

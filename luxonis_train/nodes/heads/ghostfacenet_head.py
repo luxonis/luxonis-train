@@ -10,6 +10,8 @@ from luxonis_train.tasks import Tasks
 
 
 class GhostFaceNetHead(BaseHead):
+    """GhostFaceNet backbone."""
+
     in_channels: int
     in_width: int
     task = Tasks.EMBEDDINGS
@@ -23,23 +25,30 @@ class GhostFaceNetHead(BaseHead):
     ):
         """GhostFaceNet backbone.
 
-        GhostFaceNet is a convolutional neural network architecture focused on face recognition, but it is
-        adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
+        GhostFaceNet is a convolutional neural network architecture
+        focused on face recognition, but it is adaptable to generic
+        embedding tasks. It is based on the GhostNet architecture and
+        uses Ghost BottleneckV2 blocks.
 
-        Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+        Source: `https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py
+        <https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py>`_
 
-        @license: U{MIT License
-            <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
+        Args:
+            embedding_size: Size of the embedding. Defaults to 512.
+            cross_batch_memory_size: Size of the cross-batch memory.
+                Defaults to None.
+            dropout: Dropout rate. Defaults to 0.2.
+            **kwargs: Base head arguments.
 
-        @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
-            <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
+        See Also:
+            `GhostFaceNets: Lightweight Face Recognition Model From Cheap
+            Operations
+            <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>`_
 
-        @type embedding_size: int
-        @param embedding_size: Size of the embedding. Defaults to 512.
-        @type cross_batch_memory_size: int | None
-        @param cross_batch_memory_size: Size of the cross-batch memory. Defaults to None.
-        @type dropout: float
-        @param dropout: Dropout rate. Defaults to 0.2.
+        License:
+            `MIT License
+            <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>`_
+
         """
         super().__init__(**kwargs)
         self.embedding_size = embedding_size
@@ -66,6 +75,29 @@ class GhostFaceNetHead(BaseHead):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Project face features into an embedding.
+
+        Args:
+            x: Feature tensor to decode.
+
+        Returns:
+            Embedding vector for each image.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{embedding}`
+                    :math:`(B, \mathrm{embedding}_{\mathrm{size}})`
+
+            Symbols
+                :math:`\mathrm{embedding}_{\mathrm{size}}`
+                    Width of the output embedding.
+
+        """
         return self.head(x)
 
     @override

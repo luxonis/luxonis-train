@@ -12,6 +12,8 @@ from luxonis_train.registry import NODES
 
 
 class ContextSpatial(BaseNode):
+    """Context Spatial backbone introduced in BiseNetV1."""
+
     def __init__(
         self,
         context_backbone: str | nn.Module = "MobileNetV2",
@@ -20,21 +22,21 @@ class ContextSpatial(BaseNode):
     ):
         """Context Spatial backbone introduced in BiseNetV1.
 
-        Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
+        Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
-        @see: U{BiseNetv1: Bilateral Segmentation Network for
-            Real-time Semantic Segmentation
-            <https://arxiv.org/abs/1808.00897>}
+        Args:
+            context_backbone: Backbone used in the context path. Can be
+                either a string or a ``nn.Module``. If a string argument
+                is used, it has to be a name of a module stored in the
+                `NODES` registry. Defaults to `MobileNetV2`.
+            backbone_kwargs: Keyword arguments for the backbone. Only
+                used when the ``context_backbone`` argument is a string.
+            **kwargs: Base node arguments.
 
-        @type context_backbone: str
-        @param context_backbone: Backbone used in the context path.
-            Can be either a string or a C{nn.Module}.
-            If a string argument is used, it has to be a name of a module
-            stored in the L{NODES} registry. Defaults to C{MobileNetV2}.
+        See Also:
+            `BiseNetv1: Bilateral Segmentation Network for Real-time
+            Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
 
-        @type backbone_kwargs: dict
-        @param backbone_kwargs: Keyword arguments for the backbone.
-            Only used when the C{context_backbone} argument is a string.
         """
         super().__init__(**kwargs)
 
@@ -48,6 +50,26 @@ class ContextSpatial(BaseNode):
         self.ffm = FeatureFusionBlock(256, 256)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract the context and spatial feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}_{0}`
+                    :math:`(B, 256, \left\lfloor \frac{H}{8} \right\rfloor, \left\lfloor \frac{W}{8} \right\rfloor)`
+
+        """  # noqa: E501
         spatial_out = self.spatial_path(inputs)
         context16, _ = self.context_path(inputs)
         fm_fuse = self.ffm(spatial_out, context16)
@@ -55,6 +77,8 @@ class ContextSpatial(BaseNode):
 
 
 class SpatialPath(nn.Module):
+    """Spatial Path module."""
+
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
         intermediate_channels = 64
@@ -88,6 +112,25 @@ class SpatialPath(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Preserve spatial detail through the high-resolution path.
+
+        Args:
+            x: Image batch whose spatial detail should be preserved.
+
+        Returns:
+            High-resolution spatial feature map.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, \left\lfloor \frac{H}{8} \right\rfloor, \left\lfloor \frac{W}{8} \right\rfloor)`
+
+        """  # noqa: E501
         x = self.conv_7x7(x)
         x = self.conv_3x3_1(x)
         x = self.conv_3x3_2(x)
@@ -95,6 +138,8 @@ class SpatialPath(nn.Module):
 
 
 class ContextPath(nn.Module):
+    """Context Path module."""
+
     def __init__(self, backbone: nn.Module):
         super().__init__()
         self.backbone = backbone
@@ -110,6 +155,28 @@ class ContextPath(nn.Module):
         self.refine32 = ConvBlock(128, 128, 3, 1, 1)
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        r"""Extract and refine low-resolution context features.
+
+        Args:
+            x: Image batch used by the context backbone.
+
+        Returns:
+            Low-resolution context features before and after attention
+            refinement.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}_{0}`
+                    :math:`(B, 128, \left\lfloor \frac{H}{8} \right\rfloor, \left\lfloor \frac{W}{8} \right\rfloor)`
+                :math:`\mathrm{features}_{1}`
+                    :math:`(B, 128, \left\lfloor \frac{H}{16} \right\rfloor, \left\lfloor \frac{W}{16} \right\rfloor)`
+
+        """  # noqa: E501
         *_, down16, down32 = self.backbone(x)
 
         if not hasattr(self, "arm16"):

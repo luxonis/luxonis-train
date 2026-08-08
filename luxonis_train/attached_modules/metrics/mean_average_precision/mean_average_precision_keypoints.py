@@ -8,16 +8,14 @@ from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric, MetricState
-from luxonis_train.attached_modules.metrics.mean_average_precision.utils import (
-    add_f1_metrics,
-    postprocess_metrics,
-)
 from luxonis_train.attached_modules.metrics.utils import (
     fix_empty_tensor,
     merge_bbox_kpt_targets,
 )
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_sigmas, get_with_default
+
+from .utils import add_f1_metrics, postprocess_metrics
 
 
 class MeanAveragePrecisionKeypoints(BaseMetric):
@@ -58,13 +56,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         """
 
         @type sigmas: list[float] | None
-        @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
-            use COCO if possible otherwise defaults. Defaults to C{None}.
+        @param sigmas: Sigma for each keypoint to weigh its importance,
+            if C{None}, then use COCO if possible otherwise defaults.
+            Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply the bounding box area.
-            If not set, the default factor of C{0.53} is used.
+        @param area_factor: Factor by which we multiply the bounding box
+            area. If not set, the default factor of C{0.53} is used.
         @type max_dets: int,
-        @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
+        @param max_dets: Maximum number of detections to be considered
+            per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bounding box format. Defaults to C{"xyxy"}.
         @type class_metrics: bool

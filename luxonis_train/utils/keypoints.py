@@ -23,7 +23,10 @@ def get_sigmas(
     if sigmas is not None:
         if len(sigmas) == n_keypoints:
             return torch.tensor(sigmas, dtype=torch.float32)
-        error_msg = "The length of the sigmas list must be the same as the number of keypoints."
+        error_msg = (
+            "The length of the sigmas list must be the same as the "
+            "number of keypoints."
+        )
         if caller_name:
             error_msg = f"[{caller_name}] {error_msg}"
         raise ValueError(error_msg)

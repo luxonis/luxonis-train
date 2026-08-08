@@ -31,7 +31,36 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
         n: int,
         norm: bool,
         return_class_token: bool,
-    ) -> list[Tensor] | list[tuple[Tensor, Tensor]]: ...
+    ) -> list[Tensor] | list[tuple[Tensor, Tensor]]:
+        r"""Return intermediate transformer features.
+
+        Args:
+            x: Input image tensor.
+            n: Number of intermediate layers to return.
+            norm: Whether to normalize the returned features.
+            return_class_token: Whether to include class tokens.
+
+        Returns:
+            Intermediate feature tensors, optionally paired with class tokens.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, L, C)`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """
+        raise NotImplementedError(
+            "DINOv3 backbones must implement get_intermediate_layers()"
+        )
 
 
 DINOv3Variant: TypeAlias = Literal[
@@ -53,9 +82,11 @@ class DinoV3(BaseNode):
     that learns strong, dense feature representations useful for various
     downstream tasks.
 
-    Source: U{https://github.com/facebookresearch/dinov3}
-    @license: U{https://github.com/facebookresearch/dinov3?
-    tab=License-1-ov-file#readme}
+    Source: `DINOv3 <https://github.com/facebookresearch/dinov3>`_
+
+    License:
+        `DINOv3 License Agreement
+        <https://github.com/facebookresearch/dinov3?tab=License-1-ov-file#readme>`_
     """
 
     in_height: int
@@ -71,31 +102,19 @@ class DinoV3(BaseNode):
         depth: int = 4,
         **kwargs,
     ):
-        """
-        @type weights_link: string
-        @param weights_link: A link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}.
+        """Initialize the DINOv3 backbone.
 
-        @param return_sequence: If True, return the CLS embedding
-        [B, C] for downstream classification heads. Otherwise, turn
-        patch embeddings into [B, C, H, W] feature maps to be passed
-        to dense prediction heads
-        @type return_sequence: bool
+        Args:
+            weights_link: Link to the model weights.
+            return_sequence: Whether to return the class token instead
+                of dense feature maps.
+            variant: Architecture variant.
+            repo_or_dir: Torch Hub repository or local source directory.
+            freeze_backbone: Whether to freeze all backbone parameters.
+            depth: Number of final transformer layers returned for dense
+                features.
+            **kwargs: Base node arguments.
 
-        @param variant: Architecture variant of the DINOv3 backbone.
-        @type variant: Literal DINOv3Variant.
-
-        @param repo_dir: "facebookresearch/dinov3" if the repository
-        is not locally downloaded or cached, "local" otherwise
-        @type repo_dir: str
-
-        @param freeze_backbone: if True, freeze the backbone;
-        this will lead to a transfer learning scenario where
-        only the head contains trainable parameters
-        @type freeze_backbone: bool
-
-        @param depth: number of last layers that are taken
-        from the transformer output and converted to feature maps
-        @type depth: int
         """
         super().__init__(**kwargs)
 
@@ -127,7 +146,8 @@ class DinoV3(BaseNode):
                 f"Image dimensions should be divisible by {self.patch_size},"
                 f"but got {self.original_in_shape}. "
                 "This will cause inconsistent image sizes"
-                f"as DINOv3 natively reshapes to multiples of {self.patch_size}."
+                "as DINOv3 natively reshapes to multiples of "
+                f"{self.patch_size}."
             )
 
     def _replace_rope_embedding(self) -> None:
@@ -153,14 +173,40 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """If self.return_sequence is True, a list containing the CLS
-        token embedding [B, C] is returned and this can be used for
-        downstream classification tasks.
+        r"""Encode an image as dense DINOv3 features or a class token.
 
-        Otherwise, the last `self.depth` layers of the network are
-        returned as [B, C, H, W] feature maps, which can be used for
-        downstream segmentation and other dense feature tasks
-        """
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Dense features from the final transformer layers, or the
+            class token in sequence mode.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, \mathrm{depth} - 1`)
+                    :math:`(B, C_{\mathrm{out}}, \left\lfloor \frac{H}{\mathrm{patch}} \right\rfloor, \left\lfloor \frac{W}{\mathrm{patch}} \right\rfloor)`
+
+            Sequence outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0`)
+                    :math:`(B, C_{\mathrm{out}})`
+
+            Constraints
+                - :math:`H \operatorname{mod} \mathrm{patch} = 0`
+                - :math:`W \operatorname{mod} \mathrm{patch} = 0`
+
+            Symbols
+                :math:`\mathrm{depth}`
+                    Number of transformer layers returned.
+                :math:`\mathrm{patch}`
+                    DINOv3 patch size.
+
+        """  # noqa: E501
         outs: list[Tensor] = []
 
         if self.return_sequence:

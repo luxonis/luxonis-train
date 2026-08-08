@@ -17,13 +17,13 @@ class PPLCNetV3(BaseNode):
     ========
     Only one variant is available, "rec-light".
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>}
-    @see: U{Original code
-        <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
-        >}
+    See Also:
+        `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>`_
+        `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
+
+    License:
+        `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+
     """
 
     in_channels: int
@@ -38,17 +38,17 @@ class PPLCNetV3(BaseNode):
         layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
-        """
-        @type scale: float
-        @param scale: Scale factor. Defaults to 0.95.
-        @type n_branches: int
-        @param n_branches: Number of convolution branches.
-            Defaults to 4.
-        @type use_detection_backbone: bool
-        @param use_detection_backbone: Whether to use the detection backbone.
-            Defaults to False.
-        @type max_text_len: int
-        @param max_text_len: Maximum text length. Defaults to 40.
+        """PPLCNetV3 backbone.
+
+        Args:
+            scale: Scale factor. Defaults to 0.95.
+            n_branches: Number of convolution branches. Defaults to 4.
+            use_detection_backbone: Whether to use the detection backbone.
+                Defaults to False.
+            max_text_len: Maximum text length. Defaults to 40.
+            layer_params: Per-layer parameters of the backbone stages.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
         layer_params = layer_params or []
@@ -109,6 +109,30 @@ class PPLCNetV3(BaseNode):
         self.avg_pool = nn.AdaptiveAvgPool2d((1, max_text_len))
 
     def forward(self, x: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale PPLCNetV3 feature pyramid.
+
+        Args:
+            x: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         out = []
         x = self.conv(x)
         x = self.blocks[0](x)

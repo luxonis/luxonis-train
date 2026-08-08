@@ -19,7 +19,10 @@ class TransformerClassificationHead(BaseHead):
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
         """Classification head for transformer CLS tokens.
 
-        @param dropout_rate: Dropout rate before last layer.
+        Args:
+            dropout_rate: Dropout rate before last layer.
+            **kwargs: Base head arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -34,14 +37,28 @@ class TransformerClassificationHead(BaseHead):
         return result
 
     def forward(self, x: Tensor) -> Tensor:
-        """
-        @param x: CLS tensor in the form [B, C], where C is the embedding dim.
-        @type x: Tensor
-        @return: Class logits [B, n_classes].
+        r"""Classify an image from its transformer token.
 
-        @note: Steps performed:
-            1) Apply dropout to the CLS token.
-            2) Apply a linear layer to produce class logits.
+        Args:
+            x: Feature tensor to decode.
+
+        Returns:
+            Class logits for each image.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B, n_{\mathrm{classes}})`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
         """
         x = self.dropout(x)
         return self.fc(x)

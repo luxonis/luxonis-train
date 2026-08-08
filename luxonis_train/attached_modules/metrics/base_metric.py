@@ -124,7 +124,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
                             default = []
                         else:
                             raise ValueError(
-                                f"Unsupported type of a metric state: `{main_type}`"
+                                f"Unsupported type of a metric state: "
+                                f"`{main_type}`"
                             )
                     if isinstance(default, Number):
                         default = torch.tensor(default)

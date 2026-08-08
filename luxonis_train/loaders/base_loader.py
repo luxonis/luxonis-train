@@ -59,7 +59,9 @@ class BaseLoaderTorch(
 
         @type augmentation_engine: str
         @param augmentation_engine: Name of the augmentation engine. Can
-            be used to enable swapping between different augmentation engines or making use of pre-defined engines, e.g. C{AlbumentationsEngine}.
+            be used to enable swapping between different augmentation
+            engines or making use of pre-defined engines, e.g.
+            C{AlbumentationsEngine}.
 
         @type augmentation_config: list[AugmentationConfig] | None
         @param augmentation_config: List of augmentation configurations.
@@ -81,11 +83,13 @@ class BaseLoaderTorch(
 
         @type image_source: str
         @param image_source: Name of the image source. Only relevant for
-            datasets with multiple image sources, e.g. C{"left"} and C{"right"}. This parameter defines which of these sources is used for
-            visualizations.
+            datasets with multiple image sources, e.g. C{"left"} and
+            C{"right"}. This parameter defines which of these sources is
+            used for visualizations.
 
         @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether to keep the aspect ratio of the output image after resizing.
+        @param keep_aspect_ratio: Whether to keep the aspect ratio of
+            the output image after resizing.
 
         @type color_space: Literal["RGB", "BGR", "GRAY"]
         @param color_space: Color space of the output image.

@@ -40,5 +40,6 @@ class ConfusionMatrix:
                 return FomoConfusionMatrix(node=node, **kwargs)
             case _:  # pragma: no cover
                 raise ValueError(
-                    f"'ConfusionMatrix' does not support task '{node.task.name}'"
+                    f"'ConfusionMatrix' does not support task "
+                    f"'{node.task.name}'"
                 )

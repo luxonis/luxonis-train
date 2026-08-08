@@ -62,8 +62,9 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         """
         if predictions.shape != target.shape:
             raise RuntimeError(
-                f"Target tensor dimension ({target.shape}) and predictions tensor "
-                f"dimension ({predictions.shape}) should be the same."
+                f"Target tensor dimension ({target.shape}) and "
+                f"predictions tensor dimension ({predictions.shape}) "
+                f"should be the same."
             )
 
         if self.negative_smooth_const != 0.0:

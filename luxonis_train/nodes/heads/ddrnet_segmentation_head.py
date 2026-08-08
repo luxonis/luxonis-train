@@ -11,6 +11,8 @@ from luxonis_train.utils.general import infer_upscale_factor
 
 
 class DDRNetSegmentationHead(BaseHead):
+    """DDRNet segmentation head."""
+
     in_height: int
     in_width: int
     in_channels: int
@@ -34,19 +36,24 @@ class DDRNetSegmentationHead(BaseHead):
     ):
         """DDRNet segmentation head.
 
-        @see: U{Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src
-            /super_gradients/training/models/segmentation_models/ddrnet.py>}
-        @see: U{Original code <https://github.com/ydhongHIT/DDRNet>}
-        @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
-        @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
-            gradients/blob/master/LICENSE.md>}
-        @type inter_channels: int
-        @param inter_channels: Width of internal conv. Must be a multiple of
-            scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-        @type inter_mode: str
-        @param inter_mode: Upsampling method. One of nearest, linear, bilinear, bicubic,
-            trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle
-            is used for scaling. Defaults to "bilinear".
+        Args:
+            inter_channels: Width of internal conv. Must be a multiple
+                of scale_factor^2 when inter_mode is pixel_shuffle.
+                Defaults to 64.
+            inter_mode: Upsampling method. One of nearest, linear,
+                bilinear, bicubic, trilinear, area or pixel_shuffle. If
+                pixel_shuffle is set, nn.PixelShuffle is used for
+                scaling. Defaults to "bilinear".
+            **kwargs: Base head arguments.
+
+        See Also:
+            `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py>`_
+            `Original code <https://github.com/ydhongHIT/DDRNet>`_
+            `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
+
+        License:
+            `Apache License, Version 2.0 <https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md>`_
+
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]
@@ -109,6 +116,37 @@ class DDRNetSegmentationHead(BaseHead):
         return f"{{github}}/ddrnet_head_23{variant}_coco.ckpt"
 
     def forward(self, inputs: Tensor) -> Tensor:
+        r"""Decode DDRNet features into segmentation logits.
+
+        Args:
+            inputs: Input feature map.
+
+        Returns:
+            Segmentation logits, resized according to the configured mode.
+
+        Raises:
+            ValueError: If pixel_shuffle channels are not divisible by
+                four. The message contains "multiple of scale_factor".
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B,n_{\mathrm{classes}},H_{\mathrm{image}},W_{\mathrm{image}})`
+
+            Export outputs
+                :math:`\mathrm{labels}`
+                    :math:`(B, H_{\mathrm{image}}, W_{\mathrm{image}})`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         x: Tensor = self.relu(self.bn1(inputs))
         x = self.conv1(x)
         x = self.relu(self.bn2(x))

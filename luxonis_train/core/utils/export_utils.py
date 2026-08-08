@@ -168,7 +168,8 @@ def blobconverter_export(
     data_type = quantization_to_dtype.get(cfg.quantization_mode, "FP16")
     if cfg.quantization_mode not in quantization_to_dtype:
         logger.warning(
-            f"blobconverter does not support '{cfg.quantization_mode}' quantization. "
+            f"blobconverter does not support "
+            f"'{cfg.quantization_mode}' quantization. "
             f"Falling back to 'FP16'."
         )
 
@@ -404,7 +405,8 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     except Exception as e:
         logger.warning(
             f"ONNX checker failed after making initializers unique: {e}. "
-            "If you encounter issues, try exporting with unique_onnx_initializers=False."
+            "If you encounter issues, try exporting with "
+            "unique_onnx_initializers=False."
         )
 
     logger.info(

@@ -16,12 +16,15 @@ class RepVGG(BaseNode):
     Variants
     ========
 
-    The variant determines the number of blocks in each stage and the width multiplier.
+    The variant determines the number of blocks in each stage and the
+    width multiplier.
 
     The following variants are available:
-        - "A0" (default): n_blocks=(2, 4, 14, 1), width_multiplier=(0.75, 0.75, 0.75, 2.5)
+        - "A0" (default): n_blocks=(2, 4, 14, 1),
+          width_multiplier=(0.75, 0.75, 0.75, 2.5)
         - "A1": n_blocks=(2, 4, 14, 1), width_multiplier=(1, 1, 1, 2.5)
-        - "A2": n_blocks=(2, 4, 14, 1), width_multiplier=(1.5, 1.5, 1.5, 2.75)
+        - "A2": n_blocks=(2, 4, 14, 1),
+          width_multiplier=(1.5, 1.5, 1.5, 2.75)
     """
 
     in_channels: int
@@ -48,23 +51,25 @@ class RepVGG(BaseNode):
             - 3x3 convolutions and ReLU activations.
             - No automatic search, manual refinement or compound scaling.
 
-        @license: U{MIT
-            <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>}.
+        Args:
+            n_blocks: Number of blocks in each stage.
+            width_multiplier: Width multiplier for each stage.
+            override_groups_map: Dictionary mapping layer index to number
+                of groups. The layers are indexed starting from 0.
+            use_se: Whether to use Squeeze-and-Excitation blocks.
+            **kwargs: Base node arguments.
 
-        @see: U{https://github.com/DingXiaoH/RepVGG}
-        @see: U{https://paperswithcode.com/method/repvgg}
-        @see: U{RepVGG: Making VGG-style ConvNets Great Again
-            <https://arxiv.org/abs/2101.03697>}
+        See Also:
+            `https://github.com/DingXiaoH/RepVGG
+            <https://github.com/DingXiaoH/RepVGG>`_
+            `https://paperswithcode.com/method/repvgg
+            <https://paperswithcode.com/method/repvgg>`_
+            `RepVGG: Making VGG-style ConvNets Great Again
+            <https://arxiv.org/abs/2101.03697>`_
 
+        License:
+            `MIT <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>`_.
 
-        @type n_blocks: tuple[int, int, int, int]
-        @param n_blocks: Number of blocks in each stage.
-        @type width_multiplier: tuple[float, float, float, float]
-        @param width_multiplier: Width multiplier for each stage.
-        @type override_groups_map: dict[int, int] | None
-        @param override_groups_map: Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
-        @type use_se: bool
-        @param use_se: Whether to use Squeeze-and-Excitation blocks.
         """
         super().__init__(**kwargs)
 
@@ -98,6 +103,30 @@ class RepVGG(BaseNode):
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale RepVGG feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         return forward_gather(self.stage0(inputs), self.blocks)
 
     @staticmethod

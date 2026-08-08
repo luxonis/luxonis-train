@@ -72,27 +72,31 @@ class LuxonisLightningModule(pl.LightningModule):
     @ivar save_dir: Directory to save checkpoints and logs.
 
     @type nodes: L{nn.ModuleDict}[str, L{LuxonisModule}]
-    @ivar nodes: Nodes of the model. Keys are node names, unique for each node.
+    @ivar nodes: Nodes of the model. Keys are node names, unique for
+        each node.
 
     @type graph: dict[str, list[str]]
-    @ivar graph: Graph of the model in a format of a dictionary of predecessors.
-        Keys are node names, values are inputs to the node (list of node names).
-        Nodes with no inputs are considered inputs of the whole model.
+    @ivar graph: Graph of the model in a format of a dictionary of
+        predecessors. Keys are node names, values are inputs to the node
+        (list of node names). Nodes with no inputs are considered inputs
+        of the whole model.
 
     @type loss_weights: dict[str, float]
-    @ivar loss_weights: Dictionary of loss weights. Keys are loss names, values are weights.
+    @ivar loss_weights: Dictionary of loss weights. Keys are loss names,
+        values are weights.
 
     @type input_shapes: dict[str, list[L{Size}]]
-    @ivar input_shapes: Dictionary of input shapes. Keys are node names, values are lists of shapes
-        (understood as shapes of the "feature" field in L{Packet}[L{Tensor}]).
+    @ivar input_shapes: Dictionary of input shapes. Keys are node names,
+        values are lists of shapes (understood as shapes of the
+        "feature" field in L{Packet}[L{Tensor}]).
 
     @type outputs: list[str]
     @ivar outputs: List of output node names.
 
     @type losses: L{nn.ModuleDict}[str, L{nn.ModuleDict}[str, L{LuxonisLoss}]]
-    @ivar losses: Nested dictionary of losses used in the model. Each node can have multiple
-        losses attached. The first key identifies the node, the second key identifies the
-        specific loss.
+    @ivar losses: Nested dictionary of losses used in the model. Each
+        node can have multiple losses attached. The first key identifies
+        the node, the second key identifies the specific loss.
 
     @type visualizers: dict[str, dict[str, L{LuxonisVisualizer}]]
     @ivar visualizers: Dictionary of visualizers to be used with the model.
@@ -104,8 +108,9 @@ class LuxonisLightningModule(pl.LightningModule):
     @ivar dataset_metadata: Metadata of the dataset.
 
     @type main_metric: str | None
-    @ivar main_metric: Name of the main metric to be used for model checkpointing.
-        If not set, the model with the best metric score won't be saved.
+    @ivar main_metric: Name of the main metric to be used for model
+        checkpointing. If not set, the model with the best metric score
+        won't be saved.
     """
 
     _trainer: pl.Trainer
@@ -669,13 +674,13 @@ class LuxonisLightningModule(pl.LightningModule):
         old_order = ckpt.get("execution_order")
         new_order = get_model_execution_order(self)
 
+        module_prefix = "module." if ver >= Version(0, 4) else ""
+
         for node_name, node in self.nodes.items():
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
-                if k.startswith(
-                    f"nodes.{node_name}.{'module.' if ver >= Version(0, 4) else ''}"
-                )
+                if k.startswith(f"nodes.{node_name}.{module_prefix}")
             }
             try:
                 node.module.load_checkpoint(sub_state_dict, strict=True)
@@ -691,7 +696,8 @@ class LuxonisLightningModule(pl.LightningModule):
                         "Unable to automatically upgrade the weights."
                     )
                     logger.info(
-                        "Loading checkpoint with strict=False, some weights may not be loaded"
+                        "Loading checkpoint with strict=False, some "
+                        "weights may not be loaded"
                     )
                     node.module.load_checkpoint(sub_state_dict, strict=False)
                 else:
@@ -701,18 +707,21 @@ class LuxonisLightningModule(pl.LightningModule):
                         )
                     except RuntimeError as e:
                         logger.error(
-                            f"Failed to create execution order mapping for node '{node_name}'"
+                            f"Failed to create execution order mapping "
+                            f"for node '{node_name}'"
                         )
                         logger.error(str(e))
                         logger.info(
-                            "Loading checkpoint with strict=False, some weights may not be loaded"
+                            "Loading checkpoint with strict=False, some "
+                            "weights may not be loaded"
                         )
                         node.module.load_checkpoint(
                             sub_state_dict, strict=False
                         )
                     else:
                         logger.info(
-                            f"Using execution order to transform incompatible weights for node '{node_name}'"
+                            f"Using execution order to transform "
+                            f"incompatible weights for node '{node_name}'"
                         )
                         new_state_dict = {}
 
@@ -724,7 +733,9 @@ class LuxonisLightningModule(pl.LightningModule):
                             bare_name = ".".join(old_name_parts)
                             if bare_name not in order_mapping:
                                 logger.warning(
-                                    f"Skipping weight {bare_name} as it is not present in the execution order of the old weights."
+                                    f"Skipping weight {bare_name} as it "
+                                    "is not present in the execution "
+                                    "order of the old weights."
                                 )
                                 continue
                             new_name = order_mapping[bare_name]
@@ -736,14 +747,17 @@ class LuxonisLightningModule(pl.LightningModule):
                                 new_state_dict, strict=True
                             )
                             logger.info(
-                                f"Successfully loaded transformed checkpoint for node '{node_name}'"
+                                f"Successfully loaded transformed "
+                                f"checkpoint for node '{node_name}'"
                             )
                         except RuntimeError:
                             logger.error(
-                                f"Failed to load transformed checkpoint for node '{node_name}'"
+                                f"Failed to load transformed checkpoint "
+                                f"for node '{node_name}'"
                             )
                             logger.info(
-                                "Loading checkpoint with strict=False, some weights may not be loaded"
+                                "Loading checkpoint with strict=False, "
+                                "some weights may not be loaded"
                             )
                             node.module.load_checkpoint(
                                 sub_state_dict, strict=False
@@ -766,9 +780,11 @@ class LuxonisLightningModule(pl.LightningModule):
             and previous_epochs > self.cfg.trainer.epochs
         ):
             logger.warning(
-                f"Checkpoint was previously trained for {previous_epochs} epochs, "
-                f"but current config requests only {self.cfg.trainer.epochs} epochs. "
-                "Please set a number of epochs that is higher than the previously-trained epoch number."
+                f"Checkpoint was previously trained for "
+                f"{previous_epochs} epochs, but current config requests "
+                f"only {self.cfg.trainer.epochs} epochs. Please set a "
+                "number of epochs that is higher than the "
+                "previously-trained epoch number."
             )
 
     def _evaluation_step(
@@ -782,7 +798,8 @@ class LuxonisLightningModule(pl.LightningModule):
             inputs = {self.image_source: inputs}
         input_image = inputs[self.image_source]
 
-        # Smart logging is decided based on the classification task keys that are merged for all tasks
+        # Smart logging is decided based on the classification task keys
+        # that are merged for all tasks
         cls_task_keys: list[str] | None = [
             k for k in labels if "/classification" in k
         ] or None
@@ -906,7 +923,8 @@ class LuxonisLightningModule(pl.LightningModule):
                     list(values.values()), self.device
                 ):
                     raise RuntimeError(
-                        "When using DDP all metrics must reside on the model's device"
+                        "When using DDP all metrics must reside on the "
+                        "model's device"
                     )
 
                 for name, value in values.items():
@@ -944,8 +962,10 @@ class LuxonisLightningModule(pl.LightningModule):
 
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(
-                f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
-                f"class imbalance or a small number of images in the split. Trying to log more images."
+                f"Logged images ({self._n_logged_images}) != expected "
+                f"({self.cfg.trainer.n_log_images}). Possible reasons: "
+                f"class imbalance or a small number of images in the "
+                f"split. Trying to log more images."
             )
             for (
                 missing_visualizations
@@ -996,7 +1016,8 @@ class LuxonisLightningModule(pl.LightningModule):
         """
         Return a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
+        2) "artifacts"  -> Keys expected to be logged as artifacts
+        (e.g. confusion_matrix.json, visualizations).
         """
         artifact_keys = set()
         metric_keys = set()
@@ -1215,9 +1236,11 @@ class LuxonisLightningModule(pl.LightningModule):
                     != output_counts[node_name]
                 ):
                     logger.warning(
-                        f"Number of provided output names for node {node_name} "
-                        f"({len(node.module.export_output_names)}) does not match "
-                        f"number of outputs ({output_counts[node_name]}). "
+                        f"Number of provided output names for node "
+                        f"{node_name} "
+                        f"({len(node.module.export_output_names)}) does "
+                        f"not match number of outputs "
+                        f"({output_counts[node_name]}). "
                         f"Using default names."
                     )
                 else:

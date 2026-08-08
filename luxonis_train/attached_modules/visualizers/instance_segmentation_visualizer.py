@@ -145,7 +145,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
                 ).to(canvas.device)
             except ValueError as e:
                 logger.warning(
-                    f"Failed to draw bounding boxes or masks: {e}. Skipping visualization."
+                    f"Failed to draw bounding boxes or masks: {e}. "
+                    f"Skipping visualization."
                 )
                 viz[i] = canvas[i]
 

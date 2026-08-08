@@ -10,10 +10,14 @@ import torch
 from torch import Tensor, nn
 
 
-# RoPE positional embedding with no mixing of coordinates (axial) and no learnable weights
-# Supports two parametrizations of the rope parameters: either using `base` or `min_period` and `max_period`.
+# RoPE positional embedding with no mixing of coordinates (axial) and no
+# learnable weights
+# Supports two parametrizations of the rope parameters: either using
+# `base` or `min_period` and `max_period`.
 # Slight changes to the forward() method to make it ONNX-convertible
 class RopePositionEmbedding(nn.Module):
+    """Rope Position Embedding module."""
+
     periods: Tensor
 
     def __init__(
@@ -51,7 +55,9 @@ class RopePositionEmbedding(nn.Module):
         self.jitter_coords = jitter_coords
         self.rescale_coords = rescale_coords
 
-        # Needs persistent=True because we do teacher.load_state_dict(student.state_dict()) to initialize the teacher
+        # Needs persistent=True because we do
+        # teacher.load_state_dict(student.state_dict()) to initialize the
+        # teacher
         self.dtype = dtype  # Don't rely on self.periods.dtype
         self.register_buffer(
             "periods",
@@ -61,6 +67,37 @@ class RopePositionEmbedding(nn.Module):
         self._init_weights()
 
     def forward(self, *, H: int, W: int) -> tuple[Tensor, Tensor]:
+        r"""Build rotary position embeddings for a feature grid.
+
+        Args:
+            H: Height of the feature grid.
+            W: Width of the feature grid.
+
+        Returns:
+            Sine and cosine rotary embeddings for every grid position.
+
+        Raises:
+            ValueError: If period configuration is ambiguous. The
+                message contains "Either `base`".
+
+        .. shape-contract::
+
+            Outputs
+                :math:`\mathrm{sin}`
+                    :math:`(H \cdot W, \mathrm{head}_{\mathrm{dim}})`
+                :math:`\mathrm{cos}`
+                    :math:`(H \cdot W, \mathrm{head}_{\mathrm{dim}})`
+
+            Constraints
+                - :math:`H > 0`
+                - :math:`W > 0`
+                - :math:`\mathrm{head}_{\mathrm{dim}} \operatorname{mod} 4 = 0`
+
+            Symbols
+                :math:`\mathrm{head}_{\mathrm{dim}}`
+                    Number of channels in one attention head.
+
+        """
         device = self.periods.device
         dtype = self.dtype
         dd = {"device": device, "dtype": dtype}
@@ -94,7 +131,8 @@ class RopePositionEmbedding(nn.Module):
             )
             coords += shift_hw[None, :]
 
-        # Jitter coords by multiplying the range [-1, 1] by a log-uniform value in [1/jitter, jitter]
+        # Jitter coords by multiplying the range [-1, 1] by a
+        # log-uniform value in [1/jitter, jitter]
         if self.training and self.jitter_coords is not None:
             j = torch.tensor(self.jitter_coords, device=device, dtype=dtype)
             jmax_t = torch.log(j)  # was previously np.log
@@ -107,7 +145,8 @@ class RopePositionEmbedding(nn.Module):
             )
             coords *= jitter_hw[None, :]
 
-        # Rescale coords by multiplying the range [-1, 1] by a log-uniform value in [1/rescale, rescale]
+        # Rescale coords by multiplying the range [-1, 1] by a
+        # log-uniform value in [1/rescale, rescale]
         if self.training and self.rescale_coords is not None:
             r = torch.tensor(self.rescale_coords, device=device, dtype=dtype)
             rmax_t = torch.log(r)
@@ -124,9 +163,9 @@ class RopePositionEmbedding(nn.Module):
             2 * math.pi * coords[:, :, None] / self.periods[None, None, :]
         )  # [HW, 2, D//4]
         angles = angles.flatten(1, 2)  # [HW, D//2]
-        angles = angles.repeat(
-            1, 2
-        )  # [HW, D] This line was changed from angles = angles.tile(2), as angles.tile is not yet ONNX-convertible
+        # [HW, D] This line was changed from angles = angles.tile(2), as
+        # angles.tile is not yet ONNX-convertible
+        angles = angles.repeat(1, 2)
         cos = torch.cos(angles)  # [HW, D]
         sin = torch.sin(angles)  # [HW, D]
 

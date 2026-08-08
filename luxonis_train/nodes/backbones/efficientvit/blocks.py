@@ -7,6 +7,8 @@ from luxonis_train.nodes.blocks import ConvBlock, autopad
 
 
 class DepthWiseSeparableConv(nn.Module):
+    """Depthwise separable convolution."""
+
     @typechecked
     def __init__(
         self,
@@ -24,30 +26,23 @@ class DepthWiseSeparableConv(nn.Module):
     ):
         """Depthwise separable convolution.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type depthwise_bias: bool
-        @param depthwise_bias: Whether to use bias for the depthwise
-            convolution.
-        @type pointwise_bias: bool
-        @param pointwise_bias: Whether to use bias for the pointwise
-            convolution.
-        @type depthwise_activation: nn.Module
-        @param depthwise_activation: Activation function for the
-            depthwise convolution. Defaults to nn.ReLU6().
-        @type pointwise_activation: nn.Module
-        @param pointwise_activation: Activation function for the
-            pointwise convolution.
-        @type padding: int | str | None
-        @param padding: Padding. Defaults to None.
-        @type dilation: int | tuple[int, int]
-        @param dilation: Dilation. Defaults to 1.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size. Defaults to 3.
+            stride: Stride. Defaults to 1.
+            depthwise_bias: Whether to use bias for the depthwise
+                convolution.
+            pointwise_bias: Whether to use bias for the pointwise
+                convolution.
+            depthwise_activation: Activation function for the depthwise
+                convolution. Defaults to nn.ReLU6().
+            pointwise_activation: Activation function for the pointwise
+                convolution.
+            padding: Padding. Defaults to None.
+            dilation: Dilation. Defaults to 1.
+            use_residual: Whether to add the input to the output.
+
         """
         super().__init__()
 
@@ -73,6 +68,25 @@ class DepthWiseSeparableConv(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply depthwise and pointwise convolutions.
+
+        Args:
+            x: Feature map for the depthwise-pointwise projection.
+
+        Returns:
+            Feature map after depthwise and pointwise projection.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         identity = x
         x = self.pointwise_conv(self.depthwise_conv(x))
         if self.use_residual:
@@ -81,6 +95,8 @@ class DepthWiseSeparableConv(nn.Module):
 
 
 class MobileBottleneckBlock(nn.Module):
+    """MobileBottleneckBlock is a block used in the EfficientViT model."""
+
     @typechecked
     def __init__(
         self,
@@ -97,28 +113,21 @@ class MobileBottleneckBlock(nn.Module):
         """MobileBottleneckBlock is a block used in the EfficientViT
         model.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type expand_ratio: float
-        @param expand_ratio: Expansion ratio. Defaults to 6.
-        @type use_bias: list[bool, bool, bool]
-        @param use_bias: Whether to use bias for the depthwise and
-            pointwise convolutions.
-        @type use_norm: list[bool, bool, bool]
-        @param use_norm: Whether to use normalization for the depthwise
-            and pointwise convolutions.
-        @type activation: list[nn.Module, nn.Module, nn.Module]
-        @param activation: Activation functions for the depthwise and
-            pointwise convolutions.
-        @type use_residual: bool
-        @param use_residual: Whether to use residual connection.
-            Defaults to False.
+        Args:
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size. Defaults to 3.
+            stride: Stride. Defaults to 1.
+            expand_ratio: Expansion ratio. Defaults to 6.
+            use_bias: Whether to use bias for the depthwise and
+                pointwise convolutions.
+            use_norm: Whether to use normalization for the depthwise and
+                pointwise convolutions.
+            activation: Activation functions for the depthwise and
+                pointwise convolutions.
+            use_residual: Whether to use residual connection. Defaults
+                to False.
+
         """
         super().__init__()
 
@@ -162,6 +171,25 @@ class MobileBottleneckBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply an inverted mobile bottleneck.
+
+        Args:
+            x: Feature map supplied to the expansion and depthwise stages.
+
+        Returns:
+            Projected mobile bottleneck features.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         identity = x
         x = self.expand_conv(x)
         x = self.depthwise_conv(x)
@@ -172,6 +200,10 @@ class MobileBottleneckBlock(nn.Module):
 
 
 class EfficientViTBlock(nn.Module):
+    """EfficientVisionTransformerBlock is a modular component designed
+    for multi-scale linear attention and local feature processing.
+    """
+
     @typechecked
     def __init__(
         self,
@@ -185,20 +217,17 @@ class EfficientViTBlock(nn.Module):
         designed for multi-scale linear attention and local feature
         processing.
 
-        @type n_channels: int
-        @param n_channels: The number of input and output channels.
-        @type attention_ratio: float
-        @param attention_ratio: Ratio for determining the number of
-            attention heads. Default is 1.0.
-        @type head_dim: int
-        @param head_dim: Dimension size for each attention head. Default
-            is 32.
-        @type expansion_factor: float
-        @param expansion_factor: Factor by which channels expand in the
-            local module. Default is 4.0.
-        @type aggregation_scales: tuple[int, ...]
-        @param aggregation_scales: Tuple defining the scales for
-            aggregation in the attention module. Default is (5,).
+        Args:
+            n_channels: The number of input and output channels.
+            attention_ratio: Ratio for determining the number of
+                attention heads. Default is 1.0.
+            head_dim: Dimension size for each attention head. Default is
+                32.
+            expansion_factor: Factor by which channels expand in the
+                local module. Default is 4.0.
+            aggregation_scales: Tuple defining the scales for
+                aggregation in the attention module. Default is (5,).
+
         """
         super().__init__()
 
@@ -223,17 +252,34 @@ class EfficientViTBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        """Forward pass of the block.
+        r"""Mix local features with lightweight attention.
 
-        @param x: Input tensor with shape [batch, channels, height,
-            width].
-        @return: Output tensor after attention and local feature
-            processing.
+        Args:
+            x: Feature map to process with local mixing and attention.
+
+        Returns:
+            Feature map after local and attention mixing.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
         """
         return self.feature_module(self.attention_module(x))
 
 
 class LightweightMLABlock(nn.Module):
+    """LightweightMLABlock is a modular component used in the
+    EfficientViT framework. It facilitates efficient multi-scale linear
+    attention.
+    """
+
     @typechecked
     def __init__(
         self,
@@ -254,32 +300,26 @@ class LightweightMLABlock(nn.Module):
         EfficientViT framework. It facilitates efficient multi-scale
         linear attention.
 
-        @type input_channels: int
-        @param input_channels: Number of input channels.
-        @type output_channels: int
-        @param output_channels: Number of output channels.
-        @type n_heads: int
-        @param n_heads: Number of attention heads. Default is None.
-        @type head_ratio: float
-        @param head_ratio: Ratio to determine the number of heads.
-            Default is 1.0.
-        @type dimension: int
-        @param dimension: Size of each head. Default is 8.
-        @type use_bias: list[bool, bool]
-        @param biases: List specifying if bias is used in qkv and
-            projection layers.
-        @type use_norm: list[bool, bool]
-        @param norms: List specifying if normalization is applied in qkv
-            and projection layers.
-        @type activations: list[nn.Module, nn.Module]
-        @param activations: List of activation functions for qkv and
-            projection layers.
-        @type scale_factors: tuple[int, ...]
-        @param scale_factors: Tuple defining scales for aggregation.
-            Default is (5,).
-        @type epsilon: float
-        @param epsilon: Epsilon value for numerical stability. Default
-            is 1e-15.
+        Args:
+            input_channels: Number of input channels.
+            output_channels: Number of output channels.
+            n_heads: Number of attention heads. Default is None.
+            head_ratio: Ratio to determine the number of heads. Default
+                is 1.0.
+            dimension: Size of each head. Default is 8.
+            use_bias: List specifying if bias is used in qkv and
+                projection layers.
+            use_norm: List specifying if normalization is applied in qkv
+                and projection layers.
+            activations: List of activation functions for qkv and
+                projection layers.
+            scale_factors: Tuple defining scales for aggregation.
+                Default is (5,).
+            epsilon: Epsilon value for numerical stability. Default is
+                1e-15.
+            use_residual: Whether to add the input to the output.
+            kernel_activation: Activation used by the attention kernel.
+
         """
         super().__init__()
 
@@ -405,6 +445,25 @@ class LightweightMLABlock(nn.Module):
         return output.reshape(batch, -1, height, width)
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply multi-scale linear attention.
+
+        Args:
+            x: Feature map used as queries, keys, and values.
+
+        Returns:
+            Feature map after multi-scale linear attention.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H, W)`
+
+        """
         identity = x
         qkv_output = self.qkv_layer(x)
 

@@ -95,10 +95,11 @@ def bbox_iou(
                 SIoU Loss: More Powerful Learning for Bounding Box
                 Regression<https://arxiv.org/pdf/2205.12740.pdf>}.
     @type element_wise: bool
-    @param element_wise: If True returns element wise IoUs. Defaults to False.
+    @param element_wise: If True returns element wise IoUs. Defaults to
+        False.
     @rtype: Tensor
-    @return: IoU between bbox1 and bbox2. If element_wise is True returns [N, M] tensor,
-        otherwise returns [N] tensor.
+    @return: IoU between bbox1 and bbox2. If element_wise is True
+        returns [N, M] tensor, otherwise returns [N] tensor.
     """
     if bbox_format != "xyxy":
         bbox1 = box_convert(bbox1, in_fmt=bbox_format, out_fmt="xyxy")
@@ -204,34 +205,35 @@ def non_max_suppression(
     @type n_classes: int
     @param n_classes: Number of model's classes.
     @type conf_thres: float
-    @param conf_thres: Boxes with confidence higher than this will be kept. Defaults to
-        0.25.
+    @param conf_thres: Boxes with confidence higher than this will be
+        kept. Defaults to 0.25.
     @type iou_thres: float
-    @param iou_thres: Boxes with IoU higher than this will be discarded. Defaults to
-        0.45.
+    @param iou_thres: Boxes with IoU higher than this will be discarded.
+        Defaults to 0.45.
     @type keep_classes: list[int] | None
-    @param keep_classes: Subset of classes to keep, if None then keep all of them.
-        Defaults to None.
+    @param keep_classes: Subset of classes to keep, if None then keep
+        all of them. Defaults to None.
     @type agnostic: bool
-    @param agnostic: Whether perform NMS per class or treat all classes the same.
-        Defaults to False.
+    @param agnostic: Whether perform NMS per class or treat all classes
+        the same. Defaults to False.
     @type multi_label: bool
-    @param multi_label: Whether one prediction can have multiple labels. Defaults to
-        False.
+    @param multi_label: Whether one prediction can have multiple labels.
+        Defaults to False.
     @type bbox_format: BBoxFormatType
     @param bbox_format: Input bbox format. Defaults to "xyxy".
     @type max_det: int
     @param max_det: Number of maximum output detections. Defaults to 300.
     @type predicts_objectness: bool
-    @param predicts_objectness: Whether head predicts objectness confidence. Defaults to
-        True.
+    @param predicts_objectness: Whether head predicts objectness
+        confidence. Defaults to True.
     @rtype: list[Tensor]
-    @return: list of kept detections for each image, boxes in "xyxy" format. Tensors
-        with shape [n_kept, M]
+    @return: list of kept detections for each image, boxes in "xyxy"
+        format. Tensors with shape [n_kept, M]
     """
     if not (0 <= conf_thres <= 1):
         raise ValueError(
-            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
+            f"Confidence threshold must be in range [0,1] "
+            f"but set to {conf_thres}."
         )
     if not (0 <= iou_thres <= 1):
         raise ValueError(
@@ -505,7 +507,8 @@ def compute_iou_loss(
         elif reduction == "sum":
             if target_scores is None:
                 raise NotImplementedError(
-                    "Sum reduction is not supported when `target_scores` is None"
+                    "Sum reduction is not supported when "
+                    "`target_scores` is None"
                 )
             loss_iou = loss_iou.sum()
             if target_scores.sum() > 1:

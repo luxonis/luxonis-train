@@ -74,14 +74,16 @@ for _loss_name in EMBEDDING_LOSSES:
             if reducer is not None:
                 if not hasattr(pml_reducers, reducer):
                     raise ValueError(
-                        f"Reducer {reducer} not found in pytorch-metric-learning"
+                        f"Reducer {reducer} not found in "
+                        f"pytorch-metric-learning"
                     )
                 Reducer = getattr(pml_reducers, reducer)
                 kwargs["reducer"] = Reducer(**(reducer_params or {}))
             if regularizer is not None:
                 if not hasattr(pml_regularizers, regularizer):
                     raise ValueError(
-                        f"Regularizer {regularizer} not found in pytorch-metric-learning"
+                        f"Regularizer {regularizer} not found in "
+                        f"pytorch-metric-learning"
                     )
                 Regularizer = getattr(pml_regularizers, regularizer)
                 kwargs["embedding_regularizer"] = Regularizer(
@@ -90,7 +92,8 @@ for _loss_name in EMBEDDING_LOSSES:
             if distance is not None:
                 if not hasattr(pml_distances, distance):
                     raise ValueError(
-                        f"Distance {distance} not found in pytorch-metric-learning"
+                        f"Distance {distance} not found in "
+                        f"pytorch-metric-learning"
                     )
                 Distance = getattr(pml_distances, distance)
                 kwargs["distance"] = Distance(**(distance_params or {}))
@@ -117,8 +120,8 @@ for _loss_name in EMBEDDING_LOSSES:
                     )
                 else:
                     logger.warning(
-                        f"'CrossBatchMemory' is not supported for {self._name}. "
-                        "Ignoring cross_batch_memory_size."
+                        f"'CrossBatchMemory' is not supported for "
+                        f"{self._name}. Ignoring cross_batch_memory_size."
                     )
 
         def forward(self, predictions: Tensor, target: Tensor) -> Tensor:

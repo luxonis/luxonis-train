@@ -15,20 +15,29 @@ from .blocks import GhostBottleneckLayer
 class GhostFaceNet(BaseNode):
     """GhostFaceNetsV2 backbone.
 
-    GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is
-    adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
+    GhostFaceNetsV2 is a convolutional neural network architecture
+    focused on face recognition, but it is adaptable to generic
+    embedding tasks. It is based on the GhostNet architecture and uses
+    Ghost BottleneckV2 blocks.
 
-    Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+    Source:
+    `https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py
+    <https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py>`_
 
     Variants
     ========
-    This backbone offers a single variant, V2, which is the default variant.
+    This backbone offers a single variant, V2, which is the default
+    variant.
 
-    @license: U{MIT License
-        <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
+    See Also:
+        `GhostFaceNets: Lightweight Face Recognition Model From Cheap
+        Operations
+        <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>`_
 
-    @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
-        <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
+    License:
+        `MIT License
+        <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>`_
+
     """
 
     in_channels: int
@@ -41,19 +50,16 @@ class GhostFaceNet(BaseNode):
         layer_params: list["LayerParamsDict"],
         **kwargs,
     ):
-        """
-        @type width_multiplier: int
-        @param width_multiplier: Width multiplier for the blocks.
-        @type kernel_sizes: list[list[int]]
-        @param kernel_sizes: List of kernel sizes for block in each stage.
-        @type expand_sizes: list[list[int]]
-        @param expand_sizes: List of expansion sizes for block in each stage.
-        @type output_channels: list[list[int]]
-        @param output_channels: List of output channels for block in each stage.
-        @type se_ratios: list[list[float]]
-        @param se_ratios: List of Squeeze-and-Excitation ratios for block in each stage.
-        @type strides: list[list[int]]
-        @param strides: List of strides for block in each stage.
+        """GhostFaceNetsV2 backbone.
+
+        Args:
+            width_multiplier: Width multiplier for the blocks.
+            layer_params: Per-stage parameters of the bottleneck layers.
+                Each entry holds the kernel sizes, expansion sizes,
+                output channels, Squeeze-and-Excitation ratios and
+                strides of the blocks in that stage.
+            **kwargs: Base node arguments.
+
         """
         super().__init__(**kwargs)
 
@@ -109,6 +115,30 @@ class GhostFaceNet(BaseNode):
                 m.eps = 1e-5
 
     def forward(self, x: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale GhostFaceNet feature pyramid.
+
+        Args:
+            x: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         outputs = []
         for block in self.layers:
             x = block(x)

@@ -7,6 +7,8 @@ from luxonis_train.utils import make_divisible
 
 
 class ReXNetV1_lite(BaseNode):
+    """ReXNetV1 (Rank Expansion Networks) backbone, lite version."""
+
     def __init__(
         self,
         fix_head_stem: bool = False,
@@ -20,42 +22,52 @@ class ReXNetV1_lite(BaseNode):
     ):
         """ReXNetV1 (Rank Expansion Networks) backbone, lite version.
 
-        ReXNet proposes a new approach to designing lightweight CNN architectures by:
+        ReXNet proposes a new approach to designing lightweight CNN
+        architectures by:
 
-            - Studying proper channel dimension expansion at the layer level using rank analysis
-            - Searching for effective channel configurations across the entire network
-            - Parameterizing channel dimensions as a linear function of network depth
+            - Studying proper channel dimension expansion at the layer
+              level using rank analysis
+            - Searching for effective channel configurations across the
+              entire network
+            - Parameterizing channel dimensions as a linear function of
+              network depth
 
         Key aspects:
 
             - Uses inverted bottleneck blocks similar to MobileNetV2
-            - Employs a linear parameterization of channel dimensions across blocks
-            - Replaces ReLU6 with SiLU (Swish-1) activation in certain layers
+            - Employs a linear parameterization of channel dimensions
+              across blocks
+            - Replaces ReLU6 with SiLU (Swish-1) activation in certain
+              layers
             - Incorporates Squeeze-and-Excitation modules
 
-        ReXNet achieves state-of-the-art performance among lightweight models on ImageNet
-        classification and transfers well to tasks like object detection and fine-grained classification.
+        ReXNet achieves state-of-the-art performance among lightweight
+        models on ImageNet classification and transfers well to tasks
+        like object detection and fine-grained classification.
 
-        Source: U{https://github.com/clovaai/rexnet}
+        Source: `https://github.com/clovaai/rexnet
+        <https://github.com/clovaai/rexnet>`_
 
-        @license: U{MIT
-            <https://github.com/clovaai/rexnet/blob/master/LICENSE>}
-        @copyright: 2021-present NAVER Corp.
-        @see U{Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>}
-        @type fix_head_stem: bool
-        @param fix_head_stem: Whether to multiply head stem. Defaults to False.
-        @type divisible_value: int
-        @param divisible_value: Divisor used. Defaults to 8.
-        @type input_ch: int
-        @param input_ch: Starting channel dimension. Defaults to 16.
-        @type final_ch: int
-        @param final_ch: Final channel dimension. Defaults to 164.
-        @type multiplier: float
-        @param multiplier: Channel dimension multiplier. Defaults to 1.0.
-        @type kernel_sizes: int | list[int]
-        @param kernel_sizes: Kernel size for each block. Defaults to 3.
-        @param out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. Defaults to [1, 4, 10, 17].
+        Args:
+            fix_head_stem: Whether to multiply head stem. Defaults to
+                False.
+            divisible_value: Divisor used. Defaults to 8.
+            input_ch: Starting channel dimension. Defaults to 16.
+            final_ch: Final channel dimension. Defaults to 164.
+            multiplier: Channel dimension multiplier. Defaults to 1.0.
+            kernel_sizes: Kernel size for each block. Defaults to 3.
+            out_indices: Indices of the output layers. Defaults to
+                [1, 4, 10, 17].
+            **kwargs: Base node arguments.
+
+        See Also:
+            `Rethinking Channel Dimensions for Efficient Model Design
+            <https://arxiv.org/abs/2007.00992>`_
+
+        License:
+            `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_
+            @copyright: 2021-present NAVER Corp.
+
         """
         super().__init__(**kwargs)
 
@@ -152,6 +164,30 @@ class ReXNetV1_lite(BaseNode):
         self.features = nn.Sequential(*features)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale ReXNetV1 lite feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         outs: list[Tensor] = []
         for i, module in enumerate(self.features):
             inputs = module(inputs)
@@ -161,6 +197,8 @@ class ReXNetV1_lite(BaseNode):
 
 
 class LinearBottleneck(nn.Module):
+    """Linear Bottleneck module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -209,10 +247,31 @@ class LinearBottleneck(nn.Module):
         self.out = nn.Sequential(*out)
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply a ReXNet linear bottleneck.
+
+        Args:
+            x: Feature map supplied to the expansion and projection branches.
+
+        Returns:
+            Projected ReXNet features with the residual connection when
+            available.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, C_{\mathrm{out}}, H_{\mathrm{out}}, W_{\mathrm{out}})`
+
+        """  # noqa: E501
         out = self.out(x)
 
         if self.use_shortcut:
-            # NOTE: this results in a ScatterND node which isn't supported yet in myriad
+            # NOTE: this results in a ScatterND node which isn't
+            # supported yet in myriad
             a = out[:, : self.in_channels]
             b = x
             a = a + b

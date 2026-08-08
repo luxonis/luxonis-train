@@ -13,13 +13,14 @@ class ModuleFactory(Protocol):
 def autopad(kernel_size: T, padding: T | None = None) -> T:
     """Compute padding based on kernel size.
 
-    @type kernel_size: int | tuple[int, ...]
-    @param kernel_size: Kernel size.
-    @type padding: int | tuple[int, ...] | None
-    @param padding: Padding. Defaults to None.
-    @rtype: int | tuple[int, ...]
-    @return: Computed padding. The output type is the same as the type
-        of the C{kernel_size}.
+    Args:
+        kernel_size: Kernel size.
+        padding: Padding. Defaults to None.
+
+    Returns:
+        Computed padding. The output type is the same as the type of
+        the ``kernel_size``.
+
     """
     if padding is not None:
         return padding
@@ -32,12 +33,13 @@ def forward_gather(x: Tensor, modules: Iterable[nn.Module]) -> list[Tensor]:
     """Sequential forward pass through a list of modules, gathering
     intermediate outputs.
 
-    @type x: Tensor
-    @param x: Input tensor.
-    @type modules: Iterable[nn.Module]
-    @param modules: List of modules to apply.
-    @rtype: list[Tensor]
-    @return: List of intermediate outputs.
+    Args:
+        x: Input tensor.
+        modules: List of modules to apply.
+
+    Returns:
+        List of intermediate outputs.
+
     """
     out = []
     for module in modules:

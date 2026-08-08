@@ -64,9 +64,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @param bucket_storage: Type of the bucket storage. Defaults to
             'local'.
         @type update_mode: Literal["all", "missing"]
-        @param update_mode: Enum that determines the sync mode for media files of the remote dataset (annotations and metadata are always overwritten):
-            - UpdateMode.MISSING: Downloads only the missing media files for the dataset.
-            - UpdateMode.ALL: Always downloads and overwrites all media files in the local dataset.
+        @param update_mode: Enum that determines the sync mode for media
+            files of the remote dataset (annotations and metadata are
+            always overwritten):
+                - UpdateMode.MISSING: Downloads only the missing media
+                  files for the dataset.
+                - UpdateMode.ALL: Always downloads and overwrites all
+                  media files in the local dataset.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is
             provided. By default, the dataset is parsed again every time
@@ -80,15 +84,21 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             names will be loaded. If not provided, all tasks will be
             loaded.
         @type min_bbox_visibility: float
-        @param min_bbox_visibility: Minimum fraction of the original bounding box that must remain visible after augmentation.
+        @param min_bbox_visibility: Minimum fraction of the original
+            bounding box that must remain visible after augmentation.
         @type bbox_area_threshold: float
-        @param bbox_area_threshold: Minimum area threshold for bounding boxes to be considered valid. In the range [0, 1].
-            Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
+        @param bbox_area_threshold: Minimum area threshold for bounding
+            boxes to be considered valid. In the range [0, 1]. Default
+            is 0.0004, which corresponds to a small area threshold to
+            remove invalid bboxes and respective keypoints.
         @type class_order_per_task: dict[str, list[str]] | None
-        @param class_order_per_task: Dictionary mapping task names to a list of class names.
-            If provided, the classes for the specified tasks will be reordered.
+        @param class_order_per_task: Dictionary mapping task names to a
+            list of class names. If provided, the classes for the
+            specified tasks will be reordered.
         @type kpts_mapping_per_task: dict[str, list[int]] | None
-        @param kpts_mapping_per_task: Dictionary mapping task names to custom keypoint mappings. If provided, the keypoints for the specified tasks will be reordered.
+        @param kpts_mapping_per_task: Dictionary mapping task names to
+            custom keypoint mappings. If provided, the keypoints for the
+            specified tasks will be reordered.
         @type return_sample_metadata: bool
         @param return_sample_metadata: Whether C{__getitem__} should also
             return the per-sample metadata (C{sample_metadata}) as a third
@@ -120,15 +130,21 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             for task, new_mapping in kpts_mapping_per_task.items():
                 if task not in dataset_tasks:
                     raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
+                        f"Task `{task}` specified in "
+                        f"kpts_mapping_per_task but not present in "
+                        f"dataset tasks ({list(dataset_tasks.keys())})"
                     )
                 if "keypoints" not in dataset_tasks[task]:
                     raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
+                        f"Task `{task}` specified in "
+                        f"kpts_mapping_per_task but this task doesn't "
+                        f"have `keypoints` annotations"
                     )
                 if len(new_mapping) != len(set(new_mapping)):
                     logger.warning(
-                        f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
+                        f"Duplicate indices detected in keypoint "
+                        f"mapping for task `{task}`. Verify that "
+                        f"training on repeated keypoints is intentional."
                     )
 
         self.kpts_mapping_per_task = kpts_mapping_per_task
@@ -209,7 +225,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             expected, got = kpts.shape[1], len(new_mapping)
             if expected != got:
                 raise ValueError(
-                    f"Invalid keypoint mapping for task '{task}': expected {expected} indices, got {got}."
+                    f"Invalid keypoint mapping for task '{task}': "
+                    f"expected {expected} indices, got {got}."
                 )
 
             labels[key] = kpts[:, new_mapping, :].reshape(n_samples, flat_dim)

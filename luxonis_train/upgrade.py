@@ -219,7 +219,8 @@ def upgrade_installation() -> None:
             f"{sys.executable} -m pip install -U luxonis_ml[data]".split()
         )
         logger.info(
-            f"luxonis-train updated from v{lxt.__version__} to v{latest_version}."
+            f"luxonis-train updated from v{lxt.__version__} "
+            f"to v{latest_version}."
         )
 
 

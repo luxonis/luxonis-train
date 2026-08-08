@@ -41,7 +41,8 @@ def test_tune(
                 0.1,
                 0.9,
             ],
-            "model.predefined_model.params.backbone_params.freezing.unfreeze_after_loguniform": [
+            "model.predefined_model.params.backbone_params"
+            ".freezing.unfreeze_after_loguniform": [
                 0.1,
                 0.9,
             ],

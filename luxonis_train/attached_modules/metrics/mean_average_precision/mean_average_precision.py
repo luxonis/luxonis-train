@@ -55,5 +55,6 @@ class MeanAveragePrecision:
                 return MeanAveragePrecisionKeypoints(node=node, **kwargs)
             case _:  # pragma: no cover
                 raise ValueError(
-                    f"'MeanAveragePrecision' does not support task '{node.task.name}'"
+                    f"'MeanAveragePrecision' does not support task "
+                    f"'{node.task.name}'"
                 )

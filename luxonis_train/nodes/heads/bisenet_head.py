@@ -9,6 +9,8 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class BiSeNetHead(BaseHead):
+    """BiSeNet segmentation head."""
+
     in_height: int
     in_width: int
     in_channels: int
@@ -19,15 +21,20 @@ class BiSeNetHead(BaseHead):
     def __init__(self, intermediate_channels: int = 64, **kwargs):
         """BiSeNet segmentation head.
 
-        Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
-        @license: NOT SPECIFIED.
-        @see: U{BiseNetv1: Bilateral Segmentation Network for
-            Real-time Semantic Segmentation
-            <https://arxiv.org/abs/1808.00897>}
+        Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
-        @type intermediate_channels: int
-        @param intermediate_channels: How many intermediate channels to use.
-            Defaults to C{64}.
+        Args:
+            intermediate_channels: How many intermediate channels to
+                use. Defaults to ``64``.
+            **kwargs: Base head arguments.
+
+        See Also:
+            `BiseNetv1: Bilateral Segmentation Network for Real-time
+            Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
+
+        License:
+            NOT SPECIFIED.
+
         """
         super().__init__(**kwargs)
 
@@ -54,6 +61,29 @@ class BiSeNetHead(BaseHead):
         self.upscale = nn.PixelShuffle(upscale_factor)
 
     def forward(self, inputs: Tensor) -> Tensor:
+        r"""Decode BiSeNet features into segmentation logits.
+
+        Args:
+            inputs: Input feature map.
+
+        Returns:
+            Segmentation logits at the original image resolution.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B,n_{\mathrm{classes}},H_{\mathrm{image}},W_{\mathrm{image}})`
+
+            Symbols
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         x = self.conv_3x3(inputs)
         x = self.conv_1x1(x)
         return self.upscale(x)

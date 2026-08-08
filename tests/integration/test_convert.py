@@ -60,8 +60,10 @@ def test_convert_with_blobconverter(
     )
 
 
-# TODO: reintroduce Hailo conversion when modelconv is released and hub-ai is updated accordingly
-# TODO: reintroduce RVC3 conversion when remote-side conversion issue is resolved
+# TODO: reintroduce Hailo conversion when modelconv is released and hub-ai
+# is updated accordingly
+# TODO: reintroduce RVC3 conversion when remote-side conversion issue is
+# resolved
 @pytest.mark.parametrize("platform", ["rvc2", "rvc4"])
 def test_convert_with_hubai(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path, platform: str
@@ -91,9 +93,10 @@ def test_convert_with_hubai(
         for p in all_archives
         if platform_identifier in p.name.upper() and p != archive_path
     ]
+    archive_names = [p.name for p in all_archives]
     assert len(platform_archives) >= 1, (
         f"No platform-specific archive containing '{platform_identifier}' "
-        f"found for {platform}. Archives found: {[p.name for p in all_archives]}"
+        f"found for {platform}. Archives found: {archive_names}"
     )
 
 

@@ -7,6 +7,8 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class EfficientNet(BaseNode):
+    """EfficientNet backbone."""
+
     def __init__(
         self,
         out_indices: list[int] | None = None,
@@ -15,19 +17,32 @@ class EfficientNet(BaseNode):
     ):
         """EfficientNet backbone.
 
-        EfficientNet is a convolutional neural network architecture and scaling method that uniformly scales all dimensions of depth/width/resolution using a compound coefficient. Unlike conventional practice that arbitrary scales these factors, the EfficientNet scaling method uniformly scales network width, depth, and resolution with a set of fixed scaling coefficients.
+        EfficientNet is a convolutional neural network architecture and
+        scaling method that uniformly scales all dimensions of
+        depth/width/resolution using a compound coefficient. Unlike
+        conventional practice that arbitrary scales these factors, the
+        EfficientNet scaling method uniformly scales network width,
+        depth, and resolution with a set of fixed scaling coefficients.
 
-        Source: U{https://github.com/rwightman/gen-efficientnet-pytorch}
+        Source: `https://github.com/rwightman/gen-efficientnet-pytorch
+        <https://github.com/rwightman/gen-efficientnet-pytorch>`_
 
-        @license: U{Apache License, Version 2.0
-            <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>}
+        Args:
+            out_indices: Indices of the output layers. Defaults to
+                [0, 1, 2, 4, 6].
+            weights: Whether to load pretrained weights.
+            **kwargs: Base node arguments.
 
-        @see: U{https://paperswithcode.com/method/efficientnet}
-        @see: U{EfficientNet: Rethinking Model Scaling for
-            Convolutional Neural Networks
-            <https://arxiv.org/abs/1905.11946>}
-        @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
+        See Also:
+            `https://paperswithcode.com/method/efficientnet
+            <https://paperswithcode.com/method/efficientnet>`_
+            `EfficientNet: Rethinking Model Scaling for Convolutional
+            Neural Networks <https://arxiv.org/abs/1905.11946>`_
+
+        License:
+            `Apache License, Version 2.0
+            <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>`_
+
         """
         super().__init__(**kwargs)
 
@@ -49,6 +64,30 @@ class EfficientNet(BaseNode):
         self.out_indices = out_indices or [0, 1, 2, 4, 6]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        r"""Extract a multi-scale EfficientNet feature pyramid.
+
+        Args:
+            inputs: Image batch to encode.
+
+        Returns:
+            Feature maps from the configured output stages, ordered by
+            increasing depth.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H_{\mathrm{in}}, W_{\mathrm{in}})`
+
+            Outputs
+                :math:`\mathrm{features}_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+
+        """  # noqa: E501
         x = self.backbone.conv_stem(inputs)
         x = self.backbone.bn1(x)
         x = self.backbone.act1(x)

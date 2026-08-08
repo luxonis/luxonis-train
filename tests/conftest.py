@@ -1,3 +1,4 @@
+import os
 import random
 import shutil
 import zipfile
@@ -14,6 +15,7 @@ import pytest
 import torchvision
 from _pytest.config import Config
 from _pytest.python import Function
+from hypothesis import settings as hypothesis_settings
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
@@ -21,6 +23,12 @@ from luxonis_ml.utils import LuxonisFileSystem, environ
 from PIL import Image
 
 from luxonis_train.config.config import OnnxExportConfig
+
+hypothesis_settings.register_profile("local", deadline=None)
+hypothesis_settings.register_profile(
+    "ci", deadline=None, derandomize=True, database=None
+)
+hypothesis_settings.load_profile("ci" if os.getenv("CI") else "local")
 
 
 @pytest.fixture(scope="session")

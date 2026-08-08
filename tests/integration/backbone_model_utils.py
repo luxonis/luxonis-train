@@ -70,7 +70,9 @@ def prepare_predefined_model_config(
     # Apply dataset-specific overrides
     if config_name == "embeddings_model":
         opts |= {
-            "loader.params.dataset_name": test_datasets.embedding_dataset.identifier,
+            "loader.params.dataset_name": (
+                test_datasets.embedding_dataset.identifier
+            ),
             "trainer.batch_size": 16,
             "trainer.preprocessing.train_image_size": [48, 64],
         }

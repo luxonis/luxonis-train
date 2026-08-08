@@ -13,11 +13,13 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
     def __init__(self, *, _auto_finalize: bool = True, **kwargs):
         """
         @type _auto_finalize: bool
-        @param _auto_finalize: If True, the run will be finalized automatically when the training ends.
-            If set to C{False}, the user will have to call the L{_finalize} method manually.
+        @param _auto_finalize: If True, the run will be finalized
+            automatically when the training ends. If set to C{False},
+            the user will have to call the L{_finalize} method manually.
 
         @type kwargs: dict
-        @param kwargs: Additional keyword arguments to be passed to the L{LuxonisTracker}.
+        @param kwargs: Additional keyword arguments to be passed to the
+            L{LuxonisTracker}.
         """
         LuxonisTracker.__init__(self, **kwargs)
         Logger.__init__(self)

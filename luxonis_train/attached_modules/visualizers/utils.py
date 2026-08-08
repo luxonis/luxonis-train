@@ -319,20 +319,21 @@ def potentially_upscale_masks(
 # TODO: Support native visualizations
 # NOTE: Ignore for now, native visualizations not a priority.
 #
-# It could be beneficial in the long term to make the visualization more abstract.
-# Reason for that is that certain services, e.g. WandB, have their native way
-# of visualizing things. So by restricting ourselves to only produce bitmap images
-# for logging, we are limiting ourselves in how we can utilize those services.
-# (I know we want to leave WandB and I don't know whether mlcloud offers anything
-# similar, but it might save us some time in the future).')
+# It could be beneficial in the long term to make the visualization more
+# abstract. Reason for that is that certain services, e.g. WandB, have their
+# native way of visualizing things. So by restricting ourselves to only
+# produce bitmap images for logging, we are limiting ourselves in how we can
+# utilize those services. (I know we want to leave WandB and I don't know
+# whether mlcloud offers anything similar, but it might save us some time in
+# the future).')
 #
 # The idea would be that every visualizer would not only produce the bitmap
 # images, but also some standardized representation of the visualizations.
 # This would be sent to the logger, which would then decide how to log it.
 # By default, it would log it as a bitmap image, but if we know we are logging
 # to (e.g.) WandB, we could use the native WandB visualizations.
-# Since we already have to check what logging is being used (to call the correct
-# service), it should be somehow easy to implement.
+# Since we already have to check what logging is being used (to call the
+# correct service), it should be somehow easy to implement.
 #
 # The more specific implementation/protocol could be, that every instance
 # of `LuxonisVisualizer` would produce a tuple of
@@ -342,7 +343,8 @@ def potentially_upscale_masks(
 # - a single tensor (e.g. image)
 #   - in this case, the tensor would be logged as a bitmap image
 # - a tuple of two tensors
-#   - in this case, the first tensor is considered labels and the second predictions
+#   - in this case, the first tensor is considered labels and the second
+#     predictions
 #   - e.g. GT and predicted segmentation mask
 # - a tuple of a tensor and a list of tensors
 #   - in this case, the first is considered labels
@@ -350,10 +352,11 @@ def potentially_upscale_masks(
 # - an iterable of tensors
 #   - in this case, the tensors are considered unrelated predictions
 #
-# The `structured_visualizations` would be have similar format, but  instead of
-# tensors, it would consist of some structured data (e.g. dict of lists or something).
-# We could even create a validation schema for this to enforce the structure.
-# We would then just have to support this new structure in the logger (`LuxonisTracker`).
+# The `structured_visualizations` would be have similar format, but instead
+# of tensors, it would consist of some structured data (e.g. dict of lists
+# or something). We could even create a validation schema for this to
+# enforce the structure. We would then just have to support this new
+# structure in the logger (`LuxonisTracker`).
 #
 #  TEST:
 def combine_visualizations(
@@ -375,8 +378,8 @@ def combine_visualizations(
     ) -> tuple[Tensor, Tensor]:
         """Resizes two images so they have the same size.
 
-        Resizes two images so they can be concateneted together. It's possible to
-        configure how the images are resized.
+        Resizes two images so they can be concateneted together. It's
+        possible to configure how the images are resized.
 
         @type fst: Tensor[C, H, W]
         @param fst: First image.
@@ -384,10 +387,14 @@ def combine_visualizations(
         @param snd: Second image.
         @type keep_size: Literal["larger", "smaller", "first", "second"]
         @param keep_size: Which size to keep. Options are:
-            - "larger": Resize the smaller image to match the size of the larger image.
-            - "smaller": Resize the larger image to match the size of the smaller image.
-            - "first": Resize the second image to match the size of the first image.
-            - "second": Resize the first image to match the size of the second image.
+            - "larger": Resize the smaller image to match the size of
+              the larger image.
+            - "smaller": Resize the larger image to match the size of
+              the smaller image.
+            - "first": Resize the second image to match the size of the
+              first image.
+            - "second": Resize the first image to match the size of the
+              second image.
 
         @type resize_along: Literal["width", "height", "exact"]
         @param resize_along: Which dimensions to match. Options are:
@@ -396,9 +403,10 @@ def combine_visualizations(
             - "exact": Resize images to match both width and height dimensions.
 
         @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether to keep the aspect ratio of the images.
-            Only takes effect when the "exact" option is selected for the
-            C{resize_along} argument. Defaults to C{True}.
+        @param keep_aspect_ratio: Whether to keep the aspect ratio of
+            the images. Only takes effect when the "exact" option is
+            selected for the C{resize_along} argument. Defaults to
+            C{True}.
 
         @rtype: tuple[Tensor[C, H, W], Tensor[C, H, W]]
         @return: Resized images.

@@ -155,7 +155,8 @@ class BBoxVisualizer(BaseVisualizer):
                 )
             except ValueError as e:
                 logging.getLogger(__name__).warning(
-                    f"Failed to draw bounding boxes: {e}. Skipping visualization."
+                    f"Failed to draw bounding boxes: {e}. "
+                    f"Skipping visualization."
                 )
                 viz = canvas
         return viz

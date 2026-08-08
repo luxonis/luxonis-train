@@ -11,6 +11,8 @@ from luxonis_train.nodes.blocks import DropPath
 
 
 class ConvMixer(nn.Module):
+    """Conv Mixer module."""
+
     @typechecked
     def __init__(
         self,
@@ -35,6 +37,25 @@ class ConvMixer(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Mix sequence features with a spatial convolution.
+
+        Args:
+            x: Sequence of feature embeddings.
+
+        Returns:
+            Feature sequence after spatial convolutional mixing.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, L, C)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, L, C)`
+
+        """
         x = x.permute(0, 2, 1).reshape(
             [x.size(0), self.dim, self.height, self.width]
         )
@@ -43,6 +64,8 @@ class ConvMixer(nn.Module):
 
 
 class Attention(nn.Module):
+    """Attention module."""
+
     @typechecked
     def __init__(
         self,
@@ -107,6 +130,29 @@ class Attention(nn.Module):
             self.mask = mask.unsqueeze(0).unsqueeze(0)
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply multi-head self-attention to a feature sequence.
+
+        Args:
+            x: Sequence of feature embeddings.
+
+        Returns:
+            Contextualized feature sequence.
+
+        Raises:
+            ValueError: If local attention has no height or width. The
+                message contains "Height and width".
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, L, C)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, L, C)`
+
+        """
         batch_size = x.shape[0]
         qkv = (
             self.qkv(x)
@@ -127,6 +173,8 @@ class Attention(nn.Module):
 
 
 class SVTRBlock(nn.Module):
+    """S V T R Block module."""
+
     @typechecked
     def __init__(
         self,
@@ -188,6 +236,29 @@ class SVTRBlock(nn.Module):
         self.prenorm = prenorm
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Mix sequence features and apply the feed-forward network.
+
+        Args:
+            x: Sequence of feature embeddings.
+
+        Returns:
+            Feature sequence after token mixing and feed-forward projection.
+
+        Raises:
+            ValueError: If convolution mixing has no height or width.
+                The message contains "Height and width".
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x`
+                    :math:`(B, L, C)`
+
+            Outputs
+                :math:`\mathrm{output}`
+                    :math:`(B, L, C)`
+
+        """
         if self.prenorm:
             x = self.norm1(x + self.drop_path(self.mixer(x)))
             x = self.norm2(x + self.drop_path(self.mlp(x)))

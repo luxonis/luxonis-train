@@ -10,6 +10,8 @@ from luxonis_train.typing import Packet
 
 
 class FOMOHead(BaseHead):
+    """FOMO Head for object detection using heatmaps."""
+
     task: Task = Tasks.FOMO
     attach_index: int = 1
     in_channels: int
@@ -23,11 +25,14 @@ class FOMOHead(BaseHead):
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type n_conv_layers: int
-        @param n_conv_layers: Number of convolutional layers to use.
-        @type conv_channels: int
-        @param conv_channels: Number of channels to use in the
-            convolutional layers.
+        Args:
+            n_conv_layers: Number of convolutional layers to use.
+            conv_channels: Number of channels to use in the
+                convolutional layers.
+            use_nms: Whether to suppress adjacent heatmap peaks during
+                inference.
+            **kwargs: Base head arguments.
+
         """
         super().__init__(**kwargs)
         self.n_conv_layers = n_conv_layers
@@ -62,6 +67,41 @@ class FOMOHead(BaseHead):
         return 1
 
     def forward(self, inputs: Tensor) -> Packet[Tensor]:
+        r"""Predict object-center heatmaps and optional coordinates.
+
+        Args:
+            inputs: Input feature map.
+
+        Returns:
+            Heatmap predictions and, when requested, decoded object centers.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`\mathrm{inputs}`
+                    :math:`(B, C_{\mathrm{in}}, H, W)`
+
+            Outputs
+                :math:`\mathrm{heatmap}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+
+            Export outputs
+                :math:`\mathrm{outputs}_{i}` (:math:`i = 0`)
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+
+            Inference outputs
+                :math:`\mathrm{heatmap}`
+                    :math:`(B, n_{\mathrm{classes}}, H, W)`
+                :math:`\mathrm{keypoints}_{i}` (:math:`i = 0, \ldots, B - 1`)
+                    :math:`(K, 1, 4)`
+
+            Symbols
+                :math:`K`
+                    Number of retained detections for one image.
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """
         heatmap = self.conv_layers(inputs)
 
         if self.training:
@@ -84,8 +124,9 @@ class FOMOHead(BaseHead):
         """Convert heatmap to keypoint pairs using local-max NMS so that
         only the strongest local peak in a neighborhood is retained.
 
-        @type heatmap: Tensor
-        @param heatmap: Heatmap to convert to keypoints.
+        Args:
+            heatmap: Heatmap to convert to keypoints.
+
         """
         device = heatmap.device
         batch_size, n_classes, height, width = heatmap.shape
@@ -124,9 +165,12 @@ class FOMOHead(BaseHead):
     def _get_keypoint_mask(self, prob_map: Tensor) -> Tensor:
         """Generate a mask for keypoints using NMS if enabled.
 
-        @type prob_map: Tensor
-        @param prob_map: Probability map for a specific class.
-        @return: Binary mask indicating keypoint positions.
+        Args:
+            prob_map: Probability map for a specific class.
+
+        Returns:
+            Binary mask indicating keypoint positions.
+
         """
         if self.use_nms:
             pooled_map = (

@@ -11,12 +11,14 @@ class TransformerSegmentationHead(BaseHead):
     """Semantic segmentation decoder head that takes feature maps as
     inputs.
 
-    Section 6.3.2 of the DINOv3 paper (U{
-    https://arxiv.org/abs/2508.10104/})
-    mentions a ViT-adapter without the injection followed by Mask2Former.
-    In this implementation, Mask2Former is replaced by a simple convolutional head.
+    Section 6.3.2 of the DINOv3 paper (`https://arxiv.org/abs/2508.10104/
+    <https://arxiv.org/abs/2508.10104/>`_) mentions a ViT-adapter
+    without the injection followed by Mask2Former. In this
+    implementation, Mask2Former is replaced by a simple convolutional
+    head.
 
-    Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
+    Converts a list of [B, C, H, W] feature maps to segmentation logits
+    [B, n_classes, H, W]
     """
 
     n_classes: int
@@ -49,20 +51,31 @@ class TransformerSegmentationHead(BaseHead):
         )
 
     def forward(self, x: list[Tensor]) -> Tensor:
-        """Semantic segmentation head for feature maps from a
-        transformer backbone.
+        r"""Decode transformer feature maps into segmentation logits.
 
-        @param x: List of successive feature maps of the same dimension
-        @type x: list[Tensor]
-        @return: Segmentation logits
+        Args:
+            x: Feature tensor to decode.
 
-        @note: Steps:
-            1. Project each feature map to a channel dim of 256 using 1x1 convolutions.
-            2. Upsample the  feature maps to 1/4 of the image size.
-            3. Fuse the projected feature maps through summation.
-            4. Apply segmentation head.
-            5. Upsample to original input resolution.
-        """
+        Returns:
+            Segmentation logits at the original image resolution.
+
+        .. shape-contract::
+
+            Inputs
+                :math:`x_{i}` (:math:`i = 0, \ldots, N - 1`)
+                    :math:`(B, C_{i}, H_{i}, W_{i})`
+
+            Outputs
+                :math:`\mathrm{logits}`
+                    :math:`(B, n_{\mathrm{classes}}, H_{\mathrm{image}}, W_{\mathrm{image}})`
+
+            Symbols
+                :math:`N`
+                    Number of tensors in the feature sequence.
+                :math:`n_{\mathrm{classes}}`
+                    Number of predicted classes.
+
+        """  # noqa: E501
         h, w = self.original_in_shape[1:]
 
         projected = []

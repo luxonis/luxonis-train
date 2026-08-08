@@ -57,7 +57,8 @@ def test_unique_initializers_preserves_input_output_names(
     unique_input_names = [inp.name for inp in onnx_model_unique.graph.input]
     unique_output_names = [out.name for out in onnx_model_unique.graph.output]
 
-    # Filter out initializer names from inputs (ONNX includes initializers in inputs)
+    # Filter out initializer names from inputs
+    # (ONNX includes initializers in inputs)
     normal_initializer_names = {
         init.name for init in onnx_model_normal.graph.initializer
     }
