@@ -133,6 +133,19 @@ def get_head_configs(
     head_names = set()
 
     for node_name, node in lightning_module.nodes.items():
+        if hasattr(node, "get_head_configs_override"):
+            if node.remove_on_export:
+                continue
+            override_configs = node.get_head_configs_override(outputs)
+            for config in override_configs:
+                head_name = config.get("name", node_name)
+                if head_name in head_names:
+                    head_name = f"{head_name}_{len(head_names)}"
+                head_names.add(head_name)
+                config["name"] = head_name
+                head_configs.append(config)
+            continue
+
         if not isinstance(node, BaseHead) or node.remove_on_export:
             continue
         try:
