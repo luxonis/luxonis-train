@@ -1317,8 +1317,6 @@ def test_accumulate_grad_batches_auto_populated_when_unset():
 
 def test_embeddings_preset_keeps_its_training_recipe():
     """The embeddings preset trains without gradient accumulation."""
-    from luxonis_train.config.predefined import resolve_predefined_config
-
     cfg = Config.get_config(
         str(resolve_predefined_config("embeddings", None).path)
     )
@@ -1327,8 +1325,6 @@ def test_embeddings_preset_keeps_its_training_recipe():
 
 def test_embeddings_model_metadata_task_is_configurable():
     """The embeddings metadata field is dataset-specific."""
-    from luxonis_train.config.predefined_models import EmbeddingsModel
-
     custom = cast(Any, EmbeddingsModel)(metadata_task_override="person_id")
     head = custom.nodes[1]
     assert head.metadata_task_override == "person_id"
@@ -1346,8 +1342,6 @@ def test_ocr_preset_keeps_its_explicit_accumulation():
     Auto-population used to overwrite the configured 2 with 64/4 = 16,
     quadrupling the effective batch the config asks for.
     """
-    from luxonis_train.config.predefined import resolve_predefined_config
-
     cfg = Config.get_config(
         str(resolve_predefined_config("ocr_recognition", None).path)
     )

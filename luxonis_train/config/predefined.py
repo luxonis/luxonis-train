@@ -86,7 +86,9 @@ def _sort_variants(variants: list[str | None]) -> list[str | None]:
     variants.sort(
         key=lambda v: (
             v is None,
-            VARIANT_ORDER.index(v) if v in VARIANT_ORDER else 99,
+            VARIANT_ORDER.index(v)
+            if v in VARIANT_ORDER
+            else len(VARIANT_ORDER),
         )
     )
     return variants
@@ -113,14 +115,21 @@ def default_config_path(model: str) -> Path:
     return _config_path(_filename(model, _default_variant(model)))
 
 
+def class_family(model: str) -> str | None:
+    """Registry family of the class behind `model`'s default YAML."""
+    try:
+        data = yaml.safe_load(default_config_path(model).read_text())
+        return data["model"]["predefined_model"]["name"]
+    except (OSError, KeyError, TypeError, yaml.YAMLError):
+        return None
+
+
 def _model_class(model: str) -> "type[BasePredefinedModel] | None":
     """Resolve the class used by a packaged config, if available."""
     if model not in list_predefined_models():
         return None
-    try:
-        data = yaml.safe_load(default_config_path(model).read_text())
-        name = data["model"]["predefined_model"]["name"]
-    except (OSError, KeyError, TypeError, yaml.YAMLError):
+    name = class_family(model)
+    if name is None:
         return None
 
     # Registering predefined models pulls in torch, so keep this lazy.

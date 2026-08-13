@@ -653,7 +653,7 @@ def list_models():
     from rich.table import Table
 
     from luxonis_train.config.predefined import (
-        default_config_path,
+        class_family,
         list_predefined_models,
         list_variants,
     )
@@ -679,12 +679,8 @@ def list_models():
         for v in variants:
             label = v if v is not None else "<default>"
             rendered_variants.append(f"{label}*" if v == default else label)
-        config = yaml.safe_load(default_config_path(name).read_text())
-        try:
-            class_family = config["model"]["predefined_model"]["name"]
-        except (KeyError, TypeError):
-            class_family = None
-        versions = list_versions(class_family) if class_family else {}
+        family = class_family(name)
+        versions = list_versions(family) if family else {}
         if versions:
             latest = max(versions)
             version_str = ", ".join(

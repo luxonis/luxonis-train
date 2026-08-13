@@ -291,15 +291,10 @@ class ModelConfig(BaseModelExtraForbid):
         resolved = resolved_class_name(
             self.predefined_model.name, self.predefined_model.version
         )
+        message = f"Using predefined model: `{self.predefined_model.name}`"
         if resolved != self.predefined_model.name:
-            logger.info(
-                f"Using predefined model: `{self.predefined_model.name}` "
-                f"(resolved to `{resolved}`)"
-            )
-        else:
-            logger.info(
-                f"Using predefined model: `{self.predefined_model.name}`"
-            )
+            message += f" (resolved to `{resolved}`)"
+        logger.info(message)
         kwargs: dict[str, Any] = dict(self.predefined_model.params or {})
         if not kwargs.get("variant"):
             kwargs["variant"] = self.predefined_model.variant
