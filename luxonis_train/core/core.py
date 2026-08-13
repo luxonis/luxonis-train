@@ -144,6 +144,7 @@ class LuxonisModel:
             elif resolved.opts:
                 opts = [*(opts or []), *resolved.opts]
 
+        restored_predefined_model: dict[str, Any] | None = None
         if weights is not None:
             if isinstance(weights, dict):
                 if "state_dict" not in weights:
@@ -170,6 +171,12 @@ class LuxonisModel:
                         "Checkpoint does not contain the 'config' key. "
                         "Cannot restore `LuxonisModel` from checkpoint."
                     )
+                # The dumped config has no `predefined_model` block, so
+                # provenance is inherited from the checkpoint — but only
+                # when the config itself came from that checkpoint. A
+                # user-supplied config warm-started from a checkpoint
+                # must not claim the checkpoint's predefined model.
+                restored_predefined_model = ckpt.get("predefined_model")
             if "dataset_metadata" in ckpt and dataset_metadata is None:
                 try:
                     dataset_metadata = DatasetMetadata(
@@ -398,6 +405,9 @@ class LuxonisModel:
             save_dir=self.run_save_dir,
             input_shapes=self.input_shapes,
             _core=self,
+        )
+        self.lightning_module._ckpt_predefined_model = (
+            restored_predefined_model
         )
 
         if weights is not None:

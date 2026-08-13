@@ -19,7 +19,6 @@ def replace_weights(
     weights: PathType | dict[str, Any] | None = None,
 ) -> Generator:
     old_weights = None
-    old_predefined_model = module._ckpt_predefined_model
     if weights is not None:
         old_weights = module.state_dict()
         module.load_checkpoint(weights)
@@ -31,7 +30,6 @@ def replace_weights(
         if old_weights is not None:
             object.__setattr__(module, "_weights_explicitly_loaded", False)
             module.load_state_dict(old_weights)
-            module._ckpt_predefined_model = old_predefined_model
             del old_weights
 
 

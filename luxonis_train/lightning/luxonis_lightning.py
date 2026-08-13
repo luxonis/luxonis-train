@@ -112,7 +112,12 @@ class LuxonisLightningModule(pl.LightningModule):
     logger: LuxonisTrackerPL
 
     _ckpt_predefined_model: dict[str, Any] | None = None
-    """Predefined-model pin read from the loaded checkpoint."""
+    """Predefined-model pin inherited from a checkpoint.
+
+    Set by `LuxonisModel` only when the config itself was restored from
+    that checkpoint; loading weights into a user-supplied config leaves
+    it `None`.
+    """
 
     __call__: Callable[..., tuple[Tensor, ...]]
 
@@ -664,13 +669,12 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
-        ckpt_predefined_model = ckpt.get("predefined_model")
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
         )
 
         warn_on_predefined_model_mismatch(
-            self.cfg.model.predefined_model, ckpt_predefined_model
+            self.cfg.model.predefined_model, ckpt.get("predefined_model")
         )
 
         state_dict = ckpt["state_dict"]
@@ -759,10 +763,6 @@ class LuxonisLightningModule(pl.LightningModule):
                             node.module.load_checkpoint(
                                 sub_state_dict, strict=False
                             )
-
-        # Only adopt the checkpoint's pin once its weights have been
-        # loaded, so a failed strict load does not corrupt the pin.
-        self._ckpt_predefined_model = ckpt_predefined_model
 
     def detach(self) -> None:
         """Detaches the model from the trainer.

@@ -5,7 +5,9 @@ from unittest.mock import patch
 
 import pytest
 from loguru import logger
+from torch import Tensor, nn
 
+from luxonis_train import BaseNode, LuxonisModel, Tasks
 from luxonis_train.config import predefined_models
 from luxonis_train.config.config import Config, PredefinedModelConfig
 from luxonis_train.config.predefined_models import DetectionModel
@@ -13,7 +15,6 @@ from luxonis_train.config.predefined_versions import (
     resolve_predefined_class,
     warn_on_predefined_model_mismatch,
 )
-from luxonis_train.core.utils.export_utils import replace_weights
 from luxonis_train.lightning import luxonis_lightning
 from luxonis_train.lightning.luxonis_lightning import (
     LuxonisLightningModule,
@@ -135,45 +136,73 @@ def test_checkpoint_pin_survives_resaving_without_config():
     assert checkpoint["predefined_model"] == pin
 
 
-def test_temporary_weight_swap_restores_checkpoint_pin_before_resave():
-    """A configless module restored to checkpoint A's weights must not
-    save checkpoint B's pin after a temporary weight swap.
-    """
-    original_pin = {"name": "DetectionModel", "version": 1}
-    temporary_pin = {"name": "DetectionModel", "version": 2}
-    module = _checkpoint_module(original_pin)
-    original_state = {"nodes.backbone.weight": object()}
+class PinBackbone(BaseNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.conv = nn.Conv2d(3, 4, 1)
 
-    def load_checkpoint(checkpoint: dict[str, Any]) -> None:
-        module._ckpt_predefined_model = checkpoint.get("predefined_model")
+    def forward(self, x: Tensor) -> Tensor:
+        return self.conv(x)
 
-    with (
-        patch.object(
-            LuxonisLightningModule,
-            "state_dict",
-            return_value=original_state,
-        ),
-        patch.object(
-            LuxonisLightningModule,
-            "load_checkpoint",
-            side_effect=load_checkpoint,
-        ),
-        patch.object(
-            LuxonisLightningModule, "load_state_dict"
-        ) as restore_state,
-    ):
-        with replace_weights(
-            module,
-            {"state_dict": {}, "predefined_model": temporary_pin},
-        ):
-            assert module._ckpt_predefined_model == temporary_pin
 
-        restore_state.assert_called_once_with(original_state)
+class PinHead(BaseNode):
+    task = Tasks.CLASSIFICATION
 
-    checkpoint: dict[str, Any] = {"state_dict": {}}
-    _add_checkpoint_metadata(module, checkpoint)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(4, 10)
 
-    assert checkpoint["predefined_model"] == original_pin
+    def forward(self, x: Tensor) -> Tensor:
+        return self.fc(self.pool(x).flatten(1))
+
+
+def _pin_model_cfg() -> dict[str, Any]:
+    return {
+        "model": {
+            "name": "pin_origin",
+            "nodes": [
+                {"name": "PinBackbone"},
+                {
+                    "name": "PinHead",
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                },
+            ],
+        },
+        "trainer": {"smart_cfg_auto_populate": False},
+    }
+
+
+def test_checkpoint_pin_adoption_follows_config_origin():
+    pin = {"name": "DetectionModel", "version": 1}
+    donor = LuxonisModel(
+        _pin_model_cfg(),
+        {"loader.params.n_classes": 10},
+        allow_empty_dataset=True,
+    )
+    checkpoint: dict[str, Any] = {
+        "state_dict": donor.lightning_module.state_dict(),
+        "config": donor.cfg.model_dump(),
+        "predefined_model": pin,
+    }
+
+    restored = LuxonisModel(None, weights=checkpoint, allow_empty_dataset=True)
+    assert restored.lightning_module._ckpt_predefined_model == pin
+
+    warm_started = LuxonisModel(
+        _pin_model_cfg(),
+        {"loader.params.n_classes": 10},
+        weights=checkpoint,
+        allow_empty_dataset=True,
+    )
+    assert warm_started.lightning_module._ckpt_predefined_model is None
+
+    # Loading further weights never rebinds the pin.
+    other_pin = {"name": "DetectionModel", "version": 2}
+    restored.lightning_module.load_checkpoint(
+        checkpoint | {"predefined_model": other_pin}
+    )
+    assert restored.lightning_module._ckpt_predefined_model == pin
 
 
 def test_checkpoint_removes_stale_pin_when_none_is_known():
