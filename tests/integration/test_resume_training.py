@@ -54,7 +54,7 @@ def test_resume_training_with_ema_does_not_crash(
     strict_loading_original_ckpt: Path,
     tmp_path: Path,
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     checkpoint = torch.load(
         strict_loading_original_ckpt, map_location="cpu", weights_only=False
     )
@@ -76,7 +76,7 @@ def test_training_with_weights_without_resume_loads_checkpoint_only(
     strict_loading_original_ckpt: Path,
     tmp_path: Path,
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     train_opts = _get_detection_light_train_opts(
         parking_lot_dataset.identifier,
         tmp_path / "save-directory",
@@ -105,7 +105,7 @@ def test_training_with_unexpected_checkpoint_key_fails_when_strict(
     strict_loading_modified_model_ckpt: Path,
     tmp_path: Path,
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     train_opts = _get_detection_light_train_opts(
         parking_lot_dataset.identifier,
         tmp_path / "strict-save-directory",
@@ -126,7 +126,7 @@ def test_training_with_unexpected_checkpoint_key_succeeds_when_not_strict(
     strict_loading_modified_model_ckpt: Path,
     tmp_path: Path,
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     train_opts = _get_detection_light_train_opts(
         parking_lot_dataset.identifier,
         tmp_path / "nonstrict-save-directory",
@@ -145,7 +145,7 @@ def test_strict_resume_loading_ignores_attached_module_checkpoint_keys(
     strict_loading_modified_attached_modules_ckpt: Path,
     tmp_path: Path,
 ):
-    config_file = "configs/detection_light_model.yaml"
+    config_file = "luxonis_train/configs/detection_light_model.yaml"
     train_opts = _get_detection_light_train_opts(
         parking_lot_dataset.identifier,
         tmp_path / "attached-modules-save-directory",

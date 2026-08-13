@@ -111,6 +111,14 @@ class LuxonisLightningModule(pl.LightningModule):
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
 
+    _ckpt_predefined_model: dict[str, Any] | None = None
+    """Predefined-model pin inherited from a checkpoint.
+
+    Set by `LuxonisModel` only when the config itself was restored from
+    that checkpoint; loading weights into a user-supplied config leaves
+    it `None`.
+    """
+
     __call__: Callable[..., tuple[Tensor, ...]]
 
     def __init__(
@@ -661,6 +669,13 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
+        from luxonis_train.config.predefined_versions import (
+            warn_on_predefined_model_mismatch,
+        )
+
+        warn_on_predefined_model_mismatch(
+            self.cfg.model.predefined_model, ckpt.get("predefined_model")
+        )
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
@@ -1249,9 +1264,34 @@ class LuxonisLightningModule(pl.LightningModule):
         checkpoint["state_dict"] = filter_checkpoint_state_dict(
             checkpoint["state_dict"]
         )
+        predefined_model = (
+            _checkpoint_predefined_model(self.cfg)
+            or self._ckpt_predefined_model
+        )
         checkpoint |= {
             "version": luxonis_train.__version__,
             "execution_order": get_model_execution_order(self),
             "config": self.cfg.model_dump(),
             "dataset_metadata": self.dataset_metadata.dump(),
         }
+        if predefined_model is None:
+            checkpoint.pop("predefined_model", None)
+        else:
+            checkpoint["predefined_model"] = predefined_model
+
+
+def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
+    """Dump a predefined model with ``latest`` resolved to a version."""
+    predefined_model = cfg.model.predefined_model
+    if predefined_model is None:
+        return None
+    dumped = predefined_model.model_dump()
+    if dumped.get("version") == "latest":
+        from luxonis_train.config.predefined_versions import (
+            resolve_predefined_class,
+        )
+
+        dumped["version"] = resolve_predefined_class(
+            predefined_model.name, "latest"
+        )._VERSION
+    return dumped

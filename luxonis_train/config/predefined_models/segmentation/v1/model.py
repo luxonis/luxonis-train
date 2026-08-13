@@ -2,8 +2,9 @@ from luxonis_ml.typing import Params
 from typing_extensions import override
 
 from luxonis_train.config import LossModuleConfig, NodeConfig
-
-from .base_predefined_model import SimplePredefinedModel
+from luxonis_train.config.predefined_models.base_predefined_model import (
+    SimplePredefinedModel,
+)
 
 
 class SegmentationModel(SimplePredefinedModel):

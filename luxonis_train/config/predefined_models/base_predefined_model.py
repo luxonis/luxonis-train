@@ -1,7 +1,9 @@
+import re
 from abc import abstractmethod
-from typing import Literal
+from typing import Any, Literal, cast
 
 from luxonis_ml.typing import Kwargs, Params, check_type
+from luxonis_ml.utils.registry import Registry
 from typeguard import typechecked
 from typing_extensions import override
 
@@ -13,10 +15,81 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FinetuningConfig, FreezingConfig
 from luxonis_train.registry import MODELS
-from luxonis_train.variants import VariantBase
+from luxonis_train.variants import VariantBase, VariantMeta
+
+_NAMESPACE_VERSION = re.compile(r"\.v(\d+)(?=\.|$)", re.ASCII)
 
 
-class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
+def _namespace_version(module: str) -> int | None:
+    """Version encoded in the module path, e.g.
+    C{...detection.v2.model}.
+    """
+    versions = _NAMESPACE_VERSION.findall(module)
+    return int(versions[-1]) if versions else None
+
+
+class PredefinedModelMeta(VariantMeta):
+    """Register versioned predefined models.
+
+    The version comes from the C{v<N>} package the class is defined in
+    (e.g. C{predefined_models/detection/v2/model.py} registers
+    C{DetectionModel:v2}), so versions of a model share the class name.
+    Classes defined outside such a namespace use their C{_VERSION}
+    attribute instead. The highest version is additionally registered
+    under the bare family name and C{<family>:latest}.
+    """
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, Any],
+        register: bool = True,
+        register_name: str | None = None,
+        registry: Registry | None = None,
+    ):
+        version = _namespace_version(attrs.get("__module__", ""))
+        if version is not None:
+            explicit = attrs.get("_VERSION")
+            if explicit is not None and explicit != version:
+                raise ValueError(
+                    f"'{name}' sets `_VERSION = {explicit}` but is defined "
+                    f"in a 'v{version}' package. Drop the attribute; the "
+                    "version is inferred from the package name."
+                )
+            attrs["_VERSION"] = version
+        new_class = super().__new__(
+            cls, name, bases, attrs, register=False, registry=registry
+        )
+        # Abstract intermediates must not claim a family name.
+        if not register or getattr(new_class, "__abstractmethods__", None):
+            return new_class
+
+        registry = registry if registry is not None else new_class.REGISTRY
+        model_cls = cast("type[BasePredefinedModel]", new_class)
+        family = register_name or name
+        registry[f"{family}:v{model_cls._VERSION}"] = model_cls
+        aliased = registry._module_dict.get(family)
+        aliased_version = getattr(aliased, "_VERSION", None)
+        if (
+            not isinstance(aliased_version, int)
+            or aliased_version <= model_cls._VERSION
+        ):
+            registry[family] = model_cls
+            registry[f"{family}:latest"] = model_cls
+        return new_class
+
+
+class BasePredefinedModel(
+    VariantBase, metaclass=PredefinedModelMeta, registry=MODELS, register=False
+):
+    _VERSION: int = 1
+    """Registry version for this predefined-model class.
+
+    Inferred from the C{v<N>} package the class is defined in; only
+    classes defined outside such a namespace need to set it explicitly.
+    """
+
     @property
     @abstractmethod
     def nodes(self) -> list[NodeConfig]: ...

@@ -24,12 +24,13 @@ def replace_weights(
         module.load_checkpoint(weights)
         object.__setattr__(module, "_weights_explicitly_loaded", True)
 
-    yield
-
-    if old_weights is not None:
-        object.__setattr__(module, "_weights_explicitly_loaded", False)
-        module.load_state_dict(old_weights)
-        del old_weights
+    try:
+        yield
+    finally:
+        if old_weights is not None:
+            object.__setattr__(module, "_weights_explicitly_loaded", False)
+            module.load_state_dict(old_weights)
+            del old_weights
 
 
 def try_onnx_simplify(onnx_path: PathType) -> None:

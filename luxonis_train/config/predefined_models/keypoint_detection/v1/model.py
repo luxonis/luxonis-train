@@ -1,20 +1,26 @@
 from luxonis_ml.typing import Params
 from typing_extensions import override
 
-from .base_predefined_model import SimplePredefinedModel
+from luxonis_train.config.predefined_models.base_predefined_model import (
+    SimplePredefinedModel,
+)
 
 
-class DetectionModel(SimplePredefinedModel):
+class KeypointDetectionModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
         super().__init__(
             **{
                 "backbone": "EfficientRep",
                 "neck": "RepPANNeck",
-                "head": "EfficientBBoxHead",
-                "loss": "AdaptiveDetectionLoss",
-                "metrics": "MeanAveragePrecision",
+                "head": "EfficientKeypointBBoxHead",
+                "loss": "EfficientKeypointBBoxLoss",
+                "metrics": [
+                    "ObjectKeypointSimilarity",
+                    "MeanAveragePrecision",
+                ],
                 "confusion_matrix_available": True,
-                "visualizer": "BBoxVisualizer",
+                "main_metric": "MeanAveragePrecision",
+                "visualizer": "KeypointVisualizer",
             }
             | kwargs
         )
