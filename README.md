@@ -461,7 +461,7 @@ from luxonis_train import LuxonisModel
 model = LuxonisModel(
     "my_config.yaml",
     {
-        "loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"
+        "loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco",
         "trainer": {
             "epochs": 300,
             "batch_size": 8,

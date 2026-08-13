@@ -1112,7 +1112,7 @@ class Config(LuxonisConfig):
                     f"'accumulate_grad_batches' of {accumulate_grad_batches}."
                 )
             else:
-                accumulate_grad_batches = int(64 / self.trainer.batch_size)
+                accumulate_grad_batches = max(1, 64 // self.trainer.batch_size)
                 self.trainer.accumulate_grad_batches = accumulate_grad_batches
                 logger.info(
                     f"Setting 'accumulate_grad_batches' to "

@@ -664,13 +664,13 @@ class LuxonisLightningModule(pl.LightningModule):
         previous_cfg = ckpt.get("config", None)
         if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
             self._check_valid_epoch_counts(previous_cfg)
-        self._ckpt_predefined_model = ckpt.get("predefined_model")
+        ckpt_predefined_model = ckpt.get("predefined_model")
         from luxonis_train.config.predefined_versions import (
             warn_on_predefined_model_mismatch,
         )
 
         warn_on_predefined_model_mismatch(
-            self.cfg.model.predefined_model, self._ckpt_predefined_model
+            self.cfg.model.predefined_model, ckpt_predefined_model
         )
 
         state_dict = ckpt["state_dict"]
@@ -759,6 +759,10 @@ class LuxonisLightningModule(pl.LightningModule):
                             node.module.load_checkpoint(
                                 sub_state_dict, strict=False
                             )
+
+        # Only adopt the checkpoint's pin once its weights have been
+        # loaded, so a failed strict load does not corrupt the pin.
+        self._ckpt_predefined_model = ckpt_predefined_model
 
     def detach(self) -> None:
         """Detaches the model from the trainer.

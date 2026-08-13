@@ -13,11 +13,6 @@ from cyclopts import App, Group, Parameter, validators
 from loguru import logger
 from luxonis_ml.typing import Params, PathType
 
-from luxonis_train.config.predefined import (
-    list_predefined_models,
-    parse_model_spec,
-    resolve_predefined_config,
-)
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 OptsType: TypeAlias = Annotated[
@@ -659,6 +654,7 @@ def list_models():
 
     from luxonis_train.config.predefined import (
         default_config_path,
+        list_predefined_models,
         list_variants,
     )
     from luxonis_train.config.predefined_versions import list_versions
@@ -684,8 +680,11 @@ def list_models():
             label = v if v is not None else "<default>"
             rendered_variants.append(f"{label}*" if v == default else label)
         config = yaml.safe_load(default_config_path(name).read_text())
-        class_family = config["model"]["predefined_model"]["name"]
-        versions = list_versions(class_family)
+        try:
+            class_family = config["model"]["predefined_model"]["name"]
+        except (KeyError, TypeError):
+            class_family = None
+        versions = list_versions(class_family) if class_family else {}
         if versions:
             latest = max(versions)
             version_str = ", ".join(
@@ -715,6 +714,10 @@ def info(*, model: str, variant: str | None = None):
     from rich.panel import Panel
     from rich.text import Text
 
+    from luxonis_train.config.predefined import (
+        parse_model_spec,
+        resolve_predefined_config,
+    )
     from luxonis_train.config.predefined_models.base_predefined_model import (
         SimplePredefinedModel,
     )
@@ -739,10 +742,18 @@ def info(*, model: str, variant: str | None = None):
     else:
         version = int(requested_version)
     model_class = resolve_predefined_class(class_family, version)
-    selected_variant = variant or predefined_config.get("variant", "default")
+    params = dict(predefined_config.get("params") or {})
+    # The config layer allows `variant` both at the `predefined_model`
+    # level and inside `params` (where it takes precedence).
+    params_variant = params.pop("variant", None)
+    selected_variant = (
+        variant
+        or params_variant
+        or predefined_config.get("variant", "default")
+    )
     predefined_model = cast(Any, model_class)(
         variant=selected_variant,
-        **predefined_config.get("params", {}),
+        **params,
     )
     resolved_name = resolved_class_name(class_family, version)
 

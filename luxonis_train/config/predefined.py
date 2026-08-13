@@ -175,9 +175,13 @@ def resolve_predefined_config(
 
     if variant is None:
         return ResolvedPredefinedConfig(default_config_path(model), opts)
+    # The variant is always pinned via an override so that an explicit
+    # `--variant` takes precedence over `model.predefined_model.variant`
+    # passed in `opts`, whether or not the variant has its own YAML.
     if variant in file_variants:
         return ResolvedPredefinedConfig(
-            _config_path(_filename(model, variant)), opts
+            _config_path(_filename(model, variant)),
+            [*opts, "model.predefined_model.variant", variant],
         )
     if variant in list_variants(model):
         return ResolvedPredefinedConfig(

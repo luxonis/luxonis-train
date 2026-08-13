@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from luxonis_train.config.predefined_models import BasePredefinedModel
 
 
-_VERSIONED_KEY = re.compile(r"^(?P<family>.+):v(?P<version>\d+)$")
+_VERSIONED_KEY = re.compile(r"^(?P<family>.+):v(?P<version>\d+)$", re.ASCII)
 
 
 def _split_family_version(key_or_name: str) -> tuple[str, int | None]:

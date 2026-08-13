@@ -156,10 +156,11 @@ class LuxonisModel:
                     weights = {"state_dict": weights}
                 ckpt = weights
             elif isinstance(weights, PathType):
+                weights_source = weights
                 weights = safe_download(weights)
                 if weights is None:
                     raise RuntimeError(
-                        f"Failed to download weights from {weights}."
+                        f"Failed to download weights from {weights_source}."
                     )
                 ckpt = torch.load(weights, map_location="cpu")  # nosemgre
             else:  # pragma: no cover

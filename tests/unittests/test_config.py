@@ -191,9 +191,7 @@ def test_public_config_exports_are_importable():
 
 
 def test_config_dump_roundtrip_without_dataset_fixture(tmp_path: Path):
-    model_config_path = Path(
-        "luxonis_train", "configs", "detection_light_model.yaml"
-    )
+    model_config_path = configs_dir() / "detection_light_model.yaml"
     temp_config_path = tmp_path / "config.yaml"
 
     cfg = Config.get_config(
@@ -930,20 +928,26 @@ def test_resolve_predefined_config_variants():
     assert isinstance(resolved.path, Path)
     assert resolved.path.exists()
     assert resolved.path.name == "detection_light_model.yaml"
-    assert resolved.opts == []
+    assert resolved.opts == ["model.predefined_model.variant", "light"]
 
     default = resolve_predefined_config("detection", None)
     expected_variant = list_predefined_models()["detection"][0]
     assert default.path.name == f"detection_{expected_variant}_model.yaml"
+    assert default.opts == []
 
     variantless = resolve_predefined_config("anomaly_detection", None)
     assert variantless.path.name == "anomaly_detection_model.yaml"
 
     versioned = resolve_predefined_config("detection:v1", "light")
-    assert versioned.opts == ["model.predefined_model.version", "1"]
+    assert versioned.opts == [
+        "model.predefined_model.version",
+        "1",
+        "model.predefined_model.variant",
+        "light",
+    ]
 
     latest = resolve_predefined_config("detection:latest", "light")
-    assert latest.opts == []
+    assert latest.opts == ["model.predefined_model.variant", "light"]
 
     with pytest.raises(ValueError, match="Malformed model spec"):
         resolve_predefined_config("detection:bad", None)

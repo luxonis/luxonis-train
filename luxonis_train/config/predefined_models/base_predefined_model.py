@@ -62,7 +62,13 @@ class PredefinedModelMeta(VariantMeta):
         model_cls = cast("type[BasePredefinedModel]", new_class)
         family = model_family_name(model_cls, register_name or name)
         registry[f"{family}:v{model_cls._VERSION}"] = model_cls
-        registry[family] = model_cls
+        aliased = registry._module_dict.get(family)
+        aliased_version = getattr(aliased, "_VERSION", None)
+        if (
+            not isinstance(aliased_version, int)
+            or aliased_version <= model_cls._VERSION
+        ):
+            registry[family] = model_cls
         return new_class
 
 
