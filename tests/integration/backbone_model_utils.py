@@ -42,7 +42,7 @@ def prepare_predefined_model_config(
     config_name: str, opts: Params, test_datasets: LuxonisTestDatasets
 ) -> tuple[str, dict, LuxonisTestDataset]:
     """Prepare configuration and options for non-backbone models."""
-    config_file = f"configs/{config_name}.yaml"
+    config_file = f"luxonis_train/configs/{config_name}.yaml"
 
     # Choose dataset based on config name
     if config_name == "embeddings_model":

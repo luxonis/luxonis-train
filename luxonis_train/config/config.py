@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple, cast
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
@@ -45,8 +45,11 @@ from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
 import luxonis_train as lxt
-from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.registry import NODES
 from luxonis_train.upgrade import upgrade_config
+
+if TYPE_CHECKING:
+    from luxonis_train.config.predefined_models import BasePredefinedModel
 
 
 class ImageSize(NamedTuple):
@@ -218,6 +221,7 @@ class NodeConfig(ConfigItem):
 
 class PredefinedModelConfig(ConfigItem):
     variant: str | Literal["default", "none"] | None = "default"
+    version: int | Literal["latest"] = "latest"
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
@@ -276,15 +280,25 @@ class ModelConfig(BaseModelExtraForbid):
         if self.predefined_model is None:
             return self
 
-        logger.info(f"Using predefined model: `{self.predefined_model.name}`")
-        kwargs = dict(self.predefined_model.params or {})
+        from luxonis_train.config.predefined_versions import (
+            resolve_predefined_class,
+            resolved_class_name,
+        )
+
+        cls = resolve_predefined_class(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        resolved = resolved_class_name(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        message = f"Using predefined model: `{self.predefined_model.name}`"
+        if resolved != self.predefined_model.name:
+            message += f" (resolved to `{resolved}`)"
+        logger.info(message)
+        kwargs: dict[str, Any] = dict(self.predefined_model.params or {})
         if not kwargs.get("variant"):
             kwargs["variant"] = self.predefined_model.variant
-        model = from_registry(
-            MODELS,
-            self.predefined_model.name,
-            **kwargs,
-        )
+        model = cast("BasePredefinedModel", cls(**kwargs))
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
             include_metrics=self.predefined_model.include_metrics,
@@ -1085,16 +1099,25 @@ class Config(LuxonisConfig):
                 "If this behavior is not desired, set "
                 "`smart_cfg_auto_populate` to `False`."
             )
-            model_name = predefined_model_cfg.name
-            accumulate_grad_batches = int(64 / self.trainer.batch_size)
-            self.trainer.accumulate_grad_batches = accumulate_grad_batches
-            logger.info(
-                f"Setting 'accumulate_grad_batches' to "
-                f"{accumulate_grad_batches} "
-                f"(trainer.batch_size={self.trainer.batch_size})",
-                accumulate_grad_batches,
-                self.trainer.batch_size,
-            )
+            from luxonis_train.config.predefined_versions import family_name
+
+            # `name` may carry an explicit `:vN`/`:latest` suffix; the
+            # rules below apply per family, not per pinned version.
+            model_name = family_name(predefined_model_cfg.name)
+            if self.trainer.accumulate_grad_batches is not None:
+                accumulate_grad_batches = self.trainer.accumulate_grad_batches
+                logger.info(
+                    f"Keeping the explicitly configured "
+                    f"'accumulate_grad_batches' of {accumulate_grad_batches}."
+                )
+            else:
+                accumulate_grad_batches = max(1, 64 // self.trainer.batch_size)
+                self.trainer.accumulate_grad_batches = accumulate_grad_batches
+                logger.info(
+                    f"Setting 'accumulate_grad_batches' to "
+                    f"{accumulate_grad_batches} "
+                    f"(trainer.batch_size={self.trainer.batch_size})"
+                )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
             if not isinstance(loss_params, dict):
                 raise ValueError(

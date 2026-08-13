@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, TypeAlias
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, cast
 
 import yaml
 from cyclopts import App, Group, Parameter, validators
@@ -43,10 +43,13 @@ management_group = Group.create_ordered("Management")
 
 
 def create_model(
-    config: PathType | Params | None,
+    config: PathType | Params | None = None,
     opts: list[str] | None = None,
     weights: PathType | None = None,
     allow_empty_dataset: bool = False,
+    *,
+    model: str | None = None,
+    variant: str | None = None,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
 
@@ -55,6 +58,8 @@ def create_model(
     return LuxonisModel(
         config,
         opts,
+        model=model,
+        variant=variant,
         weights=weights,
         allow_empty_dataset=allow_empty_dataset,
     )
@@ -66,13 +71,23 @@ def train(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     debug: bool = False,
 ):
     """Start the training process.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Run `luxonis_train list-models` to see the
+        options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
@@ -83,7 +98,12 @@ def train(
         be useful for quick testing of the training loop.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).train(weights=weights)
 
 
@@ -93,13 +113,20 @@ def tune(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     debug: bool = False,
 ):
     """Start hyperparameter tuning.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model.
+    @type variant: str
+    @param variant: Variant of the predefined model.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type weights: str
@@ -110,7 +137,12 @@ def tune(
         be useful for quick testing of the tuning.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).tune()
 
 
@@ -122,6 +154,9 @@ def _yield_visualizations(
         float, Parameter(["--size_multiplier", "-s"])
     ] = 1.0,
     list_augmentations: bool = False,
+    *,
+    model: str | None = None,
+    variant: str | None = None,
 ) -> Iterator["np.ndarray"]:
     import cv2
     import numpy as np
@@ -171,9 +206,9 @@ def _yield_visualizations(
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
-    model = create_model(config, opts)
+    lx_model = create_model(config, opts, model=model, variant=variant)
 
-    loader = model.loaders[view]
+    loader = lx_model.loaders[view]
 
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
@@ -206,6 +241,8 @@ def inspect(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "train",
     size_multiplier: Annotated[
         float, Parameter(["--size_multiplier", "-s"])
@@ -217,7 +254,15 @@ def inspect(
     To close the window press 'q' or 'Esc'.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: Literal["train", "val", "test"]
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -245,6 +290,8 @@ def inspect(
         size_multiplier=size_multiplier,
         list_augmentations=list_augmentations,
         opts=opts,
+        model=model,
+        variant=variant,
     ):
         window_name = get_window()
         cv2.resizeWindow(window_name, width=viz.shape[1], height=viz.shape[0])
@@ -260,6 +307,8 @@ def test(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "test",
     weights: str | None = None,
     debug: bool = False,
@@ -267,8 +316,15 @@ def test(
     """Evaluate a trained model.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: str
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -282,7 +338,12 @@ def test(
         be useful for quick testing of the evaluation loop.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=debug
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=debug,
+        model=model,
+        variant=variant,
     ).test(view=view, weights=weights)
 
 
@@ -292,6 +353,8 @@ def infer(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     view: Literal["train", "val", "test"] = "val",
     save_dir: Path | None = None,
     source_path: str | None = None,
@@ -302,8 +365,15 @@ def infer(
     Supports both images and video files.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type view: str
     @param view: Which dataset view to use. Only relevant when the
         source_path is not provided.
@@ -319,7 +389,12 @@ def infer(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).infer(
         view=view,
         save_dir=save_dir,
@@ -336,6 +411,8 @@ def annotate(
     dir_path: Path,
     dataset_name: str,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
     bucket_storage: Literal["local", "gcs"] = "local",
     delete_local: bool = True,
@@ -346,7 +423,14 @@ def annotate(
 
     @type config: str
     @param config: Path to the configuration file used by the model to
-        annotate images.
+        annotate images. Mutually exclusive with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type dir_path: str
     @param dir_path: Path to the directory containing images to
         annotate.
@@ -369,11 +453,16 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+    lx_model = create_model(
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     )
 
-    model.annotate(
+    lx_model.annotate(
         dir_path=dir_path,
         dataset_name=dataset_name,
         weights=weights,
@@ -390,6 +479,8 @@ def export(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     save_path: str | None = None,
     weights: str | None = None,
     ckpt_only: bool = False,
@@ -397,8 +488,15 @@ def export(
     """Export the model to ONNX or BLOB format.
 
     @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type save_path: str
     @param save_path: Directory where to save all exported model files.
         If not specified, files will be saved to the 'export' directory
@@ -414,7 +512,12 @@ def export(
     @param opts: A list of optional CLI overrides of the
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).export(save_path=save_path, weights=weights, ckpt_only=ckpt_only)
 
 
@@ -423,14 +526,24 @@ def archive(
     opts: OptsType = None,
     /,
     *,
-    config: str | None,
+    config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     executable: str | None = None,
     weights: str | None = None,
 ):
     """Convert the model to an NN Archive format.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type executable: str
     @param executable: Path to the exported model, usually an ONNX file.
         If not provided, the model will be exported first.
@@ -440,7 +553,12 @@ def archive(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).archive(path=executable, weights=weights)
 
 
@@ -450,6 +568,8 @@ def convert(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     save_dir: str | None = None,
     weights: str | None = None,
 ):
@@ -460,7 +580,15 @@ def convert(
     configuration.
 
     @type config: str
-    @param config: Path to the configuration file.
+    @param config: Path to the configuration file. Mutually exclusive
+        with `--model`.
+    @type model: str
+    @param model: Name of a packaged predefined model (e.g.
+        `detection`). Mutually exclusive with `--config`. Run
+        `luxonis_train list-models` to see the options.
+    @type variant: str
+    @param variant: Variant of the predefined model (e.g. `light`,
+        `heavy`). Defaults to the model's default variant.
     @type save_dir: str
     @param save_dir: Directory where all outputs will be saved. If not
         specified, the default run save directory will be used.
@@ -470,7 +598,12 @@ def convert(
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(
-        config, opts, weights=weights, allow_empty_dataset=True
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=True,
+        model=model,
+        variant=variant,
     ).convert(save_dir=save_dir, weights=weights)
 
 
@@ -480,21 +613,207 @@ def quantize(
     /,
     *,
     config: str | None = None,
+    model: str | None = None,
+    variant: str | None = None,
     weights: str | None = None,
 ):
     """Quantize the model using AIMET.
 
     @type config: str
     @param config: Path to the configuration file.
+    @type model: str
+    @param model: Name of a packaged predefined model.
+    @type variant: str
+    @param variant: Variant of the predefined model.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(
-        config, opts, weights=weights, allow_empty_dataset=False
+    lx_model = create_model(
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=False,
+        model=model,
+        variant=variant,
     )
-    model.quantize()
+    lx_model.quantize()
+
+
+@app.command(group=management_group, sort_key=1, name="list-models")
+def list_models():
+    """List packaged predefined models, their variants and versions.
+
+    Each row shows `<model>  variants  versions`. The `*` marks the
+    default variant / version picked when the option is omitted.
+    """
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
+    from luxonis_train.config.predefined import (
+        class_family,
+        list_predefined_models,
+        list_variants,
+    )
+    from luxonis_train.config.predefined_versions import list_versions
+
+    entries = list_predefined_models()
+    if not entries:
+        Console().print("[yellow]No packaged predefined models found.[/]")
+        return
+
+    table = Table(
+        title="Packaged predefined models",
+        caption="[dim]* default when the option is omitted[/]",
+        box=box.ROUNDED,
+    )
+    table.add_column("Model", style="bold cyan")
+    table.add_column("Variants")
+    table.add_column("Versions", style="green")
+    for name, file_variants in entries.items():
+        default = file_variants[0]
+        variants = list_variants(name)
+        rendered_variants = []
+        for v in variants:
+            label = v if v is not None else "<default>"
+            rendered_variants.append(f"{label}*" if v == default else label)
+        family = class_family(name)
+        versions = list_versions(family) if family else {}
+        if versions:
+            latest = max(versions)
+            version_str = ", ".join(
+                f"v{v}*" if v == latest else f"v{v}" for v in versions
+            )
+        else:
+            version_str = "-"
+        table.add_row(name, ", ".join(rendered_variants), version_str)
+
+    Console().print(table)
+
+
+@app.command(group=management_group, sort_key=2)
+def info(*, model: str, variant: str | None = None):
+    """Display documentation for a packaged predefined model.
+
+    @type model: str
+    @param model: Packaged model name, optionally suffixed with a
+        version (for example `detection:v1`).
+    @type variant: str | None
+    @param variant: Model variant to describe. Defaults to the packaged
+        model's default variant.
+    """
+    import inspect
+
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+
+    from luxonis_train.config.predefined import (
+        parse_model_spec,
+        resolve_predefined_config,
+    )
+    from luxonis_train.config.predefined_models.base_predefined_model import (
+        SimplePredefinedModel,
+    )
+    from luxonis_train.config.predefined_versions import (
+        resolve_predefined_class,
+        resolved_class_name,
+    )
+    from luxonis_train.registry import NODES
+
+    importlib.import_module("luxonis_train.nodes")
+    importlib.import_module("luxonis_train.config.predefined_models")
+
+    family, requested_version = parse_model_spec(model)
+    config = yaml.safe_load(
+        resolve_predefined_config(family, variant).path.read_text()
+    )
+    predefined_config = config["model"]["predefined_model"]
+    class_family = predefined_config["name"]
+    version: int | str
+    if requested_version is None or requested_version == "latest":
+        version = "latest"
+    else:
+        version = int(requested_version)
+    model_class = resolve_predefined_class(class_family, version)
+    params = dict(predefined_config.get("params") or {})
+    # The config layer allows `variant` both at the `predefined_model`
+    # level and inside `params` (where it takes precedence).
+    params_variant = params.pop("variant", None)
+    selected_variant = (
+        variant
+        or params_variant
+        or predefined_config.get("variant", "default")
+    )
+    predefined_model = cast(Any, model_class)(
+        variant=selected_variant,
+        **params,
+    )
+    resolved_name = resolved_class_name(class_family, version)
+
+    console = Console()
+    description = inspect.cleandoc(model_class.__dict__.get("__doc__") or "")
+    if not description:
+        description = f"Predefined {class_family} architecture."
+    console.print(
+        Panel(
+            Text(description),
+            title=f"[bold]{family}[/] · {selected_variant} · {resolved_name}",
+            border_style="cyan",
+        )
+    )
+
+    node_configs = {node.name: node for node in predefined_model.nodes}
+    if isinstance(predefined_model, SimplePredefinedModel):
+        components = (
+            ("Backbone", predefined_model._backbone),
+            (
+                "Neck",
+                predefined_model._neck if predefined_model._use_neck else None,
+            ),
+            ("Head", predefined_model._head),
+        )
+    else:
+        section_by_module = {
+            "backbones": "Backbone",
+            "necks": "Neck",
+            "heads": "Head",
+        }
+        components = tuple(
+            (
+                next(
+                    (
+                        label
+                        for package, label in section_by_module.items()
+                        if f".nodes.{package}."
+                        in NODES.get(node.name).__module__
+                    ),
+                    "Node",
+                ),
+                node.name,
+            )
+            for node in predefined_model.nodes
+        )
+    for section, node_name in components:
+        if node_name is None:
+            continue
+        node_config = node_configs[node_name]
+        node_class = NODES.get(node_name)
+        node_doc = (
+            node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
+        )
+        node_doc = inspect.cleandoc(node_doc or "")
+        body = Text(node_doc or "No documentation available.")
+        variant_label = node_config.variant or "default"
+        console.print(
+            Panel(
+                body,
+                title=f"[bold]{section}[/] · {node_name} ({variant_label})",
+                border_style="green",
+            )
+        )
 
 
 @upgrade_app.command()

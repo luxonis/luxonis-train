@@ -23,7 +23,7 @@ def test_overfit_batches_training(
     parking_lot_dataset: LuxonisDataset, opts: Params
 ):
     """Smoke test for overfit_batches passed."""
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "model.predefined_model.params.task_name": "vehicles",
         "loader.params.dataset_name": parking_lot_dataset.identifier,

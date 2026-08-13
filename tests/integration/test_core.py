@@ -48,7 +48,7 @@ def test_tune(
         },
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel("configs/example_tuning.yaml", opts)
+    model = LuxonisModel("luxonis_train/configs/example_tuning.yaml", opts)
     model.tune()
     assert study_path.exists()
     con = sqlite3.connect(study_path)
@@ -60,7 +60,7 @@ def test_tune(
 
 
 def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
-    config_file = "configs/classification_light_model.yaml"
+    config_file = "luxonis_train/configs/classification_light_model.yaml"
     opts |= {
         "loader.params.dataset_name": cifar10_dataset.identifier,
     }
@@ -91,7 +91,7 @@ def test_checkpoint(
         assert "dataset_metadata" in ckpt
 
     model = LuxonisModel(
-        "configs/detection_light_model.yaml",
+        "luxonis_train/configs/detection_light_model.yaml",
         opts
         | {
             "loader.params.dataset_name": coco_dataset.identifier,
@@ -134,7 +134,9 @@ def test_precision_fallback_to_bf16_on_cpu(
         "trainer.accelerator": "cpu",
     }
 
-    model = LuxonisModel("configs/classification_light_model.yaml", opts)
+    model = LuxonisModel(
+        "luxonis_train/configs/classification_light_model.yaml", opts
+    )
     model.test()
 
 
@@ -145,7 +147,7 @@ def test_custom_tracker_save_directory_does_not_create_default_output_dir(
     custom_save_dir = tmp_path / "custom-save-directory"
 
     model = LuxonisModel(
-        "configs/complex_model.yaml",
+        "luxonis_train/configs/complex_model.yaml",
         opts
         | {
             "loader.params.dataset_name": "invalid_dataset_name",
