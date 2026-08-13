@@ -144,12 +144,6 @@ class LuxonisModel:
             elif resolved.opts:
                 opts = [*(opts or []), *resolved.opts]
 
-        if cfg is None and weights is None:
-            raise ValueError(
-                "No model source given. Pass a config, packaged model, or "
-                "weights (a checkpoint carries its own config)."
-            )
-
         if weights is not None:
             if isinstance(weights, dict):
                 if "state_dict" not in weights:

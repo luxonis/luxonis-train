@@ -965,25 +965,43 @@ def test_resolve_predefined_config_variants():
 def test_predefined_metaclass_keys_and_aliases_shipped_models():
     assert MODELS._module_dict["DetectionModel:v1"] is DetectionModel
     assert MODELS._module_dict["DetectionModel"] is DetectionModel
+    assert MODELS._module_dict["DetectionModel:latest"] is DetectionModel
     assert "SimplePredefinedModel" not in MODELS._module_dict
     assert "BasePredefinedModel" not in MODELS._module_dict
 
 
-def test_predefined_metaclass_keys_versioned_class_to_family(
+def test_predefined_metaclass_infers_version_from_namespace(
     monkeypatch: pytest.MonkeyPatch,
 ):
     monkeypatch.setattr(MODELS, "_module_dict", dict(MODELS._module_dict))
 
-    class DetectionModelV2(DetectionModel):
-        _VERSION = 2
+    class DetectionModelV2(DetectionModel, register_name="DetectionModel"):
+        __module__ = "plugins.detection.v2.model"
 
+    assert DetectionModelV2._VERSION == 2
     assert "DetectionModelV2" not in MODELS._module_dict
     assert MODELS._module_dict["DetectionModel:v2"] is DetectionModelV2
+    assert MODELS._module_dict["DetectionModel"] is DetectionModelV2
+    assert MODELS._module_dict["DetectionModel:latest"] is DetectionModelV2
     assert resolve_predefined_class("DetectionModel", 2) is DetectionModelV2
     assert (
         resolve_predefined_class("DetectionModel", "latest")
         is DetectionModelV2
     )
+
+    # Defining an older version later must not downgrade the aliases.
+    class DetectionModelV1(DetectionModel, register_name="DetectionModel"):
+        __module__ = "plugins.detection.v1.model"
+
+    assert MODELS._module_dict["DetectionModel:v1"] is DetectionModelV1
+    assert MODELS._module_dict["DetectionModel"] is DetectionModelV2
+    assert MODELS._module_dict["DetectionModel:latest"] is DetectionModelV2
+
+    with pytest.raises(ValueError, match="inferred from the package"):
+
+        class Conflicting(DetectionModel, register_name="DetectionModel"):
+            __module__ = "plugins.detection.v3.model"
+            _VERSION = 2
 
 
 def test_predefined_version_resolver_branches(
@@ -997,10 +1015,14 @@ def test_predefined_version_resolver_branches(
     }
     monkeypatch.setattr(MODELS, "_module_dict", registry)
 
-    class DetectionModelV2(DetectionModel):
+    class DetectionModelV2(DetectionModel, register_name="DetectionModel"):
         _VERSION = 2
 
     assert _split_family_version("DetectionModel:v2") == ("DetectionModel", 2)
+    assert _split_family_version("DetectionModel:latest") == (
+        "DetectionModel",
+        None,
+    )
     assert _split_family_version("DetectionModel") == ("DetectionModel", None)
     assert list_versions("ConcreteSimplePredefinedModel") == {
         1: "ConcreteSimplePredefinedModel"

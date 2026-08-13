@@ -25,8 +25,9 @@ from luxonis_train.registry import MODELS
 @pytest.fixture
 def fake_v2_model() -> Iterator[type[DetectionModel]]:
     previous_alias = MODELS._module_dict.get("DetectionModel")
+    previous_latest = MODELS._module_dict.get("DetectionModel:latest")
 
-    class DetectionModelV2(DetectionModel):
+    class DetectionModelV2(DetectionModel, register_name="DetectionModel"):
         _VERSION = 2
 
     try:
@@ -35,6 +36,8 @@ def fake_v2_model() -> Iterator[type[DetectionModel]]:
         MODELS._module_dict.pop("DetectionModel:v2", None)
         if previous_alias is not None:
             MODELS._module_dict["DetectionModel"] = previous_alias
+        if previous_latest is not None:
+            MODELS._module_dict["DetectionModel:latest"] = previous_latest
 
 
 @pytest.fixture
@@ -43,6 +46,7 @@ def plain_key_custom_model() -> Iterator[type[DetectionModel]]:
         _VERSION = 7
 
     MODELS._module_dict.pop("PlainKeyCustomModel:v7", None)
+    MODELS._module_dict.pop("PlainKeyCustomModel:latest", None)
     try:
         yield PlainKeyCustomModel
     finally:

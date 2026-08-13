@@ -12,19 +12,26 @@ if TYPE_CHECKING:
     from luxonis_train.config.predefined_models import BasePredefinedModel
 
 
-_VERSIONED_KEY = re.compile(r"^(?P<family>.+):v(?P<version>\d+)$", re.ASCII)
+_VERSIONED_KEY = re.compile(
+    r"^(?P<family>.+):(?:v(?P<version>\d+)|latest)$", re.ASCII
+)
 
 
 def _split_family_version(key_or_name: str) -> tuple[str, int | None]:
-    """Split the optional ``:vN`` suffix from a registry key."""
+    """Split the optional ``:vN`` or ``:latest`` suffix from a registry
+    key.
+    """
     match = _VERSIONED_KEY.match(key_or_name)
     if match is None:
         return key_or_name, None
-    return match.group("family"), int(match.group("version"))
+    version = match.group("version")
+    return match.group("family"), int(version) if version else None
 
 
 def family_name(name: str) -> str:
-    """Strip an optional ``:vN`` suffix from a model name."""
+    """Strip an optional ``:vN`` or ``:latest`` suffix from a model
+    name.
+    """
     return _split_family_version(name)[0]
 
 
@@ -36,16 +43,20 @@ def _plain_key_version(registered: Any) -> int | None:
 def list_versions(family: str) -> dict[int, str]:
     """Map available versions in a family to their registry keys."""
     versions: dict[int, str] = {}
+    fallback: dict[int, str] = {}
     for registered_key, registered in MODELS._module_dict.items():
         f, v = _split_family_version(registered_key)
         if f != family:
             continue
         if v is not None:
             versions[v] = registered_key
-            continue
-        plain_version = _plain_key_version(registered)
-        if plain_version is not None:
-            versions.setdefault(plain_version, registered_key)
+        elif registered_key == family:
+            # Classes registered manually under a bare name.
+            plain_version = _plain_key_version(registered)
+            if plain_version is not None:
+                fallback[plain_version] = registered_key
+    for version, registered_key in fallback.items():
+        versions.setdefault(version, registered_key)
     return dict(sorted(versions.items()))
 
 

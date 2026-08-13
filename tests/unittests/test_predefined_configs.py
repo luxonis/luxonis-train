@@ -172,7 +172,16 @@ def test_configs_use_package_namespace():
     assert resolve_predefined_config("detection", "light").path.exists()
 
 
-@pytest.mark.parametrize("opts", [None, ["trainer.epochs", "1"]])
-def test_create_model_requires_a_source(opts: list[str] | None):
-    with pytest.raises(ValueError, match="No model source given"):
+@pytest.mark.parametrize(
+    "opts", [None, ["model.predefined_model.name", "DetectionModel"]]
+)
+def test_create_model_builds_config_from_opts_alone(opts: list[str] | None):
+    with (
+        patch.object(
+            Config, "get_config", side_effect=RuntimeError("config resolved")
+        ) as get_config,
+        pytest.raises(RuntimeError, match="config resolved"),
+    ):
         create_model(None, opts)
+
+    assert get_config.call_args.args == (None, opts)

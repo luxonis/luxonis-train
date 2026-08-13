@@ -282,15 +282,19 @@ class ModelConfig(BaseModelExtraForbid):
 
         from luxonis_train.config.predefined_versions import (
             resolve_predefined_class,
+            resolved_class_name,
         )
 
         cls = resolve_predefined_class(
             self.predefined_model.name, self.predefined_model.version
         )
-        if cls.__name__ != self.predefined_model.name:
+        resolved = resolved_class_name(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        if resolved != self.predefined_model.name:
             logger.info(
                 f"Using predefined model: `{self.predefined_model.name}` "
-                f"(resolved to `{cls.__name__}`, version={self.predefined_model.version})"
+                f"(resolved to `{resolved}`)"
             )
         else:
             logger.info(
@@ -1102,8 +1106,8 @@ class Config(LuxonisConfig):
             )
             from luxonis_train.config.predefined_versions import family_name
 
-            # `name` may carry an explicit `:vN` suffix; the rules below
-            # apply per family, not per pinned version.
+            # `name` may carry an explicit `:vN`/`:latest` suffix; the
+            # rules below apply per family, not per pinned version.
             model_name = family_name(predefined_model_cfg.name)
             if self.trainer.accumulate_grad_batches is not None:
                 accumulate_grad_batches = self.trainer.accumulate_grad_batches
