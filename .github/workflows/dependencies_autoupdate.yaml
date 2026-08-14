@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
         with:
           version: "0.11.28"
           enable-cache: true
@@ -32,7 +32,7 @@ jobs:
           scripts/export_requirements.sh
 
       - name: Create or update pull request
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ secrets.WORKFLOW_SECRET }}
           branch: chore/update-python-dependencies
