@@ -129,6 +129,8 @@ A release needs two manual steps: start the workflow, then merge the pull reques
 
 Both workflows are thin callers. The shared logic lives in `luxonis-ml`, in `.github/workflows/reusable-release-pr.yaml` and `.github/workflows/reusable-release-tag.yaml`, so every Luxonis repository releases the same way.
 
+`.github/release.yaml` groups the generated notes into categories from the pull request labels.
+
 > [!IMPORTANT]
 > The release runs on the `WORKFLOW_SECRET` secret. The default token does not start CI on a bot pull request, and it cannot start the publish workflow from a release event.
 
