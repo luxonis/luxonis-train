@@ -1,0 +1,16 @@
+name: Release Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  release:
+    if: >-
+      github.event.pull_request.merged &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@main
+    with:
+      version-file: luxonis_train/__init__.py
+    secrets: inherit

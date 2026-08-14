@@ -117,6 +117,21 @@ Our GitHub Actions workflow is run when a new PR is opened.
 > [!IMPORTANT]
 > Successful completion of all the workflow checks is required for merging a PR.
 
+## Releases
+
+A release needs two manual steps: start the workflow, then merge the pull request it opens.
+
+1. Run the `Release PR` workflow from the Actions tab. Give it `major`, `minor`, `patch`, or an explicit version such as `1.2.3`.
+1. The workflow changes `__version__` in `luxonis_train/__init__.py` and opens a `release/vX.Y.Z` pull request that lists the changes after the last tag.
+1. Review the pull request, wait for CI, and merge it.
+1. The `Release Tag` workflow then tags `vX.Y.Z-beta` on the merge commit and creates the GitHub release with generated notes.
+1. The release publication starts the PyPI upload.
+
+Both workflows are thin callers. The shared logic lives in `luxonis-ml`, in `.github/workflows/reusable-release-pr.yaml` and `.github/workflows/reusable-release-tag.yaml`, so every Luxonis repository releases the same way.
+
+> [!IMPORTANT]
+> The release runs on the `WORKFLOW_SECRET` secret. The default token does not start CI on a bot pull request, and it cannot start the publish workflow from a release event.
+
 ## Making and Submitting Changes
 
 1. Make changes in a new branch with a descriptive prefix such as `feat/` or `fix/`.
