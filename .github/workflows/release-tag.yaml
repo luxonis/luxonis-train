@@ -13,4 +13,5 @@ jobs:
     uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@main
     with:
       version-file: luxonis_train/__init__.py
-    secrets: inherit
+    secrets:
+      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
