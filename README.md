@@ -54,6 +54,13 @@ Get started with `LuxonisTrain` in just a few steps:
 
    We will use a sample COCO dataset from `RoboFlow` in this example.
 
+   > [!IMPORTANT]
+   > A `roboflow://` source needs the `ROBOFLOW_API_KEY` environment variable.
+   > Get your key from the
+   > [Roboflow settings](https://app.roboflow.com/settings/api). The
+   > [Roboflow documentation](https://docs.roboflow.com/reference/authentication/authentication/find-your-roboflow-api-key)
+   > gives the steps.
+
 1. **Start training**
 
    ```bash
