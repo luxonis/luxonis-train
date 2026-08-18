@@ -323,7 +323,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
         "val": test_paths[len(train_paths) // 2 :],
         "test": test_paths[: len(test_paths) // 2],
     }
-    dataset.make_splits(definitions=definitions)
+    dataset.make_splits(definitions)
     return dataset
 
 
