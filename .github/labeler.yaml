@@ -23,6 +23,10 @@ enhancement:
       - "feat/*"
       - "enhancement/*"
 
+release:
+  - head-branch:
+      - "release/*"
+
 fix:
   - head-branch:
       - "fix/*"

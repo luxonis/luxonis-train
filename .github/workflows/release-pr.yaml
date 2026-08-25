@@ -1,0 +1,19 @@
+name: Release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "major, minor, patch, or an explicit version such as 1.2.3"
+        type: string
+        default: patch
+
+jobs:
+  release-pr:
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@main
+    with:
+      version: ${{ inputs.version }}
+      version-file: luxonis_train/__init__.py
+      project-name: LuxonisTrain
+    secrets:
+      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
