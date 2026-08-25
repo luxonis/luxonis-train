@@ -1701,13 +1701,13 @@ wheels = [
 
 [[package]]
 name = "hubai-sdk"
-version = "0.3.1"
+version = "0.3.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cyclopts" },
     { name = "keyring" },
     { name = "loguru" },
-    { name = "luxonis-ml", extra = ["nn-archive", "telemetry"] },
+    { name = "luxonis-ml", extra = ["telemetry"] },
     { name = "onnx" },
     { name = "packaging" },
     { name = "pillow" },
@@ -1715,9 +1715,9 @@ dependencies = [
     { name = "requests" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/fa/7b92e600e44afcf1c49da30d7c95a43bd6a2d31993f452e713ae166559d1/hubai_sdk-0.3.1.tar.gz", hash = "sha256:1f7602ec7cb6c79bdb969be62dbd4b0c8d7b72cef15ff8d750279ee55079e7a3", size = 85470, upload-time = "2026-07-20T20:26:50.671Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/a2/93e0ea3b7e9d5799350c759c9f67db174eeb93989e4f995c967217b5dd79/hubai_sdk-0.3.4.tar.gz", hash = "sha256:161a5938a04490e108dc8bd4a37e75cf5ef9889f725089fa0bcbe8b2e3479b97", size = 99057, upload-time = "2026-08-25T11:56:48.412Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/71/1b980167ae8e62ab86a48e2cc4810dabfc5ed26ea2aa48dcb4dc93833972/hubai_sdk-0.3.1-py3-none-any.whl", hash = "sha256:4de48989a48a185d8f4fb7249d1042d05471f0c812f6d2c1b319d186145b1d31", size = 100042, upload-time = "2026-07-20T20:26:49.576Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/05/e8462fc43a19ed327198c79b3c72c2dfdbe1d937d6b011d4585cfcb09c5c/hubai_sdk-0.3.4-py3-none-any.whl", hash = "sha256:f056ff4508eb1b75f8519a905a8d71fddf85d7993a89db3c14e3a6f3b259ddce", size = 114873, upload-time = "2026-08-25T11:56:47.016Z" },
 ]
 
 [[package]]
@@ -2081,7 +2081,7 @@ wheels = [
 
 [[package]]
 name = "luxonis-ml"
-version = "0.9.1"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cyclopts" },
@@ -2095,9 +2095,9 @@ dependencies = [
     { name = "semver" },
     { name = "typeguard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/b7/624b9834fcbea32fcde3747acb9c5102b3db36a47a287165211ffa5317f7/luxonis_ml-0.9.1.tar.gz", hash = "sha256:354b2df230d64438f79fa5184e1666be3eb2fe735da2ae11d84351f4594ee0a0", size = 312524, upload-time = "2026-07-31T11:50:54.612Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/a6/157620680c37193f20f5e6d0891928dc84c574e89cfc9c676fa541cfd745/luxonis_ml-0.10.0.tar.gz", hash = "sha256:72dd2f070fabf106d658b0640536ea1486fdf9f3858d3515a793834c6d584447", size = 285523, upload-time = "2026-08-25T07:22:07.413Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/2e/7dcbe49f0e713cb87d4eaa51a09b1670c6beb29af886f777d08e5174b94b/luxonis_ml-0.9.1-py3-none-any.whl", hash = "sha256:98095a2f8cc33e5a5e7074ca49d41b662e3dcca7d5dd1a6d27f24d5e32c9f1c7", size = 402226, upload-time = "2026-07-31T11:50:52.789Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/f8/77ff2cbbb2c6c718494e7ebc0ea90bb9b7d913496c4f925359ed3aad4ad4/luxonis_ml-0.10.0-py3-none-any.whl", hash = "sha256:8711d4de1929a67847a1f34f55414bd174facee586ce4e6212674957760f3e2c", size = 354571, upload-time = "2026-08-25T07:22:05.892Z" },
 ]
 
 [package.optional-dependencies]
@@ -2112,6 +2112,7 @@ data = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "opencv-python" },
+    { name = "pillow" },
     { name = "pillow-heif" },
     { name = "polars", extra = ["timezone"] },
     { name = "pyarrow" },
@@ -2123,10 +2124,6 @@ gcs = [
 ]
 mlflow = [
     { name = "mlflow" },
-]
-nn-archive = [
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
 ]
 roboflow = [
     { name = "roboflow" },
@@ -2141,18 +2138,6 @@ tracker = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "unique-names-generator" },
-]
-utils = [
-    { name = "cyclopts" },
-    { name = "fsspec" },
-    { name = "loguru" },
-    { name = "pydantic" },
-    { name = "pydantic-extra-types" },
-    { name = "pydantic-settings" },
-    { name = "pyyaml" },
-    { name = "rich" },
-    { name = "semver" },
-    { name = "typeguard" },
 ]
 
 [[package]]
@@ -2194,7 +2179,7 @@ aimet = [
 
 [package.dev-dependencies]
 config-test = [
-    { name = "luxonis-ml", extra = ["utils"] },
+    { name = "luxonis-ml" },
     { name = "pytest-cov" },
     { name = "semver" },
 ]
@@ -2218,9 +2203,9 @@ requires-dist = [
     { name = "cyclopts", specifier = "~=4.2" },
     { name = "faster-coco-eval", specifier = "~=1.7" },
     { name = "grad-cam", specifier = "~=1.5" },
-    { name = "hubai-sdk", specifier = ">=0.3.1" },
+    { name = "hubai-sdk", specifier = ">=0.3.4" },
     { name = "lightning", specifier = "~=2.5" },
-    { name = "luxonis-ml", extras = ["data", "gcs", "mlflow", "roboflow", "s3", "tracker"], specifier = ">=0.9.1" },
+    { name = "luxonis-ml", extras = ["data", "gcs", "mlflow", "roboflow", "s3", "tracker"], specifier = ">=0.10.0" },
     { name = "onnx", specifier = "~=1.19" },
     { name = "onnxruntime", specifier = "~=1.23" },
     { name = "onnxscript", specifier = "~=0.5" },
