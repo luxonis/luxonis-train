@@ -409,8 +409,10 @@ class LightweightMLABlock(nn.Module):
         qkv_output = self.qkv_layer(x)
 
         multi_scale_outputs = [qkv_output]
-        for aggregator in self.multi_scale_aggregators:
-            multi_scale_outputs.append(aggregator(qkv_output))
+        multi_scale_outputs.extend(
+            aggregator(qkv_output)
+            for aggregator in self.multi_scale_aggregators
+        )
 
         qkv_output = torch.cat(multi_scale_outputs, dim=1)
 

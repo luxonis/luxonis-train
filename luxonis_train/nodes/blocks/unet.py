@@ -238,7 +238,7 @@ class UpBlock(nn.Sequential):
         use_norm: bool,
         align_corners: bool,
         stride: int = 2,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
         interpolation_mode: Literal[
             "nearest", "linear", "bilinear", "bicubic", "trilinear"
         ] = "bilinear",

@@ -222,7 +222,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: Callable[[Tensor], Tensor] | None | bool = True,
+        activation: Callable[[Tensor], Tensor] | bool | None = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -354,7 +354,7 @@ class GeneralReparameterizableBlock(Reparameterizable):
         refine_block: nn.Module | Literal["se"] | None = None,
         use_scale_layer: bool = True,
         scale_layer_padding: int | tuple[int, int] | None = None,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
     ):
         """GeneralReparameterizableBlock is a basic rep-style block,
         including training and deploy status.
@@ -386,7 +386,7 @@ class GeneralReparameterizableBlock(Reparameterizable):
               - string `"se"` which will use L{SqueezeExciteBlock}
               - None for no operation
             Defaults to C{None}.
-        @type activation: nn.Module | None | bool
+        @type activation: nn.Module | bool | None
         @param activation: Activation function. By default C{nn.ReLU}.
             If C{False} or C{None} then no activation.
         """
@@ -605,8 +605,7 @@ class BlockRepeater(nn.Sequential):
         if "out_channels" in kwargs:
             kwargs["in_channels"] = kwargs["out_channels"]
 
-        for _ in range(n_repeats - 1):
-            blocks.append(module(**kwargs))
+        blocks.extend(module(**kwargs) for _ in range(n_repeats - 1))
 
         super().__init__(*blocks)
 

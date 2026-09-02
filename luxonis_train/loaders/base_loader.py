@@ -184,27 +184,27 @@ class BaseLoaderTorch(
 
             1. Single image input::
                 {
-                    'image': torch.Size([3, 224, 224]),
+                    "image": torch.Size([3, 224, 224]),
                 }
 
             2. Image and segmentation input::
                 {
-                    'image': torch.Size([3, 224, 224]),
-                    'segmentation': torch.Size([1, 224, 224]),
+                    "image": torch.Size([3, 224, 224]),
+                    "segmentation": torch.Size([1, 224, 224]),
                 }
 
             3. Left image, right image and disparity input::
                 {
-                    'left': torch.Size([3, 224, 224]),
-                    'right': torch.Size([3, 224, 224]),
-                    'disparity': torch.Size([1, 224, 224]),
+                    "left": torch.Size([3, 224, 224]),
+                    "right": torch.Size([3, 224, 224]),
+                    "disparity": torch.Size([1, 224, 224]),
                 }
 
             4. Image, keypoints, and point cloud input::
                 {
-                    'image': torch.Size([3, 224, 224]),
-                    'keypoints': torch.Size([17, 2]),
-                    'point_cloud': torch.Size([20000, 3]),
+                    "image": torch.Size([3, 224, 224]),
+                    "keypoints": torch.Size([17, 2]),
+                    "point_cloud": torch.Size([20000, 3]),
                 }
 
         @type: dict[str, Size]

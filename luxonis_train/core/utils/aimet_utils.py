@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import math
 from collections.abc import Callable, Sized
 from importlib.util import find_spec
@@ -79,10 +77,10 @@ def post_training_quantization(
     dummy_inputs: Tensor,
     val_loader: DataLoader,
     save_dir: Path,
-    quant_scheme: QuantScheme | None = None,
+    quant_scheme: "QuantScheme | None" = None,
     default_output_bw: int = 8,
     default_param_bw: int = 8,
-    default_data_type: QuantizationDataType | None = None,
+    default_data_type: "QuantizationDataType | None" = None,
     config_file: str | None = None,
     adaround: bool = False,
     adaround_iterations: int | None = None,
@@ -93,7 +91,7 @@ def post_training_quantization(
     cross_layer_equalization: bool = False,
     batch_norm_reestimation: bool = False,
     sequential_mse: bool = False,
-) -> QuantizationSimModel:
+) -> "QuantizationSimModel":
     check_aimet_available()
 
     from aimet_torch import (  # pyright: ignore[reportMissingImports]
@@ -213,7 +211,7 @@ def post_training_quantization(
 
 
 def quantization_aware_training(
-    sim: QuantizationSimModel,
+    sim: "QuantizationSimModel",
     dummy_inputs: Tensor,
     train_loader: DataLoader,
     optimizer: Optimizer,
