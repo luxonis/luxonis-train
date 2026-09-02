@@ -51,6 +51,18 @@ To run all the hooks manually, use `uv run prek run --all-files`.
 
 **Do not commit directly to `main`** - the `no-commit-to-branch` hook blocks it.
 
+## Cognitive Complexity
+
+The [`complexipy`](https://github.com/rohaquinlop/complexipy) pre-commit hook gates the cognitive complexity of every function. A function must stay at complexity 15 or below.
+
+When the hook fails, it prints a refactor plan for each failing function (the `--suggest-refactors` flag). Follow the plan, or simplify the function in another way. The usual levers: guard clauses, merged conditions, and extraction of helpers.
+
+To check by hand, run:
+
+```bash
+uv run complexipy luxonis_train tests
+```
+
 ## Documentation
 
 We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup language for documentation.
