@@ -1,5 +1,4 @@
 from math import ceil
-from typing import Any
 
 import lightning.pytorch as pl
 from lightning.fabric.utilities.data import sized_len
@@ -71,7 +70,7 @@ def _loader_details(
 
 
 def _merge_loader_details(
-    details: tuple[int | None, int | None, bool | None], dataloader: Any
+    details: tuple[int | None, int | None, bool | None], dataloader: object
 ) -> tuple[int | None, int | None, bool | None]:
     dataset_len, batch_size, drop_last = details
     if dataset_len is None:

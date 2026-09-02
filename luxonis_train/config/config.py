@@ -1161,7 +1161,7 @@ class Config(LuxonisConfig):
     @staticmethod
     def _update_predefined_model_loss_params(
         model_name: str,
-        loss_params: dict[Any, Any],
+        loss_params: Params,
         accumulate_grad_batches: int,
     ) -> dict[int, int] | None:
         weights = {

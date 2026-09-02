@@ -6,7 +6,6 @@ from inspect import Parameter
 from types import EllipsisType
 from typing import (
     Annotated,
-    Any,
     ClassVar,
     Literal,
     get_args,
@@ -26,6 +25,13 @@ from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import get_signature
 
 MetricResult = Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
+
+_DistReduceFx = (
+    Literal["sum", "mean", "cat", "min", "max"]
+    | Callable[[Tensor], Tensor]
+    | Callable[[list[Tensor]], Tensor]
+    | None
+)
 
 
 @dataclass(kw_only=True, slots=True)
@@ -76,13 +82,7 @@ class MetricState:
     """
 
     default: Tensor | Number | list | None = None
-    dist_reduce_fx: (
-        Literal["sum", "mean", "cat", "min", "max"]
-        | Callable[[Tensor], Tensor]
-        | Callable[[list[Tensor]], Tensor]
-        | EllipsisType
-        | None
-    ) = ...
+    dist_reduce_fx: _DistReduceFx | EllipsisType = ...
     persistent: bool = False
 
 
@@ -133,7 +133,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
     @staticmethod
     def _metric_state_default(
-        main_type: object, default: object
+        main_type: object, default: Tensor | Number | list | None
     ) -> Tensor | list:
         if default is None:
             if main_type is Tensor:
@@ -146,13 +146,13 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
                 )
         return (
             torch.tensor(default) if isinstance(default, Number) else default
-        )  # type: ignore
+        )
 
     @staticmethod
     def _metric_state_reducer(
         default: Tensor | list,
-        reducer: Any,
-    ) -> Any:
+        reducer: _DistReduceFx | EllipsisType,
+    ) -> _DistReduceFx:
         if reducer is not ...:
             return reducer
         return "cat" if isinstance(default, list) else "sum"

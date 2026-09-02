@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 import cv2
 import numpy as np
@@ -31,6 +31,18 @@ ALLOWED_ANNOTATE_LABELS = {
     )
     for label in task.required_labels
 }
+
+
+class _Transformed(TypedDict, total=False):
+    """Predictions converted to normalized annotations, keyed per
+    task.
+    """
+
+    norm_boxes: np.ndarray
+    norm_kpts: np.ndarray
+    norm_masks: np.ndarray
+    pred_classes: np.ndarray
+    pred_text: list[tuple[str, float]]
 
 
 def default_annotate(
@@ -132,9 +144,9 @@ def _prepare_transformed(
     orig_w: int,
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
-) -> dict[str, Any]:
+) -> _Transformed:
     """Convert raw per-task predictions into normalized annotations."""
-    transformed: dict[str, Any] = {}
+    transformed: _Transformed = {}
     if "boundingbox" in required_labels:
         raw_boxes = (
             preds_for_image["boundingbox"][:, :4].detach().cpu().numpy()
@@ -184,9 +196,10 @@ def _annotate_boundingbox(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "norm_boxes" in transformed
     norm_boxes = transformed["norm_boxes"]
     for idx, inst in enumerate(preds_for_image["boundingbox"]):
         x, y, w, h = norm_boxes[idx]
@@ -205,9 +218,10 @@ def _annotate_keypoints(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "norm_kpts" in transformed
     for idx, pts in enumerate(transformed["norm_kpts"]):
         kps = [(float(x), float(y), round(v)) for x, y, v in pts]
         yield {
@@ -224,9 +238,10 @@ def _annotate_instance_segmentation(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "norm_masks" in transformed
     for idx, mask in enumerate(transformed["norm_masks"]):
         yield {
             "file": str(img_path),
@@ -242,9 +257,10 @@ def _annotate_segmentation(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "norm_masks" in transformed
     for idx, mask in enumerate(transformed["norm_masks"]):
         yield {
             "file": str(img_path),
@@ -260,9 +276,10 @@ def _annotate_classification(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "pred_classes" in transformed
     yield {
         "file": str(img_path),
         "task_name": head.task_name,
@@ -278,9 +295,10 @@ def _annotate_text(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
 ) -> DatasetIterator:
+    assert "pred_text" in transformed
     yield {
         "file": str(img_path),
         "task_name": head.task_name,
@@ -302,7 +320,7 @@ def _emit_annotations(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     preds_for_image: dict[str, Tensor],
-    transformed: dict[str, Any],
+    transformed: _Transformed,
     i: int,
     required_labels: set[str],
 ) -> DatasetIterator:

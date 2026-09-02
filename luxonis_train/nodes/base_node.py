@@ -4,7 +4,7 @@ import re
 from abc import abstractmethod
 from contextlib import suppress
 from operator import itemgetter
-from typing import Any, Literal, TypeVar
+from typing import Literal, TypeVar
 
 import torch
 from bidict import bidict
@@ -24,6 +24,9 @@ from luxonis_train.utils import (
     safe_download,
 )
 from luxonis_train.variants import VariantBase
+
+# Value types that `run` can pass to the `forward` method.
+_ForwardInput = Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]
 
 
 class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
@@ -554,7 +557,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @return: Outputs of the module as a packet of tensors:
             C{{"features": [Tensor, ...], "segmentation": Tensor}}
         """
-        kwargs: dict[str, Any] = {}
+        kwargs: dict[str, _ForwardInput] = {}
         for i, (name, param) in enumerate(self._signature.items()):
             self._resolve_forward_param(i, name, param, inputs, kwargs)
 
@@ -567,7 +570,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         name: str,
         param: inspect.Parameter,
         inputs: list[Packet[Tensor]],
-        kwargs: dict[str, Any],
+        kwargs: dict[str, _ForwardInput],
     ) -> None:
         if param.annotation == list[Packet[Tensor]]:
             if len(self._signature) != 1:
@@ -600,7 +603,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         name: str,
         param: inspect.Parameter,
         inputs: list[Packet[Tensor]],
-        kwargs: dict[str, Any],
+        kwargs: dict[str, _ForwardInput],
     ) -> None:
         if (match := re.match(r"inputs?_?(\d+)?", name)) or name in "xyz":
             kwargs[name] = self._resolve_indexed_tensor(
@@ -646,7 +649,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         name: str,
         param: inspect.Parameter,
         inputs: list[Packet[Tensor]],
-        kwargs: dict[str, Any],
+        kwargs: dict[str, _ForwardInput],
     ) -> None:
         prev_kwargs_len = len(kwargs)
 
@@ -681,7 +684,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                 "the input packets."
             )
 
-    def _normalize_output(self, outputs: Any) -> Packet[Tensor]:
+    def _normalize_output(self, outputs: object) -> Packet[Tensor]:
         if check_type(outputs, Packet[Tensor]):
             return outputs
 
