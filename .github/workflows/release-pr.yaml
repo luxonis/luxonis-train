@@ -10,7 +10,7 @@ on:
 
 jobs:
   release-pr:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@main
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@cdfb00741162eb84ea9575881d412e420203e66f
     with:
       version: ${{ inputs.version }}
       version-file: luxonis_train/__init__.py
