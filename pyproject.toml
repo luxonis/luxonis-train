@@ -201,6 +201,10 @@ wrap-descriptions = 72
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
+# The first three entries are pyright's own defaults, which a custom
+# `exclude` would otherwise drop. `build` holds a stale copy of the
+# package that setuptools leaves behind.
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "build", "dist"]
 reportMissingTypeStubs = "none"
 reportPrivateImportUsage = "none"
 reportPrivateUsage = "none"
