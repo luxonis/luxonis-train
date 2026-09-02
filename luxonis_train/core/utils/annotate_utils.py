@@ -94,7 +94,7 @@ def annotated_dataset_generator(
             yield from _annotated_records(
                 lt_module.nodes[head_name].module,
                 head_output,
-                [meta["path"] for meta in sample_metadata],
+                [Path(meta["path"]) for meta in sample_metadata],
                 model.cfg_preprocessing,
             )
 
@@ -102,14 +102,12 @@ def annotated_dataset_generator(
 def _annotated_records(
     head: object,
     head_output: Packet[Tensor],
-    paths: Iterable[PathType],
+    paths: list[Path],
     preprocessing: "PreprocessingConfig",
 ) -> DatasetIterator:
     if not isinstance(head, lxt.BaseHead):
         return
-    for record in head.annotate(
-        head_output, [Path(path) for path in paths], preprocessing
-    ):
+    for record in head.annotate(head_output, paths, preprocessing):
         if isinstance(record, DatasetRecord):  # pragma: no cover
             yield record
             continue
