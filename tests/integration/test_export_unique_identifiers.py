@@ -12,6 +12,31 @@ from tests.integration.backbone_model_utils import (
 )
 
 
+def _build_onnx_test_inputs(
+    onnx_model: onnx.ModelProto,
+) -> dict[str, np.ndarray]:
+    """Build random inputs for each non-initializer ONNX graph input."""
+    initializer_names = {init.name for init in onnx_model.graph.initializer}
+    dtype_map = {
+        int(onnx.TensorProto.FLOAT): np.float32,
+        int(onnx.TensorProto.INT64): np.int64,
+        int(onnx.TensorProto.INT32): np.int32,
+    }
+    test_inputs = {}
+    for input_info in onnx_model.graph.input:
+        if input_info.name in initializer_names:
+            continue
+        # Replace dynamic dims with 1
+        shape = [
+            dim.dim_value if dim.dim_value > 0 else 1
+            for dim in input_info.type.tensor_type.shape.dim
+        ]
+        elem_type = input_info.type.tensor_type.elem_type
+        dtype = dtype_map.get(elem_type, np.float32)
+        test_inputs[input_info.name] = np.random.randn(*shape).astype(dtype)
+    return test_inputs
+
+
 @pytest.mark.parametrize(("config_name", "extra_opts"), PREDEFINED_MODELS)
 def test_unique_initializers_creates_unique_names(
     config_name: str,
@@ -155,32 +180,7 @@ def test_unique_initializers_numerical_equivalence(
     session_unique = ort.InferenceSession(str(onnx_path_unique))
 
     # Test inputs based on model input specs
-    test_inputs = {}
-    for input_info in onnx_model_normal.graph.input:
-        initializer_names = {
-            init.name for init in onnx_model_normal.graph.initializer
-        }
-        if input_info.name in initializer_names:
-            continue
-
-        shape = []
-        for dim in input_info.type.tensor_type.shape.dim:
-            if dim.dim_value > 0:
-                shape.append(dim.dim_value)
-            else:
-                shape.append(1)  # Replace dynamic dims with 1
-
-        elem_type = input_info.type.tensor_type.elem_type
-        if elem_type == onnx.TensorProto.FLOAT:
-            dtype = np.float32
-        elif elem_type == onnx.TensorProto.INT64:
-            dtype = np.int64
-        elif elem_type == onnx.TensorProto.INT32:
-            dtype = np.int32
-        else:
-            dtype = np.float32
-
-        test_inputs[input_info.name] = np.random.randn(*shape).astype(dtype)
+    test_inputs = _build_onnx_test_inputs(onnx_model_normal)
 
     # Run inference on both models and compare outputs
     outputs_normal = session_normal.run(None, test_inputs)

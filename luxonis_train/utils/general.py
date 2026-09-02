@@ -357,23 +357,35 @@ def instances_from_batch(
     if not all(len(arg) == len(bboxes) for arg in args):
         raise ValueError("All tensors must have the same length.")
     if not bboxes.numel():
-        if batch_size is not None:
-            for _ in range(batch_size):
-                if not args:
-                    yield torch.empty_like(bboxes)
-                else:
-                    yield tuple(
-                        torch.empty_like(bboxes) for _ in [bboxes, *args]
-                    )
+        yield from _empty_batch_instances(bboxes, args, batch_size)
         return
-    for i in range(batch_size or int(bboxes[:, 0].max()) + 1):
+    yield from _batched_instances(bboxes, args, batch_size)
+
+
+def _empty_batch_instances(
+    bboxes: Tensor, args: tuple[Tensor, ...], batch_size: int | None
+) -> Iterator[Any]:
+    if batch_size is None:
+        return
+    for _ in range(batch_size):
         if not args:
-            yield get_batch_instances(i, bboxes)
-        else:
-            yield tuple(
-                get_batch_instances(i, bboxes, payload)
-                for payload in [None, *args]
-            )
+            yield torch.empty_like(bboxes)
+            continue
+        yield tuple(torch.empty_like(item) for item in (bboxes, *args))
+
+
+def _batched_instances(
+    bboxes: Tensor, args: tuple[Tensor, ...], batch_size: int | None
+) -> Iterator[Any]:
+    n_batches = batch_size or int(bboxes[:, 0].max()) + 1
+    for index in range(n_batches):
+        if not args:
+            yield get_batch_instances(index, bboxes)
+            continue
+        yield tuple(
+            get_batch_instances(index, bboxes, payload)
+            for payload in (None, *args)
+        )
 
 
 def decode_text_metadata_labels(
@@ -384,46 +396,40 @@ def decode_text_metadata_labels(
     decoded_labels: dict[str, np.ndarray] = {}
 
     for task, label in labels.items():
-        if metadata_types.get(task) is not str:
-            decoded_labels[task] = label
-            continue
-
-        arr = np.asarray(label)
-        if arr.size == 0 or arr.dtype.kind in {"U", "S", "O"}:
-            decoded_labels[task] = arr
-            continue
-
-        decoded_values: list[str] = []
-        for row in np.atleast_2d(arr):
-            chars: list[str] = []
-            for value in np.asarray(row).reshape(-1):
-                if isinstance(value, np.generic):
-                    value = value.item()
-                if isinstance(value, float):
-                    if not value.is_integer():
-                        decoded_values = []
-                        break
-                    value = int(value)
-                elif not isinstance(value, int):
-                    decoded_values = []
-                    break
-
-                if value == 0:
-                    break
-                if value < 0:
-                    decoded_values = []
-                    break
-                chars.append(chr(value))
-
-            if not decoded_values and not chars and arr.size != 0:
-                break
-            decoded_values.append("".join(chars))
-
-        decoded_labels[task] = (
-            np.asarray(decoded_values) if decoded_values else arr
+        decoded_labels[task] = _decode_text_label(
+            label, metadata_types.get(task) is str
         )
 
     return decoded_labels
+
+
+def _decode_text_label(label: np.ndarray, should_decode: bool) -> np.ndarray:
+    arr = np.asarray(label)
+    if not should_decode or arr.size == 0 or arr.dtype.kind in {"U", "S", "O"}:
+        return arr
+    decoded_values = []
+    for row in np.atleast_2d(arr):
+        decoded = _decode_text_row(row)
+        if decoded is None:
+            return arr
+        decoded_values.append(decoded)
+    return np.asarray(decoded_values)
+
+
+def _decode_text_row(row: np.ndarray) -> str | None:
+    chars = []
+    for value in np.asarray(row).reshape(-1):
+        value = value.item() if isinstance(value, np.generic) else value
+        if isinstance(value, float):
+            if not value.is_integer():
+                return None
+            value = int(value)
+        if not isinstance(value, int) or value < 0:
+            return None
+        if value == 0:
+            break
+        chars.append(chr(value))
+    return "".join(chars)
 
 
 class Counter:

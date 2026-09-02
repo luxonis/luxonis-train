@@ -171,83 +171,95 @@ class BaseAttachedModule(
     def get_parameters(
         self, predictions: Packet[Tensor], labels: Labels | None = None
     ) -> dict[str, Tensor | list[Tensor]]:
-        kwargs = {}
+        kwargs: dict[str, Tensor | list[Tensor] | None] = {}
         labels = labels or {}
-
-        def _add_to_kwargs(
-            name: str,
-            kwarg_name: str,
-            data: Mapping[str, list[Tensor] | Tensor],
-            parameter: Parameter,
-            kind: Literal["label", "prediction"],
-        ) -> None:
-            if name not in data:
-                if self._argument_is_optional(parameter):
-                    kwargs[kwarg_name] = None
-                elif parameter.default is Parameter.empty:
-                    raise RuntimeError(
-                        f"Module '{self.name}' requires {kind} '{name}', "
-                        f"but it is not present in the "
-                        f"{'dataset' if kind == 'label' else 'predictions'}. "
-                        f"All available {kind}s: {list(data.keys())}. "
-                    )
-            else:
-                val = data[name]
-                if isinstance(val, Tensor):
-                    kwargs[kwarg_name] = val.clone()
-                elif isinstance(val, list):
-                    kwargs[kwarg_name] = [v.clone() for v in val]
-                else:
-                    kwargs[kwarg_name] = val
-
         for kwarg_name, parameter in self._signature.items():
-            if kwarg_name.startswith("target"):
-                _, *target_name = kwarg_name.split("_", 1)
-                if target_name:
-                    label_name = f"{self.node.task_name}/{target_name[0]}"
-                else:
-                    required_labels = self.required_labels
-                    if len(required_labels) == 1:
-                        label_name = f"{self.node.task_name}/{next(iter(required_labels))}"
-                    else:
-                        raise RuntimeError(
-                            f"Module '{self.name}' is using the wildcard '{kwarg_name}' "
-                            f"argument in the `forward` or `update` signature, "
-                            f"but its task '{self.task.name}' requires more than one label "
-                            f"({self.required_labels}). "
-                            "Unable to determine which of the labels to use. Please specify "
-                            "the labels using the 'target_{task_type}' pattern "
-                            f"({[f'target_{label}' for label in self.required_labels]})."
-                        )
-                _add_to_kwargs(
-                    label_name, kwarg_name, labels, parameter, "label"
-                )
-            else:
-                if kwarg_name.startswith("pred"):
-                    _, *prediction_name = kwarg_name.split("_", 1)
-                    if prediction_name:
-                        prediction_name = prediction_name[0]
-                    else:
-                        prediction_name = self.task.main_output
-                else:
-                    prediction_name = kwarg_name
-                _add_to_kwargs(
-                    prediction_name,
-                    kwarg_name,
-                    predictions,
-                    parameter,
-                    "prediction",
-                )
+            name, data, kind = self._parameter_source(
+                kwarg_name, predictions, labels
+            )
+            self._add_parameter(
+                kwargs, name, kwarg_name, data, parameter, kind
+            )
 
+        self._validate_parameter_types(kwargs)
+        return kwargs  # type: ignore
+
+    def _parameter_source(
+        self,
+        kwarg_name: str,
+        predictions: Packet[Tensor],
+        labels: Labels,
+    ) -> tuple[
+        str,
+        Mapping[str, list[Tensor] | Tensor],
+        Literal["label", "prediction"],
+    ]:
+        if kwarg_name.startswith("target"):
+            return self._target_label_name(kwarg_name), labels, "label"
+        return self._prediction_name(kwarg_name), predictions, "prediction"
+
+    def _target_label_name(self, kwarg_name: str) -> str:
+        _, *target_name = kwarg_name.split("_", 1)
+        if target_name:
+            return f"{self.node.task_name}/{target_name[0]}"
+        required_labels = self.required_labels
+        if len(required_labels) == 1:
+            return f"{self.node.task_name}/{next(iter(required_labels))}"
+        raise RuntimeError(
+            f"Module '{self.name}' is using the wildcard '{kwarg_name}' argument "
+            "in the `forward` or `update` signature, but its task "
+            f"'{self.task.name}' requires more than one label ({required_labels}). "
+            "Unable to determine which label to use. Please specify the labels "
+            "using the 'target_{task_type}' pattern "
+            f"({[f'target_{label}' for label in required_labels]})."
+        )
+
+    def _prediction_name(self, kwarg_name: str) -> str:
+        if not kwarg_name.startswith("pred"):
+            return kwarg_name
+        _, *prediction_name = kwarg_name.split("_", 1)
+        return prediction_name[0] if prediction_name else self.task.main_output
+
+    def _add_parameter(
+        self,
+        kwargs: dict[str, Tensor | list[Tensor] | None],
+        name: str,
+        kwarg_name: str,
+        data: Mapping[str, list[Tensor] | Tensor],
+        parameter: Parameter,
+        kind: Literal["label", "prediction"],
+    ) -> None:
+        if name in data:
+            kwargs[kwarg_name] = (
+                value.clone()
+                if isinstance(value := data[name], Tensor)
+                else [item.clone() for item in data[name]]
+            )
+            return
+        if self._argument_is_optional(parameter):
+            kwargs[kwarg_name] = None
+            return
+        if parameter.default is Parameter.empty:
+            source = "dataset" if kind == "label" else "predictions"
+            raise RuntimeError(
+                f"Module '{self.name}' requires {kind} '{name}', but it is not "
+                f"present in the {source}. All available {kind}s: {list(data.keys())}. "
+            )
+
+    def _validate_parameter_types(
+        self, kwargs: Mapping[str, Tensor | list[Tensor] | None]
+    ) -> None:
         for kwarg_name, parameter in self._signature.items():
-            if not check_type(kwargs[kwarg_name], parameter.annotation):
-                raise TypeError(
-                    f"Module '{self.name}' requires argument '{kwarg_name}' "
-                    f"to be of type '{parameter.annotation}', but got "
-                    f"'{type(kwargs[kwarg_name]).__name__}'."
-                )
-
-        return kwargs
+            if kwarg_name not in kwargs:
+                continue
+            value = kwargs[kwarg_name]
+            if check_type(value, parameter.annotation):
+                continue
+            raise TypeError(
+                f"Module '{self.name}' requires argument '{kwarg_name}' to be "
+                f"of type '{parameter.annotation}', but got "
+                f"'{type(value).__name__}'."
+            )
 
     def _check_node_type_override(self) -> None:
         if "node" not in self.__annotations__:

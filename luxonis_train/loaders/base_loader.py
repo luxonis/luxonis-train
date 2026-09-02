@@ -346,46 +346,56 @@ class BaseLoaderTorch(
         labels: tuple[Labels, ...]
         inputs, labels = zip(*batch, strict=True)
 
-        if isinstance(inputs[0], dict):
-            out_inputs = {
-                k: torch.stack(
-                    [i[k] for i in inputs],  # type: ignore
-                    0,
-                )
-                for k in inputs[0]
-            }
-        else:
-            out_inputs = torch.stack(inputs, 0)  # type: ignore
-
-        out_labels: Labels = {}
-
-        for task in labels[0]:
-            task_type = get_task_type(task)
-            annos = [label[task] for label in labels]
-
-            if task_type in {"keypoints", "boundingbox"}:
-                label_box: list[Tensor] = []
-                for i, ann in enumerate(annos):
-                    new_ann = torch.zeros((ann.shape[0], ann.shape[1] + 1))
-                    # add batch index to separate boxes from different images
-                    new_ann[:, 0] = i
-                    new_ann[:, 1:] = ann
-                    label_box.append(new_ann)
-                out_labels[task] = torch.cat(label_box, 0)
-            elif task_type == "instance_segmentation":
-                out_labels[task] = torch.cat(annos, 0)
-            elif task_is_metadata(task):
-                if task_type == "metadata/text":
-                    max_len = max(len(anno) for anno in annos)
-                    padded_annos = torch.zeros(
-                        len(annos), max_len, dtype=torch.int32
-                    )
-                    for i, anno in enumerate(annos):
-                        padded_annos[i, : len(anno)] = anno
-                    out_labels[task] = padded_annos
-                else:
-                    out_labels[task] = torch.cat(annos, 0)
-            else:
-                out_labels[task] = torch.stack(annos, 0)
-
+        out_inputs = self._collate_inputs(inputs)
+        out_labels = {
+            task: self._collate_annotations(
+                task, [label[task] for label in labels]
+            )
+            for task in labels[0]
+        }
         return out_inputs, out_labels
+
+    @staticmethod
+    def _collate_inputs(
+        inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...],
+    ) -> dict[str, Tensor] | Tensor:
+        if not isinstance(inputs[0], dict):
+            return torch.stack(cast(tuple[Tensor, ...], inputs), 0)
+        input_dicts = cast(tuple[dict[str, Tensor], ...], inputs)
+        return {
+            name: torch.stack([item[name] for item in input_dicts], 0)
+            for name in input_dicts[0]
+        }
+
+    @staticmethod
+    def _collate_annotations(task: str, annotations: list[Tensor]) -> Tensor:
+        task_type = get_task_type(task)
+        if task_type in {"keypoints", "boundingbox"}:
+            return BaseLoaderTorch._add_batch_indices(annotations)
+        if task_type == "instance_segmentation":
+            return torch.cat(annotations, 0)
+        if task_type == "metadata/text":
+            return BaseLoaderTorch._pad_text_annotations(annotations)
+        if task_is_metadata(task):
+            return torch.cat(annotations, 0)
+        return torch.stack(annotations, 0)
+
+    @staticmethod
+    def _add_batch_indices(annotations: list[Tensor]) -> Tensor:
+        indexed_annotations = []
+        for index, annotation in enumerate(annotations):
+            indexed = torch.zeros(
+                (annotation.shape[0], annotation.shape[1] + 1)
+            )
+            indexed[:, 0] = index
+            indexed[:, 1:] = annotation
+            indexed_annotations.append(indexed)
+        return torch.cat(indexed_annotations, 0)
+
+    @staticmethod
+    def _pad_text_annotations(annotations: list[Tensor]) -> Tensor:
+        max_length = max(len(annotation) for annotation in annotations)
+        padded = torch.zeros(len(annotations), max_length, dtype=torch.int32)
+        for index, annotation in enumerate(annotations):
+            padded[index, : len(annotation)] = annotation
+        return padded
