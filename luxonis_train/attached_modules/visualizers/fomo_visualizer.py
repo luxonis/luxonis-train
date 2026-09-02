@@ -47,51 +47,47 @@ class FOMOVisualizer(BBoxVisualizer):
         self, canvas: Tensor, predictions: list[Tensor]
     ) -> Tensor:
         viz = canvas.clone()
-
         for i in range(len(canvas)):
-            prediction = predictions[i]
-
-            xy = prediction[..., :2].clone()
-            v = prediction[..., 2]
-            keypoint_class = prediction[..., 3].long()
-
-            if self.scale and self.scale != 1.0:
-                xy *= self.scale
-
-            visible = v >= self.visibility_threshold
-            visible_xy = xy[visible]
-            visible_classes = keypoint_class[visible]
-
-            if visible_xy.numel() == 0:
-                continue
-
-            visible_xy[:, 0] = visible_xy[:, 0].clamp(0, canvas.size(-1) - 1)
-            visible_xy[:, 1] = visible_xy[:, 1].clamp(0, canvas.size(-2) - 1)
-
-            for cls in torch.unique(visible_classes):
-                cls = cls.item()
-                cls_mask = visible_classes == cls
-                cls_points = visible_xy[cls_mask]
-
-                if cls_points.numel() == 0:
-                    continue
-
-                label = (
-                    self.label_dict.get(cls, str(cls))
-                    if self.label_dict
-                    else str(cls)
-                )
-                color = (
-                    self.colors[label]
-                    if self.colors and label in self.colors
-                    else (255, 255, 255)
-                )
-
-                viz[i] = draw_keypoints(
-                    image=viz[i],
-                    keypoints=cls_points.int().unsqueeze(1),
-                    radius=self.radius,
-                    colors=color,
-                )
-
+            viz[i] = self._draw_image_predictions(viz[i], predictions[i])
         return viz
+
+    def _draw_image_predictions(
+        self, image: Tensor, prediction: Tensor
+    ) -> Tensor:
+        xy = prediction[..., :2].clone()
+        if self.scale and self.scale != 1.0:
+            xy *= self.scale
+        visible = prediction[..., 2] >= self.visibility_threshold
+        xy, classes = xy[visible], prediction[..., 3].long()[visible]
+        if xy.numel() == 0:
+            return image
+        xy[:, 0] = xy[:, 0].clamp(0, image.size(-1) - 1)
+        xy[:, 1] = xy[:, 1].clamp(0, image.size(-2) - 1)
+        for class_id in torch.unique(classes):
+            image = self._draw_class_keypoints(
+                image, xy, classes, class_id.item()
+            )
+        return image
+
+    def _draw_class_keypoints(
+        self, image: Tensor, xy: Tensor, classes: Tensor, class_id: int
+    ) -> Tensor:
+        points = xy[classes == class_id]
+        if points.numel() == 0:
+            return image
+        label = (
+            self.label_dict.get(class_id, str(class_id))
+            if self.label_dict
+            else str(class_id)
+        )
+        color = (
+            self.colors[label]
+            if self.colors and label in self.colors
+            else (255, 255, 255)
+        )
+        return draw_keypoints(
+            image=image,
+            keypoints=points.int().unsqueeze(1),
+            radius=self.radius,
+            colors=color,
+        )

@@ -70,6 +70,31 @@ class RepPANNeck(BaseNode):
         """
         super().__init__(weights=weights, **kwargs)
 
+        self._validate_input_shapes(n_heads)
+
+        self.n_heads = n_heads
+
+        channels_list, n_repeats = self._scale_channels_and_repeats(
+            channels_list, n_repeats, width_multiplier, depth_multiplier
+        )
+        channels_list, n_repeats = self._fit_to_n_heads(
+            channels_list, n_repeats
+        )
+
+        self.up_blocks, up_out_channel_list, last_out_channels = (
+            self._build_up_blocks(n_heads, block, channels_list, n_repeats, e)
+        )
+        self.down_blocks = self._build_down_blocks(
+            n_heads,
+            block,
+            channels_list,
+            n_repeats,
+            up_out_channel_list,
+            last_out_channels,
+            e,
+        )
+
+    def _validate_input_shapes(self, n_heads: int) -> None:
         if (
             self.original_in_shape[-1] % 32 != 0
             or self.original_in_shape[-2] % 32 != 0
@@ -82,12 +107,10 @@ class RepPANNeck(BaseNode):
 
         for i in range(1, n_heads):
             if (
-                (
-                    self.in_width[-i] * 2 != self.in_width[-i - 1]
-                    or self.in_height[-i] * 2 != self.in_height[-i - 1]
-                )
-                and self.attach_index == "all"
-            ):  # TODO: fix the attach_index and this condition
+                self.in_width[-i] * 2 != self.in_width[-i - 1]
+                or self.in_height[-i] * 2 != self.in_height[-i - 1]
+            ) and self.attach_index == "all":
+                # TODO: fix the attach_index and this condition
                 raise ValueError(
                     f"Expected width and height of feature map at index "
                     f"{len(self.in_width) - i} to be half of those at "
@@ -96,8 +119,13 @@ class RepPANNeck(BaseNode):
                     "divisible by 32 to avoid 'RepPANNeck' crashing."
                 )
 
-        self.n_heads = n_heads
-
+    @staticmethod
+    def _scale_channels_and_repeats(
+        channels_list: list[int] | None,
+        n_repeats: list[int] | None,
+        width_multiplier: float,
+        depth_multiplier: float,
+    ) -> tuple[list[int], list[int]]:
         channels_list = channels_list or [256, 128, 128, 256, 256, 512]
         n_repeats = n_repeats or [12, 12, 12, 12]
         channels_list = [
@@ -107,12 +135,17 @@ class RepPANNeck(BaseNode):
             (max(round(i * depth_multiplier), 1) if i > 1 else i)
             for i in n_repeats
         ]
+        return channels_list, n_repeats
 
-        channels_list, n_repeats = self._fit_to_n_heads(
-            channels_list, n_repeats
-        )
-
-        self.up_blocks = nn.ModuleList()
+    def _build_up_blocks(
+        self,
+        n_heads: int,
+        block: str,
+        channels_list: list[int],
+        n_repeats: list[int],
+        e: float | None,
+    ) -> tuple[nn.ModuleList, list[int], int]:
+        up_blocks = nn.ModuleList()
 
         in_channels = self.in_channels[-1]
         out_channels = channels_list[0]
@@ -138,8 +171,8 @@ class RepPANNeck(BaseNode):
                 )
             )
             up_out_channel_list.append(out_channels)
-            self.up_blocks.append(curr_up_block)
-            if len(self.up_blocks) == (n_heads - 1):
+            up_blocks.append(curr_up_block)
+            if len(up_blocks) == (n_heads - 1):
                 up_out_channel_list.reverse()
                 break
 
@@ -148,11 +181,22 @@ class RepPANNeck(BaseNode):
             in_channels_next = self.in_channels[-1 - (i + 1)]
             curr_n_repeats = n_repeats[i]
 
-        self.down_blocks = nn.ModuleList()
+        return up_blocks, up_out_channel_list, out_channels
+
+    def _build_down_blocks(
+        self,
+        n_heads: int,
+        block: str,
+        channels_list: list[int],
+        n_repeats: list[int],
+        up_out_channel_list: list[int],
+        in_channels: int,
+        e: float | None,
+    ) -> nn.ModuleList:
+        down_blocks = nn.ModuleList()
         channels_list_down_blocks = channels_list[(n_heads - 1) :]
         n_repeats_down_blocks = n_repeats[(n_heads - 1) :]
 
-        in_channels = out_channels
         downsample_out_channels = channels_list_down_blocks[0]
         in_channels_next = up_out_channel_list[0]
         out_channels = channels_list_down_blocks[1]
@@ -177,8 +221,8 @@ class RepPANNeck(BaseNode):
                     e=e or 0.5,
                 )
             )
-            self.down_blocks.append(curr_down_block)
-            if len(self.down_blocks) == (n_heads - 1):
+            down_blocks.append(curr_down_block)
+            if len(down_blocks) == (n_heads - 1):
                 break
 
             in_channels = out_channels
@@ -186,6 +230,8 @@ class RepPANNeck(BaseNode):
             in_channels_next = up_out_channel_list[i]
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
+
+        return down_blocks
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]

@@ -16,6 +16,12 @@ repos:
     hooks:
       - id: typos
 
+  - repo: https://github.com/rohaquinlop/complexipy-pre-commit
+    rev: v7.0.1
+    hooks:
+      - id: complexipy
+        args: [--suggest-refactors]
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.1
     hooks:
@@ -40,7 +46,7 @@ repos:
           - mdformat-gfm
 
   - repo: https://github.com/JoC0de/pre-commit-prettier
-    rev: v3.8.3
+    rev: v3.9.6
     hooks:
       - id: prettier
         types_or: [yaml]

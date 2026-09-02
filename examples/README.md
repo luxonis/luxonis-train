@@ -175,7 +175,6 @@ class DistanceEstimation(Task):
     @property
     def main_output(self) -> str:
         return "boundingbox"
-
 ```
 
 The above example could be simplified by inheriting from the `luxonis_train.tasks.BoundingBox` task and overriding the `required_labels` property.
@@ -183,11 +182,11 @@ The above example could be simplified by inheriting from the `luxonis_train.task
 ```python
 from luxonis_train.tasks import BoundingBox, Metadata
 
+
 class DistanceEstimation(BoundingBox):
     @property
     def required_labels(self) -> set[str | Metadata]:
         return super().required_labels | {Metadata("distance", float | int)}
-
 ```
 
 ### Custom Node Examples
@@ -195,7 +194,6 @@ class DistanceEstimation(BoundingBox):
 #### ResNet Backbone
 
 ```python
-
 class ResNet(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -219,8 +217,6 @@ class ResNet(BaseNode):
         outputs.append(x)
 
         return outputs
-
-
 ```
 
 #### Segmentation Head
@@ -234,8 +230,8 @@ from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
-class CustomSegmentationHead(BaseHead):
 
+class CustomSegmentationHead(BaseHead):
     # If the head is attached to a node that produces
     # multiple outputs (like a list of feature maps for
     # most bakcbones), this specifies which output to use.
@@ -257,7 +253,6 @@ class CustomSegmentationHead(BaseHead):
     # (e.g. if `attach_index` is set to "all" and `in_channels`
     # is annotated as `int`, an exception will be raised)
     in_channels: int
-
 
     # Specifies the task that this head is used for.
     # When specified, the node is better integrated
@@ -365,7 +360,6 @@ The signature of the `forward` or `update` can use the following special argumen
 #### Simple Loss
 
 ```python
-
 from typing import override
 
 from torch import Tensor, nn
@@ -375,7 +369,6 @@ from luxonis_train.tasks import Tasks
 
 
 class BCEWithLogitsLoss(BaseLoss):
-
     # The `supported_tasks` attribute is used to specify
     # which tasks this loss is compatible with.
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
@@ -471,14 +464,13 @@ The `MetricState` is intended to be used inside an `Annotated` type for class-le
 **Example:**
 
 ```python
-
 from luxonis_train import BaseMetric, MetricState
+
 
 class MyMetric(BaseMetric):
     true_positives: Annotated[Tensor, MetricState(default=0)]
     false_positives: Annotated[Tensor, MetricState(default=0)]
     total: Annotated[Tensor, MetricState(default=0)]
-
 ```
 
 The `MetricState` takes the same arguments as `add_state` method, but also specifies some sane default values and conversions:
@@ -506,6 +498,7 @@ from torch import Tensor
 from luxonis_train.attached_modules.visualizers import BaseVisualizer
 from luxonis_train.tasks import Tasks
 
+
 class BBoxVisualizer(BaseVisualizer):
     supported_tasks = [Tasks.BOUNDINGBOX]
 
@@ -527,7 +520,6 @@ class BBoxVisualizer(BaseVisualizer):
 
         target_viz = draw_targets(target_canvas, target)
         return target_viz, predictions_viz
-
 ```
 
 ## Testing Custom Components
@@ -551,15 +543,15 @@ from luxonis_train.typing import Packet
 import torch
 from torch import nn, Tensor, Size
 
+
 class XORBackbone(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.backbone = nn.Sequential(
-            nn.Linear(2, 10), nn.ReLU()
-        )
+        self.backbone = nn.Sequential(nn.Linear(2, 10), nn.ReLU())
 
     def forward(self, x: Tensor) -> Tensor:
         return self.backbone(x)
+
 
 class XORHead(BaseHead):
     task = Tasks.CLASSIFICATION
@@ -574,23 +566,23 @@ class XORHead(BaseHead):
             "classification": x,
         }
 
+
 # Setup metadata & nodes
 original_in_shape = Size([1, 1, 2])
 dataset_metadata = DatasetMetadata(
-    classes={'': {'xor_0': 0, 'xor_1': 1
-    }},
+    classes={"": {"xor_0": 0, "xor_1": 1}},
 )
 
 backbone_node = XORBackbone(
-    input_shapes = [{"features": original_in_shape}],
-    original_in_shape = original_in_shape,
-    dataset_metadata = dataset_metadata
+    input_shapes=[{"features": original_in_shape}],
+    original_in_shape=original_in_shape,
+    dataset_metadata=dataset_metadata,
 )
 
 head_node = XORHead(
-    input_shapes = [{"features": Size([1, 10])}],
-    original_in_shape = original_in_shape,
-    dataset_metadata = dataset_metadata
+    input_shapes=[{"features": Size([1, 10])}],
+    original_in_shape=original_in_shape,
+    dataset_metadata=dataset_metadata,
 )
 
 loss = CrossEntropyLoss(node=head_node)
@@ -606,7 +598,9 @@ logits = head_node.run(backbone_output)
 
 # Loss
 loss_input_data = loss.get_parameters(logits, target)
-loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
+loss_value = loss.forward(
+    loss_input_data["predictions"], loss_input_data["target"]
+)
 
 print(f"Loss value: {loss_value.item()}")
 ```
@@ -616,9 +610,14 @@ Once your `LuxonisModel` is defined, you can run a forward pass like this:
 ```python
 model = LuxonisModel(config)
 input = {
-     "image": Tensor([[[[0, 0]]]]),
+    "image": Tensor([[[[0, 0]]]]),
 }
-model_output = model.lightning_module.forward(inputs=input, compute_loss=False, compute_metrics=False, compute_visualizations=False)
+model_output = model.lightning_module.forward(
+    inputs=input,
+    compute_loss=False,
+    compute_metrics=False,
+    compute_visualizations=False,
+)
 ```
 
 To also compute the loss, metrics, and visualizations, simply provide the appropriate targets and set those flags to `True`.

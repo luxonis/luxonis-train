@@ -65,37 +65,30 @@ class ReXNetV1_lite(BaseNode):
         self.n_convblocks = sum(layers)
         self.out_indices = out_indices or [1, 4, 10, 17]
 
-        kernel_sizes = (
-            [kernel_sizes] * 6
-            if isinstance(kernel_sizes, int)
-            else kernel_sizes
+        strides, ts, kernel_sizes = self._expand_layer_configs(
+            layers, strides, kernel_sizes
         )
 
-        strides = [
-            s if i == 0 else 1
-            for layer, s in zip(layers, strides, strict=True)
-            for i in range(layer)
-        ]
-        ts = [1] * layers[0] + [6] * sum(layers[1:])
-        kernel_sizes = [
-            ks
-            for ks, layer in zip(kernel_sizes, layers, strict=True)
-            for _ in range(layer)
-        ]
-
-        features: list[nn.Module] = []
-        inplanes = input_ch / multiplier if multiplier < 1.0 else input_ch
-        first_channel = (
-            32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
+        inplanes, first_channel = self._compute_stem_channels(
+            input_ch, multiplier, fix_head_stem, divisible_value
         )
-        first_channel = make_divisible(
-            round(first_channel * multiplier), divisible_value
+        in_channels_group, channels_group = self._compute_channel_groups(
+            self.n_convblocks,
+            first_channel,
+            inplanes,
+            multiplier,
+            final_ch,
+            divisible_value,
+        )
+        assert channels_group
+
+        pen_channels = (
+            int(1280 * multiplier)
+            if multiplier > 1 and not fix_head_stem
+            else 1280
         )
 
-        in_channels_group: list[int] = []
-        channels_group: list[int] = []
-
-        features.append(
+        features: list[nn.Module] = [
             ConvBlock(
                 3,
                 first_channel,
@@ -104,24 +97,7 @@ class ReXNetV1_lite(BaseNode):
                 padding=1,
                 activation=nn.ReLU6(inplace=True),
             )
-        )
-
-        for i in range(self.n_convblocks):
-            inplanes_divisible = make_divisible(
-                round(inplanes * multiplier), divisible_value
-            )
-            if i == 0:
-                in_channels_group.append(first_channel)
-                channels_group.append(inplanes_divisible)
-            else:
-                in_channels_group.append(inplanes_divisible)
-                inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
-                inplanes_divisible = make_divisible(
-                    round(inplanes * multiplier), divisible_value
-                )
-                channels_group.append(inplanes_divisible)
-
-        assert channels_group
+        ]
         for in_c, c, t, k, s in zip(
             in_channels_group,
             channels_group,
@@ -135,21 +111,81 @@ class ReXNetV1_lite(BaseNode):
                     in_channels=in_c, channels=c, t=t, kernel_size=k, stride=s
                 )
             )
-
-        pen_channels = (
-            int(1280 * multiplier)
-            if multiplier > 1 and not fix_head_stem
-            else 1280
-        )
         features.append(
             ConvBlock(
-                in_channels=c,
+                in_channels=channels_group[-1],
                 out_channels=pen_channels,
                 kernel_size=1,
                 activation=nn.ReLU6(inplace=True),
             )
         )
         self.features = nn.Sequential(*features)
+
+    @staticmethod
+    def _expand_layer_configs(
+        layers: list[int],
+        strides: list[int],
+        kernel_sizes: int | list[int],
+    ) -> tuple[list[int], list[int], list[int]]:
+        """Expand the per-stage configs into per-block lists."""
+        if isinstance(kernel_sizes, int):
+            kernel_sizes = [kernel_sizes] * 6
+
+        expanded_strides = [
+            s if i == 0 else 1
+            for layer, s in zip(layers, strides, strict=True)
+            for i in range(layer)
+        ]
+        ts = [1] * layers[0] + [6] * sum(layers[1:])
+        expanded_kernel_sizes = [
+            ks
+            for ks, layer in zip(kernel_sizes, layers, strict=True)
+            for _ in range(layer)
+        ]
+        return expanded_strides, ts, expanded_kernel_sizes
+
+    @staticmethod
+    def _compute_stem_channels(
+        input_ch: int,
+        multiplier: float,
+        fix_head_stem: bool,
+        divisible_value: int,
+    ) -> tuple[float, int]:
+        inplanes = input_ch / multiplier if multiplier < 1.0 else input_ch
+        first_channel = (
+            32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
+        )
+        first_channel = make_divisible(
+            round(first_channel * multiplier), divisible_value
+        )
+        return inplanes, first_channel
+
+    @staticmethod
+    def _compute_channel_groups(
+        n_convblocks: int,
+        first_channel: int,
+        inplanes: float,
+        multiplier: float,
+        final_ch: int,
+        divisible_value: int,
+    ) -> tuple[list[int], list[int]]:
+        in_channels_group: list[int] = []
+        channels_group: list[int] = []
+        for i in range(n_convblocks):
+            inplanes_divisible = make_divisible(
+                round(inplanes * multiplier), divisible_value
+            )
+            if i == 0:
+                in_channels_group.append(first_channel)
+                channels_group.append(inplanes_divisible)
+            else:
+                in_channels_group.append(inplanes_divisible)
+                inplanes += final_ch / (n_convblocks - 1 * 1.0)
+                inplanes_divisible = make_divisible(
+                    round(inplanes * multiplier), divisible_value
+                )
+                channels_group.append(inplanes_divisible)
+        return in_channels_group, channels_group
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outs: list[Tensor] = []

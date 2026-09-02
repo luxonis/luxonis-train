@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -97,40 +98,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         """
         super().__init__(**kwargs)
         self.return_sample_metadata = return_sample_metadata
-        if dataset_dir is not None:
-            self.dataset = self._parse_dataset(
-                dataset_dir, dataset_name, dataset_type, delete_existing
-            )
-        else:
-            if dataset_name is None:
-                raise ValueError(
-                    "Either `dataset_dir` or `dataset_name` must be provided."
-                )
-            self.dataset = LuxonisDataset(
-                dataset_name=dataset_name,
-                team_id=team_id,
-                bucket_type=bucket_type,
-                bucket_storage=bucket_storage,
-            )
+        self.dataset = self._load_dataset(
+            dataset_dir,
+            dataset_name,
+            dataset_type,
+            delete_existing,
+            team_id,
+            bucket_type,
+            bucket_storage,
+        )
         if class_order_per_task is not None:
             self.dataset.set_class_order_per_task(class_order_per_task)
 
-        if kpts_mapping_per_task is not None:
-            dataset_tasks = self.dataset.get_tasks()
-            for task, new_mapping in kpts_mapping_per_task.items():
-                if task not in dataset_tasks:
-                    raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
-                    )
-                if "keypoints" not in dataset_tasks[task]:
-                    raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
-                    )
-                if len(new_mapping) != len(set(new_mapping)):
-                    logger.warning(
-                        f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
-                    )
-
+        self._validate_keypoint_mapping(kpts_mapping_per_task)
         self.kpts_mapping_per_task = kpts_mapping_per_task
 
         self.loader = LuxonisLoader(
@@ -151,6 +131,57 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             bbox_area_threshold=bbox_area_threshold,
             seed=self.seed,
         )
+
+    def _load_dataset(
+        self,
+        dataset_dir: str | None,
+        dataset_name: str | None,
+        dataset_type: DatasetType | None,
+        delete_existing: bool,
+        team_id: str | None,
+        bucket_type: Literal["internal", "external"],
+        bucket_storage: Literal["local", "s3", "gcs", "azure"],
+    ) -> LuxonisDataset:
+        if dataset_dir is not None:
+            return self._parse_dataset(
+                dataset_dir, dataset_name, dataset_type, delete_existing
+            )
+        if dataset_name is None:
+            raise ValueError(
+                "Either `dataset_dir` or `dataset_name` must be provided."
+            )
+        return LuxonisDataset(
+            dataset_name=dataset_name,
+            team_id=team_id,
+            bucket_type=bucket_type,
+            bucket_storage=bucket_storage,
+        )
+
+    def _validate_keypoint_mapping(
+        self, kpts_mapping_per_task: dict[str, list[int]] | None
+    ) -> None:
+        if kpts_mapping_per_task is None:
+            return
+        dataset_tasks = self.dataset.get_tasks()
+        for task, new_mapping in kpts_mapping_per_task.items():
+            self._validate_keypoint_task(task, dataset_tasks)
+            if len(new_mapping) != len(set(new_mapping)):
+                logger.warning(
+                    f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
+                )
+
+    @staticmethod
+    def _validate_keypoint_task(
+        task: str, dataset_tasks: Mapping[str, list[str]]
+    ) -> None:
+        if task not in dataset_tasks:
+            raise KeyError(
+                f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
+            )
+        if "keypoints" not in dataset_tasks[task]:
+            raise KeyError(
+                f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
+            )
 
     @override
     def __len__(self) -> int:

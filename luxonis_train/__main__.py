@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from luxonis_train import LuxonisModel
+    from luxonis_train.loaders import BaseLoaderTorch
 
 
 app = App(
@@ -146,6 +147,43 @@ def tune(
     ).tune()
 
 
+def _get_visualization_item(
+    loader: "BaseLoaderTorch", index: int
+) -> tuple[dict[str, "np.ndarray"], dict[str, "np.ndarray"], list[str]]:
+    import numpy as np
+    from luxonis_ml.data.utils.cli_utils import get_tracked_augmentations
+
+    raw_loader = getattr(loader, "loader", None)
+    if raw_loader is not None:
+        sample = raw_loader[index]
+        images, labels = sample
+        if isinstance(images, np.ndarray):
+            images = {loader.image_source: images}
+        remap_keypoints = getattr(loader, "_remap_keypoints", None)
+        if (
+            getattr(loader, "kpts_mapping_per_task", None) is not None
+            and remap_keypoints is not None
+        ):
+            labels = remap_keypoints(labels)
+        return (
+            images,
+            labels,
+            list(get_tracked_augmentations(sample.metadata) or {}),
+        )
+
+    images, labels = loader[index]
+    if not isinstance(images, dict):
+        images = {loader.image_source: images}
+    return (
+        {
+            name: image.numpy().transpose(1, 2, 0)
+            for name, image in images.items()
+        },
+        {task: label.numpy() for task, label in labels.items()},
+        [],
+    )
+
+
 def _yield_visualizations(
     opts: OptsType = None,
     config: str | None = None,
@@ -168,41 +206,6 @@ def _yield_visualizations(
 
     from luxonis_train.utils.general import decode_text_metadata_labels
 
-    def get_visualization_item(
-        idx: int,
-    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], list[str]]:
-        raw_loader = getattr(loader, "loader", None)
-        if raw_loader is not None:
-            sample = raw_loader[idx]
-            np_images, np_labels = sample
-            if isinstance(np_images, np.ndarray):
-                np_images = {loader.image_source: np_images}
-
-            remap_keypoints = getattr(loader, "_remap_keypoints", None)
-            if (
-                getattr(loader, "kpts_mapping_per_task", None) is not None
-                and remap_keypoints is not None
-            ):
-                np_labels = remap_keypoints(np_labels)
-
-            return (
-                np_images,
-                np_labels,
-                list(get_tracked_augmentations(sample.metadata) or {}),
-            )
-
-        images, labels = loader[idx]
-        if not isinstance(images, dict):
-            images = {loader.image_source: images}
-        return (
-            {
-                name: image.numpy().transpose(1, 2, 0)
-                for name, image in images.items()
-            },
-            {task: label.numpy() for task, label in labels.items()},
-            [],
-        )
-
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
@@ -213,7 +216,9 @@ def _yield_visualizations(
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
     for idx in range(len(loader)):
-        np_images, np_labels, augmentations = get_visualization_item(idx)
+        np_images, np_labels, augmentations = _get_visualization_item(
+            loader, idx
+        )
         main_image = np_images[loader.image_source]
         main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
             np.uint8
