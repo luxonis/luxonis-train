@@ -230,11 +230,11 @@ class BaseAttachedModule(
         kind: Literal["label", "prediction"],
     ) -> None:
         if name in data:
-            kwargs[kwarg_name] = (
-                value.clone()
-                if isinstance(value := data[name], Tensor)
-                else [item.clone() for item in data[name]]
-            )
+            value = data[name]
+            if isinstance(value, Tensor):
+                kwargs[kwarg_name] = value.clone()
+            else:
+                kwargs[kwarg_name] = [item.clone() for item in value]
             return
         if self._argument_is_optional(parameter):
             kwargs[kwarg_name] = None
