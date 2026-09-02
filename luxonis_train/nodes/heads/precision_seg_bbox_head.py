@@ -43,7 +43,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         @param n_masks: Number of masks.
         @type n_proto: int
         @param n_proto: Number of prototypes for segmentation.
-        @type conf_thres: flaot
+        @type conf_thres: float
         @param conf_thres: Confidence threshold for NMS.
         @type iou_thres: float
         @param iou_thres: IoU threshold for NMS.

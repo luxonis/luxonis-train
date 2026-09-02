@@ -97,7 +97,7 @@ class BasePredefinedModel(
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
-        """Get a name of the default varaint and a dictionary of
+        """Get a name of the default variant and a dictionary of
         available model variants with their parameters.
 
         The keys are the variant names, and the values are dictionaries

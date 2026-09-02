@@ -243,3 +243,15 @@ exclude_also = [
   "logger\\.",
   "if TYPE_CHECKING",
 ]
+
+[tool.typos.files]
+# Diagram files hold opaque element ids that typos mangles.
+extend-exclude = ["*.drawio"]
+
+[tool.typos.default.extend-identifiers]
+# The ONNX scatter operator.
+ScatterND = "ScatterND"
+
+[tool.typos.default.extend-words]
+# The task-aligned detection paper the TAL assigner comes from.
+TOOD = "TOOD"

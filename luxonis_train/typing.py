@@ -10,7 +10,7 @@ Labels: TypeAlias = dict[str, Tensor]
 AttachIndexType: TypeAlias = (
     Literal["all"] | int | tuple[int, int] | tuple[int, int, int] | None
 )
-"""AttachIndexType is used to specify to which output of the prevoius
+"""AttachIndexType is used to specify to which output of the previous
 node does the current node attach to.
 
 It can be either "all" (all outputs), an index of the output or a tuple

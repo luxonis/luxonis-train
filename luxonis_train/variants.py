@@ -46,7 +46,7 @@ class VariantMeta(AutoRegisterMeta):
                 raise NotImplementedError(
                     f"'{cls.__name__}' was called with the 'variant' "
                     f"parameter set to '{variant}', but the `get_variants` "
-                    "method was not implented."
+                    "method was not implemented."
                 ) from e
             logger.warning(
                 f"'{cls.__name__}' was called with the 'variant' "
@@ -100,7 +100,7 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Get the name of the default varaint and a dictionary of
+        """Get the name of the default variant and a dictionary of
         available variants.
 
         The keys are the variant names, and the values are dictionaries
@@ -132,9 +132,9 @@ def add_variant_aliases(
             "m": ["medium"],
             "l": ["large"],
         }
-    for name, als in aliases.items():
+    for name, alias_names in aliases.items():
         if name in variants:
-            for alias in als:
+            for alias in alias_names:
                 variants[alias] = variants[name]
 
     return variants

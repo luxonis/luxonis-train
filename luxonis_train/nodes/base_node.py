@@ -189,7 +189,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Get the name of the default varaint and a dictionary of
+        """Get the name of the default variant and a dictionary of
         available model variants with their parameters.
 
         The keys are the variant names, and the values are dictionaries
@@ -473,7 +473,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         else:
             local_path = safe_download(ckpt)
             if local_path:
-                # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+                # load explicitly to cpu, PL takes care of transferring to CUDA is needed
                 state_dict = torch.load(  # nosemgrep
                     local_path, weights_only=False, map_location="cpu"
                 )["state_dict"]
@@ -749,7 +749,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             "and could not be inferred. "
             "Some parts of the framework will not work. "
             "Either pass `attach_index` to the base constructor, "
-            "define it as a class atrribute, or provide proper "
+            "define it as a class attribute, or provide proper "
             "type hints for the `forward` method for implicit inference"
         )
 

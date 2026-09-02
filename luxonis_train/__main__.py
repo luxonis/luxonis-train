@@ -382,7 +382,7 @@ def infer(
     @type source_path: str
     @param source_path: Path to an image file, a directory containing
         images or a video file for inference. If not provided, the
-        loader from the configuation file will be used.
+        loader from the configuration file will be used.
     @type weights: Path
     @param weights: Path to the model weights.
     @type opts: list[str]
@@ -834,7 +834,7 @@ def config(
     @param config: Path to configuration file to be upgraded.
     @type output: Path | None
     @param output: Where to save the upgraded config. If left empty, the
-        old file will be overriden.
+        old file will be overridden.
     """
     if config.suffix == "json":
         cfg = json.loads(config.read_text(encoding="utf-8"))
@@ -871,7 +871,7 @@ def checkpoint(
     @param path: Path to the checkpoint
     @type output: Path | None
     @param new: Where to save the upgraded checkpoint. If left empty,
-        the old file will be overriden.
+        the old file will be overridden.
     """
     from luxonis_train import LuxonisModel
 

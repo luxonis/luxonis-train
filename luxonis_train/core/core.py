@@ -591,7 +591,7 @@ class LuxonisModel:
         @param ckpt_only: If True, only the `.ckpt` file will be
             exported. This is useful for updating the metadata in the
             checkpoint file in case they changed (e.g. new configuration
-            file, architectural changes affecting the exection order
+            file, architectural changes affecting the execution order
             etc.)
         @rtype: Path
         @return: Path to the exported ONNX model file or .ckpt file if
@@ -745,7 +745,7 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to
+        @param view: Which view to run the testing on. Defaults to
             "test".
         @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load
@@ -951,7 +951,7 @@ class LuxonisModel:
             for cb in cfg.trainer.callbacks:
                 if cb.name in unsupported_callbacks:
                     logger.warning(
-                        f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
+                        f"Callback '{cb.name}' is not supported for tuning and is removed from the callbacks list."
                     )
                 else:
                     filtered_callbacks.append(cb)

@@ -60,11 +60,11 @@ class RepPANNeck(BaseNode):
         @type depth_multiplier: float
         @param depth_multiplier: Depth multiplier. Defaults to C{0.33} ("n" variant).
         @type width_multiplier: float
-        @param width_muliplier: Width multiplier. Defaults to C{0.25} ("n" variant).
+        @param width_multiplier: Width multiplier. Defaults to C{0.25} ("n" variant).
         @type block: Literal["RepBlock", "CSPStackRepBlock"]
         @param block: Base block used when building the backbone.
             Defaults to C{"RepBlock"} ("n" variant).
-        @tpe e: float | None
+        @type e: float | None
         @param e: Factor that controls number of intermediate channels.
             Only used when block="CSPStackRepBlock". Defaults to C{None}.
         """

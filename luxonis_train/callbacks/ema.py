@@ -128,7 +128,7 @@ class EMACallback(pl.Callback):
     @property
     def ema(self) -> ModelEma:
         if self._ema is None:
-            raise ValueError("Ema model not yet initalized.")
+            raise ValueError("Ema model not yet initialized.")
         return self._ema
 
     def on_fit_start(

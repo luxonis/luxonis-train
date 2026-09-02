@@ -76,7 +76,7 @@ def get_trial_params(
 
     if len(new_params) == 0:
         raise ValueError(
-            "No paramteres to tune. Specify them under `tuner.params`."
+            "No parameters to tune. Specify them under `tuner.params`."
         )
     return new_params
 

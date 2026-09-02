@@ -50,13 +50,13 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         @param draw_scores: Whether to append prediction confidence
             scores to the rendered labels. Defaults to C{False}.
         @type colors: dict[str, L{Color}] | list[L{Color}] | None
-        @param colors: Dicionary mapping class labels to colors.
+        @param colors: Dictionary mapping class labels to colors.
         @type fill: bool | None
         @param fill: Whether to fill the boundingbox with color.
         @type width: int | None
         @param width: Width of the bounding box Lines.
         @type font: str | None
-        @param font: Font of the clas labels.
+        @param font: Font of the class labels.
         @type font_size: int | None
         @param font_size: Font size of the class Labels.
         @type alpha: float
