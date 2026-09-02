@@ -154,8 +154,7 @@ class EMACallback(pl.Callback):
 
     def _restore_loaded_ema_state(self) -> None:
         loaded_checkpoint = self.loaded_ema_state_dict
-        if loaded_checkpoint is None:  # pragma: no cover
-            return
+        assert loaded_checkpoint is not None
         loaded_state = filter_checkpoint_state_dict(loaded_checkpoint)
         current_state = self.ema.state_dict_ema
         comparable_current = filter_checkpoint_state_dict(current_state)
