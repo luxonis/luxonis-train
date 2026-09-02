@@ -119,7 +119,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             return {
                 "features": features_list,
                 "prototypes": prototypes,
-                "mask_coeficients": mask_coefficients,
+                "mask_coefficients": mask_coefficients,
             }
 
         pred_bboxes = self._prepare_bbox_inference_output(
@@ -141,7 +141,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         results = {
             "features": features_list,
             "prototypes": prototypes,
-            "mask_coeficients": mask_coefficients,
+            "mask_coefficients": mask_coefficients,
             "boundingbox": [],
             self.task.main_output: [],
         }

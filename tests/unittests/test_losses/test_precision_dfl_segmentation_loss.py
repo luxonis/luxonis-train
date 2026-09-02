@@ -46,7 +46,7 @@ def test_precision_segmentation_loss(skip_stal: bool):
     (
         features,
         prototypes,
-        mask_coeficients,
+        mask_coefficients,
         target_boundingbox,
         target_instance_segmentation,
         expected_sub_losses,
@@ -54,7 +54,7 @@ def test_precision_segmentation_loss(skip_stal: bool):
     result = loss(
         features,
         prototypes,
-        mask_coeficients,
+        mask_coefficients,
         target_boundingbox,
         target_instance_segmentation,
     )[1]
