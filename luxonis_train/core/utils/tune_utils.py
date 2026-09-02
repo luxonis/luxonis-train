@@ -31,7 +31,7 @@ def get_trial_params(
     """Get trial parameters based on specified config."""
     new_params = {}
     for key, value in params.items():
-        key_name, key_type = key.rsplit("_", 1)
+        key_name, _, key_type = key.rpartition("_")
         if key_type == "subset":
             new_params.update(
                 _sample_augmentation_subset(all_augs, key_name, value)
@@ -61,7 +61,7 @@ def _sample_augmentation_subset(
         and isinstance(value[0], list)
         and isinstance(value[1], int)
     ):
-        raise KeyError(f"Combination of subset and {value} not supported")
+        raise _unsupported_combination("subset", value)
     indices = _augs_to_indices(all_augs, value[0])
     selected = set(random.sample(indices, value[1]))
     return {
@@ -80,14 +80,14 @@ def _suggest_trial_value(
         return trial.suggest_loguniform(key_name, *value)
     if key_type == "uniform" and _is_pair_of_floats(value):
         return trial.suggest_uniform(key_name, *value)
-    raise KeyError(f"Combination of {key_type} and {value} not supported")
+    raise _unsupported_combination(key_type, value)
 
 
 def _suggest_numeric_value(
     trial: optuna.trial.Trial, key_name: str, key_type: str, value: object
 ) -> float | int:
     if not isinstance(value, list) or len(value) < 2:
-        raise KeyError(f"Combination of {key_type} and {value} not supported")
+        raise _unsupported_combination(key_type, value)
     low, high, *tail = value
     if (
         key_type == "float"
@@ -105,7 +105,7 @@ def _suggest_numeric_value(
         if not isinstance(step, int):
             raise TypeError(f"Step for int type must be int, but got {step}")
         return trial.suggest_int(key_name, low, high, step=step)
-    raise KeyError(f"Combination of {key_type} and {value} not supported")
+    raise _unsupported_combination(key_type, value)
 
 
 def _is_pair_of_floats(value: object) -> TypeGuard[list[float]]:
@@ -114,6 +114,10 @@ def _is_pair_of_floats(value: object) -> TypeGuard[list[float]]:
         and len(value) == 2
         and all(isinstance(item, float) for item in value)
     )
+
+
+def _unsupported_combination(key_type: str, value: object) -> KeyError:
+    return KeyError(f"Combination of {key_type} and {value} not supported")
 
 
 def rename_params_for_logging(
