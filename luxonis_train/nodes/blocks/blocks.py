@@ -747,10 +747,10 @@ class SpatialPyramidPoolingBlock(nn.Module):
         return self.conv2(x)
 
 
-class AttentionRefinmentBlock(nn.Module):
+class AttentionRefinementBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
-        """Attention Refinment block adapted from
+        """Attention Refinement block adapted from
         U{https://github.com/taveraantonio/BiseNetv1}.
 
         @type in_channels: int

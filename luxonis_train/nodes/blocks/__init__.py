@@ -2,7 +2,7 @@ from contextlib import suppress
 
 from .blocks import (
     DFL,
-    AttentionRefinmentBlock,
+    AttentionRefinementBlock,
     BlockRepeater,
     ConvBlock,
     ConvStack,
@@ -37,7 +37,7 @@ with suppress(ImportError):
 
 __all__ = [
     "DFL",
-    "AttentionRefinmentBlock",
+    "AttentionRefinementBlock",
     "BlockRepeater",
     "CSPStackRepBlock",
     "CSPStackRepBlock",
