@@ -325,7 +325,7 @@ def instances_from_batch(
 
 def instances_from_batch(
     bboxes: Tensor, *args: Tensor, batch_size: int | None = None
-) -> Iterator[tuple[Tensor, ...]] | Iterator[Tensor]:
+) -> Iterator[Tensor | tuple[Tensor, ...]]:
     """Generate instances from batched data, where the batch index is
     encoded as the first column of the bounding boxes.
 
@@ -364,7 +364,7 @@ def instances_from_batch(
 
 def _empty_batch_instances(
     bboxes: Tensor, args: tuple[Tensor, ...], batch_size: int | None
-) -> Iterator[Any]:
+) -> Iterator[Tensor | tuple[Tensor, ...]]:
     if batch_size is None:
         return
     for _ in range(batch_size):
@@ -376,7 +376,7 @@ def _empty_batch_instances(
 
 def _batched_instances(
     bboxes: Tensor, args: tuple[Tensor, ...], batch_size: int | None
-) -> Iterator[Any]:
+) -> Iterator[Tensor | tuple[Tensor, ...]]:
     n_batches = batch_size or int(bboxes[:, 0].max()) + 1
     for index in range(n_batches):
         if not args:

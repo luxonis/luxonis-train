@@ -30,6 +30,9 @@ from typeguard import typechecked
 
 if TYPE_CHECKING:
     import optuna
+    from aimet_torch import (  # pyright: ignore[reportMissingImports]
+        QuantizationSimModel,
+    )
     from sqlalchemy import URL
 
 from luxonis_train.callbacks import (
@@ -39,7 +42,11 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
-from luxonis_train.config.config import CallbackConfig, TunerConfig
+from luxonis_train.config.config import (
+    AIMETConfig,
+    CallbackConfig,
+    TunerConfig,
+)
 from luxonis_train.config.predefined import resolve_predefined_config
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import get_main_metric
@@ -1705,8 +1712,8 @@ class LuxonisModel:
 
     @staticmethod
     def _prepare_aimet_config_file(
-        config_file: str | None, cfg: Any, save_dir: Path
-    ) -> str:
+        config_file: str | None, cfg: AIMETConfig, save_dir: Path
+    ) -> str | None:
         aimet_config_file = config_file or cfg.config
         if isinstance(aimet_config_file, dict):
             with open(save_dir / "aimet_config.json", "w") as f:
@@ -1716,42 +1723,22 @@ class LuxonisModel:
 
     @staticmethod
     def _resolve_aimet_overrides(
-        cfg: Any,
+        cfg: AIMETConfig,
         adaround: bool | None,
         fold_batch_norms: bool | None,
         cross_layer_equalization: bool | None,
         batch_norm_reestimation: bool | None,
         sequential_mse: bool | None,
     ) -> tuple[bool, bool, bool, bool, bool]:
-        resolved_adaround: bool = (
-            adaround if adaround is not None else cfg.adaround.active
-        )
-        resolved_fold_batch_norms: bool = (
-            fold_batch_norms
-            if fold_batch_norms is not None
-            else cfg.fold_batch_norms
-        )
-        resolved_cross_layer_equalization: bool = (
-            cross_layer_equalization
-            if cross_layer_equalization is not None
-            else cfg.cross_layer_equalization
-        )
-        resolved_batch_norm_reestimation: bool = (
-            batch_norm_reestimation
-            if batch_norm_reestimation is not None
-            else cfg.batch_norm_reestimation
-        )
-        resolved_sequential_mse: bool = (
-            sequential_mse
-            if sequential_mse is not None
-            else cfg.sequential_mse
-        )
+        def pick(override: bool | None, default: bool) -> bool:
+            return default if override is None else override
+
         return (
-            resolved_adaround,
-            resolved_fold_batch_norms,
-            resolved_cross_layer_equalization,
-            resolved_batch_norm_reestimation,
-            resolved_sequential_mse,
+            pick(adaround, cfg.adaround.active),
+            pick(fold_batch_norms, cfg.fold_batch_norms),
+            pick(cross_layer_equalization, cfg.cross_layer_equalization),
+            pick(batch_norm_reestimation, cfg.batch_norm_reestimation),
+            pick(sequential_mse, cfg.sequential_mse),
         )
 
     def _build_quant_model(
@@ -1789,26 +1776,26 @@ class LuxonisModel:
 
     @staticmethod
     def _run_ptq(
-        model: Any,
+        model: LuxonisLightningModule,
         dummy_inputs: Tensor,
-        ptq_loader: Any,
+        ptq_loader: DataLoader,
         save_dir: Path,
-        cfg: Any,
-        aimet_config_file: str,
+        cfg: AIMETConfig,
+        aimet_config_file: str | None,
         adaround: bool,
         fold_batch_norms: bool,
         cross_layer_equalization: bool,
         batch_norm_reestimation: bool,
         sequential_mse: bool,
-        quant_scheme: str | None,
+        quant_scheme: Literal["min_max", "tf", "tf_enhanced"] | None,
         default_output_bw: int | None,
         default_param_bw: int | None,
-        default_data_type: str | None,
+        default_data_type: Literal["int", "float"] | None,
         adaround_iterations: int | None,
         adaround_reg_param: float | None,
         adaround_beta_range: tuple[int, int] | None,
         adaround_warm_start: float | None,
-    ) -> Any:
+    ) -> "QuantizationSimModel":
         from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
             QuantizationDataType,
             QuantScheme,
@@ -1847,8 +1834,8 @@ class LuxonisModel:
     def _resolve_qat_optimizer_scheduler(
         optimizer: Optimizer | None,
         scheduler: LRScheduler | None,
-        sim: Any,
-        cfg: Any,
+        sim: "QuantizationSimModel",
+        cfg: AIMETConfig,
     ) -> tuple[Optimizer, LRScheduler]:
         if optimizer is None:
             optimizer = from_registry(
@@ -1868,8 +1855,8 @@ class LuxonisModel:
 
     def _export_quantized_onnx(
         self,
-        sim: Any,
-        model: Any,
+        sim: "QuantizationSimModel",
+        model: LuxonisLightningModule,
         dummy_inputs: Tensor,
         dummy_inputs_dict: dict[str, Tensor],
         input_names: list[str],
@@ -1892,10 +1879,10 @@ class LuxonisModel:
 
     @staticmethod
     def _print_quant_results(
-        model: Any,
-        pre_quant_test: Mapping[str, Any],
-        ptq_test: Mapping[str, Any],
-        qat_test: Mapping[str, Any],
+        model: LuxonisLightningModule,
+        pre_quant_test: Mapping[str, float],
+        ptq_test: Mapping[str, float],
+        qat_test: Mapping[str, float],
     ) -> None:
         table = []
         for key, value in pre_quant_test.items():

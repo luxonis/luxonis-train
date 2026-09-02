@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, TypeGuard
 
 import optuna
 from loguru import logger
@@ -49,7 +49,7 @@ def get_trial_params(
 
 
 def _sample_augmentation_subset(
-    all_augs: list[str], key_name: str, value: Any
+    all_augs: list[str], key_name: str, value: object
 ) -> dict[str, bool]:
     if key_name.rsplit(".", 1)[-1] != "augmentations":
         raise ValueError(
@@ -70,8 +70,8 @@ def _sample_augmentation_subset(
 
 
 def _suggest_trial_value(
-    trial: optuna.trial.Trial, key_name: str, key_type: str, value: Any
-) -> Any:
+    trial: optuna.trial.Trial, key_name: str, key_type: str, value: object
+) -> float | int | str | bool | None:
     if key_type == "categorical" and isinstance(value, list):
         return trial.suggest_categorical(key_name, value)
     if key_type in {"float", "int"}:
@@ -84,7 +84,7 @@ def _suggest_trial_value(
 
 
 def _suggest_numeric_value(
-    trial: optuna.trial.Trial, key_name: str, key_type: str, value: Any
+    trial: optuna.trial.Trial, key_name: str, key_type: str, value: object
 ) -> float | int:
     if not isinstance(value, list) or len(value) < 2:
         raise KeyError(f"Combination of {key_type} and {value} not supported")
@@ -108,7 +108,7 @@ def _suggest_numeric_value(
     raise KeyError(f"Combination of {key_type} and {value} not supported")
 
 
-def _is_pair_of_floats(value: Any) -> bool:
+def _is_pair_of_floats(value: object) -> TypeGuard[list[float]]:
     return (
         isinstance(value, list)
         and len(value) == 2
