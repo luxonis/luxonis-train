@@ -38,17 +38,24 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
 
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module to be used.
-        @type params: dict
-        @param params: The parameters for the strategy. Those are:
-            - lr: The learning rate.
-            - momentum: The momentum.
-            - weight_decay: The weight decay.
-            - nesterov: Whether to use nesterov.
-            - warmup_epochs: The number of warmup epochs.
-            - warmup_bias_lr: The warmup bias learning rate.
-            - warmup_momentum: The warmup momentum.
-            - lre: The learning rate for the end of the training.
-            - cosine_annealing: Whether to use cosine annealing.
+        @type lr: float
+        @param lr: The learning rate.
+        @type momentum: float
+        @param momentum: The momentum.
+        @type weight_decay: float
+        @param weight_decay: The weight decay.
+        @type nesterov: bool
+        @param nesterov: Whether to use nesterov.
+        @type warmup_epochs: int
+        @param warmup_epochs: The number of warmup epochs.
+        @type warmup_bias_lr: float
+        @param warmup_bias_lr: The warmup bias learning rate.
+        @type warmup_momentum: float
+        @param warmup_momentum: The warmup momentum.
+        @type lre: float
+        @param lre: The learning rate for the end of the training.
+        @type cosine_annealing: bool
+        @param cosine_annealing: Whether to use cosine annealing.
         """
         self.model = pl_module
         self.cfg = pl_module.cfg

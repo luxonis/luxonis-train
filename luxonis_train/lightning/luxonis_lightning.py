@@ -307,10 +307,10 @@ class LuxonisLightningModule(pl.LightningModule):
         predecessors are computed. Once the outputs are not needed
         anymore, they are removed from the memory.
 
-        @type inputs: L{Tensor}
+        @type inputs: dict[str, Tensor] | Tensor
         @param inputs: Input tensor.
-        @type task_labels: L{TaskLabels} | None
-        @param task_labels: Labels dictionary. Defaults to C{None}.
+        @type labels: L{Labels} | None
+        @param labels: Labels dictionary. Defaults to C{None}.
         @type images: L{Tensor} | None
         @param images: Canvas tensor for visualizers. Defaults to
             C{None}.
@@ -652,7 +652,7 @@ class LuxonisLightningModule(pl.LightningModule):
         found in the model state dict or in the checkpoint.
 
         @type ckpt: PathType | dict | None
-        @param path: Either a path to or a loaded checkpoint. If
+        @param ckpt: Either a path to or a loaded checkpoint. If
             C{None}, no checkpoint will be loaded.
         """
         if ckpt is None:

@@ -82,8 +82,6 @@ def infer_from_video(
     @param video_path: The path to the video.
     @type save_dir: Path | None
     @param save_dir: The directory to save the visualizations to.
-    @type show: bool
-    @param show: Whether to display the visualizations.
     """
     cap = cv2.VideoCapture(filename=str(video_path))
 

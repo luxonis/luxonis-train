@@ -37,8 +37,8 @@ class MicroBlock(nn.Module):
             3.
         @type stride: int
         @param stride: Stride of the convolution. Defaults to 1.
-        @type expansion_ratios: tuple[int, int]
-        @param expansion_ratios: Expansion ratios for the intermediate
+        @type expand_ratio: tuple[int, int]
+        @param expand_ratio: Expansion ratios for the intermediate
             channels. Defaults to (2, 2).
         @type groups_1: tuple[int, int]
         @param groups_1: Groups for the first set of convolutions.
@@ -46,9 +46,9 @@ class MicroBlock(nn.Module):
         @type groups_2: tuple[int, int]
         @param groups_2: Groups for the second set of convolutions.
             Defaults to (1, 1).
-        @type use_dynamic_shift: tuple[int, int, int]
-        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in
-            different positions. Defaults to (2, 0, 1).
+        @type dy_shift: tuple[int, int, int]
+        @param dy_shift: Flags to use Dynamic Shift-Max in different
+            positions. Defaults to (2, 0, 1).
         @type reduction_factor: int
         @param reduction_factor: Reduction factor for the squeeze-and-
             excitation-like operation. Defaults to 1.

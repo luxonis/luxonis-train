@@ -142,8 +142,8 @@ class ATSSAssigner(nn.Module):
     ) -> tuple[Tensor, Tensor]:
         """Select k anchors whose centers are closest to GT.
 
-        @type distance: Tensor
-        @param distance: Distances between GT and anchor centers.
+        @type distances: Tensor
+        @param distances: Distances between GT and anchor centers.
         @type n_level_bboxes: list[int]
         @param n_level_bboxes: list of number of bboxes per level.
         @type mask_gt: Tensor

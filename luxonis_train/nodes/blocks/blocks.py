@@ -78,8 +78,6 @@ class EfficientDecoupledBlock(nn.Module):
         @param n_classes: Number of classes.
         @type in_channels: int
         @param in_channels: Number of input channels.
-        @type prior_probability: float
-        @param prior_probability: ???
         """
         super().__init__()
 
@@ -386,7 +384,7 @@ class GeneralReparameterizableBlock(Reparameterizable):
               - string `"se"` which will use L{SqueezeExciteBlock}
               - None for no operation
             Defaults to C{None}.
-        @type activation: nn.Module | bool | None
+        @type activation: nn.Module | None | bool
         @param activation: Activation function. By default C{nn.ReLU}.
             If C{False} or C{None} then no activation.
         """
@@ -682,8 +680,8 @@ class BottleRep(nn.Module):
     ):
         """RepVGG bottleneck module.
 
-        @type block: Callable[..., nn.Module]
-        @param block: Block to use. Defaults to
+        @type module: Callable[..., nn.Module]
+        @param module: Block to use. Defaults to
             L{GeneralReparameterizableBlock}.
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -894,12 +892,6 @@ class DropPath(nn.Module):
 
         @type x: Tensor
         @param x: Input tensor.
-        @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to
-            0.0.
-        @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep
-            probability. Defaults to True.
         @return: Tensor with dropped paths based on the provided drop
             probability.
         """

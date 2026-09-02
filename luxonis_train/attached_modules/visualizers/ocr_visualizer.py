@@ -44,8 +44,8 @@ class OCRVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor]:
         """Create a visualization of the OCR predictions and labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: list[str]

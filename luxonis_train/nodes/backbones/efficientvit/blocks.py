@@ -266,11 +266,11 @@ class LightweightMLABlock(nn.Module):
         @type dimension: int
         @param dimension: Size of each head. Default is 8.
         @type use_bias: list[bool, bool]
-        @param biases: List specifying if bias is used in qkv and
+        @param use_bias: List specifying if bias is used in qkv and
             projection layers.
         @type use_norm: list[bool, bool]
-        @param norms: List specifying if normalization is applied in qkv
-            and projection layers.
+        @param use_norm: List specifying if normalization is applied in
+            qkv and projection layers.
         @type activations: list[nn.Module, nn.Module]
         @param activations: List of activation functions for qkv and
             projection layers.

@@ -218,18 +218,18 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         @type prediction_canvas: Tensor
         @param prediction_canvas: Tensor containing the predicted
             visualizations.
-        @type target_bboxes: Tensor | None
-        @param target_bboxes: Tensor containing the target bounding
+        @type target_boundingbox: Tensor | None
+        @param target_boundingbox: Tensor containing the target bounding
             boxes.
-        @type target_masks: Tensor | None
-        @param target_masks: Tensor containing the target instance
-            masks.
-        @type predicted_bboxes: list[Tensor]
-        @param predicted_bboxes: List of tensors containing the
-            predicted bounding boxes.
-        @type predicted_masks: list[Tensor]
-        @param predicted_masks: List of tensors containing the predicted
-            instance masks.
+        @type target_instance_segmentation: Tensor | None
+        @param target_instance_segmentation: Tensor containing the
+            target instance masks.
+        @type boundingbox: list[Tensor]
+        @param boundingbox: List of tensors containing the predicted
+            bounding boxes.
+        @type instance_segmentation: list[Tensor]
+        @param instance_segmentation: List of tensors containing the
+            predicted instance masks.
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,

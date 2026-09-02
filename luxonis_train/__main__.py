@@ -870,7 +870,7 @@ def checkpoint(
     @type path: Path
     @param path: Path to the checkpoint
     @type output: Path | None
-    @param new: Where to save the upgraded checkpoint. If left empty,
+    @param output: Where to save the upgraded checkpoint. If left empty,
         the old file will be overridden.
     """
     from luxonis_train import LuxonisModel

@@ -133,13 +133,8 @@ class PANDownBlockBase(ABC, nn.Module):
         @type downsample_out_channels: int
         @param downsample_out_channels: Number of output channels after
             downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        @type encode_block: nn.Module
+        @param encode_block: Encode block that is used.
         """
         super().__init__()
 
