@@ -13,7 +13,7 @@ from luxonis_ml.typing import Kwargs, check_type
 from torch import Size, Tensor, nn
 from typeguard import typechecked
 
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
@@ -505,13 +505,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._export = mode
 
         for name, module in self.named_modules():
-            if isinstance(module, Reparametrizable):
+            if isinstance(module, Reparameterizable):
                 if mode:
-                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
-                    module.reparametrize()
+                    logger.debug(f"Reparameterizing '{name}' in '{self.name}'")
+                    module.reparameterize()
                 else:
                     logger.debug(
-                        f"Restoring reparametrized '{name}' in '{self.name}'"
+                        f"Restoring reparameterized '{name}' in '{self.name}'"
                     )
                     module.restore()
 

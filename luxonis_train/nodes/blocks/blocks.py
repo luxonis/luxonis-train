@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
 
-from .reparametrizable import Reparametrizable
+from .reparameterizable import Reparameterizable
 from .utils import ModuleFactory, autopad
 
 
@@ -337,7 +337,7 @@ class SqueezeExciteBlock(nn.Sequential):
 
 
 # TODO: Maybe a better name?
-class GeneralReparametrizableBlock(Reparametrizable):
+class GeneralReparameterizableBlock(Reparameterizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -356,7 +356,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         scale_layer_padding: int | tuple[int, int] | None = None,
         activation: nn.Module | None | bool = True,
     ):
-        """GeneralReparametrizableBlock is a basic rep-style block,
+        """GeneralReparameterizableBlock is a basic rep-style block,
         including training and deploy status.
 
         @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
@@ -375,7 +375,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         @param groups: Groups. Defaults to C{1}.
         @type n_branches: int
         @param n_branches: Number of convolutional branches.
-            During reparametrization, the branches are fused to a single
+            During reparameterization, the branches are fused to a single
             convolutional layer. Defaults to C{1}.
         @type refine_block: nn.Module | Literal["se"] | None
         @param refine_block: A block to refine the output.
@@ -468,7 +468,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         return self.__class__.__name__
 
     @override
-    def reparametrize(self) -> None:
+    def reparameterize(self) -> None:
         if self.fused_branch is not None:
             return
 
@@ -572,7 +572,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         if running_var is None or running_mean is None:
             raise ValueError(
                 "Running variance and mean must be "
-                "provided for reparametrization."
+                "provided for reparameterization."
             )
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1).to(kernel.device)
@@ -677,7 +677,7 @@ class BottleRep(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        module: ModuleFactory = GeneralReparametrizableBlock,
+        module: ModuleFactory = GeneralReparameterizableBlock,
         weight: bool = True,
         **kwargs,
     ):
@@ -685,7 +685,7 @@ class BottleRep(nn.Module):
 
         @type block: Callable[..., nn.Module]
         @param block: Block to use. Defaults to
-            L{GeneralReparametrizableBlock}.
+            L{GeneralReparameterizableBlock}.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int

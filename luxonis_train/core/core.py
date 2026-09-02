@@ -1532,7 +1532,7 @@ class LuxonisModel:
         else:
             model = self.lightning_module
 
-        model.reparametrize().eval()
+        model.reparameterize().eval()
 
         if weights is not None:
             model.load_checkpoint(weights)

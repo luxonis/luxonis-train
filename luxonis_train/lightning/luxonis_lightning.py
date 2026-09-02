@@ -34,7 +34,7 @@ from luxonis_train.lightning.training_plan import (
     resolve_training_plan,
 )
 from luxonis_train.nodes import BaseNode
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
@@ -412,10 +412,10 @@ class LuxonisLightningModule(pl.LightningModule):
                 module.set_export_mode(mode=mode)
         return self
 
-    def reparametrize(self) -> Self:
+    def reparameterize(self) -> Self:
         for module in self.modules():
-            if isinstance(module, Reparametrizable):
-                module.reparametrize()
+            if isinstance(module, Reparameterizable):
+                module.reparameterize()
         return self
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
