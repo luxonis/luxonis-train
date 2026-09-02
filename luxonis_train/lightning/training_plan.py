@@ -28,6 +28,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, overload
 
+from lightning.pytorch.utilities.types import LRSchedulerConfigType
 from loguru import logger
 from luxonis_ml.typing import Params
 from torch import nn
@@ -78,6 +79,11 @@ __all__ = [
 
 _SHARED = "__shared__"
 
+# One entry per inner optimizer: (member scheduler or None, plateau
+# monitor or None).
+_MemberEntry = tuple[LRScheduler | ReduceLROnPlateau | None, str | None]
+_BypassConfig = LRSchedulerConfigType | LRScheduler | ReduceLROnPlateau
+
 
 class Selector(Protocol):
     """Predicate deciding whether a rule claims a parameter."""
@@ -118,16 +124,6 @@ def pattern_selector(patterns: Sequence[ParameterPattern]) -> Selector:
     return match
 
 
-def _match_all(
-    module: nn.Module,
-    module_name: str,
-    parameter: nn.Parameter,
-    parameter_name: str,
-) -> bool:
-    _ = module, module_name, parameter, parameter_name
-    return True
-
-
 @overload
 def merge_config_items(
     base: OptimizerConfig,
@@ -160,12 +156,6 @@ def merge_config_items(
         params = override.params
 
     return type(base)(name=name, params=params)
-
-
-def _spec_key(name: str, params: Params) -> str:
-    return json.dumps(
-        {"name": name, "params": params}, sort_keys=True, default=repr
-    )
 
 
 @dataclass(frozen=True)
@@ -316,17 +306,6 @@ class _GroupDraft:
         self.parameter_names.append(parameter_name)
 
 
-def _unique_name(name: str, used: set[str]) -> str:
-    """Add C{name} to C{used}, suffixing it if necessary."""
-    unique = name
-    index = 2
-    while unique in used:
-        unique = f"{name}-{index}"
-        index += 1
-    used.add(unique)
-    return unique
-
-
 class _PlanBuilder:
     def __init__(self) -> None:
         # inner key -> (optimizer name, scheduler spec)
@@ -355,8 +334,6 @@ class _PlanBuilder:
         matched by the rule into the rule's group, returning how many
         parameters were claimed.
         """
-        inner_key = (rule.optimizer.name, rule.scheduler.key)
-        group_key = (rule.label, group_scope)
         claimed = 0
         for module_name, module in module_source.named_modules():
             for parameter_name, parameter in module.named_parameters(
@@ -369,26 +346,12 @@ class _PlanBuilder:
                 ):
                     continue
                 self._claimed.add(id(parameter))
-                if inner_key not in self._inners:
-                    self._inners[inner_key] = (
-                        rule.optimizer.name,
-                        rule.scheduler,
-                    )
-                draft = self._groups.get((inner_key, group_key))
-                if draft is None:
-                    draft = _GroupDraft(
-                        name=rule.label
-                        if group_scope == _SHARED
-                        else f"{rule.label}/{group_scope}",
-                        options=dict(rule.optimizer.params),
-                        tag=rule.tag,
-                    )
-                    self._groups[inner_key, group_key] = draft
                 full_name = (
                     f"{module_name}.{parameter_name}"
                     if module_name
                     else parameter_name
                 )
+                draft = self._draft_for(rule, group_scope)
                 draft.add(node_name, parameter, f"{node_name}.{full_name}")
                 claimed += 1
         return claimed
@@ -439,6 +402,23 @@ class _PlanBuilder:
             },
         )
 
+    def _draft_for(self, rule: Rule, group_scope: str) -> _GroupDraft:
+        inner_key = (rule.optimizer.name, rule.scheduler.key)
+        if inner_key not in self._inners:
+            self._inners[inner_key] = (rule.optimizer.name, rule.scheduler)
+        group_key = (rule.label, group_scope)
+        draft = self._groups.get((inner_key, group_key))
+        if draft is None:
+            draft = _GroupDraft(
+                name=rule.label
+                if group_scope == _SHARED
+                else f"{rule.label}/{group_scope}",
+                options=dict(rule.optimizer.params),
+                tag=rule.tag,
+            )
+            self._groups[inner_key, group_key] = draft
+        return draft
+
 
 def resolve_training_plan(
     cfg: Config,
@@ -461,137 +441,35 @@ def resolve_training_plan(
     base for node rules and the specification of the default tail.
     """
     epochs = cfg.trainer.epochs
-    if strategy is not None:
-        try:
-            base_optimizer, base_scheduler = strategy.get_base_configs()
-        except NotImplementedError:
-            base_optimizer = cfg.trainer.optimizer
-            base_scheduler = cfg.trainer.scheduler
-    else:
-        base_optimizer = cfg.trainer.optimizer
-        base_scheduler = cfg.trainer.scheduler
-    tail_optimizer = OptimizerSpec.from_config(base_optimizer)
-    tail_scheduler = SchedulerSpec.from_config(base_scheduler, epochs)
+    base_optimizer, base_scheduler = _base_configs(cfg, strategy)
+    tail = Rule(
+        label="default",
+        selector=_match_all,
+        optimizer=OptimizerSpec.from_config(base_optimizer),
+        scheduler=SchedulerSpec.from_config(base_scheduler, epochs),
+    )
 
     builder = _PlanBuilder()
     any_node_rules = any(node.finetuning for node in nodes.values())
 
-    tail = Rule(
-        label="default",
-        selector=_match_all,
-        optimizer=tail_optimizer,
-        scheduler=tail_scheduler,
-    )
-
-    def tail_scope(node: "NodeWrapper") -> str:
-        # Freezing-scheduled nodes get their own tail group so that
-        # `lr_after_unfreeze` has a well-scoped target (the node-purity
-        # invariant); everything else shares one group, or one group
-        # per node when finetuning rules are present without a strategy
-        # (preserving the previous observable grouping).
-        if node.unfreeze_after is not None:
-            return node.name
-        if any_node_rules and strategy is None:
-            return node.name
-        return _SHARED
-
     for node in nodes.values():
-        for index, finetuning in enumerate(node.finetuning):
-            rule = Rule(
-                label=f"{node.name}/{index}",
-                selector=pattern_selector(
-                    finetuning.parameters or [ParameterPattern(name=".*")]
-                ),
-                optimizer=OptimizerSpec.from_config(
-                    merge_config_items(base_optimizer, finetuning.optimizer)
-                ),
-                scheduler=SchedulerSpec.from_config(
-                    merge_config_items(base_scheduler, finetuning.scheduler),
-                    epochs,
-                ),
-            )
-            if not builder.claim(rule, node.name, node.module, _SHARED):
-                raise ValueError(
-                    "Finetuning parameters for node "
-                    f"'{node.name}' did not match any "
-                    "available trainable parameters."
-                )
+        _claim_node_rules(
+            builder, node, base_optimizer, base_scheduler, epochs
+        )
         if strategy is None:
             # Running the tail inside the node loop preserves the group
             # and optimizer creation order of the previous
             # implementation.
-            builder.claim(tail, node.name, node.module, tail_scope(node))
+            scope = _tail_scope(node, any_node_rules, strategy)
+            builder.claim(tail, node.name, node.module, scope)
 
     if strategy is not None:
-        opaque_ids = strategy.opaque_parameter_ids()
-        overlap = opaque_ids & builder.claimed_ids
-        if overlap:
-            name = getattr(strategy, "legacy_name", type(strategy).__name__)
-            raise ValueError(
-                f"Legacy training strategy '{name}' claims "
-                f"{len(overlap)} parameter(s) already claimed by "
-                "finetuning rules. Remove the overlapping rules or "
-                "port the strategy to the new `rules()` API."
-            )
-        builder.mark_claimed(opaque_ids)
-        for strategy_rule in strategy.rules():
-            rule = Rule(
-                label=f"strategy/{strategy_rule.tag}",
-                selector=strategy_rule.selector,
-                optimizer=OptimizerSpec.from_config(strategy_rule.optimizer),
-                scheduler=SchedulerSpec.from_config(
-                    strategy_rule.scheduler
-                    if strategy_rule.scheduler is not None
-                    else base_scheduler,
-                    epochs,
-                ),
-                tag=strategy_rule.tag,
-            )
-            for node in nodes.values():
-                scope = (
-                    node.name if node.unfreeze_after is not None else _SHARED
-                )
-                builder.claim(rule, node.name, node.module, scope)
+        _claim_strategy_rules(builder, strategy, nodes, base_scheduler, epochs)
         for node in nodes.values():
-            builder.claim(tail, node.name, node.module, tail_scope(node))
+            scope = _tail_scope(node, any_node_rules, strategy)
+            builder.claim(tail, node.name, node.module, scope)
 
     return builder.finish()
-
-
-def _build_member_scheduler(
-    spec: SchedulerSpec, optimizer: Optimizer
-) -> LRScheduler:
-    def get(config: SchedulerConfig) -> LRScheduler:
-        return from_registry(
-            SCHEDULERS, config.name, **config.params, optimizer=optimizer
-        )
-
-    if spec.name == "SequentialLR":
-        sequential = SchedulerConfig(
-            name=spec.name, params=spec.params
-        ).get_sequential_lr_params()
-        return SequentialLR(
-            optimizer,
-            schedulers=[get(child) for child in sequential.schedulers],
-            milestones=sequential.milestones,
-            last_epoch=sequential.last_epoch,
-        )
-    return from_registry(
-        SCHEDULERS, spec.name, **spec.params, optimizer=optimizer
-    )
-
-
-def _plateau_monitor(
-    spec: SchedulerSpec, main_metric_monitor: str | None
-) -> str:
-    if spec.params.get("mode") == "max":
-        if main_metric_monitor is None:
-            raise ValueError(
-                "ReduceLROnPlateau with 'max' mode "
-                "requires a metric to monitor."
-            )
-        return main_metric_monitor
-    return "val/loss"
 
 
 @dataclass
@@ -643,82 +521,28 @@ def build_training_plan(
     legacy strategy adapter are appended as additional (opaque) inners.
     """
     inner_optimizers: list[Optimizer] = []
-    # one entry per inner: (member scheduler or None, plateau monitor
-    # or None)
-    entries: list[
-        tuple[LRScheduler | ReduceLROnPlateau | None, str | None]
-    ] = []
-    bypass_configs: list[Any] | None = None
+    entries: list[_MemberEntry] = []
     # `LearningRateMonitor` suffixes its key with the group name, but
     # only falls back to positional `pg1`, `pg2`, ... when there is
     # more than one group. A lone group is left unnamed so its key
     # stays the bare `lr-<optimizer>` of a plain config.
     name_groups = sum(len(inner.groups) for inner in plan.inners) > 1
     for inner in plan.inners:
-        torch_groups = [
-            {
-                "params": list(group.parameters),
-                **group.options,
-                **({"name": group.name} if name_groups else {}),
-            }
-            for group in inner.groups
-        ]
-        optimizer = from_registry(
-            OPTIMIZERS, inner.optimizer_name, params=torch_groups
+        optimizer = _build_inner_optimizer(inner, name_groups)
+        inner_optimizers.append(optimizer)
+        entries.append(
+            _member_entry(inner.scheduler, optimizer, main_metric_monitor)
         )
-        optimizer_keys = set(optimizer.defaults) | {"params", "name"}
-        for group in optimizer.param_groups:
-            unknown_keys = set(group) - optimizer_keys
-            if unknown_keys:
-                keys = ", ".join(sorted(unknown_keys))
-                raise TypeError(
-                    f"Invalid parameter group option(s) for optimizer "
-                    f"'{inner.optimizer_name}': {keys}"
-                )
-        inner_optimizers.append(optimizer)
-        member = _build_member_scheduler(inner.scheduler, optimizer)
-        if isinstance(member, ReduceLROnPlateau):
-            entries.append(
-                (
-                    member,
-                    _plateau_monitor(inner.scheduler, main_metric_monitor),
-                )
-            )
-        else:
-            entries.append((member, None))
 
-    for optimizer, scheduler in (
-        strategy.opaque_inners() if strategy is not None else []
-    ):
-        inner_optimizers.append(optimizer)
-        if isinstance(scheduler, dict):
-            entries.append((scheduler["scheduler"], scheduler.get("monitor")))
-            if bypass_configs is None:
-                bypass_configs = [scheduler]
-        elif scheduler is None:
-            entries.append((None, None))
-        else:
-            entries.append((scheduler, None))
-            if bypass_configs is None:
-                bypass_configs = [scheduler]
+    bypass_configs = _mount_opaque_inners(strategy, inner_optimizers, entries)
 
     validation_interval = cfg.trainer.validation_interval
 
     if len(inner_optimizers) == 1:
         if bypass_configs is None:
-            member, monitor = entries[0]
-            if monitor is not None:
-                bypass_configs = [
-                    {
-                        "scheduler": member,
-                        "monitor": monitor,
-                        "frequency": validation_interval,
-                    }
-                ]
-            elif member is not None:
-                bypass_configs = [member]
-            else:  # pragma: no cover
-                bypass_configs = []
+            bypass_configs = _bypass_scheduler_configs(
+                entries[0], validation_interval
+            )
         return TrainingPlanRuntime(
             plan=plan,
             inner_optimizers=tuple(inner_optimizers),
@@ -728,6 +552,252 @@ def build_training_plan(
         )
 
     composite = CompositeOptimizer(inner_optimizers)
+    return TrainingPlanRuntime(
+        plan=plan,
+        inner_optimizers=tuple(inner_optimizers),
+        members=tuple(entry[0] for entry in entries),
+        optimizer=composite,
+        scheduler_configs=_composite_scheduler_configs(
+            composite, entries, validation_interval
+        ),
+    )
+
+
+def _match_all(
+    module: nn.Module,
+    module_name: str,
+    parameter: nn.Parameter,
+    parameter_name: str,
+) -> bool:
+    _ = module, module_name, parameter, parameter_name
+    return True
+
+
+def _spec_key(name: str, params: Params) -> str:
+    return json.dumps(
+        {"name": name, "params": params}, sort_keys=True, default=repr
+    )
+
+
+def _unique_name(name: str, used: set[str]) -> str:
+    """Add C{name} to C{used}, suffixing it if necessary."""
+    unique = name
+    index = 2
+    while unique in used:
+        unique = f"{name}-{index}"
+        index += 1
+    used.add(unique)
+    return unique
+
+
+def _base_configs(
+    cfg: Config, strategy: "BaseTrainingStrategy | None"
+) -> tuple[OptimizerConfig, SchedulerConfig]:
+    if strategy is None:
+        return cfg.trainer.optimizer, cfg.trainer.scheduler
+    try:
+        return strategy.get_base_configs()
+    except NotImplementedError:
+        return cfg.trainer.optimizer, cfg.trainer.scheduler
+
+
+def _tail_scope(
+    node: "NodeWrapper",
+    any_node_rules: bool,
+    strategy: "BaseTrainingStrategy | None",
+) -> str:
+    # Freezing-scheduled nodes get their own tail group so that
+    # `lr_after_unfreeze` has a well-scoped target (the node-purity
+    # invariant); everything else shares one group, or one group
+    # per node when finetuning rules are present without a strategy
+    # (preserving the previous observable grouping).
+    if node.unfreeze_after is not None:
+        return node.name
+    if any_node_rules and strategy is None:
+        return node.name
+    return _SHARED
+
+
+def _claim_node_rules(
+    builder: _PlanBuilder,
+    node: "NodeWrapper",
+    base_optimizer: OptimizerConfig,
+    base_scheduler: SchedulerConfig,
+    epochs: int,
+) -> None:
+    for index, finetuning in enumerate(node.finetuning):
+        rule = Rule(
+            label=f"{node.name}/{index}",
+            selector=pattern_selector(
+                finetuning.parameters or [ParameterPattern(name=".*")]
+            ),
+            optimizer=OptimizerSpec.from_config(
+                merge_config_items(base_optimizer, finetuning.optimizer)
+            ),
+            scheduler=SchedulerSpec.from_config(
+                merge_config_items(base_scheduler, finetuning.scheduler),
+                epochs,
+            ),
+        )
+        if not builder.claim(rule, node.name, node.module, _SHARED):
+            raise ValueError(
+                "Finetuning parameters for node "
+                f"'{node.name}' did not match any "
+                "available trainable parameters."
+            )
+
+
+def _claim_strategy_rules(
+    builder: _PlanBuilder,
+    strategy: "BaseTrainingStrategy",
+    nodes: "Nodes",
+    base_scheduler: SchedulerConfig,
+    epochs: int,
+) -> None:
+    opaque_ids = strategy.opaque_parameter_ids()
+    overlap = opaque_ids & builder.claimed_ids
+    if overlap:
+        name = getattr(strategy, "legacy_name", type(strategy).__name__)
+        raise ValueError(
+            f"Legacy training strategy '{name}' claims "
+            f"{len(overlap)} parameter(s) already claimed by "
+            "finetuning rules. Remove the overlapping rules or "
+            "port the strategy to the new `rules()` API."
+        )
+    builder.mark_claimed(opaque_ids)
+    for strategy_rule in strategy.rules():
+        rule = Rule(
+            label=f"strategy/{strategy_rule.tag}",
+            selector=strategy_rule.selector,
+            optimizer=OptimizerSpec.from_config(strategy_rule.optimizer),
+            scheduler=SchedulerSpec.from_config(
+                strategy_rule.scheduler
+                if strategy_rule.scheduler is not None
+                else base_scheduler,
+                epochs,
+            ),
+            tag=strategy_rule.tag,
+        )
+        for node in nodes.values():
+            scope = node.name if node.unfreeze_after is not None else _SHARED
+            builder.claim(rule, node.name, node.module, scope)
+
+
+def _build_inner_optimizer(inner: InnerSpec, name_groups: bool) -> Optimizer:
+    torch_groups = [
+        {
+            "params": list(group.parameters),
+            **group.options,
+            **({"name": group.name} if name_groups else {}),
+        }
+        for group in inner.groups
+    ]
+    optimizer = from_registry(
+        OPTIMIZERS, inner.optimizer_name, params=torch_groups
+    )
+    optimizer_keys = set(optimizer.defaults) | {"params", "name"}
+    for group in optimizer.param_groups:
+        unknown_keys = set(group) - optimizer_keys
+        if unknown_keys:
+            keys = ", ".join(sorted(unknown_keys))
+            raise TypeError(
+                f"Invalid parameter group option(s) for optimizer "
+                f"'{inner.optimizer_name}': {keys}"
+            )
+    return optimizer
+
+
+def _member_entry(
+    spec: SchedulerSpec,
+    optimizer: Optimizer,
+    main_metric_monitor: str | None,
+) -> _MemberEntry:
+    member = _build_member_scheduler(spec, optimizer)
+    if isinstance(member, ReduceLROnPlateau):
+        return member, _plateau_monitor(spec, main_metric_monitor)
+    return member, None
+
+
+def _build_member_scheduler(
+    spec: SchedulerSpec, optimizer: Optimizer
+) -> LRScheduler:
+    def get(config: SchedulerConfig) -> LRScheduler:
+        return from_registry(
+            SCHEDULERS, config.name, **config.params, optimizer=optimizer
+        )
+
+    if spec.name == "SequentialLR":
+        sequential = SchedulerConfig(
+            name=spec.name, params=spec.params
+        ).get_sequential_lr_params()
+        return SequentialLR(
+            optimizer,
+            schedulers=[get(child) for child in sequential.schedulers],
+            milestones=sequential.milestones,
+            last_epoch=sequential.last_epoch,
+        )
+    return from_registry(
+        SCHEDULERS, spec.name, **spec.params, optimizer=optimizer
+    )
+
+
+def _plateau_monitor(
+    spec: SchedulerSpec, main_metric_monitor: str | None
+) -> str:
+    if spec.params.get("mode") == "max":
+        if main_metric_monitor is None:
+            raise ValueError(
+                "ReduceLROnPlateau with 'max' mode "
+                "requires a metric to monitor."
+            )
+        return main_metric_monitor
+    return "val/loss"
+
+
+def _mount_opaque_inners(
+    strategy: "BaseTrainingStrategy | None",
+    inner_optimizers: list[Optimizer],
+    entries: list[_MemberEntry],
+) -> list[_BypassConfig] | None:
+    if strategy is None:
+        return None
+    bypass_configs: list[_BypassConfig] | None = None
+    for optimizer, scheduler in strategy.opaque_inners():
+        inner_optimizers.append(optimizer)
+        if scheduler is None:
+            entries.append((None, None))
+            continue
+        if bypass_configs is None:
+            bypass_configs = [scheduler]
+        if isinstance(scheduler, dict):
+            entries.append((scheduler["scheduler"], scheduler.get("monitor")))
+        else:
+            entries.append((scheduler, None))
+    return bypass_configs
+
+
+def _bypass_scheduler_configs(
+    entry: _MemberEntry, validation_interval: int
+) -> list[_BypassConfig]:
+    member, monitor = entry
+    if member is None:  # pragma: no cover
+        return []
+    if monitor is not None:
+        return [
+            {
+                "scheduler": member,
+                "monitor": monitor,
+                "frequency": validation_interval,
+            }
+        ]
+    return [member]
+
+
+def _composite_scheduler_configs(
+    composite: CompositeOptimizer,
+    entries: list[_MemberEntry],
+    validation_interval: int,
+) -> list[LRSchedulerConfigType]:
     epoch_members = [
         member
         for member, monitor in entries
@@ -739,7 +809,7 @@ def build_training_plan(
             assert isinstance(member, ReduceLROnPlateau)
             plateau_by_monitor.setdefault(monitor, []).append(member)
 
-    scheduler_configs: list[Any] = []
+    scheduler_configs: list[LRSchedulerConfigType] = []
     if epoch_members:
         scheduler_configs.append(
             {
@@ -762,11 +832,4 @@ def build_training_plan(
                 "name": name,
             }
         )
-
-    return TrainingPlanRuntime(
-        plan=plan,
-        inner_optimizers=tuple(inner_optimizers),
-        members=tuple(entry[0] for entry in entries),
-        optimizer=composite,
-        scheduler_configs=scheduler_configs,
-    )
+    return scheduler_configs

@@ -19,10 +19,20 @@ OptsType: TypeAlias = Annotated[
     list[str] | None, Parameter(json_list=False, json_dict=False)
 ]
 
+_SECTION_BY_PACKAGE = {
+    "backbones": "Backbone",
+    "necks": "Neck",
+    "heads": "Head",
+}
+
 if TYPE_CHECKING:
     import numpy as np
+    from rich.console import Console
 
     from luxonis_train import LuxonisModel
+    from luxonis_train.config import NodeConfig
+    from luxonis_train.config.predefined_models import BasePredefinedModel
+    from luxonis_train.loaders import BaseLoaderTorch
 
 
 app = App(
@@ -144,95 +154,6 @@ def tune(
         model=model,
         variant=variant,
     ).tune()
-
-
-def _yield_visualizations(
-    opts: OptsType = None,
-    config: str | None = None,
-    view: Literal["train", "val", "test"] = "train",
-    size_multiplier: Annotated[
-        float, Parameter(["--size_multiplier", "-s"])
-    ] = 1.0,
-    list_augmentations: bool = False,
-    *,
-    model: str | None = None,
-    variant: str | None = None,
-) -> Iterator["np.ndarray"]:
-    import cv2
-    import numpy as np
-    from luxonis_ml.data.utils.cli_utils import get_tracked_augmentations
-    from luxonis_ml.data.utils.visualizations import (
-        add_augmentation_footer,
-        visualize,
-    )
-
-    from luxonis_train.utils.general import decode_text_metadata_labels
-
-    def get_visualization_item(
-        idx: int,
-    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], list[str]]:
-        raw_loader = getattr(loader, "loader", None)
-        if raw_loader is not None:
-            sample = raw_loader[idx]
-            np_images, np_labels = sample
-            if isinstance(np_images, np.ndarray):
-                np_images = {loader.image_source: np_images}
-
-            remap_keypoints = getattr(loader, "_remap_keypoints", None)
-            if (
-                getattr(loader, "kpts_mapping_per_task", None) is not None
-                and remap_keypoints is not None
-            ):
-                np_labels = remap_keypoints(np_labels)
-
-            return (
-                np_images,
-                np_labels,
-                list(get_tracked_augmentations(sample.metadata) or {}),
-            )
-
-        images, labels = loader[idx]
-        if not isinstance(images, dict):
-            images = {loader.image_source: images}
-        return (
-            {
-                name: image.numpy().transpose(1, 2, 0)
-                for name, image in images.items()
-            },
-            {task: label.numpy() for task, label in labels.items()},
-            [],
-        )
-
-    opts = opts or []
-    opts.extend(["trainer.preprocessing.normalize.active", "False"])
-
-    lx_model = create_model(config, opts, model=model, variant=variant)
-
-    loader = lx_model.loaders[view]
-
-    metadata_types = loader.get_metadata_types()
-    categorical_encodings = loader.get_categorical_encodings()
-    for idx in range(len(loader)):
-        np_images, np_labels, augmentations = get_visualization_item(idx)
-        main_image = np_images[loader.image_source]
-        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
-            np.uint8
-        )
-        np_labels = decode_text_metadata_labels(np_labels, metadata_types)
-
-        h, w, _ = main_image.shape
-        new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
-        main_image = cv2.resize(main_image, (new_w, new_h))
-        viz = visualize(
-            image=main_image,
-            labels=np_labels,
-            classes=loader.get_classes(),
-            source_name=loader.image_source,
-            categorical_encodings=categorical_encodings,
-        )
-        if list_augmentations:
-            viz = add_augmentation_footer(viz, augmentations)
-        yield viz
 
 
 @app.command(group=training_group, sort_key=3)
@@ -652,12 +573,7 @@ def list_models():
     from rich.console import Console
     from rich.table import Table
 
-    from luxonis_train.config.predefined import (
-        class_family,
-        list_predefined_models,
-        list_variants,
-    )
-    from luxonis_train.config.predefined_versions import list_versions
+    from luxonis_train.config.predefined import list_predefined_models
 
     entries = list_predefined_models()
     if not entries:
@@ -673,22 +589,9 @@ def list_models():
     table.add_column("Variants")
     table.add_column("Versions", style="green")
     for name, file_variants in entries.items():
-        default = file_variants[0]
-        variants = list_variants(name)
-        rendered_variants = []
-        for v in variants:
-            label = v if v is not None else "<default>"
-            rendered_variants.append(f"{label}*" if v == default else label)
-        family = class_family(name)
-        versions = list_versions(family) if family else {}
-        if versions:
-            latest = max(versions)
-            version_str = ", ".join(
-                f"v{v}*" if v == latest else f"v{v}" for v in versions
-            )
-        else:
-            version_str = "-"
-        table.add_row(name, ", ".join(rendered_variants), version_str)
+        table.add_row(
+            name, _variants_cell(name, file_variants[0]), _versions_cell(name)
+        )
 
     Console().print(table)
 
@@ -714,14 +617,10 @@ def info(*, model: str, variant: str | None = None):
         parse_model_spec,
         resolve_predefined_config,
     )
-    from luxonis_train.config.predefined_models.base_predefined_model import (
-        SimplePredefinedModel,
-    )
     from luxonis_train.config.predefined_versions import (
         resolve_predefined_class,
         resolved_class_name,
     )
-    from luxonis_train.registry import NODES
 
     importlib.import_module("luxonis_train.nodes")
     importlib.import_module("luxonis_train.config.predefined_models")
@@ -766,54 +665,10 @@ def info(*, model: str, variant: str | None = None):
     )
 
     node_configs = {node.name: node for node in predefined_model.nodes}
-    if isinstance(predefined_model, SimplePredefinedModel):
-        components = (
-            ("Backbone", predefined_model._backbone),
-            (
-                "Neck",
-                predefined_model._neck if predefined_model._use_neck else None,
-            ),
-            ("Head", predefined_model._head),
-        )
-    else:
-        section_by_module = {
-            "backbones": "Backbone",
-            "necks": "Neck",
-            "heads": "Head",
-        }
-        components = tuple(
-            (
-                next(
-                    (
-                        label
-                        for package, label in section_by_module.items()
-                        if f".nodes.{package}."
-                        in NODES.get(node.name).__module__
-                    ),
-                    "Node",
-                ),
-                node.name,
-            )
-            for node in predefined_model.nodes
-        )
-    for section, node_name in components:
+    for section, node_name in _info_components(predefined_model):
         if node_name is None:
             continue
-        node_config = node_configs[node_name]
-        node_class = NODES.get(node_name)
-        node_doc = (
-            node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
-        )
-        node_doc = inspect.cleandoc(node_doc or "")
-        body = Text(node_doc or "No documentation available.")
-        variant_label = node_config.variant or "default"
-        console.print(
-            Panel(
-                body,
-                title=f"[bold]{section}[/] · {node_name} ({variant_label})",
-                border_style="green",
-            )
-        )
+        _print_node_panel(console, section, node_name, node_configs[node_name])
 
 
 @upgrade_app.command()
@@ -918,6 +773,181 @@ def launcher(
                 if spec.loader:
                     spec.loader.exec_module(module)
     app(tokens)
+
+
+def _get_visualization_item(
+    loader: "BaseLoaderTorch", index: int
+) -> tuple[dict[str, "np.ndarray"], dict[str, "np.ndarray"], list[str]]:
+    import numpy as np
+    from luxonis_ml.data.utils.cli_utils import get_tracked_augmentations
+
+    raw_loader = getattr(loader, "loader", None)
+    if raw_loader is not None:
+        sample = raw_loader[index]
+        images, labels = sample
+        if isinstance(images, np.ndarray):
+            images = {loader.image_source: images}
+        remap_keypoints = getattr(loader, "_remap_keypoints", None)
+        if (
+            getattr(loader, "kpts_mapping_per_task", None) is not None
+            and remap_keypoints is not None
+        ):
+            labels = remap_keypoints(labels)
+        return (
+            images,
+            labels,
+            list(get_tracked_augmentations(sample.metadata) or {}),
+        )
+
+    images, labels = loader[index]
+    if not isinstance(images, dict):
+        images = {loader.image_source: images}
+    return (
+        {
+            name: image.numpy().transpose(1, 2, 0)
+            for name, image in images.items()
+        },
+        {task: label.numpy() for task, label in labels.items()},
+        [],
+    )
+
+
+def _yield_visualizations(
+    opts: OptsType = None,
+    config: str | None = None,
+    view: Literal["train", "val", "test"] = "train",
+    size_multiplier: Annotated[
+        float, Parameter(["--size_multiplier", "-s"])
+    ] = 1.0,
+    list_augmentations: bool = False,
+    *,
+    model: str | None = None,
+    variant: str | None = None,
+) -> Iterator["np.ndarray"]:
+    import cv2
+    import numpy as np
+    from luxonis_ml.data.utils.visualizations import (
+        add_augmentation_footer,
+        visualize,
+    )
+
+    from luxonis_train.utils.general import decode_text_metadata_labels
+
+    opts = opts or []
+    opts.extend(["trainer.preprocessing.normalize.active", "False"])
+
+    lx_model = create_model(config, opts, model=model, variant=variant)
+
+    loader = lx_model.loaders[view]
+
+    metadata_types = loader.get_metadata_types()
+    categorical_encodings = loader.get_categorical_encodings()
+    for idx in range(len(loader)):
+        np_images, np_labels, augmentations = _get_visualization_item(
+            loader, idx
+        )
+        main_image = np_images[loader.image_source]
+        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
+            np.uint8
+        )
+        np_labels = decode_text_metadata_labels(np_labels, metadata_types)
+
+        h, w, _ = main_image.shape
+        new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
+        main_image = cv2.resize(main_image, (new_w, new_h))
+        viz = visualize(
+            image=main_image,
+            labels=np_labels,
+            classes=loader.get_classes(),
+            source_name=loader.image_source,
+            categorical_encodings=categorical_encodings,
+        )
+        if list_augmentations:
+            viz = add_augmentation_footer(viz, augmentations)
+        yield viz
+
+
+def _variants_cell(name: str, default: str | None) -> str:
+    from luxonis_train.config.predefined import list_variants
+
+    labels = []
+    for v in list_variants(name):
+        label = v if v is not None else "<default>"
+        labels.append(f"{label}*" if v == default else label)
+    return ", ".join(labels)
+
+
+def _versions_cell(name: str) -> str:
+    from luxonis_train.config.predefined import class_family
+    from luxonis_train.config.predefined_versions import list_versions
+
+    family = class_family(name)
+    versions = list_versions(family) if family else {}
+    if not versions:
+        return "-"
+    latest = max(versions)
+    return ", ".join(f"v{v}*" if v == latest else f"v{v}" for v in versions)
+
+
+def _info_components(
+    predefined_model: "BasePredefinedModel",
+) -> tuple[tuple[str, str | None], ...]:
+    from luxonis_train.config.predefined_models.base_predefined_model import (
+        SimplePredefinedModel,
+    )
+
+    if isinstance(predefined_model, SimplePredefinedModel):
+        return (
+            ("Backbone", predefined_model._backbone),
+            (
+                "Neck",
+                predefined_model._neck if predefined_model._use_neck else None,
+            ),
+            ("Head", predefined_model._head),
+        )
+    return tuple(
+        (_node_section(node.name), node.name)
+        for node in predefined_model.nodes
+    )
+
+
+def _node_section(node_name: str) -> str:
+    from luxonis_train.registry import NODES
+
+    module = NODES.get(node_name).__module__
+    for package, label in _SECTION_BY_PACKAGE.items():
+        if f".nodes.{package}." in module:
+            return label
+    return "Node"
+
+
+def _print_node_panel(
+    console: "Console",
+    section: str,
+    node_name: str,
+    node_config: "NodeConfig",
+) -> None:
+    import inspect
+
+    from rich.panel import Panel
+    from rich.text import Text
+
+    from luxonis_train.registry import NODES
+
+    node_class = NODES.get(node_name)
+    node_doc = (
+        node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
+    )
+    node_doc = inspect.cleandoc(node_doc or "")
+    body = Text(node_doc or "No documentation available.")
+    variant_label = node_config.variant or "default"
+    console.print(
+        Panel(
+            body,
+            title=f"[bold]{section}[/] · {node_name} ({variant_label})",
+            border_style="green",
+        )
+    )
 
 
 if __name__ == "__main__":

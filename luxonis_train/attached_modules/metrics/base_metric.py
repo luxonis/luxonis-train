@@ -26,6 +26,13 @@ from luxonis_train.utils import get_signature
 
 MetricResult = Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
 
+_DistReduceFx = (
+    Literal["sum", "mean", "cat", "min", "max"]
+    | Callable[[Tensor], Tensor]
+    | Callable[[list[Tensor]], Tensor]
+    | None
+)
+
 
 @dataclass(kw_only=True, slots=True)
 class MetricState:
@@ -75,13 +82,7 @@ class MetricState:
     """
 
     default: Tensor | Number | list | None = None
-    dist_reduce_fx: (
-        Literal["sum", "mean", "cat", "min", "max"]
-        | Callable[[Tensor], Tensor]
-        | Callable[[list[Tensor]], Tensor]
-        | EllipsisType
-        | None
-    ) = ...
+    dist_reduce_fx: _DistReduceFx | EllipsisType = ...
     persistent: bool = False
 
 
@@ -107,41 +108,54 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         hints = get_type_hints(self.__class__, include_extras=True)
 
         for attr_name, attr_type in hints.items():
-            if get_origin(attr_type) is Annotated:
-                type_args = get_args(attr_type)
-                main_type = type_args[0]
+            self._register_metric_state(attr_name, attr_type)
 
-                state = next(
-                    (arg for arg in type_args if isinstance(arg, MetricState)),
-                    None,
+    def _register_metric_state(
+        self, attr_name: str, attr_type: object
+    ) -> None:
+        if get_origin(attr_type) is not Annotated:
+            return
+        type_args = get_args(attr_type)
+        state = next(
+            (arg for arg in type_args if isinstance(arg, MetricState)), None
+        )
+        if state is None:
+            return
+        default = self._metric_state_default(type_args[0], state.default)
+        self.add_state(
+            attr_name,
+            default=default,
+            dist_reduce_fx=self._metric_state_reducer(
+                default, state.dist_reduce_fx
+            ),
+            persistent=state.persistent,
+        )
+
+    @staticmethod
+    def _metric_state_default(
+        main_type: object, default: Tensor | Number | list | None
+    ) -> Tensor | list:
+        if default is None:
+            if main_type is Tensor:
+                default = 0.0
+            elif getattr(main_type, "__origin__", None) is list:
+                default = []
+            else:
+                raise ValueError(
+                    f"Unsupported type of a metric state: `{main_type}`"
                 )
-                if state is not None:
-                    default = state.default
-                    if default is None:
-                        if main_type is Tensor:
-                            default = 0.0
-                        elif getattr(main_type, "__origin__", None) is list:
-                            default = []
-                        else:
-                            raise ValueError(
-                                f"Unsupported type of a metric state: `{main_type}`"
-                            )
-                    if isinstance(default, Number):
-                        default = torch.tensor(default)
+        return (
+            torch.tensor(default) if isinstance(default, Number) else default
+        )
 
-                    dist_reduce_fx = state.dist_reduce_fx
-                    if dist_reduce_fx is ...:
-                        if isinstance(default, list):
-                            dist_reduce_fx = "cat"
-                        else:
-                            dist_reduce_fx = "sum"
-
-                    self.add_state(
-                        attr_name,
-                        default=default,
-                        dist_reduce_fx=dist_reduce_fx,
-                        persistent=state.persistent,
-                    )
+    @staticmethod
+    def _metric_state_reducer(
+        default: Tensor | list,
+        reducer: _DistReduceFx | EllipsisType,
+    ) -> _DistReduceFx:
+        if reducer is not ...:
+            return reducer
+        return "cat" if isinstance(default, list) else "sum"
 
     @abstractmethod
     def update(self, *args: Tensor | list[Tensor]) -> None:

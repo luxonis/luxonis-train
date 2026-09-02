@@ -1,9 +1,11 @@
+import copy
 import os
 import shutil
+from collections import defaultdict
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from loguru import logger
 from luxonis_ml.typing import PathType, check_type
@@ -11,6 +13,16 @@ from luxonis_ml.typing import PathType, check_type
 import luxonis_train as lxt
 from luxonis_train.config import ExportConfig
 from luxonis_train.config.config import HubAIExportConfig, PreprocessingConfig
+
+if TYPE_CHECKING:
+    from hubai_sdk import HubAIClient
+    from hubai_sdk.utils.sdk_models import ConvertResponse
+    from onnx import GraphProto, TensorProto
+
+
+class _InitializerInfo(TypedDict):
+    data: "TensorProto"
+    usage_count: int
 
 
 @contextmanager
@@ -230,101 +242,134 @@ def hubai_export(
     client = HubAIClient(api_key=hubai_token)
     archive_path = Path(archive_path)
 
-    existing_model = None
-    created_new_model = False
-    created_model_id = None
-    try:
-        models = client.models.list_models()
-        if models:
-            existing_model = next(
-                (m for m in models if m.name == model_name), None
-            )
-    except Exception as e:
-        logger.warning(f"Failed to check for existing model: {e}")
+    existing_model_id = _find_existing_model_id(client, model_name)
 
     variant_name = (
         f"{model_name}:{dataset_name}" if dataset_name else f"{model_name}"
     )
-
     base_kwargs: dict = {
         "path": str(archive_path),
         "quantization_mode": quantization_mode,
         "name": variant_name,
     }
 
-    if existing_model:
-        base_kwargs["model_id"] = str(existing_model.id)
-        logger.info(
-            f"Model '{model_name}' already exists on HubAI. "
-            f"Creating new variant '{variant_name}' under existing model."
-        )
-    else:
-        new_model = client.models.create_model(model_name)
-        created_model_id = str(new_model.id)
-        base_kwargs["model_id"] = created_model_id
-        created_new_model = True
-        logger.info(
-            f"Created new model '{model_name}' on HubAI. "
-            f"Creating variant '{variant_name}' under it."
-        )
+    created_model_id = _resolve_hubai_model(
+        client, existing_model_id, model_name, variant_name, base_kwargs
+    )
 
     if cfg.params:
         base_kwargs.update(cfg.params)
 
     variant_id = None
-
     try:
-        # TODO: reintroduce Hailo conversion when modelconv is released
-        # and hubai-sdk is updated accordingly
-        if cfg.platform == "rvc3":
-            response = client.convert.RVC3(**base_kwargs)
-        elif cfg.platform == "rvc4":
-            response = client.convert.RVC4(**base_kwargs)
-        elif cfg.platform == "hailo":
-            raise NotImplementedError(
-                "Hailo platform conversion is not yet supported."
-            )
-        else:
-            response = client.convert.RVC2(**base_kwargs)
-
+        response = _convert_for_platform(client, cfg.platform, base_kwargs)
         variant_id = str(response.instance.model_version_id)
-        downloaded_path = Path(response.downloaded_path)
-
-        export_path = Path(export_path)
-        output_path = export_path / downloaded_path.name
-
-        downloaded_parent = downloaded_path.parent
-
-        shutil.move(downloaded_path, output_path)
-
-        if downloaded_parent.exists() and downloaded_parent != Path.cwd():
-            with suppress(OSError):
-                downloaded_parent.rmdir()
-
-        logger.info(f"HubAI converted archive saved to {output_path}")
-        return output_path
+        return _finalize_hubai_output(response, export_path)
     finally:
-        if cfg.delete_remote_model:
-            try:
-                if created_new_model and created_model_id:
-                    client.models.delete_model(created_model_id)
-                    logger.debug(
-                        f"Cleaned up temporary HubAI model: {created_model_id}"
-                    )
-                elif variant_id:
-                    client.variants.delete_variant(variant_id)
-                    logger.debug(
-                        f"Cleaned up temporary HubAI variant: {variant_id}"
-                    )
-            except Exception as e:
-                resource_type = "model" if created_new_model else "variant"
-                resource_id = (
-                    created_model_id if created_new_model else variant_id
-                )
-                logger.warning(
-                    f"Failed to cleanup HubAI {resource_type} "
-                    f"'{resource_id}': {e}"
-                )
+        _cleanup_remote_model(client, cfg, created_model_id, variant_id)
+
+
+def _find_existing_model_id(
+    client: "HubAIClient", model_name: str
+) -> str | None:
+    try:
+        for model in client.models.list_models():
+            if model.name == model_name:
+                return str(model.id)
+    except Exception as e:
+        logger.warning(f"Failed to check for existing model: {e}")
+    return None
+
+
+def _resolve_hubai_model(
+    client: "HubAIClient",
+    existing_model_id: str | None,
+    model_name: str,
+    variant_name: str,
+    base_kwargs: dict,
+) -> str | None:
+    """Attach an existing model or create a new one.
+
+    Returns the id of the created model, or None when an existing model
+    was reused.
+    """
+    if existing_model_id is not None:
+        base_kwargs["model_id"] = existing_model_id
+        logger.info(
+            f"Model '{model_name}' already exists on HubAI. "
+            f"Creating new variant '{variant_name}' under existing model."
+        )
+        return None
+
+    new_model = client.models.create_model(model_name)
+    created_model_id = str(new_model.id)
+    base_kwargs["model_id"] = created_model_id
+    logger.info(
+        f"Created new model '{model_name}' on HubAI. "
+        f"Creating variant '{variant_name}' under it."
+    )
+    return created_model_id
+
+
+def _convert_for_platform(
+    client: "HubAIClient",
+    platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None,
+    base_kwargs: dict,
+) -> "ConvertResponse":
+    # TODO: reintroduce Hailo conversion when modelconv is released
+    # and hubai-sdk is updated accordingly
+    if platform == "rvc3":
+        return client.convert.RVC3(**base_kwargs)
+    if platform == "rvc4":
+        return client.convert.RVC4(**base_kwargs)
+    if platform == "hailo":
+        raise NotImplementedError(
+            "Hailo platform conversion is not yet supported."
+        )
+    return client.convert.RVC2(**base_kwargs)
+
+
+def _finalize_hubai_output(
+    response: "ConvertResponse", export_path: PathType
+) -> Path:
+    downloaded_path = Path(response.downloaded_path)
+    export_path = Path(export_path)
+    output_path = export_path / downloaded_path.name
+    downloaded_parent = downloaded_path.parent
+
+    shutil.move(downloaded_path, output_path)
+
+    if downloaded_parent.exists() and downloaded_parent != Path.cwd():
+        with suppress(OSError):
+            downloaded_parent.rmdir()
+
+    logger.info(f"HubAI converted archive saved to {output_path}")
+    return output_path
+
+
+def _cleanup_remote_model(
+    client: "HubAIClient",
+    cfg: HubAIExportConfig,
+    created_model_id: str | None,
+    variant_id: str | None,
+) -> None:
+    if not cfg.delete_remote_model:
+        return
+    try:
+        if created_model_id:
+            client.models.delete_model(created_model_id)
+            logger.debug(
+                f"Cleaned up temporary HubAI model: {created_model_id}"
+            )
+        elif variant_id:
+            client.variants.delete_variant(variant_id)
+            logger.debug(f"Cleaned up temporary HubAI variant: {variant_id}")
+    except Exception as e:
+        resource_type = "model" if created_model_id else "variant"
+        resource_id = created_model_id or variant_id
+        logger.warning(
+            f"Failed to cleanup HubAI {resource_type} '{resource_id}': {e}"
+        )
 
 
 def make_initializers_unique(onnx_path: PathType) -> None:
@@ -334,33 +379,62 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     @type onnx_path: PathType
     @param onnx_path: Path to the ONNX model file to modify.
     """
-    import copy
-    from collections import defaultdict
-
     import onnx
 
     onnx_path = str(onnx_path)
     model = onnx.load(onnx_path)
     graph = model.graph
 
-    initializer_info = {}
+    initializer_info = _collect_initializer_info(graph)
+    if not initializer_info:
+        logger.warning("No initializers found in the model")
+        return
+
+    _count_initializer_usages(graph, initializer_info)
+    name_mapping, new_initializers, duplicated_count = (
+        _build_unique_initializers(initializer_info)
+    )
+
+    del graph.initializer[:]
+    graph.initializer.extend(new_initializers)
+
+    _remap_node_inputs(graph, name_mapping)
+
+    onnx.save(model, onnx_path)
+    _check_onnx_model(onnx_path)
+
+    logger.info(
+        f"Processed {len(initializer_info)} initializers: "
+        f"{duplicated_count} shared initializers were duplicated"
+    )
+
+
+def _collect_initializer_info(
+    graph: "GraphProto",
+) -> dict[str, _InitializerInfo]:
+    initializer_info: dict[str, _InitializerInfo] = {}
     for initializer in graph.initializer:
         initializer_info[initializer.name] = {
             "data": copy.deepcopy(initializer),
             "usage_count": 0,
         }
+    return initializer_info
 
-    if not initializer_info:
-        logger.warning("No initializers found in the model")
-        return
 
+def _count_initializer_usages(
+    graph: "GraphProto", initializer_info: dict[str, _InitializerInfo]
+) -> None:
     for node in graph.node:
         for input_name in node.input:
             if input_name in initializer_info:
                 initializer_info[input_name]["usage_count"] += 1
 
-    name_mapping = defaultdict(list)
-    new_initializers = []
+
+def _build_unique_initializers(
+    initializer_info: dict[str, _InitializerInfo],
+) -> tuple[dict[str, list[str]], list["TensorProto"], int]:
+    name_mapping: dict[str, list[str]] = defaultdict(list)
+    new_initializers: list[TensorProto] = []
     duplicated_count = 0
 
     for original_name, info in initializer_info.items():
@@ -379,9 +453,12 @@ def make_initializers_unique(onnx_path: PathType) -> None:
                 new_initializer.name = new_name
                 new_initializers.append(new_initializer)
 
-    del graph.initializer[:]
-    graph.initializer.extend(new_initializers)
+    return name_mapping, new_initializers, duplicated_count
 
+
+def _remap_node_inputs(
+    graph: "GraphProto", name_mapping: dict[str, list[str]]
+) -> None:
     usage_counters = dict.fromkeys(name_mapping, 0)
 
     for node in graph.node:
@@ -398,7 +475,9 @@ def make_initializers_unique(onnx_path: PathType) -> None:
         del node.input[:]
         node.input.extend(new_inputs)
 
-    onnx.save(model, onnx_path)
+
+def _check_onnx_model(onnx_path: str) -> None:
+    import onnx
 
     try:
         onnx.checker.check_model(onnx_path)
@@ -407,8 +486,3 @@ def make_initializers_unique(onnx_path: PathType) -> None:
             f"ONNX checker failed after making initializers unique: {e}. "
             "If you encounter issues, try exporting with unique_onnx_initializers=False."
         )
-
-    logger.info(
-        f"Processed {len(initializer_info)} initializers: "
-        f"{duplicated_count} shared initializers were duplicated"
-    )

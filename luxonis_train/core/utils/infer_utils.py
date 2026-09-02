@@ -91,41 +91,65 @@ def infer_from_video(
         ret, frame = cap.read()
         if not ret:  # pragma: no cover
             break
-        if model.cfg.trainer.preprocessing.color_space == "RGB":
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # TODO: batched inference
-        outputs = prepare_and_infer_image(
-            model, {"image": torch.tensor(frame)}
-        )
-        renders = process_visualizations(outputs.visualizations)
-
-        for (node_name, viz_name), [viz] in renders.items():
-            if save_dir is not None:
-                name = f"{node_name}_{viz_name}"
-                if name not in writers:
-                    w, h = viz.shape[1], viz.shape[0]
-                    writers[name] = cv2.VideoWriter(
-                        filename=str(save_dir / f"{name}.mp4"),
-                        fourcc=cv2.VideoWriter.fourcc(*"mp4v"),
-                        fps=cap.get(cv2.CAP_PROP_FPS),
-                        frameSize=(w, h),
-                    )
-                if name in writers:
-                    writers[name].write(viz)
-            else:  # pragma: no cover
-                cv2.imshow(f"{node_name}/{viz_name}", viz)
+        renders = _infer_video_frame(model, frame)
+        _write_or_show_renders(renders, writers, save_dir, cap)
 
         if not save_dir and window_closed():  # pragma: no cover
             break
 
     cap.release()
-    if save_dir is None:  # pragma: no cover
-        with suppress(cv2.error):  # type: ignore
-            cv2.destroyAllWindows()
-
+    _close_video_windows(save_dir)
     for writer in writers.values():
         writer.release()
+
+
+def _infer_video_frame(
+    model: "lxt.LuxonisModel", frame: np.ndarray
+) -> dict[tuple[str, str], list[np.ndarray]]:
+    if model.cfg.trainer.preprocessing.color_space == "RGB":
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    outputs = prepare_and_infer_image(model, {"image": torch.tensor(frame)})
+    return process_visualizations(outputs.visualizations)
+
+
+def _write_or_show_renders(
+    renders: dict[tuple[str, str], list[np.ndarray]],
+    writers: dict[str, cv2.VideoWriter],
+    save_dir: Path | None,
+    capture: cv2.VideoCapture,
+) -> None:
+    for (node_name, viz_name), [viz] in renders.items():
+        if save_dir is None:  # pragma: no cover
+            cv2.imshow(f"{node_name}/{viz_name}", viz)
+            continue
+        name = f"{node_name}_{viz_name}"
+        writer = writers.get(name)
+        if writer is None:
+            writer = _create_video_writer(name, viz, save_dir, capture)
+            writers[name] = writer
+        writer.write(viz)
+
+
+def _create_video_writer(
+    name: str,
+    visualization: np.ndarray,
+    save_dir: Path,
+    capture: cv2.VideoCapture,
+) -> cv2.VideoWriter:
+    width, height = visualization.shape[1], visualization.shape[0]
+    return cv2.VideoWriter(
+        filename=str(save_dir / f"{name}.mp4"),
+        fourcc=cv2.VideoWriter.fourcc(*"mp4v"),
+        fps=capture.get(cv2.CAP_PROP_FPS),
+        frameSize=(width, height),
+    )
+
+
+def _close_video_windows(save_dir: Path | None) -> None:
+    if save_dir is not None:  # pragma: no cover
+        return
+    with suppress(cv2.error):  # type: ignore
+        cv2.destroyAllWindows()
 
 
 def infer_from_loader(

@@ -184,31 +184,44 @@ class FreezeSchedule:
         edge must not re-apply it).
         """
         for plan in self._plans:
-            frozen = plan.is_frozen(epoch)
-            froze = unfroze = False
-            for parameter, original in zip(
-                plan.parameters, plan.original_requires_grad, strict=True
-            ):
-                target = original and not frozen
-                if parameter.requires_grad and not target:
-                    froze = True
-                elif target and not parameter.requires_grad:
-                    unfroze = True
-                parameter.requires_grad = target
-            for batch_norm, original in zip(
-                plan.batch_norms,
-                plan.original_track_running_stats,
-                strict=True,
-            ):
-                batch_norm.track_running_stats = False if frozen else original
-            if froze:
-                logger.info(f"Freezing node '{plan.node_name}'")
-            if unfroze:
-                logger.info(f"Unfreezing node '{plan.node_name}'")
-            if (
-                runtime is not None
-                and plan.unfreezes_at(epoch)
-                and plan.lr_after_unfreeze is not None
-            ):
-                for handle in plan.group_handles:
-                    runtime.set_group_base_lr(handle, plan.lr_after_unfreeze)
+            _apply_plan(plan, epoch, runtime)
+
+
+def _apply_plan(
+    plan: NodeFreezePlan,
+    epoch: int,
+    runtime: "TrainingPlanRuntime | None",
+) -> None:
+    frozen = plan.is_frozen(epoch)
+    froze, unfroze = _converge_requires_grad(plan, frozen)
+    for batch_norm, original in zip(
+        plan.batch_norms, plan.original_track_running_stats, strict=True
+    ):
+        batch_norm.track_running_stats = False if frozen else original
+    if froze:
+        logger.info(f"Freezing node '{plan.node_name}'")
+    if unfroze:
+        logger.info(f"Unfreezing node '{plan.node_name}'")
+    if (
+        runtime is not None
+        and plan.unfreezes_at(epoch)
+        and plan.lr_after_unfreeze is not None
+    ):
+        for handle in plan.group_handles:
+            runtime.set_group_base_lr(handle, plan.lr_after_unfreeze)
+
+
+def _converge_requires_grad(
+    plan: NodeFreezePlan, frozen: bool
+) -> tuple[bool, bool]:
+    froze = unfroze = False
+    for parameter, original in zip(
+        plan.parameters, plan.original_requires_grad, strict=True
+    ):
+        target = original and not frozen
+        if parameter.requires_grad and not target:
+            froze = True
+        elif target and not parameter.requires_grad:
+            unfroze = True
+        parameter.requires_grad = target
+    return froze, unfroze
