@@ -45,7 +45,6 @@ def _predefined_model_params() -> list[ParameterSet]:
     return params
 
 
-
 def _infer_source(
     subtest: str, img_dir: Path, video_path: Path
 ) -> Path | None:
