@@ -138,10 +138,10 @@ def _create_video_writer(
 ) -> cv2.VideoWriter:
     width, height = visualization.shape[1], visualization.shape[0]
     return cv2.VideoWriter(
-        filename=str(save_dir / f"{name}.mp4"),  # type: ignore
-        fourcc=cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
-        fps=capture.get(cv2.CAP_PROP_FPS),  # type: ignore
-        frameSize=(width, height),  # type: ignore
+        filename=str(save_dir / f"{name}.mp4"),
+        fourcc=cv2.VideoWriter.fourcc(*"mp4v"),
+        fps=capture.get(cv2.CAP_PROP_FPS),
+        frameSize=(width, height),
     )
 
 
