@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from threading import ExceptHookArgs, Thread
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -28,6 +28,10 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data.dataloader import DataLoader
 from typeguard import typechecked
 
+if TYPE_CHECKING:
+    import optuna
+    from sqlalchemy import URL
+
 from luxonis_train.callbacks import (
     FailOnNoTrainBatches,
     GracefulInterruptCallback,
@@ -35,6 +39,7 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
+from luxonis_train.config.config import CallbackConfig, TunerConfig
 from luxonis_train.config.predefined import resolve_predefined_config
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import get_main_metric
@@ -210,8 +215,7 @@ class LuxonisModel:
             ckpt = torch.load(downloaded, map_location="cpu")  # nosemgrep
             return downloaded, ckpt
         raise ValueError(  # pragma: no cover
-            f"Invalid type for weights: {type(weights)}. "
-            "Expected str or dict."
+            f"Invalid type for weights: {type(weights)}. Expected str or dict."
         )
 
     @staticmethod
@@ -942,148 +946,6 @@ class LuxonisModel:
     def tune(self) -> None:
         """Run Optuna tuning of hyperparameters."""
         import optuna
-        from optuna.integration import PyTorchLightningPruningCallback
-        from sqlalchemy import URL
-
-        from .utils.tune_utils import (
-            get_trial_params,
-            rename_params_for_logging,
-        )
-
-        def _objective(trial: optuna.trial.Trial) -> float:
-            """Objective function used to optimize Optuna study."""
-            cfg_tracker = self.cfg.tracker
-            tracker_params = get_tracker_init_params(cfg_tracker)
-            tracker_params["run_name"] = (
-                tracker_params["run_name"] or self.tracker.run_name
-            )
-            child_tracker = LuxonisTrackerPL(
-                rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-                is_sweep=True,
-                **tracker_params,
-            )
-
-            run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
-
-            assert self.cfg.tuner is not None
-            curr_params = get_trial_params(
-                all_augs, self.cfg.tuner.params, trial
-            )
-            curr_params["model.predefined_model"] = None
-
-            cfg_copy = self.cfg.model_copy(deep=True)
-            # manually remove Normalize so it doesn't
-            # get duplicated when creating new cfg instance
-            cfg_copy.trainer.preprocessing.augmentations = [
-                a
-                for a in cfg_copy.trainer.preprocessing.augmentations
-                if a.name != "Normalize"
-            ]
-            cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
-
-            unsupported_callbacks = {
-                "UploadCheckpoint",
-                "ExportOnTrainEnd",
-                "ArchiveOnTrainEnd",
-                "TestOnTrainEnd",
-            }
-
-            filtered_callbacks = []
-            for cb in cfg.trainer.callbacks:
-                if cb.name in unsupported_callbacks:
-                    logger.warning(
-                        f"Callback '{cb.name}' is not supported for tuning and is removed from the callbacks list."
-                    )
-                else:
-                    filtered_callbacks.append(cb)
-
-            cfg.trainer.callbacks = filtered_callbacks
-
-            renamed_params = rename_params_for_logging(
-                curr_params, self.cfg.tuner.params
-            )
-            child_tracker.log_hyperparams(renamed_params)
-
-            cfg.save_data(run_save_dir / "training_config.yaml")
-            cfg.trainer.n_sanity_val_steps = 0
-            lightning_module = LuxonisLightningModule(
-                cfg=cfg,
-                dataset_metadata=self.dataset_metadata,
-                save_dir=run_save_dir,
-                input_shapes=self.loaders["train"].input_shapes,
-                _core=self,
-            )
-            callbacks: list[pl.Callback] = [
-                (
-                    LuxonisRichProgressBar()
-                    if cfg.rich_logging
-                    else LuxonisTQDMProgressBar()
-                )
-            ]
-
-            if cfg.tuner.monitor == "loss":
-                monitor = "val/loss"
-            else:
-                main_metric = get_main_metric(cfg)
-                if main_metric is None:  # pragma: no cover
-                    raise ValueError(
-                        "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
-                    )
-                all_mlflow_logging_keys = self.get_mlflow_logging_keys()
-                search_name = (
-                    "mcc"
-                    if main_metric.metric_name == "ConfusionMatrix"
-                    else main_metric.metric_name
-                )
-                monitor = next(
-                    (
-                        k
-                        for k in all_mlflow_logging_keys["metrics"]
-                        if search_name in k
-                        and main_metric.node_name in k
-                        and "val" in k
-                    ),
-                    None,
-                )
-                if monitor is None:
-                    raise ValueError(
-                        f"Could not find monitor key for main metric '{main_metric.metric_name}' "
-                        f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
-                    )
-
-            pruner_callback = PyTorchLightningPruningCallback(
-                trial, monitor=monitor
-            )
-            graceful_interrupt_callback = GracefulInterruptCallback(
-                self.run_save_dir, self.tracker
-            )
-            fail_no_train_batches_callback = FailOnNoTrainBatches()
-
-            callbacks.append(pruner_callback)
-            callbacks.append(graceful_interrupt_callback)
-            callbacks.append(fail_no_train_batches_callback)
-
-            if self.cfg.trainer.seed is not None:
-                pl.seed_everything(cfg.trainer.seed, workers=True)
-
-            pl_trainer = create_trainer(
-                cfg.trainer, logger=child_tracker, callbacks=callbacks
-            )
-
-            try:
-                pl_trainer.fit(
-                    lightning_module,
-                    self.train_loader,
-                    self.val_loader,
-                )
-                pruner_callback.check_pruned()
-
-            # Pruning is done by raising an error
-            except optuna.TrialPruned as e:
-                logger.info(e)
-
-            return pl_trainer.callback_metrics[monitor].item()
 
         cfg_tuner = self.cfg.tuner
         if cfg_tuner is None:
@@ -1135,7 +997,9 @@ class LuxonisModel:
 
         self._finalize_wandb_tuning(study)
 
-    def _tune_objective(self, trial: Any, all_augs: list[str]) -> float:
+    def _tune_objective(
+        self, trial: "optuna.trial.Trial", all_augs: list[str]
+    ) -> float:
         """Objective function used to optimize Optuna study."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
@@ -1216,7 +1080,7 @@ class LuxonisModel:
         return pl_trainer.callback_metrics[monitor].item()
 
     def _build_tuning_config(
-        self, trial: Any, all_augs: list[str]
+        self, trial: "optuna.trial.Trial", all_augs: list[str]
     ) -> tuple[Config, Params]:
         from .utils.tune_utils import get_trial_params
 
@@ -1236,7 +1100,7 @@ class LuxonisModel:
         return cfg, curr_params
 
     @staticmethod
-    def _filter_tuning_callbacks(cfg: Config) -> list:
+    def _filter_tuning_callbacks(cfg: Config) -> list[CallbackConfig]:
         unsupported_callbacks = {
             "UploadCheckpoint",
             "ExportOnTrainEnd",
@@ -1248,7 +1112,7 @@ class LuxonisModel:
         for cb in cfg.trainer.callbacks:
             if cb.name in unsupported_callbacks:
                 logger.warning(
-                    f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
+                    f"Callback '{cb.name}' is not supported for tuning and is removed from the callbacks list."
                 )
             else:
                 filtered_callbacks.append(cb)
@@ -1306,7 +1170,7 @@ class LuxonisModel:
             self.parent_tracker.experiment["mlflow"].active_run()
 
     @staticmethod
-    def _build_optuna_storage(cfg_tuner: Any) -> Any:
+    def _build_optuna_storage(cfg_tuner: TunerConfig) -> "URL | None":
         from sqlalchemy import URL
 
         if not cfg_tuner.storage.active:
@@ -1324,7 +1188,7 @@ class LuxonisModel:
         logger.info(f"Using '{storage}' as Optuna storage.")
         return storage
 
-    def _finalize_wandb_tuning(self, study: Any) -> None:
+    def _finalize_wandb_tuning(self, study: "optuna.study.Study") -> None:
         if not self.cfg.tracker.is_wandb:  # pragma: no cover
             return
         # If wandb used then init parent tracker separately at the end
