@@ -238,7 +238,7 @@ class UpBlock(nn.Sequential):
         use_norm: bool,
         align_corners: bool,
         stride: int = 2,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
         interpolation_mode: Literal[
             "nearest", "linear", "bilinear", "bicubic", "trilinear"
         ] = "bilinear",
@@ -260,9 +260,9 @@ class UpBlock(nn.Sequential):
             (for ConvTranspose2D) or one of 'simple_upsample' or
             'conv_upsample' (for nn.Upsample). 'conv_upsample' adds an
             additional 1x1 convolution after calling nn.Upsample.
-        @type inter_mode: str
-        @param inter_mode: Interpolation mode used for nn.Upsample
-            (e.g., 'bilinear', 'nearest').
+        @type interpolation_mode: str
+        @param interpolation_mode: Interpolation mode used for
+            nn.Upsample (e.g., 'bilinear', 'nearest').
         @type align_corners: bool
         @param align_corners: Align corners option for upsampling
             methods that support it. Defaults to False.

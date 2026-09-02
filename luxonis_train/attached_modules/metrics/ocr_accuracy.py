@@ -38,8 +38,8 @@ class OCRAccuracy(BaseMetric):
 
         @type predictions: Tensor
         @param predictions: A tensor containing the network predictions.
-        @type targets: Tensor
-        @param targets: A tensor containing the target labels.
+        @type target: Tensor
+        @param target: A tensor containing the target labels.
         """
         target = self.node.encoder(target).to(self.device)
 

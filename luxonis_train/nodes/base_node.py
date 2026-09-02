@@ -13,7 +13,7 @@ from luxonis_ml.typing import Kwargs, check_type
 from torch import Size, Tensor, nn
 from typeguard import typechecked
 
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
@@ -189,7 +189,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Get the name of the default varaint and a dictionary of
+        """Get the name of the default variant and a dictionary of
         available model variants with their parameters.
 
         The keys are the variant names, and the values are dictionaries
@@ -473,7 +473,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         else:
             local_path = safe_download(ckpt)
             if local_path:
-                # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+                # load explicitly to cpu, PL takes care of transferring to CUDA is needed
                 state_dict = torch.load(  # nosemgrep
                     local_path, weights_only=False, map_location="cpu"
                 )["state_dict"]
@@ -505,13 +505,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._export = mode
 
         for name, module in self.named_modules():
-            if isinstance(module, Reparametrizable):
+            if isinstance(module, Reparameterizable):
                 if mode:
-                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
-                    module.reparametrize()
+                    logger.debug(f"Reparameterizing '{name}' in '{self.name}'")
+                    module.reparameterize()
                 else:
                     logger.debug(
-                        f"Restoring reparametrized '{name}' in '{self.name}'"
+                        f"Restoring reparameterized '{name}' in '{self.name}'"
                     )
                     module.restore()
 
@@ -749,7 +749,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             "and could not be inferred. "
             "Some parts of the framework will not work. "
             "Either pass `attach_index` to the base constructor, "
-            "define it as a class atrribute, or provide proper "
+            "define it as a class attribute, or provide proper "
             "type hints for the `forward` method for implicit inference"
         )
 

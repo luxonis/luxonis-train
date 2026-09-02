@@ -5,7 +5,7 @@ from torch import Tensor, nn
 from typeguard import typechecked
 
 from luxonis_train.nodes.blocks import (
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SqueezeExciteBlock,
 )
 
@@ -73,7 +73,7 @@ class LCNetV3Block(nn.Module):
         n_branches: int = 4,
     ):
         super().__init__()
-        self.dw_conv = GeneralReparametrizableBlock(
+        self.dw_conv = GeneralReparameterizableBlock(
             in_channels=in_channels,
             out_channels=in_channels,
             kernel_size=kernel_size,
@@ -93,7 +93,7 @@ class LCNetV3Block(nn.Module):
         else:
             self.se = nn.Identity()
 
-        self.pw_conv = GeneralReparametrizableBlock(
+        self.pw_conv = GeneralReparameterizableBlock(
             in_channels=in_channels,
             out_channels=out_channels,
             padding=0,

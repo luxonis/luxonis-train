@@ -11,8 +11,13 @@ repos:
         # Matches the outputs as well, so hand-edits to them get reverted.
         files: ^(pyproject\.toml|uv\.lock|requirements(-[a-z]+)?\.txt|scripts/export_requirements\.sh)$
 
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.47.2
+    hooks:
+      - id: typos
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.14
+    rev: v0.16.1
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]

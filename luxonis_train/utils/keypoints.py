@@ -118,11 +118,11 @@ def compute_pose_oks(
     """Compute batched Object Keypoint Similarity (OKS) between ground
     truth and predicted keypoints.
 
-    @type pred_kpts: Tensor
-    @param pred_kpts: Predicted keypoints with shape [N, M2,
+    @type predictions: Tensor
+    @param predictions: Predicted keypoints with shape [N, M2,
         n_keypoints, 3]
-    @type gt_kpts: Tensor
-    @param gt_kpts: Ground truth keypoints with shape [N, M1,
+    @type targets: Tensor
+    @param targets: Ground truth keypoints with shape [N, M1,
         n_keypoints, 3]
     @type sigmas: Tensor
     @param sigmas: Sigmas for each keypoint, shape [n_keypoints]

@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
 
-from .reparametrizable import Reparametrizable
+from .reparameterizable import Reparameterizable
 from .utils import ModuleFactory, autopad
 
 
@@ -78,8 +78,6 @@ class EfficientDecoupledBlock(nn.Module):
         @param n_classes: Number of classes.
         @type in_channels: int
         @param in_channels: Number of input channels.
-        @type prior_probability: float
-        @param prior_probability: ???
         """
         super().__init__()
 
@@ -222,7 +220,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: Callable[[Tensor], Tensor] | None | bool = True,
+        activation: Callable[[Tensor], Tensor] | bool | None = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -337,7 +335,7 @@ class SqueezeExciteBlock(nn.Sequential):
 
 
 # TODO: Maybe a better name?
-class GeneralReparametrizableBlock(Reparametrizable):
+class GeneralReparameterizableBlock(Reparameterizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -354,9 +352,9 @@ class GeneralReparametrizableBlock(Reparametrizable):
         refine_block: nn.Module | Literal["se"] | None = None,
         use_scale_layer: bool = True,
         scale_layer_padding: int | tuple[int, int] | None = None,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
     ):
-        """GeneralReparametrizableBlock is a basic rep-style block,
+        """GeneralReparameterizableBlock is a basic rep-style block,
         including training and deploy status.
 
         @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
@@ -375,7 +373,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         @param groups: Groups. Defaults to C{1}.
         @type n_branches: int
         @param n_branches: Number of convolutional branches.
-            During reparametrization, the branches are fused to a single
+            During reparameterization, the branches are fused to a single
             convolutional layer. Defaults to C{1}.
         @type refine_block: nn.Module | Literal["se"] | None
         @param refine_block: A block to refine the output.
@@ -468,7 +466,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         return self.__class__.__name__
 
     @override
-    def reparametrize(self) -> None:
+    def reparameterize(self) -> None:
         if self.fused_branch is not None:
             return
 
@@ -572,7 +570,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         if running_var is None or running_mean is None:
             raise ValueError(
                 "Running variance and mean must be "
-                "provided for reparametrization."
+                "provided for reparameterization."
             )
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1).to(kernel.device)
@@ -605,8 +603,7 @@ class BlockRepeater(nn.Sequential):
         if "out_channels" in kwargs:
             kwargs["in_channels"] = kwargs["out_channels"]
 
-        for _ in range(n_repeats - 1):
-            blocks.append(module(**kwargs))
+        blocks.extend(module(**kwargs) for _ in range(n_repeats - 1))
 
         super().__init__(*blocks)
 
@@ -677,15 +674,15 @@ class BottleRep(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        module: ModuleFactory = GeneralReparametrizableBlock,
+        module: ModuleFactory = GeneralReparameterizableBlock,
         weight: bool = True,
         **kwargs,
     ):
         """RepVGG bottleneck module.
 
-        @type block: Callable[..., nn.Module]
-        @param block: Block to use. Defaults to
-            L{GeneralReparametrizableBlock}.
+        @type module: Callable[..., nn.Module]
+        @param module: Block to use. Defaults to
+            L{GeneralReparameterizableBlock}.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
@@ -747,10 +744,10 @@ class SpatialPyramidPoolingBlock(nn.Module):
         return self.conv2(x)
 
 
-class AttentionRefinmentBlock(nn.Module):
+class AttentionRefinementBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
-        """Attention Refinment block adapted from
+        """Attention Refinement block adapted from
         U{https://github.com/taveraantonio/BiseNetv1}.
 
         @type in_channels: int
@@ -895,12 +892,6 @@ class DropPath(nn.Module):
 
         @type x: Tensor
         @param x: Input tensor.
-        @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to
-            0.0.
-        @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep
-            probability. Defaults to True.
         @return: Tensor with dropped paths based on the provided drop
             probability.
         """

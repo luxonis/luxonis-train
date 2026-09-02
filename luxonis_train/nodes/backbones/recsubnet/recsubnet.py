@@ -29,7 +29,8 @@ class RecSubNet(BaseNode):
         version of the image by eliminating the noise or anomalies.
 
         This architecture is based on the paper:
-        "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
+        "DRAEM - A discriminatively trained reconstruction embedding
+        for surface anomaly detection" (https://arxiv.org/abs/2108.07610).
 
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder. Defaults to 3.
@@ -38,11 +39,10 @@ class RecSubNet(BaseNode):
         @param base_channels: The base width of the network.
             Determines the number of filters in the encoder and decoder.
 
-        @type encoder: nn.Module
-        @param encoder: The encoder block to use. Defaults to Encoder.
-
-        @type decoder: nn.Module
-        @param decoder: The decoder block to use. Defaults to Decoder.
+        @type width_multipliers: list[float] | None
+        @param width_multipliers: Multipliers applied to
+            C{base_channels} at the consecutive encoder stages. If
+            unspecified, defaults to C{[1, 2, 4, 8]}.
         """
         super().__init__(**kwargs)
         width_multipliers = width_multipliers or [1, 2, 4, 8]

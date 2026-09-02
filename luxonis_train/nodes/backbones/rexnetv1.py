@@ -54,7 +54,7 @@ class ReXNetV1_lite(BaseNode):
         @param multiplier: Channel dimension multiplier. Defaults to 1.0.
         @type kernel_sizes: int | list[int]
         @param kernel_sizes: Kernel size for each block. Defaults to 3.
-        @param out_indices: list[int] | None
+        @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [1, 4, 10, 17].
         """
         super().__init__(**kwargs)

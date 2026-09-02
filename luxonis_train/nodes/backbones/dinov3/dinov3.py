@@ -84,9 +84,9 @@ class DinoV3(BaseNode):
         @param variant: Architecture variant of the DINOv3 backbone.
         @type variant: Literal DINOv3Variant.
 
-        @param repo_dir: "facebookresearch/dinov3" if the repository
+        @param repo_or_dir: "facebookresearch/dinov3" if the repository
         is not locally downloaded or cached, "local" otherwise
-        @type repo_dir: str
+        @type repo_or_dir: str
 
         @param freeze_backbone: if True, freeze the backbone;
         this will lead to a transfer learning scenario where

@@ -43,7 +43,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         @param n_masks: Number of masks.
         @type n_proto: int
         @param n_proto: Number of prototypes for segmentation.
-        @type conf_thres: flaot
+        @type conf_thres: float
         @param conf_thres: Confidence threshold for NMS.
         @type iou_thres: float
         @param iou_thres: IoU threshold for NMS.
@@ -119,7 +119,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             return {
                 "features": features_list,
                 "prototypes": prototypes,
-                "mask_coeficients": mask_coefficients,
+                "mask_coefficients": mask_coefficients,
             }
 
         pred_bboxes = self._prepare_bbox_inference_output(
@@ -141,7 +141,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         results = {
             "features": features_list,
             "prototypes": prototypes,
-            "mask_coeficients": mask_coefficients,
+            "mask_coefficients": mask_coefficients,
             "boundingbox": [],
             self.task.main_output: [],
         }

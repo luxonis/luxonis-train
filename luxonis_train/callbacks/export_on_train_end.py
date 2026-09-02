@@ -14,9 +14,7 @@ class ExportOnTrainEnd(NeedsCheckpoint):
     ) -> None:
         """Export the model on train end.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
+        @type pl_module: L{lxt.LuxonisLightningModule}
         @param pl_module: Pytorch Lightning module.
         """
         checkpoint = self.get_checkpoint(pl_module)

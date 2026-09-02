@@ -67,16 +67,9 @@ class LuxonisModelSummary(RichModelSummary):
         console.print(table)
         self._log_console.print(table)
 
-        parameters = []
-        for param in [
-            trainable_parameters,
-            total_parameters - trainable_parameters,
-            total_parameters,
-            model_size,
-        ]:
-            parameters.append(
-                "{:<{}}".format(get_human_readable_count(int(param)), 10)
-            )
+        parameters = _format_parameter_counts(
+            trainable_parameters, total_parameters, model_size
+        )
 
         grid = Table.grid(expand=True)
         grid.add_column()
@@ -119,19 +112,28 @@ class LuxonisModelSummary(RichModelSummary):
         )
         logger.info(f"\n{table}\n")
 
-        parameters = []
-        for param in [
-            trainable_parameters,
-            total_parameters - trainable_parameters,
-            total_parameters,
-            model_size,
-        ]:
-            parameters.append(
-                "{:<{}}".format(get_human_readable_count(int(param)), 10)
-            )
+        parameters = _format_parameter_counts(
+            trainable_parameters, total_parameters, model_size
+        )
         logger.info(f"Trainable params: {parameters[0]}")
         logger.info(f"Non-trainable params: {parameters[1]}")
         logger.info(f"Total params: {parameters[2]}")
         logger.info(f"Total estimated model params size (MB): {parameters[3]}")
         logger.info(f"Modules in train mode: {total_training_modes['train']}")
         logger.info(f"Modules in eval mode: {total_training_modes['eval']}")
+
+
+def _format_parameter_counts(
+    trainable_parameters: int,
+    total_parameters: int,
+    model_size: float,
+) -> list[str]:
+    return [
+        f"{get_human_readable_count(int(count)):<10}"
+        for count in (
+            trainable_parameters,
+            total_parameters - trainable_parameters,
+            total_parameters,
+            model_size,
+        )
+    ]

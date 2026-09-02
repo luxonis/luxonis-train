@@ -148,27 +148,27 @@ def ssim(
     else:
         dynamic_range = val_range
 
-    padd = window_size // 2
+    pad = window_size // 2
     (_, channel, height, width) = img1.size()
     if window is None:
         real_size = min(window_size, height, width)
         window = create_window(real_size, channel=channel).to(img1.device)
 
-    mu1 = F.conv2d(img1, window, padding=padd, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=padd, groups=channel)
+    mu1 = F.conv2d(img1, window, padding=pad, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=pad, groups=channel)
 
     mu1_sq = mu1.pow(2)
     mu2_sq = mu2.pow(2)
     mu1_mu2 = mu1 * mu2
 
     sigma1_sq = (
-        F.conv2d(img1 * img1, window, padding=padd, groups=channel) - mu1_sq
+        F.conv2d(img1 * img1, window, padding=pad, groups=channel) - mu1_sq
     )
     sigma2_sq = (
-        F.conv2d(img2 * img2, window, padding=padd, groups=channel) - mu2_sq
+        F.conv2d(img2 * img2, window, padding=pad, groups=channel) - mu2_sq
     )
     sigma12 = (
-        F.conv2d(img1 * img2, window, padding=padd, groups=channel) - mu1_mu2
+        F.conv2d(img1 * img2, window, padding=pad, groups=channel) - mu1_mu2
     )
 
     c1 = (0.01 * dynamic_range) ** 2

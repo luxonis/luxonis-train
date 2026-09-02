@@ -104,8 +104,8 @@ class SegmentationVisualizer(BaseVisualizer):
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: Tensor
         @param predictions: The predictions to visualize.
-        @type targets: Tensor
-        @param targets: The targets to visualize.
+        @type target: Tensor | None
+        @param target: The targets to visualize.
         @rtype: tuple[Tensor, Tensor]
         @return: A tuple of the label and prediction visualizations.
         """

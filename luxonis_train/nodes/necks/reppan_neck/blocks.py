@@ -7,7 +7,7 @@ from luxonis_train.nodes.blocks import (
     BlockRepeater,
     ConvBlock,
     CSPStackRepBlock,
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
 )
 
 
@@ -74,7 +74,7 @@ class RepUpBlock(PANUpBlockBase):
             in_channels=in_channels,
             out_channels=out_channels,
             encode_block=BlockRepeater(
-                GeneralReparametrizableBlock,
+                GeneralReparameterizableBlock,
                 in_channels=in_channels_next + out_channels,
                 out_channels=out_channels,
                 n_repeats=n_repeats,
@@ -133,13 +133,8 @@ class PANDownBlockBase(ABC, nn.Module):
         @type downsample_out_channels: int
         @param downsample_out_channels: Number of output channels after
             downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        @type encode_block: nn.Module
+        @param encode_block: Encode block that is used.
         """
         super().__init__()
 
@@ -187,7 +182,7 @@ class RepDownBlock(PANDownBlockBase):
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
             encode_block=BlockRepeater(
-                GeneralReparametrizableBlock,
+                GeneralReparameterizableBlock,
                 n_repeats=n_repeats,
                 in_channels=downsample_out_channels + in_channels_next,
                 out_channels=out_channels,

@@ -18,6 +18,8 @@
 
 ![Title Image](media/example_viz/title.png)
 
+<a name="key-features"></a>
+
 ### ✨ Key Features
 
 - **No Coding Required**: Define your training pipeline entirely through a single `YAML` configuration file.
@@ -370,8 +372,8 @@ The easiest way to load data is to use a directory with the dataset in one of th
 - URL to a remote dataset
   - The dataset will be downloaded to a `"data"` directory in the current working directory
   - **Supported URL protocols:**
-    - `s3://bucket/path/to/directory` fo **AWS S3**
-    - `gs://buclet/path/to/directory` for **Google Cloud Storage**
+    - `s3://bucket/path/to/directory` for **AWS S3**
+    - `gs://bucket/path/to/directory` for **Google Cloud Storage**
     - `roboflow://{workspace}/{project}/{version}/{format}` for **RoboFlow**
       - `workspace` - name of the workspace the dataset belongs to
       - `project` - name of the project the dataset belongs to
@@ -735,7 +737,7 @@ Implement custom components by subclassing the respective base classes and/or re
 Registered components can be referenced in the config file. Custom components need to inherit from their respective base classes:
 
 - **Loaders** - [`BaseLoaderTorch`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
-- **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
+- **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/base_node.py)
 - **Losses** - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
 - **Metrics** - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
 - **Visualizers** - [`BaseVisualizer`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
@@ -810,7 +812,7 @@ trainer:
   callbacks:
     - name: CustomCallback
       params:
-        lr: "Hello from the custom callback!"
+        message: "Hello from the custom callback!"
 ```
 
 > [!NOTE]

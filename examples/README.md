@@ -63,7 +63,7 @@ To make the most use out of the framework, the nodes should define the following
     - `ANOMALY_DETECTION` - image anomaly detection tasks
     - `OCR` - optical character recognition
     - `FOMO` - used for the FOMO task. Special task learning on `"boundingbox"` labels, but predicting keypoints
-    - This namespace pattern could be a bit confusing if you look into the code. It is supposed to look like an enum because it esentially should be an enum. The only reason it's not is because enum cannot be extended on the user side but we need to support defining custom tasks
+    - This namespace pattern could be a bit confusing if you look into the code. It is supposed to look like an enum because it essentially should be an enum. The only reason it's not is because enum cannot be extended on the user side but we need to support defining custom tasks
   - To define a custom task, see [Custom Tasks](#custom-tasks)
 
 `BaseNode` implements a few convenient properties that can be used to access information about the model:
@@ -239,7 +239,7 @@ class CustomSegmentationHead(BaseHead):
     # If the head is attached to a node that produces
     # multiple outputs (like a list of feature maps for
     # most bakcbones), this specifies which output to use.
-    # Most heads are ususally attached to the last output.
+    # Most heads are usually attached to the last output.
     # If the value is not defined, it is inferred from the
     # type signature of the `forward` method. If that is
     # not possible, some parts of the framework will not
