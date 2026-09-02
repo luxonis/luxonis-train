@@ -170,7 +170,7 @@ class BaseAttachedModule(
 
     def get_parameters(
         self, predictions: Packet[Tensor], labels: Labels | None = None
-    ) -> dict[str, Tensor | list[Tensor]]:
+    ) -> dict[str, Tensor | list[Tensor] | None]:
         kwargs: dict[str, Tensor | list[Tensor] | None] = {}
         labels = labels or {}
         for kwarg_name, parameter in self._signature.items():
@@ -182,7 +182,7 @@ class BaseAttachedModule(
             )
 
         self._validate_parameter_types(kwargs)
-        return kwargs  # type: ignore
+        return kwargs
 
     def _parameter_source(
         self,
