@@ -409,7 +409,10 @@ class LuxonisModel:
 
     def _resolve_eval_subset(
         self, view: View
-    ) -> tuple[Any, torch.Generator | None]:
+    ) -> tuple[
+        BaseLoaderTorch | torch_data.Subset[LuxonisLoaderTorchOutput],
+        torch.Generator | None,
+    ]:
         n_val = self.cfg.trainer.n_validation_batches
         if n_val is None or view not in {"val", "test"}:
             return self.loaders[view], None

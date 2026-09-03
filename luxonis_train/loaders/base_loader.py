@@ -359,12 +359,15 @@ class BaseLoaderTorch(
     def _collate_inputs(
         inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...],
     ) -> dict[str, Tensor] | Tensor:
-        if not isinstance(inputs[0], dict):
-            return torch.stack(cast(tuple[Tensor, ...], inputs), 0)
-        input_dicts = cast(tuple[dict[str, Tensor], ...], inputs)
+        first = inputs[0]
+        if not isinstance(first, dict):
+            return torch.stack(
+                [item for item in inputs if isinstance(item, Tensor)], 0
+            )
+        input_dicts = [item for item in inputs if isinstance(item, dict)]
         return {
             name: torch.stack([item[name] for item in input_dicts], 0)
-            for name in input_dicts[0]
+            for name in first
         }
 
     @staticmethod
