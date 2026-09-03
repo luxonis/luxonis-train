@@ -65,16 +65,13 @@ class FOMOVisualizer(BBoxVisualizer):
         xy[:, 1] = xy[:, 1].clamp(0, image.size(-2) - 1)
         for class_id in torch.unique(classes):
             image = self._draw_class_keypoints(
-                image, xy, classes, class_id.item()
+                image, xy[classes == class_id], int(class_id)
             )
         return image
 
     def _draw_class_keypoints(
-        self, image: Tensor, xy: Tensor, classes: Tensor, class_id: int
+        self, image: Tensor, points: Tensor, class_id: int
     ) -> Tensor:
-        points = xy[classes == class_id]
-        if points.numel() == 0:
-            return image
         label = (
             self.label_dict.get(class_id, str(class_id))
             if self.label_dict

@@ -80,7 +80,6 @@ class ReXNetV1_lite(BaseNode):
             final_ch,
             divisible_value,
         )
-        assert channels_group
 
         pen_channels = (
             int(1280 * multiplier)

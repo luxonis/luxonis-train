@@ -770,7 +770,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         i: int, j: int, length: int, k: int | None
     ) -> slice:
         if i < j:
-            # ``i < j`` implies ``i > j`` is False, so the step is 1.
             return slice(max(length + i + 1, 0), length + j + 1, 1)
         return slice(length + i, length + j, (k or -1) if i > j else 1)
 

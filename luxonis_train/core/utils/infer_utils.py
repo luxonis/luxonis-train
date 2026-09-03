@@ -108,6 +108,8 @@ def _infer_video_frame(
 ) -> dict[tuple[str, str], list[np.ndarray]]:
     if model.cfg.trainer.preprocessing.color_space == "RGB":
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # TODO: batched inference
     outputs = prepare_and_infer_image(model, {"image": torch.tensor(frame)})
     return process_visualizations(outputs.visualizations)
 
@@ -146,7 +148,7 @@ def _create_video_writer(
 
 
 def _close_video_windows(save_dir: Path | None) -> None:
-    if save_dir is not None:  # pragma: no cover
+    if save_dir is not None:
         return
     with suppress(cv2.error):  # type: ignore
         cv2.destroyAllWindows()

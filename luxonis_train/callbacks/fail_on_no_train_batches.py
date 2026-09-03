@@ -3,6 +3,8 @@ from math import ceil
 import lightning.pytorch as pl
 from lightning.fabric.utilities.data import sized_len
 
+import luxonis_train as lxt
+
 
 class FailOnNoTrainBatches(pl.Callback):
     """Handles cases where number of training batches is 0 either due to
@@ -10,7 +12,7 @@ class FailOnNoTrainBatches(pl.Callback):
     """
 
     def on_fit_start(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         # Ensure Lightning has computed the effective number of train batches.
         trainer.fit_loop.setup_data()
@@ -20,16 +22,11 @@ class FailOnNoTrainBatches(pl.Callback):
 
 
 def _no_train_batches_message(
-    trainer: pl.Trainer, pl_module: pl.LightningModule
+    trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
 ) -> str:
     dataset_len, batch_size, drop_last = _loader_details(trainer)
     if batch_size is None:
-        configured_batch_size = pl_module.cfg.trainer.batch_size  # type: ignore
-        batch_size = (
-            configured_batch_size
-            if isinstance(configured_batch_size, int)
-            else None
-        )
+        batch_size = pl_module.cfg.trainer.batch_size
     min_required = _minimum_required_size(
         batch_size,
         drop_last,
