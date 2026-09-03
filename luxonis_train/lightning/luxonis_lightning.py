@@ -1032,12 +1032,10 @@ class LuxonisLightningModule(pl.LightningModule):
         max_log_images: int,
     ) -> None:
         if cls_task_keys is not None:
-            # Smart logging: balance class representation
             self._log_balanced_visualizations(
                 outputs, labels, cls_task_keys, mode, max_log_images
             )
         else:
-            # just log first N images
             self._n_logged_images = log_sequential_images(
                 self.tracker,
                 self.nodes,
@@ -1235,7 +1233,7 @@ def _aggregate_and_log_metrics(
                     current_epoch=module.current_epoch,
                 )
             metric.reset()
-            _assert_metrics_on_device(module, values)
+            _check_metrics_on_device(module, values)
             _log_metric_values(
                 module,
                 mode,
@@ -1249,7 +1247,7 @@ def _aggregate_and_log_metrics(
     return table, matrices
 
 
-def _assert_metrics_on_device(
+def _check_metrics_on_device(
     module: LuxonisLightningModule, values: dict[str, Tensor]
 ) -> None:
     if isinstance(

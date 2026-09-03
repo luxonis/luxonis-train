@@ -356,6 +356,37 @@ def potentially_upscale_masks(
 # We would then just have to support this new structure in the logger (`LuxonisTracker`).
 #
 #  TEST:
+def combine_visualizations(
+    visualization: Tensor
+    | tuple[Tensor, Tensor]
+    | tuple[Tensor, list[Tensor]],
+) -> Tensor:
+    """Default way of combining multiple visualizations into one final
+    image.
+    """
+    match visualization:
+        case Tensor() as viz:
+            return viz
+        case (Tensor(data=viz_labels), Tensor(data=viz_predictions)):
+            viz_labels, viz_predictions = _resize_to_match(
+                viz_labels, viz_predictions
+            )
+            return torch.cat([viz_labels, viz_predictions], dim=-1)
+
+        case (Tensor(data=_), [*viz]) if isinstance(viz, list) and all(
+            isinstance(v, Tensor) for v in viz
+        ):
+            raise NotImplementedError(
+                "Composition of multiple visualizations not yet supported."
+            )
+        case _:
+            raise ValueError(
+                "Visualization should be either a single tensor or a tuple of "
+                "two tensors or a tuple of a tensor and a list of tensors. "
+                f"Got: `{type(visualization)}`."
+            )
+
+
 def _target_size_for_keep_size(
     keep_size: Literal["larger", "smaller", "first", "second"],
     w1: int,
@@ -462,34 +493,3 @@ def _resize_to_match(
     snd_resized = TF.resize(snd, [target_height_snd, target_width_snd])
 
     return fst_resized, snd_resized
-
-
-def combine_visualizations(
-    visualization: Tensor
-    | tuple[Tensor, Tensor]
-    | tuple[Tensor, list[Tensor]],
-) -> Tensor:
-    """Default way of combining multiple visualizations into one final
-    image.
-    """
-    match visualization:
-        case Tensor() as viz:
-            return viz
-        case (Tensor(data=viz_labels), Tensor(data=viz_predictions)):
-            viz_labels, viz_predictions = _resize_to_match(
-                viz_labels, viz_predictions
-            )
-            return torch.cat([viz_labels, viz_predictions], dim=-1)
-
-        case (Tensor(data=_), [*viz]) if isinstance(viz, list) and all(
-            isinstance(v, Tensor) for v in viz
-        ):
-            raise NotImplementedError(
-                "Composition of multiple visualizations not yet supported."
-            )
-        case _:
-            raise ValueError(
-                "Visualization should be either a single tensor or a tuple of "
-                "two tensors or a tuple of a tensor and a list of tensors. "
-                f"Got: `{type(visualization)}`."
-            )
