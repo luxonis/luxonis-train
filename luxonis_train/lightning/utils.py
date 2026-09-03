@@ -718,11 +718,17 @@ def log_balanced_class_images(
     logged_indices = _select_balanced_indices(
         visualizations, labels, cls_task_keys, class_log_counts
     )
-    node_logged_images = _log_indexed_images(
+    balanced = {
+        node_name: {
+            viz_name: viz_batch[logged_indices]
+            for viz_name, viz_batch in node_visualizations.items()
+        }
+        for node_name, node_visualizations in visualizations.items()
+    }
+    node_logged_images = log_sequential_images(
         tracker,
         nodes,
-        visualizations,
-        logged_indices,
+        balanced,
         n_logged_images,
         max_log_images,
         mode,
@@ -758,34 +764,6 @@ def _select_balanced_indices(
                 for c in classes:
                     class_log_counts[c] += 1
     return logged_indices
-
-
-def _log_indexed_images(
-    tracker: LuxonisTrackerPL,
-    nodes: Nodes,
-    visualizations: dict[str, dict[str, Tensor]],
-    logged_indices: list[int],
-    n_logged_images: int,
-    max_log_images: int,
-    mode: Literal["test", "val"],
-    current_epoch: int,
-) -> int:
-    node_logged_images = n_logged_images
-    for node_name, node_visualizations in visualizations.items():
-        node_logged_images = n_logged_images
-        formatted_node_name = nodes.formatted_name(node_name)
-        for viz_name, viz_batch in node_visualizations.items():
-            for idx in logged_indices:
-                if node_logged_images >= max_log_images:
-                    break
-                tracker.log_image(
-                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}/{node_logged_images}",
-                    viz_batch[idx].detach().cpu().numpy().transpose(1, 2, 0),
-                    step=current_epoch,
-                )
-                node_logged_images += 1
-
-    return node_logged_images
 
 
 def log_sequential_images(

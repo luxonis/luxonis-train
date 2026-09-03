@@ -115,25 +115,29 @@ def _format_details(
     drop_last: bool | None,
     limit_batches: float,
 ) -> str:
-    details = [
-        f"dataset_size={dataset_len}" if dataset_len is not None else None,
-        f"min_required_size={min_required}"
-        if min_required is not None
-        else None,
-        (
-            f"missing={min_required - dataset_len}"
-            if dataset_len is not None
-            and min_required is not None
-            and dataset_len < min_required
-            else None
-        ),
-    ]
-    params = [
-        f"batch_size={batch_size}" if batch_size is not None else None,
-        f"world_size={world_size}",
-        f"drop_last={drop_last}" if drop_last is not None else None,
-        f"limit_train_batches={limit_batches}",
-    ]
-    detail_parts = [part for part in details if part is not None]
-    params_msg = ", ".join(part for part in params if part is not None)
-    return f"(details: {', '.join(detail_parts)}; params: {params_msg})"
+    missing = None
+    if (
+        dataset_len is not None
+        and min_required is not None
+        and dataset_len < min_required
+    ):
+        missing = min_required - dataset_len
+
+    details = _join(
+        dataset_size=dataset_len,
+        min_required_size=min_required,
+        missing=missing,
+    )
+    params = _join(
+        batch_size=batch_size,
+        world_size=world_size,
+        drop_last=drop_last,
+        limit_train_batches=limit_batches,
+    )
+    return f"(details: {details}; params: {params})"
+
+
+def _join(**parts: object) -> str:
+    return ", ".join(
+        f"{name}={value}" for name, value in parts.items() if value is not None
+    )

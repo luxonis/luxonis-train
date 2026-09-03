@@ -728,10 +728,7 @@ class LuxonisModel:
         self, path: PathType, name: str | None = None
     ) -> None:
         if self.cfg.exporter.upload_to_run:
-            if name is not None:
-                self.tracker.upload_artifact(path, name=name, typ="export")
-            else:
-                self.tracker.upload_artifact(path, typ="export")
+            self.tracker.upload_artifact(path, name=name, typ="export")
         if self.cfg.exporter.upload_url is not None:  # pragma: no cover
             LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 

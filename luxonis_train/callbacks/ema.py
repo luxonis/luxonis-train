@@ -7,7 +7,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from loguru import logger
-from torch import nn
+from torch import Tensor, nn
 
 from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
@@ -150,11 +150,11 @@ class EMACallback(pl.Callback):
         )
         if self.loaded_ema_state_dict is None:
             return
-        self._restore_loaded_ema_state()
+        self._restore_loaded_ema_state(self.loaded_ema_state_dict)
 
-    def _restore_loaded_ema_state(self) -> None:
-        loaded_checkpoint = self.loaded_ema_state_dict
-        assert loaded_checkpoint is not None
+    def _restore_loaded_ema_state(
+        self, loaded_checkpoint: Mapping[str, Tensor]
+    ) -> None:
         loaded_state = filter_checkpoint_state_dict(loaded_checkpoint)
         current_state = self.ema.state_dict_ema
         comparable_current = filter_checkpoint_state_dict(current_state)

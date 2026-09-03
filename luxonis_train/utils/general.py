@@ -396,16 +396,17 @@ def decode_text_metadata_labels(
     decoded_labels: dict[str, np.ndarray] = {}
 
     for task, label in labels.items():
-        decoded_labels[task] = _decode_text_label(
-            label, metadata_types.get(task) is str
-        )
+        if metadata_types.get(task) is not str:
+            decoded_labels[task] = np.asarray(label)
+        else:
+            decoded_labels[task] = _decode_text_label(label)
 
     return decoded_labels
 
 
-def _decode_text_label(label: np.ndarray, should_decode: bool) -> np.ndarray:
+def _decode_text_label(label: np.ndarray) -> np.ndarray:
     arr = np.asarray(label)
-    if not should_decode or arr.size == 0 or arr.dtype.kind in {"U", "S", "O"}:
+    if arr.size == 0 or arr.dtype.kind in {"U", "S", "O"}:
         return arr
     decoded_values = []
     for row in np.atleast_2d(arr):

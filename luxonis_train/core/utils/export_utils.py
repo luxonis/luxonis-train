@@ -253,8 +253,8 @@ def hubai_export(
         "name": variant_name,
     }
 
-    created_model_id = _resolve_hubai_model(
-        client, existing_model_id, model_name, variant_name, base_kwargs
+    base_kwargs["model_id"], created_model_id = _resolve_hubai_model(
+        client, existing_model_id, model_name, variant_name
     )
 
     if cfg.params:
@@ -286,29 +286,28 @@ def _resolve_hubai_model(
     existing_model_id: str | None,
     model_name: str,
     variant_name: str,
-    base_kwargs: dict,
-) -> str | None:
-    """Attach an existing model or create a new one.
+) -> tuple[str, str | None]:
+    """Attach an existing HubAI model, or create a new one.
 
-    Returns the id of the created model, or None when an existing model
-    was reused.
+    @rtype: tuple[str, str | None]
+    @return: The model to put the variant under, and the model this call
+        created. The second value is C{None} if an existing model was
+        used, so only a new model is cleaned up on failure.
     """
     if existing_model_id is not None:
-        base_kwargs["model_id"] = existing_model_id
         logger.info(
             f"Model '{model_name}' already exists on HubAI. "
             f"Creating new variant '{variant_name}' under existing model."
         )
-        return None
+        return existing_model_id, None
 
     new_model = client.models.create_model(model_name)
     created_model_id = str(new_model.id)
-    base_kwargs["model_id"] = created_model_id
     logger.info(
         f"Created new model '{model_name}' on HubAI. "
         f"Creating variant '{variant_name}' under it."
     )
-    return created_model_id
+    return created_model_id, created_model_id
 
 
 def _convert_for_platform(
@@ -390,7 +389,6 @@ def make_initializers_unique(onnx_path: PathType) -> None:
         logger.warning("No initializers found in the model")
         return
 
-    _count_initializer_usages(graph, initializer_info)
     name_mapping, new_initializers, duplicated_count = (
         _build_unique_initializers(initializer_info)
     )
@@ -401,7 +399,13 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     _remap_node_inputs(graph, name_mapping)
 
     onnx.save(model, onnx_path)
-    _check_onnx_model(onnx_path)
+    try:
+        onnx.checker.check_model(onnx_path)
+    except Exception as e:
+        logger.warning(
+            f"ONNX checker failed after making initializers unique: {e}. "
+            "If you encounter issues, try exporting with unique_onnx_initializers=False."
+        )
 
     logger.info(
         f"Processed {len(initializer_info)} initializers: "
@@ -412,22 +416,18 @@ def make_initializers_unique(onnx_path: PathType) -> None:
 def _collect_initializer_info(
     graph: "GraphProto",
 ) -> dict[str, _InitializerInfo]:
-    initializer_info: dict[str, _InitializerInfo] = {}
-    for initializer in graph.initializer:
-        initializer_info[initializer.name] = {
+    initializer_info: dict[str, _InitializerInfo] = {
+        initializer.name: {
             "data": copy.deepcopy(initializer),
             "usage_count": 0,
         }
-    return initializer_info
-
-
-def _count_initializer_usages(
-    graph: "GraphProto", initializer_info: dict[str, _InitializerInfo]
-) -> None:
+        for initializer in graph.initializer
+    }
     for node in graph.node:
         for input_name in node.input:
             if input_name in initializer_info:
                 initializer_info[input_name]["usage_count"] += 1
+    return initializer_info
 
 
 def _build_unique_initializers(
@@ -474,15 +474,3 @@ def _remap_node_inputs(
 
         del node.input[:]
         node.input.extend(new_inputs)
-
-
-def _check_onnx_model(onnx_path: str) -> None:
-    import onnx
-
-    try:
-        onnx.checker.check_model(onnx_path)
-    except Exception as e:
-        logger.warning(
-            f"ONNX checker failed after making initializers unique: {e}. "
-            "If you encounter issues, try exporting with unique_onnx_initializers=False."
-        )

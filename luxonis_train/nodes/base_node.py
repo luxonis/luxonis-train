@@ -731,7 +731,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             case "all":
                 return value
             case int(i):
-                i = BaseNode._normalize_attach_index(i, length)
+                if i < 0:
+                    i += length
                 if i >= length:
                     raise ValueError(
                         f"Attach index {i} is out of range "
@@ -744,12 +745,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                 return value[BaseNode._normalize_attach_slice(i, j, length, k)]
             case None:
                 raise RuntimeError(self._missing_attach_index_message())
-
-    @staticmethod
-    def _normalize_attach_index(index: int, length: int) -> int:
-        if index < 0:
-            index += length
-        return index
 
     @staticmethod
     def _normalize_attach_slice(

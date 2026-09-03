@@ -460,13 +460,13 @@ def resolve_training_plan(
             # Running the tail inside the node loop preserves the group
             # and optimizer creation order of the previous
             # implementation.
-            scope = _tail_scope(node, any_node_rules, strategy)
+            scope = _tail_scope(node, any_node_rules)
             builder.claim(tail, node.name, node.module, scope)
 
     if strategy is not None:
         _claim_strategy_rules(builder, strategy, nodes, base_scheduler, epochs)
         for node in nodes.values():
-            scope = _tail_scope(node, any_node_rules, strategy)
+            scope = _tail_scope(node, per_node=False)
             builder.claim(tail, node.name, node.module, scope)
 
     return builder.finish()
@@ -601,19 +601,13 @@ def _base_configs(
         return cfg.trainer.optimizer, cfg.trainer.scheduler
 
 
-def _tail_scope(
-    node: "NodeWrapper",
-    any_node_rules: bool,
-    strategy: "BaseTrainingStrategy | None",
-) -> str:
+def _tail_scope(node: "NodeWrapper", per_node: bool) -> str:
     # Freezing-scheduled nodes get their own tail group so that
     # `lr_after_unfreeze` has a well-scoped target (the node-purity
-    # invariant); everything else shares one group, or one group
-    # per node when finetuning rules are present without a strategy
-    # (preserving the previous observable grouping).
-    if node.unfreeze_after is not None:
-        return node.name
-    if any_node_rules and strategy is None:
+    # invariant). `per_node` gives every other node its own group as
+    # well, which preserves the previous observable grouping when
+    # finetuning rules are present and no strategy runs.
+    if node.unfreeze_after is not None or per_node:
         return node.name
     return _SHARED
 
