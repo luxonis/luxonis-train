@@ -1488,14 +1488,10 @@ class LuxonisModel:
             return hubai_archive_path
 
     def _get_train_dataset_name(self) -> str | None:
-        if "train" not in self.loaders or not hasattr(
-            self.loaders["train"], "dataset"
-        ):
+        loader = self.loaders["train"]
+        if not isinstance(loader, LuxonisLoaderTorch):
             return None
-        dataset = getattr(self.loaders["train"], "dataset", None)
-        if dataset is None:
-            return None
-        return getattr(dataset, "dataset_name", None)
+        return loader.dataset.identifier
 
     def quantize(
         self,
