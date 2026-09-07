@@ -10,7 +10,7 @@ jobs:
     if: >-
       github.event.pull_request.merged &&
       startsWith(github.event.pull_request.head.ref, 'release/')
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@main
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@cdfb00741162eb84ea9575881d412e420203e66f
     with:
       version-file: luxonis_train/__init__.py
     secrets:

@@ -57,6 +57,11 @@ def test_ema_initialization(model: LightningModule, ema_callback: EMACallback):
     assert ema_callback.ema.use_dynamic_decay == ema_callback.use_dynamic_decay
 
 
+def test_ema_before_fit_start(ema_callback: EMACallback):
+    with pytest.raises(ValueError, match="not yet init"):
+        _ = ema_callback.ema
+
+
 def test_ema_update_on_batch_end(
     model: LightningModule, ema_callback: EMACallback
 ):

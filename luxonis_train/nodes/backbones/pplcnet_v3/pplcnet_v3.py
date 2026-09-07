@@ -82,10 +82,7 @@ class PPLCNetV3(BaseNode):
         self.blocks = nn.ModuleList(blocks)
 
         if self.use_detection_backbone:
-            blocks_out_channels = [
-                scale_up(blocks[i].out_channels, self.scale)
-                for i in range(1, 5)
-            ]
+            blocks_out_channels = [blocks[i].out_channels for i in range(1, 5)]
 
             detection_out_channels = [
                 int(c * self.scale) for c in [16, 24, 56, 480]
