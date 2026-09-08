@@ -1,0 +1,28 @@
+model:
+  name: reid_test
+  predefined_model:
+    name: EmbeddingsModel
+    params:
+      # The metadata field holding the identity to learn embeddings for.
+      metadata_task_override: color
+      embedding_size: 16
+
+loader:
+  params:
+    dataset_name: ParkingLot
+
+trainer:
+  preprocessing:
+    train_image_size: [256, 256]
+
+  batch_size: 16
+  # This recipe trains without gradient accumulation. Pinned explicitly
+  # so switching to a `predefined_model` does not raise the effective
+  # batch size to 64.
+  accumulate_grad_batches: 1
+  epochs: 100
+  validation_interval: 10
+  n_log_images: 8
+
+  callbacks:
+    - name: ConvertOnTrainEnd

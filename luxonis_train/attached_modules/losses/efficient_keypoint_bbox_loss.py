@@ -17,8 +17,6 @@ from luxonis_train.utils import (
 from luxonis_train.utils.boundingbox import IoUType
 from luxonis_train.utils.keypoints import insert_class
 
-from .bce_with_logits import BCEWithLogitsLoss
-
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     """Efficient keypoint detection loss with bbox supervision.
@@ -102,9 +100,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             **kwargs,
         )
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
-            pos_weight=torch.tensor([viz_pw])
-        )
+        self.pos_weight = torch.tensor([viz_pw])
         self.sigmas = get_sigmas(
             sigmas=sigmas, n_keypoints=self.n_keypoints, caller_name=self.name
         )
@@ -113,6 +109,13 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         )
         self.regr_kpts_loss_weight = regr_kpts_loss_weight
         self.vis_kpts_loss_weight = vis_kpts_loss_weight
+        self.register_buffer(
+            "gt_kpts_scale",
+            torch.tensor(
+                [self.original_img_size[1], self.original_img_size[0]],
+            ),
+            persistent=False,
+        )
 
     def forward(
         self,
@@ -123,13 +126,13 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         target_boundingbox: Tensor,
         target_keypoints: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
+        self._init_parameters(features)
+
         device = keypoints_raw.device
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
         batch_size = class_scores.shape[0]
         n_kpts = (target_keypoints.shape[1] - 2) // 3
-
-        self._init_parameters(features)
 
         pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
         keypoints_raw = self.dist2kpts_noscale(
@@ -152,7 +155,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         scaled_raw_keypoints = keypoints_raw.clone()
         scaled_raw_keypoints[..., :2] = scaled_raw_keypoints[
             ..., :2
-        ] * self.stride_tensor.view(1, -1, 1, 1)
+        ] * self.stride_tensor.clone().view(1, -1, 1, 1)
 
         sigmas = self.sigmas.to(device)
 
@@ -218,8 +221,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         regression_loss = (
             ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
         ).mean()
-        visibility_loss = self.b_cross_entropy.forward(
-            keypoints_raw[..., 2], mask
+
+        visibility_loss = F.binary_cross_entropy_with_logits(
+            keypoints_raw[..., 2],
+            mask,
+            pos_weight=self.pos_weight.clone().to(device),
         )
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
@@ -296,12 +302,3 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         adj_kpts[..., 0] += x_adj
         adj_kpts[..., 1] += y_adj
         return adj_kpts
-
-    def _init_parameters(self, features: list[Tensor]) -> None:
-        if hasattr(self, "gt_kpts_scale"):
-            return
-        super()._init_parameters(features)
-        self.gt_kpts_scale = torch.tensor(
-            [self.original_img_size[1], self.original_img_size[0]],
-            device=features[0].device,
-        )

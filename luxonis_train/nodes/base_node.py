@@ -13,7 +13,7 @@ from luxonis_ml.typing import Kwargs, check_type
 from torch import Size, Tensor, nn
 from typeguard import typechecked
 
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
@@ -24,6 +24,9 @@ from luxonis_train.utils import (
     safe_download,
 )
 from luxonis_train.variants import VariantBase
+
+# Value types that `run` can pass to the `forward` method.
+_ForwardInput = Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]
 
 
 class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
@@ -295,32 +298,34 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         input_shapes = self.input_shapes[0]
         features = input_shapes.get("features")
-        if features is None:
-            if len(input_shapes) == 1:
-                return self.get_attached(next(iter(input_shapes.values())))
-            params = {}
-            for name in self._signature:
-                if name in input_shapes:
-                    params[name] = input_shapes[name]
-            if not params:
-                raise RuntimeError(
-                    "Unable to determine the correct input shape."
-                )
-            if len(params) == 1:
-                return self.get_attached(next(iter(params.values())))
-            first = next(iter(params.values()))
-            for value in params.values():
-                if value != first:
-                    raise RuntimeError(
-                        f"Node '{self.name}' requires multiple inputs, "
-                        f"({list(params.keys())}) "
-                        "but they are of different shapes. The default "
-                        "implementation of `in_sizes` cannot be used. "
-                        f"Please use `{self.name}.input_shapes` directly."
-                    )
-            return self.get_attached(first)
+        if features is not None:
+            return self.get_attached(features)
+        return self._infer_in_sizes_from_signature(input_shapes)
 
-        return self.get_attached(features)
+    def _infer_in_sizes_from_signature(
+        self, input_shapes: Packet[Size]
+    ) -> Size | list[Size]:
+        if len(input_shapes) == 1:
+            return self.get_attached(next(iter(input_shapes.values())))
+        params = {}
+        for name in self._signature:
+            if name in input_shapes:
+                params[name] = input_shapes[name]
+        if not params:
+            raise RuntimeError("Unable to determine the correct input shape.")
+        if len(params) == 1:
+            return self.get_attached(next(iter(params.values())))
+        first = next(iter(params.values()))
+        for value in params.values():
+            if value != first:
+                raise RuntimeError(
+                    f"Node '{self.name}' requires multiple inputs, "
+                    f"({list(params.keys())}) "
+                    "but they are of different shapes. The default "
+                    "implementation of `in_sizes` cannot be used. "
+                    f"Please use `{self.name}.input_shapes` directly."
+                )
+        return self.get_attached(first)
 
     @property
     def in_channels(self) -> int | list[int]:
@@ -441,7 +446,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         else:
             local_path = safe_download(ckpt)
             if local_path:
-                # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+                # load explicitly to cpu, PL takes care of transferring to CUDA is needed
                 state_dict = torch.load(  # nosemgrep
                     local_path, weights_only=False, map_location="cpu"
                 )["state_dict"]
@@ -474,13 +479,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._export = mode
 
         for name, module in self.named_modules():
-            if isinstance(module, Reparametrizable):
+            if isinstance(module, Reparameterizable):
                 if mode:
-                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
-                    module.reparametrize()
+                    logger.debug(f"Reparameterizing '{name}' in '{self.name}'")
+                    module.reparameterize()
                 else:
                     logger.debug(
-                        f"Restoring reparametrized '{name}' in '{self.name}'"
+                        f"Restoring reparameterized '{name}' in '{self.name}'"
                     )
                     module.restore()
 
@@ -521,99 +526,134 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             example ``{"features": [``Tensor``, ``...``], "segmentation": ``Tensor``}``.
 
         """
-        kwargs = {}
-
+        kwargs: dict[str, _ForwardInput] = {}
         for i, (name, param) in enumerate(self._signature.items()):
-            if param.annotation == list[Packet[Tensor]]:
-                if len(self._signature) != 1:
-                    raise RuntimeError(
-                        f"Node '{self.name}' has a parameter '{name}' "
-                        "of type `list[Packet[Tensor]]`, but it is not the "
-                        "only parameter of the `forward` method. This is not "
-                        "supported."
-                    )
-                kwargs[name] = inputs
-            elif param.annotation == Packet[Tensor]:
-                if i >= len(inputs):
-                    raise RuntimeError(
-                        f"Node '{self.name}' expects at least {i + 1} inputs, "
-                        f"but received only {len(inputs)}."
-                    )
-                kwargs[name] = inputs[i]
-            elif (
-                param.annotation == list[Tensor] or param.annotation == Tensor
-            ):
-                if (
-                    match := re.match(r"inputs?_?(\d+)?", name)
-                ) or name in "xyz":
-                    input_name = "features"
-                    if name in "xyz":
-                        idx = "xyz".index(name)
-                    idx = int(match.group(1) or 0) if match else 0
-
-                    packet = inputs[idx]
-                    if input_name not in packet:
-                        raise RuntimeError(
-                            f"Node '{self.name}' expects an input with key "
-                            f"'{input_name}', but it was not found in the packet."
-                        )
-                    value = packet[input_name]
-                    if isinstance(value, Tensor):
-                        if param.annotation != Tensor:
-                            raise RuntimeError(
-                                f"Node '{self.name}' expects an input with key "
-                                f"'{input_name}' to be of type `{param.annotation}`, "
-                                "but got a single tensor instead."
-                            )
-                        kwargs[name] = value
-                    else:
-                        kwargs[name] = self.get_attached(value)
-                else:
-                    prev_kwargs_len = len(kwargs)
-
-                    for inp in inputs:
-                        if name in inp:
-                            if not check_type(inp[name], param.annotation):
-                                raise RuntimeError(
-                                    f"Node '{self.name}' expects an input with key "
-                                    f"'{name}' to be of type `{param.annotation}`, "
-                                    f"but got `{type(inp[name])}` instead."
-                                )
-                            if name in kwargs:
-                                raise RuntimeError(
-                                    f"Node '{self.name}' requires an input with key "
-                                    f"'{name}', but it was found in multiple input packets."
-                                )
-                            kwargs[name] = inp[name]
-                    if (
-                        len(kwargs) == prev_kwargs_len
-                        and len(inputs) == len(self._signature) == 1
-                        and name not in inputs[0]
-                    ):
-                        key_name = next(iter(inputs[0]))
-                        kwargs[name] = self.get_attached(
-                            next(iter(inputs[0].values()))
-                        )
-
-                        logger.warning(
-                            f"Non-standard parameter name '{name}' used in `{self.name}.forward`. "
-                            f"The node expects a single argument of type `{param.annotation}` "
-                            f"and it got a single input packet wit ha single key '{key_name}'. "
-                            "Assuming the input corresponds to that parameter. "
-                            "If this is incorrect, please double check the parameter name or "
-                            "the input packets."
-                        )
-
-            else:
-                raise TypeError(
-                    f"Node '{self.name}' has an unsupported type "
-                    f"`{param.annotation}` for parameter `{name}`. "
-                    "Supported types are Tensor, list of Tensors and "
-                    "Packet of Tensors."
-                )
+            self._resolve_forward_param(i, name, param, inputs, kwargs)
 
         outputs = self(**kwargs)
+        return self._normalize_output(outputs)
 
+    def _resolve_forward_param(
+        self,
+        i: int,
+        name: str,
+        param: inspect.Parameter,
+        inputs: list[Packet[Tensor]],
+        kwargs: dict[str, _ForwardInput],
+    ) -> None:
+        if param.annotation == list[Packet[Tensor]]:
+            if len(self._signature) != 1:
+                raise RuntimeError(
+                    f"Node '{self.name}' has a parameter '{name}' "
+                    "of type `list[Packet[Tensor]]`, but it is not the "
+                    "only parameter of the `forward` method. This is not "
+                    "supported."
+                )
+            kwargs[name] = inputs
+        elif param.annotation == Packet[Tensor]:
+            if i >= len(inputs):
+                raise RuntimeError(
+                    f"Node '{self.name}' expects at least {i + 1} inputs, "
+                    f"but received only {len(inputs)}."
+                )
+            kwargs[name] = inputs[i]
+        elif param.annotation == list[Tensor] or param.annotation == Tensor:
+            self._resolve_tensor_param(name, param, inputs, kwargs)
+        else:
+            raise TypeError(
+                f"Node '{self.name}' has an unsupported type "
+                f"`{param.annotation}` for parameter `{name}`. "
+                "Supported types are Tensor, list of Tensors and "
+                "Packet of Tensors."
+            )
+
+    def _resolve_tensor_param(
+        self,
+        name: str,
+        param: inspect.Parameter,
+        inputs: list[Packet[Tensor]],
+        kwargs: dict[str, _ForwardInput],
+    ) -> None:
+        if (match := re.match(r"inputs?_?(\d+)?", name)) or name in "xyz":
+            kwargs[name] = self._resolve_indexed_tensor(
+                name, param, inputs, match
+            )
+        else:
+            self._resolve_named_tensor(name, param, inputs, kwargs)
+
+    def _resolve_indexed_tensor(
+        self,
+        name: str,
+        param: inspect.Parameter,
+        inputs: list[Packet[Tensor]],
+        match: re.Match | None,
+    ) -> Tensor | list[Tensor]:
+        input_name = "features"
+        if name in "xyz":
+            idx = "xyz".index(name)
+        elif match and match.group(1):
+            idx = int(match.group(1))
+        else:
+            idx = 0
+
+        packet = inputs[idx]
+        if input_name not in packet:
+            raise RuntimeError(
+                f"Node '{self.name}' expects an input with key "
+                f"'{input_name}', but it was not found in the packet."
+            )
+        value = packet[input_name]
+        if isinstance(value, Tensor):
+            if param.annotation != Tensor:
+                raise RuntimeError(
+                    f"Node '{self.name}' expects an input with key "
+                    f"'{input_name}' to be of type `{param.annotation}`, "
+                    "but got a single tensor instead."
+                )
+            return value
+        return self.get_attached(value)
+
+    def _resolve_named_tensor(
+        self,
+        name: str,
+        param: inspect.Parameter,
+        inputs: list[Packet[Tensor]],
+        kwargs: dict[str, _ForwardInput],
+    ) -> None:
+        prev_kwargs_len = len(kwargs)
+
+        for inp in inputs:
+            if name in inp:
+                if not check_type(inp[name], param.annotation):
+                    raise RuntimeError(
+                        f"Node '{self.name}' expects an input with key "
+                        f"'{name}' to be of type `{param.annotation}`, "
+                        f"but got `{type(inp[name])}` instead."
+                    )
+                if name in kwargs:
+                    raise RuntimeError(
+                        f"Node '{self.name}' requires an input with key "
+                        f"'{name}', but it was found in multiple input packets."
+                    )
+                kwargs[name] = inp[name]
+        if (
+            len(kwargs) == prev_kwargs_len
+            and len(inputs) == len(self._signature) == 1
+            and name not in inputs[0]
+        ):
+            key_name = next(iter(inputs[0]))
+            kwargs[name] = self.get_attached(next(iter(inputs[0].values())))
+
+            logger.warning(
+                f"Non-standard parameter name '{name}' used in `{self.name}.forward`. "
+                f"The node expects a single argument of type `{param.annotation}` "
+                f"and it got a single input packet with a single key '{key_name}'. "
+                "Assuming the input corresponds to that parameter. "
+                "If this is incorrect, please double check the parameter name or "
+                "the input packets."
+            )
+
+    def _normalize_output(self, outputs: object) -> Packet[Tensor]:
         if check_type(outputs, Packet[Tensor]):
             return outputs
 
@@ -649,31 +689,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             ValueError: If the ``attach_index`` is invalid.
 
         """
-
-        def _normalize_index(index: int) -> int:
-            if index < 0:
-                index += len(value)
-            return index
-
-        def _normalize_slice(i: int, j: int, k: int | None = None) -> slice:
-            if i < 0 and j < 0:
-                if i < j:
-                    return slice(
-                        max(len(value) + i + 1, 0),
-                        len(value) + j + 1,
-                        k or -1 if i > j else 1,
-                    )
-                return slice(
-                    len(value) + i, len(value) + j, k or -1 if i > j else 1
-                )
-            if i < 0:
-                return slice(len(value) + i, j, k or 1)
-            if j < 0:
-                return slice(i, len(value) + j, k or 1)
-            if i > j:
-                return slice(i, j, k or -1)
-            return slice(i, j, k or 1)
-
         if not isinstance(value, list):
             if self.attach_index not in (None, -1, 0):
                 raise ValueError(
@@ -683,23 +698,47 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                 )
             return value
 
+        length = len(value)
         match self.attach_index:
             case "all":
                 return value
             case int(i):
-                i = _normalize_index(i)
-                if i >= len(value):
+                if i < 0:
+                    i += length
+                if i >= length:
                     raise ValueError(
                         f"Attach index {i} is out of range "
-                        f"for list of length {len(value)}."
+                        f"for list of length {length}."
                     )
                 return value[i]
             case (int(i), int(j)):
-                return value[_normalize_slice(i, j)]
+                return value[BaseNode._normalize_attach_slice(i, j, length)]
             case (int(i), int(j), int(k)):
-                return value[_normalize_slice(i, j, k)]
+                return value[BaseNode._normalize_attach_slice(i, j, length, k)]
             case None:
                 raise RuntimeError(self._missing_attach_index_message())
+
+    @staticmethod
+    def _normalize_attach_slice(
+        i: int, j: int, length: int, k: int | None = None
+    ) -> slice:
+        if i < 0 and j < 0:
+            return BaseNode._both_negative_slice(i, j, length, k)
+        if i < 0:
+            return slice(length + i, j, k or 1)
+        if j < 0:
+            return slice(i, length + j, k or 1)
+        if i > j:
+            return slice(i, j, k or -1)
+        return slice(i, j, k or 1)
+
+    @staticmethod
+    def _both_negative_slice(
+        i: int, j: int, length: int, k: int | None
+    ) -> slice:
+        if i < j:
+            return slice(max(length + i + 1, 0), length + j + 1, 1)
+        return slice(length + i, length + j, (k or -1) if i > j else 1)
 
     def _get_nth_size(self, idx: int) -> int | list[int]:
         match self.in_sizes:
@@ -720,7 +759,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             "and could not be inferred. "
             "Some parts of the framework will not work. "
             "Either pass `attach_index` to the base constructor, "
-            "define it as a class atrribute, or provide proper "
+            "define it as a class attribute, or provide proper "
             "type hints for the `forward` method for implicit inference"
         )
 

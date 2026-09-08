@@ -5,6 +5,7 @@ from torch import Size, Tensor
 from typing_extensions import override
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.core.utils.aimet_utils import get_ptq_calibration_loader
 from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.typing import Labels
 
@@ -27,7 +28,9 @@ class SplitLengthLoader(BaseLoaderTorch):
         return self.LENGTHS[tuple(self.view)]
 
     @override
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[Tensor | dict[str, Tensor], Labels]:
         image = torch.zeros(3, self.height, self.width)
         labels = {"vehicles/boundingbox": torch.zeros(1, 5)}
         return image, labels
@@ -40,7 +43,7 @@ class SplitLengthLoader(BaseLoaderTorch):
 def test_fixed_validation_batch_limit(
     parking_lot_dataset: LuxonisDataset, opts: Params
 ):
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
     opts |= {
         "model.predefined_model.params.task_name": "vehicles",
         "loader.params.dataset_name": parking_lot_dataset.identifier,
@@ -93,3 +96,55 @@ def test_unlimited_validation_batches_keep_full_eval_loaders():
     assert model.cfg.trainer.n_validation_batches == -1
     assert len(model.pytorch_loaders["val"]) == len(model.loaders["val"])
     assert len(model.pytorch_loaders["test"]) == len(model.loaders["test"])
+
+
+def test_ptq_calibration_loader_is_independent_from_validation_batch_limit():
+    model = LuxonisModel(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "params": {"task_name": "vehicles"},
+                }
+            },
+            "loader": {
+                "name": "SplitLengthLoader",
+                "train_view": "train",
+                "val_view": "val",
+                "test_view": "test",
+            },
+            "trainer": {
+                "batch_size": 1,
+                "n_validation_batches": 1,
+            },
+            "exporter": {"aimet": {"max_calibration_images": 2}},
+        }
+    )
+
+    assert len(model.pytorch_loaders["val"]) == 1
+    assert (
+        len(
+            get_ptq_calibration_loader(
+                val_dataset=model.loaders["val"],
+                collate_fn=model.loaders["val"].collate_fn,
+                batch_size=model.cfg.trainer.batch_size,
+                num_workers=model.cfg.trainer.n_workers,
+                pin_memory=model.cfg.trainer.pin_memory,
+                max_calibration_images=None,
+            )
+        )
+        == 3
+    )
+    assert (
+        len(
+            get_ptq_calibration_loader(
+                val_dataset=model.loaders["val"],
+                collate_fn=model.loaders["val"].collate_fn,
+                batch_size=model.cfg.trainer.batch_size,
+                num_workers=model.cfg.trainer.n_workers,
+                pin_memory=model.cfg.trainer.pin_memory,
+                max_calibration_images=2,
+            )
+        )
+        == 2
+    )

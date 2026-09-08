@@ -140,19 +140,23 @@ class EfficientBBoxHead(BaseDetectionHead):
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
-        bboxes = self._postprocess_detections(
+        detections_pre_nms = self._prepare_bbox_inference_output(
             features_list,
             class_scores,
             distributions,
             anchor_points,
             stride_tensor,
         )
-        return {
+        bboxes = self._run_nms(detections_pre_nms)
+        packet: Packet[Tensor] = {
             self.task.main_output: bboxes,
             "features": features_list,
             "class_scores": class_scores,
             "distributions": distributions,
         }
+        if self.keep_detections_pre_nms:
+            packet["detections_pre_nms"] = detections_pre_nms
+        return packet
 
     @staticmethod
     def _wrap_export(
@@ -175,7 +179,7 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_weights_url(self) -> str:
-        return "{github}/efficientbbox_head_{variant}_coco.ckpt"
+        return f"{{github}}/efficientbbox_head_{self.variant[0]}_coco.ckpt"
 
     @property
     @override
@@ -184,7 +188,7 @@ class EfficientBBoxHead(BaseDetectionHead):
             [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
         )
 
-    def _postprocess_detections(
+    def _prepare_bbox_inference_output(
         self,
         features: list[Tensor],
         class_scores: Tensor,
@@ -193,13 +197,13 @@ class EfficientBBoxHead(BaseDetectionHead):
         stride_tensor: Tensor,
         *,
         tail: list[Tensor] | None = None,
-    ) -> list[Tensor]:
-        """Post-process output and return bounding boxes after NMS."""
+    ) -> Tensor:
+        """Decode predictions into the tensor expected by NMS."""
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 
         bboxes *= stride_tensor
-        output_merged = torch.cat(
+        return torch.cat(
             [
                 bboxes,
                 torch.ones(
@@ -213,8 +217,10 @@ class EfficientBBoxHead(BaseDetectionHead):
             dim=-1,
         )
 
+    def _run_nms(self, detections_pre_nms: Tensor) -> list[Tensor]:
+        """Apply NMS to decoded detection candidates."""
         return non_max_suppression(
-            output_merged,
+            detections_pre_nms,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,

@@ -264,6 +264,7 @@ class DinoV3(BaseNode):
             model=model_name,
             weights=weights,
             source="github",
+            trust_repo=True,  # type: ignore
             **kwargs,
         )
 

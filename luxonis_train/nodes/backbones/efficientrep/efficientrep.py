@@ -8,7 +8,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     BlockRepeater,
     CSPStackRepBlock,
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils import make_divisible
@@ -110,7 +110,7 @@ class EfficientRep(BaseNode):
             for i in n_repeats
         ]
 
-        self.repvgg_encoder = GeneralReparametrizableBlock(
+        self.repvgg_encoder = GeneralReparameterizableBlock(
             in_channels=self.in_channels,
             out_channels=channels_list[0],
             kernel_size=3,
@@ -120,7 +120,7 @@ class EfficientRep(BaseNode):
         self.blocks = cast(list[nn.Sequential], nn.ModuleList())
         for i in range(4):
             curr_block = nn.Sequential(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=channels_list[i],
                     out_channels=channels_list[i + 1],
                     kernel_size=3,
@@ -128,7 +128,7 @@ class EfficientRep(BaseNode):
                 ),
                 (
                     BlockRepeater(
-                        GeneralReparametrizableBlock,
+                        GeneralReparameterizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
                         n_repeats=n_repeats[i + 1],
@@ -162,7 +162,7 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        return "{github}/efficientrep_{variant}_coco.ckpt"
+        return f"{{github}}/efficientrep_{self.variant[0]}_coco.ckpt"
 
     @staticmethod
     @override

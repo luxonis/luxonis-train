@@ -2,8 +2,6 @@
 modules.
 """
 
-from __future__ import annotations
-
 import ast
 import re
 import sys
@@ -340,12 +338,12 @@ def check_forbidden_section_names() -> list[str]:
             root.rglob("*.py" if root != ROOT / "docs" else "*.md")
         ):
             text = path.read_text(encoding="utf-8")
-            for forbidden in FORBIDDEN_SECTION_NAMES:
-                if forbidden in text:
-                    errors.append(
-                        f"{rel(path)}: contains old section name "
-                        f"{forbidden!r}; use 'Metadata' or 'Provenance'"
-                    )
+            errors.extend(
+                f"{rel(path)}: contains old section name "
+                f"{forbidden!r}; use 'Metadata' or 'Provenance'"
+                for forbidden in FORBIDDEN_SECTION_NAMES
+                if forbidden in text
+            )
     return errors
 
 
@@ -354,12 +352,11 @@ def check_variant_format() -> list[str]:
     errors: list[str] = []
     for path in sorted(NODE_ROOT.rglob("*.py")):
         text = path.read_text(encoding="utf-8")
-        for forbidden in FORBIDDEN_VARIANT_TEXT:
-            if forbidden in text:
-                errors.append(
-                    f"{rel(path)}: contains forbidden variant marker "
-                    f"{forbidden!r}"
-                )
+        errors.extend(
+            f"{rel(path)}: contains forbidden variant marker {forbidden!r}"
+            for forbidden in FORBIDDEN_VARIANT_TEXT
+            if forbidden in text
+        )
         if COMPACT_VARIANT_PARAM_RE.search(text):
             errors.append(
                 f"{rel(path)}: contains compact ``key=value`` variant "

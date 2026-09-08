@@ -79,10 +79,10 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             )
         self.beta = beta
         self.task_name = next(iter(self.loader.dataset.get_tasks()))
-        self.augmentations = self.loader.augmentations
+        self.augmentations = self.loader._augmentations
 
     @override
-    def get(self, idx: int) -> tuple[Tensor, Labels]:
+    def __getitem__(self, idx: int) -> tuple[Tensor, Labels]:
         with _freeze_seed():
             img, labels = self.loader[idx]
         if isinstance(img, dict):

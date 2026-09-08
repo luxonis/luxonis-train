@@ -1,6 +1,8 @@
+from contextlib import suppress
+
 from .blocks import (
     DFL,
-    AttentionRefinmentBlock,
+    AttentionRefinementBlock,
     BlockRepeater,
     ConvBlock,
     ConvStack,
@@ -8,7 +10,7 @@ from .blocks import (
     DropPath,
     EfficientDecoupledBlock,
     FeatureFusionBlock,
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SegProto,
     SpatialPyramidPoolingBlock,
     SqueezeExciteBlock,
@@ -27,37 +29,35 @@ from .unet import (
     UpBlock,
 )
 
+with suppress(ImportError):
+    from aimet_torch.v2.nn import QuantizationMixin
+
+    QuantizationMixin.ignore(DropPath)
+    QuantizationMixin.ignore(UpscaleOnline)
+
 __all__ = [
     "DFL",
-    "AttentionRefinmentBlock",
+    "AttentionRefinementBlock",
     "BlockRepeater",
-    "CSPStackRepBlock",
     "CSPStackRepBlock",
     "ConvBlock",
     "ConvStack",
     "DropPath",
-    "DropPath",
-    "EfficientDecoupledBlock",
     "EfficientDecoupledBlock",
     "EncoderBlock",
     "FeatureFusionBlock",
-    "FeatureFusionBlock",
-    "GeneralReparametrizableBlock",
+    "GeneralReparameterizableBlock",
     "ResNetBlock",
     "ResNetBottleneck",
-    "SegProto",
     "SegProto",
     "SimpleDecoder",
     "SimpleDecoderBlock",
     "SimpleEncoder",
     "SpatialPyramidPoolingBlock",
-    "SpatialPyramidPoolingBlock",
-    "SqueezeExciteBlock",
     "SqueezeExciteBlock",
     "UNetDecoder",
     "UNetDecoderBlock",
     "UNetEncoder",
-    "UpBlock",
     "UpBlock",
     "UpscaleOnline",
     "autopad",

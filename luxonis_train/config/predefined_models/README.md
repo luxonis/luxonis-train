@@ -28,7 +28,7 @@ models which can be used instead.
 
 The `SegmentationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
-See an example configuration file using this predefined model [here](../../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -69,7 +69,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 The `DetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
 This detection model is based on [YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -120,7 +120,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 The `KeypointDetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -134,37 +134,38 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 **Components:**
 
-| Name                                                                                                      | Alias                        | Function                                                                                                 |
-| --------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [`EfficientRep`](../../nodes/README.md#efficientrep)                                                      | `"kpt_detection_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`) and `"heavy"` (`EfficientRep-L`) |
-| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                          | `"kpt_detection_neck"`       | Neck of the model                                                                                        |
-| [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)                            | `"kpt_detection_head"`       | Head of the model                                                                                        |
-| [`EfficientKeypointBBoxLoss`](../../attached_modules/losses/README.md#efficientkeypointbboxloss)          | `"kpt_detection_loss"`       | Loss of the model                                                                                        |
-| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)           | `"kpt_detection_oks"`        | Main metric of the model                                                                                 |
-| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecisionkeypoints) | `"kpt_detection_map"`        | Secondary metric of the model                                                                            |
-| [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)                   | `"kpt_detection_visualizer"` | Visualizer for keypoints.                                                                                |
+| Name                                                                                             | Alias                        | Function                                                                                                 |
+| ------------------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [`EfficientRep`](../../nodes/README.md#efficientrep)                                             | `"kpt_detection_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`) and `"heavy"` (`EfficientRep-L`) |
+| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                 | `"kpt_detection_neck"`       | Neck of the model                                                                                        |
+| [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)                   | `"kpt_detection_head"`       | Head of the model                                                                                        |
+| [`EfficientKeypointBBoxLoss`](../../attached_modules/losses/README.md#efficientkeypointbboxloss) | `"kpt_detection_loss"`       | Loss of the model                                                                                        |
+| [`MeanAveragePrecisionKeypoints`](../../attached_modules/metrics/README.md#meanaverageprecision) | `"kpt_detection_map"`        | Main metric of the model                                                                                 |
+| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity)  | `"kpt_detection_oks"`        | Secondary metric of the model                                                                            |
+| [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)          | `"kpt_detection_visualizer"` | Visualizer for keypoints.                                                                                |
 
 **Parameters:**
 
-| Key                      | Type                                  | Default value    | Description                                                                                        |
-| ------------------------ | ------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
-| `variant`                | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
-| `use_neck`               | `bool`                                | `True`           | Whether to include the neck in the model                                                           |
-| `backbone`               | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
-| `backbone_params`        | `dict`                                | `{}`             | Additional parameters to the backbone                                                              |
-| `neck_params`            | `dict`                                | `{}`             | Additional parameters to the neck                                                                  |
-| `head_params`            | `dict`                                | `{}`             | Additional parameters to the head                                                                  |
-| `loss_params`            | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
-| `kpt_visualizer_params`  | `dict`                                | `{}`             | Additional parameters to the keypoint visualizer                                                   |
-| `bbox_visualizer_params` | `dict`                                | `{}`             | Additional parameters to the bounding box visualizer                                               |
-| `bbox_task_name`         | `str \| None`                         | `None`           | Custom task name for the detection head                                                            |
-| `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                             |
+| Key                      | Type                                  | Default value    | Description                                                                                                 |
+| ------------------------ | ------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `variant`                | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L`          |
+| `use_neck`               | `bool`                                | `True`           | Whether to include the neck in the model                                                                    |
+| `backbone`               | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                                   |
+| `backbone_params`        | `dict`                                | `{}`             | Additional parameters to the backbone                                                                       |
+| `neck_params`            | `dict`                                | `{}`             | Additional parameters to the neck                                                                           |
+| `head_params`            | `dict`                                | `{}`             | Additional parameters to the head                                                                           |
+| `loss_params`            | `dict`                                | `{}`             | Additional parameters to the loss                                                                           |
+| `kpt_visualizer_params`  | `dict`                                | `{}`             | Additional parameters to the keypoint visualizer                                                            |
+| `bbox_visualizer_params` | `dict`                                | `{}`             | Additional parameters to the bounding box visualizer                                                        |
+| `bbox_task_name`         | `str \| None`                         | `None`           | Custom task name for the detection head                                                                     |
+| `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                                      |
+| `per_class_metrics`      | `bool`                                | `False`          | Whether to calculate and display class-specific keypoint `kpt_map`, `kpt_mar`, and derived `kpt_f1` metrics |
 
 ## `ClassificationModel`
 
 The `ClassificationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
-See an example configuration file using this predefined model [here](../../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 
@@ -245,7 +246,7 @@ For larger heatmaps and improved accuracy, you can adjust the `attach_index` in 
 
 The `InstanceSegmentationModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
-See an example configuration file using this predefined model [here](../../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
+See an example configuration file using this predefined model [here](../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
 ### Performance Metrics
 

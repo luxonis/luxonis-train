@@ -2,6 +2,7 @@ import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Literal
+from uuid import uuid4
 
 import pytest
 import torch
@@ -47,7 +48,7 @@ def test_tune(
         },
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel("configs/example_tuning.yaml", opts)
+    model = LuxonisModel("luxonis_train/configs/example_tuning.yaml", opts)
     model.tune()
     assert study_path.exists()
     con = sqlite3.connect(study_path)
@@ -59,15 +60,19 @@ def test_tune(
 
 
 def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
-    config_file = "configs/classification_light_model.yaml"
+    config_file = "luxonis_train/configs/classification_light_model.yaml"
     opts |= {
-        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+        "loader.params.dataset_name": cifar10_dataset.identifier,
     }
 
     model = LuxonisModel(config_file, opts)
     test_results = model.test(finalize_tracker=False)
-    assert test_results == model.test(
-        weights={"state_dict": model.lightning_module.state_dict()}
+    assert (
+        test_results
+        == model.test(
+            weights={"state_dict": model.lightning_module.state_dict()}
+        )
+        == model.test(weights=model.lightning_module.state_dict())
     )
 
 
@@ -86,7 +91,7 @@ def test_checkpoint(
         assert "dataset_metadata" in ckpt
 
     model = LuxonisModel(
-        "configs/detection_light_model.yaml",
+        "luxonis_train/configs/detection_light_model.yaml",
         opts
         | {
             "loader.params.dataset_name": coco_dataset.identifier,
@@ -124,10 +129,36 @@ def test_precision_fallback_to_bf16_on_cpu(
     cifar10_dataset: LuxonisDataset, opts: Params
 ):
     opts |= {
-        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+        "loader.params.dataset_name": cifar10_dataset.identifier,
         "trainer.precision": "16-mixed",
         "trainer.accelerator": "cpu",
     }
 
-    model = LuxonisModel("configs/classification_light_model.yaml", opts)
+    model = LuxonisModel(
+        "luxonis_train/configs/classification_light_model.yaml", opts
+    )
     model.test()
+
+
+def test_custom_tracker_save_directory_does_not_create_default_output_dir(
+    tmp_path: Path, opts: Params
+):
+    run_name = f"save-dir-regression-{uuid4().hex}"
+    custom_save_dir = tmp_path / "custom-save-directory"
+
+    model = LuxonisModel(
+        "luxonis_train/configs/complex_model.yaml",
+        opts
+        | {
+            "loader.params.dataset_name": "invalid_dataset_name",
+            "model.nodes.6.name": "ClassificationHead",
+            "tracker.save_directory": str(custom_save_dir),
+            "tracker.run_name": run_name,
+        },
+        allow_empty_dataset=True,
+    )
+
+    assert model.tracker.save_directory == custom_save_dir
+    assert model.run_save_dir == custom_save_dir / run_name
+    assert model.run_save_dir.exists()
+    assert not (Path("output") / run_name).exists()

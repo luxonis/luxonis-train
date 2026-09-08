@@ -119,7 +119,9 @@ class GhostFaceNet(BaseNode):
 
         Args:
             width_multiplier (int): Width multiplier for the blocks.
-            layer_params (list[LayerParamsDict]): Parameters for each Ghost bottleneck layer.
+            layer_params (list[LayerParamsDict]): Per-layer parameters. Each entry holds the
+                kernel sizes, expansion sizes, output channels, Squeeze-and-Excitation
+                ratios, and strides of the blocks in one stage.
             **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """

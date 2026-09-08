@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -7,6 +8,7 @@ from loguru import logger
 from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
+from luxonis_ml.typing import Params
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -30,6 +32,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         bbox_area_threshold: float = 0.0004,
         class_order_per_task: dict[str, list[str]] | None = None,
         kpts_mapping_per_task: dict[str, list[int]] | None = None,
+        return_sample_metadata: bool = False,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -71,44 +74,27 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 names to class-name orderings.
             kpts_mapping_per_task (dict[str, list[int]] | None): ``Mapping`` of
                 task names to custom keypoint index orderings.
+            return_sample_metadata (bool): Whether ``__getitem__`` also returns the
+                per-sample metadata as a third element. Defaults to ``False``, which
+                keeps the standard ``(image, labels)`` output used during training.
             **kwargs (``Any``): Arguments forwarded to ``BaseLoaderTorch``.
 
         """
         super().__init__(**kwargs)
-        if dataset_dir is not None:
-            self.dataset = self._parse_dataset(
-                dataset_dir, dataset_name, dataset_type, delete_existing
-            )
-        else:
-            if dataset_name is None:
-                raise ValueError(
-                    "Either `dataset_dir` or `dataset_name` must be provided."
-                )
-            self.dataset = LuxonisDataset(
-                dataset_name=dataset_name,
-                team_id=team_id,
-                bucket_type=bucket_type,
-                bucket_storage=bucket_storage,
-            )
+        self.return_sample_metadata = return_sample_metadata
+        self.dataset = self._load_dataset(
+            dataset_dir,
+            dataset_name,
+            dataset_type,
+            delete_existing,
+            team_id,
+            bucket_type,
+            bucket_storage,
+        )
         if class_order_per_task is not None:
             self.dataset.set_class_order_per_task(class_order_per_task)
 
-        if kpts_mapping_per_task is not None:
-            dataset_tasks = self.dataset.get_tasks()
-            for task, new_mapping in kpts_mapping_per_task.items():
-                if task not in dataset_tasks:
-                    raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
-                    )
-                if "keypoints" not in dataset_tasks[task]:
-                    raise KeyError(
-                        f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
-                    )
-                if len(new_mapping) != len(set(new_mapping)):
-                    logger.warning(
-                        f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
-                    )
-
+        self._validate_keypoint_mapping(kpts_mapping_per_task)
         self.kpts_mapping_per_task = kpts_mapping_per_task
 
         self.loader = LuxonisLoader(
@@ -130,6 +116,57 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             seed=self.seed,
         )
 
+    def _load_dataset(
+        self,
+        dataset_dir: str | None,
+        dataset_name: str | None,
+        dataset_type: DatasetType | None,
+        delete_existing: bool,
+        team_id: str | None,
+        bucket_type: Literal["internal", "external"],
+        bucket_storage: Literal["local", "s3", "gcs", "azure"],
+    ) -> LuxonisDataset:
+        if dataset_dir is not None:
+            return self._parse_dataset(
+                dataset_dir, dataset_name, dataset_type, delete_existing
+            )
+        if dataset_name is None:
+            raise ValueError(
+                "Either `dataset_dir` or `dataset_name` must be provided."
+            )
+        return LuxonisDataset(
+            dataset_name=dataset_name,
+            team_id=team_id,
+            bucket_type=bucket_type,
+            bucket_storage=bucket_storage,
+        )
+
+    def _validate_keypoint_mapping(
+        self, kpts_mapping_per_task: dict[str, list[int]] | None
+    ) -> None:
+        if kpts_mapping_per_task is None:
+            return
+        dataset_tasks = self.dataset.get_tasks()
+        for task, new_mapping in kpts_mapping_per_task.items():
+            self._validate_keypoint_task(task, dataset_tasks)
+            if len(new_mapping) != len(set(new_mapping)):
+                logger.warning(
+                    f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
+                )
+
+    @staticmethod
+    def _validate_keypoint_task(
+        task: str, dataset_tasks: Mapping[str, list[str]]
+    ) -> None:
+        if task not in dataset_tasks:
+            raise KeyError(
+                f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
+            )
+        if "keypoints" not in dataset_tasks[task]:
+            raise KeyError(
+                f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
+            )
+
     @override
     def __len__(self) -> int:
         return len(self.loader)
@@ -137,12 +174,20 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @property
     @override
     def input_shapes(self) -> dict[str, Size]:
-        img = self[0][0][self.image_source]
+        img = self[0][0]
+        if isinstance(img, dict):
+            img = img[self.image_source]
         return {self.image_source: img.shape}
 
     @override
-    def get(self, idx: int) -> tuple[dict[str, Tensor], Labels]:
-        img, labels = self.loader[idx]
+    def __getitem__(
+        self, idx: int
+    ) -> (
+        tuple[dict[str, Tensor] | Tensor, Labels]
+        | tuple[dict[str, Tensor] | Tensor, Labels, Params]
+    ):
+        output = self.loader[idx]
+        img, labels = output
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
 
@@ -150,8 +195,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             labels = self._remap_keypoints(labels)
 
         img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
+        if len(img) == 1:
+            img = next(iter(img.values()))
 
-        return img, self.dict_numpy_to_torch(labels)
+        tensor_labels = self.dict_numpy_to_torch(labels)
+        if self.return_sample_metadata:
+            return img, tensor_labels, output.metadata
+        return img, tensor_labels
 
     def _remap_keypoints(
         self, labels: dict[str, np.ndarray]
@@ -183,7 +233,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return self.dataset.get_classes()
+        return self.loader._classes
 
     @override
     def get_n_keypoints(self) -> dict[str, int]:
@@ -204,11 +254,14 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return self.dataset.get_categorical_encodings()
 
     @override
-    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
-        if self.loader.augmentations is None:
+    def augment_test_image(self, img: dict[str, Tensor] | Tensor) -> Tensor:
+        if isinstance(img, Tensor):
+            img = {self.image_source: img}
+
+        if self.loader._augmentations is None:
             return img[self.image_source]
         img_arr = {k: v.numpy() for k, v in img.items()}
-        augmented_dict = self.loader.augmentations.apply([(img_arr, {})])[0]
+        augmented_dict = self.loader._augmentations.apply([(img_arr, {})])[0]
         return torch.tensor(next(iter(augmented_dict.values())))
 
     def _parse_dataset(

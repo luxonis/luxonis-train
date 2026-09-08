@@ -1,7 +1,16 @@
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
+from contextlib import suppress
+from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    NamedTuple,
+    TypeVar,
+    cast,
+)
 
 import lightning.pytorch as pl
 import torch
@@ -10,11 +19,10 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
 )
 from loguru import logger
-from luxonis_ml.typing import ConfigItem, check_type
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import Registry, traverse_graph
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
-from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -22,8 +30,18 @@ from luxonis_train.attached_modules.base_attached_module import (
     BaseAttachedModule,
 )
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
+from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
-from luxonis_train.config.config import NodeConfig
+from luxonis_train.config.config import (
+    FinetuningConfig,
+    NodeConfig,
+    OptimizerConfig,
+    SchedulerConfig,
+)
+from luxonis_train.lightning.freezing import (
+    FreezeSchedule,
+    resolve_unfreeze_epoch,
+)
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.registry import (
@@ -31,13 +49,15 @@ from luxonis_train.registry import (
     LOSSES,
     METRICS,
     NODES,
-    OPTIMIZERS,
-    SCHEDULERS,
     STRATEGIES,
     VISUALIZERS,
     from_registry,
 )
 from luxonis_train.strategies import BaseTrainingStrategy
+from luxonis_train.strategies.legacy import (
+    DEPRECATION_MESSAGE,
+    LegacyStrategyAdapter,
+)
 from luxonis_train.tasks import Metadata
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
@@ -50,7 +70,7 @@ class MainMetric(NamedTuple):
 
 
 class LossAccumulator(defaultdict[str, float]):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(float)
         self.counts = defaultdict(int)
 
@@ -76,21 +96,40 @@ class NodeWrapper(nn.Module):
         visualizers: dict[str, BaseVisualizer],
         unfreeze_after: int | None,
         lr_after_unfreeze: float | None,
+        finetuning: list[FinetuningConfig],
         inputs: list[str] | None = None,
     ):
         super().__init__()
         self.name = name
         self.module = module
-        self.losses = _to_module_dict(losses)
-        self.metrics = _to_module_dict(metrics)
-        self.visualizers = _to_module_dict(visualizers)
+        self.losses = losses
+        self.metrics = metrics
+        self.visualizers = visualizers
         self.unfreeze_after = unfreeze_after
         self.lr_after_unfreeze = lr_after_unfreeze
+        self.finetuning = finetuning
         self.inputs = inputs or []
 
     @property
     def task_name(self) -> str:
         return self.module.task_name
+
+    @property
+    def formatted_name(self) -> str:
+        task_name = self.task_name
+        return f"{task_name}-{self.name}" if task_name else self.name
+
+    @override
+    def train(self, mode: bool = True) -> "NodeWrapper":
+        super().train(mode)
+        self.module.train(mode)
+        for loss in self.losses.values():
+            loss.train(mode)
+        for metric in self.metrics.values():
+            metric.train(mode)
+        for visualizer in self.visualizers.values():
+            visualizer.train(mode)
+        return self
 
 
 class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
@@ -100,6 +139,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         dataset_metadata: DatasetMetadata,
         input_shapes: dict[str, Size],
     ):
+        self.cfg = cfg
         self.graph: dict[str, list[str]] = {}
         self.nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
@@ -176,6 +216,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     _init_attached_module(node_module, v_cfg, VISUALIZERS)
                     for v_cfg in node_cfg.visualizers
                 ),
+                finetuning=node_cfg.finetuning,
                 inputs=node_input_names,
             )
             node_outputs = node.module.run(node_dummy_inputs)
@@ -184,6 +225,18 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             self.nodes[node_name] = node
 
         super().__init__(self.nodes)
+
+        # Snapshots the original trainability state, so it must be
+        # built before any freeze is applied.
+        self.freeze_schedule = FreezeSchedule.from_nodes(self)
+
+    @cached_property
+    def main_metric_reference(self) -> BaseMetric:
+        if self.main_metric is None:
+            raise RuntimeError("Main metric is not defined in the config.")
+        node_name, metric_name = self.main_metric
+        node = self[node_name]
+        return node.metrics[metric_name]
 
     def _get_task_name(
         self,
@@ -216,56 +269,65 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         dataset_metadata: DatasetMetadata,
         node_cfg: NodeConfig,
     ) -> None:
+        if Node.task is None:
+            return
+        metadata = {
+            label
+            for label in Node.task.required_labels
+            if isinstance(label, Metadata)
+        }
         metadata_override = node_cfg.metadata_task_override
-        if Node.task is not None:
-            metadata = {
-                label
-                for label in Node.task.required_labels
-                if isinstance(label, Metadata)
-            }
-            if metadata_override is not None:
-                if isinstance(metadata_override, str):
-                    if len(metadata) != 1:
-                        raise ValueError(
-                            f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
-                            "so the `metadata_task_override` must be a dictionary."
-                        )
-                    metadata_override = {
-                        next(iter(metadata)).name: metadata_override
-                    }
+        if metadata_override is not None:
+            self._apply_metadata_override(metadata, metadata_override, Node)
+        self._validate_metadata_types(metadata, dataset_metadata, node_cfg)
 
-                for m in metadata:
-                    m.name = metadata_override.get(m.name, m.name)
+    @staticmethod
+    def _apply_metadata_override(
+        metadata: set[Metadata],
+        metadata_override: str | dict[str, str],
+        Node: type[BaseNode],
+    ) -> None:
+        if isinstance(metadata_override, str):
+            if len(metadata) != 1:
+                raise ValueError(
+                    f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                    "so the `metadata_task_override` must be a dictionary."
+                )
+            metadata_override = {next(iter(metadata)).name: metadata_override}
 
-            metadata_types = dataset_metadata.metadata_types
+        for m in metadata:
+            m.name = metadata_override.get(m.name, m.name)
 
-            for m in metadata:
-                m_name = f"{node_cfg.task_name}/{m}"
-                if m_name not in metadata_types:
-                    continue
-                typ = metadata_types[m_name]
-                if not m.check_type(typ):
-                    raise ValueError(
-                        f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
-                        f"Expected type '{m.typ}', got '{typ.__name__}'."
-                    )
+    @staticmethod
+    def _validate_metadata_types(
+        metadata: set[Metadata],
+        dataset_metadata: DatasetMetadata,
+        node_cfg: NodeConfig,
+    ) -> None:
+        metadata_types = dataset_metadata.metadata_types
+
+        for m in metadata:
+            m_name = f"{node_cfg.task_name}/{m}"
+            if m_name not in metadata_types:
+                continue
+            typ = metadata_types[m_name]
+            if not m.check_type(typ):
+                raise ValueError(
+                    f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
+                    f"Expected type '{m.typ}', got '{typ.__name__}'."
+                )
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
     ) -> tuple[int | None, float | None]:
-        unfreeze_after = None
-        lr_after_unfreeze = None
-        if node_cfg.freezing.active:
-            if node_cfg.freezing.unfreeze_after is None:
-                unfreeze_after = total_epochs
-            elif isinstance(node_cfg.freezing.unfreeze_after, int):
-                unfreeze_after = node_cfg.freezing.unfreeze_after
-            else:
-                unfreeze_after = int(
-                    node_cfg.freezing.unfreeze_after * total_epochs
-                )
-            if node_cfg.freezing.lr_after_unfreeze is not None:
-                lr_after_unfreeze = node_cfg.freezing.lr_after_unfreeze
+        unfreeze_after = resolve_unfreeze_epoch(
+            node_cfg.freezing, total_epochs
+        )
+        lr_after_unfreeze = (
+            node_cfg.freezing.lr_after_unfreeze
+            if node_cfg.freezing.active
+            else None
+        )
         return unfreeze_after, lr_after_unfreeze
 
     def _get_loader_input_shapes(
@@ -292,25 +354,76 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         return loader_input_shapes
 
     def formatted_name(self, node_name: str) -> str:
-        task_name = self[node_name].task_name
-        return f"{task_name}-{node_name}" if task_name else node_name
-
-    def frozen_nodes(
-        self,
-    ) -> Iterator[tuple[str, BaseNode, int, float | None]]:
-        for node_name, node in self.items():
-            if node.unfreeze_after is not None:
-                yield (
-                    node_name,
-                    node.module,
-                    node.unfreeze_after,
-                    node.lr_after_unfreeze,
-                )
+        return self[node_name].formatted_name
 
     def traverse(
         self,
     ) -> Iterator[tuple[str, NodeWrapper, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
+
+    def build_callbacks(self, save_dir: Path) -> list[pl.Callback]:
+        """Configure Pytorch Lightning callbacks."""
+        model_name = self.cfg.model.name
+
+        callbacks: list[pl.Callback] = [
+            TrainingManager(),
+            LuxonisModelSummary(max_depth=2, rich=self.cfg.rich_logging),
+            ModelCheckpoint(
+                dirpath=save_dir / "min_val_loss",
+                filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
+                monitor="val/loss",
+                auto_insert_metric_name=False,
+                save_top_k=self.cfg.trainer.save_top_k,
+                mode="min",
+            ),
+        ]
+
+        if self.cfg.exporter.aimet.active:
+            callbacks.append(AIMETCallback())
+
+        if self.main_metric is not None:
+            node_name, metric_name = self.main_metric
+            formatted_node = self.formatted_name(node_name)
+            metric_path = f"{formatted_node}/{metric_name}"
+            filename_path = metric_path.replace("/", "_")
+            callbacks.append(
+                ModelCheckpoint(
+                    dirpath=save_dir / "best_val_metric",
+                    filename=f"{model_name}_{filename_path}="
+                    f"{{val/metric/{metric_path}:.4f}}"
+                    f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
+                    monitor=f"val/metric/{metric_path}",
+                    auto_insert_metric_name=False,
+                    save_top_k=self.cfg.trainer.save_top_k,
+                    mode="max",
+                )
+            )
+
+        for callback in self.cfg.trainer.callbacks:
+            if callback.active:
+                callbacks.append(
+                    from_registry(CALLBACKS, callback.name, **callback.params)
+                )
+            else:
+                logger.info(f"Callback '{callback.name}' is inactive.")
+
+        if self.cfg.trainer.accumulate_grad_batches is not None:
+            if not any(
+                isinstance(cb, GradientAccumulationScheduler)
+                for cb in callbacks
+            ):
+                gas = GradientAccumulationScheduler(
+                    scheduling={0: self.cfg.trainer.accumulate_grad_batches}
+                )
+                callbacks.append(gas)
+            else:
+                logger.warning(
+                    "'GradientAccumulationScheduler' is already present "
+                    "in the callbacks list. The `accumulate_grad_batches` "
+                    "parameter in the config will be ignored."
+                )
+
+        return callbacks
 
 
 def compute_losses(
@@ -360,171 +473,64 @@ def build_training_strategy(
     cfg: Config, pl_module: pl.LightningModule
 ) -> BaseTrainingStrategy | None:
     training_strategy = cfg.trainer.training_strategy
-    if training_strategy is not None:
-        logger.info(f"Using training strategy '{training_strategy.name}'")
-        if (
-            cfg.trainer.optimizer is not None
-            or cfg.trainer.scheduler is not None
-        ):
-            logger.warning(
-                "Training strategy is defined. It will override "
-                "any specified optimizer or scheduler from the config."
-            )
-        return from_registry(
-            STRATEGIES,
-            training_strategy.name,
-            **training_strategy.params,
-            pl_module=pl_module,
-        )
-    return None
-
-
-def build_optimizers(
-    cfg: Config,
-    parameters: Iterable[nn.Parameter],
-    main_metric: tuple[str, str] | None,
-    nodes: Nodes,
-) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
-    """Configure model optimizers and schedulers."""
-    cfg_optimizer = cfg.trainer.optimizer
-    cfg_scheduler = cfg.trainer.scheduler
-
-    optimizer = from_registry(
-        OPTIMIZERS,
-        cfg_optimizer.name,
-        **cfg_optimizer.params,
-        params=[p for p in parameters if p.requires_grad],
+    if training_strategy is None:
+        return None
+    logger.info(f"Using training strategy '{training_strategy.name}'")
+    # Warn only about the fields the user actually changed. Compared
+    # against the defaults because `model_fields_set` reports every
+    # field as set on a config rebuilt from `model_dump`.
+    defaults = {
+        "optimizer": OptimizerConfig(),
+        "scheduler": SchedulerConfig(),
+    }
+    overridden = sorted(
+        field
+        for field, default in defaults.items()
+        if getattr(cfg.trainer, field) != default
     )
-
-    def _get_scheduler(cfg: ConfigItem, optimizer: Optimizer) -> LRScheduler:
-        return from_registry(
-            SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
+    if overridden:
+        fields = " and ".join(f"`trainer.{field}`" for field in overridden)
+        logger.warning(
+            "Training strategy is defined. It will override "
+            f"the {fields} specified in the config."
         )
 
-    if cfg_scheduler.name == "SequentialLR":
-        if "schedulers" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'schedulers' "
-                "parameter containing the configurations of the "
-                "individual schedulers."
-            )
-        schedulers = cfg_scheduler.params["schedulers"]
-        if not check_type(schedulers, list[dict]):
-            raise TypeError(
-                "'schedulers' parameter of 'SequentialLR' scheduler "
-                f"must be a list of dictionaries. Got `{schedulers}`."
-            )
-        schedulers_list = [
-            _get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
-            for scheduler_cfg in schedulers
-        ]
+    cls = STRATEGIES.get(training_strategy.name)
+    rules_attribute = getattr(cls, "rules", None)
+    if rules_attribute is None or getattr(
+        rules_attribute, "__isabstractmethod__", False
+    ):
+        # The class predates the rule-based strategy API. Fill the
+        # abstract methods with stubs so it can be instantiated, then
+        # mount it through the compatibility adapter.
+        logger.warning(DEPRECATION_MESSAGE.format(name=training_strategy.name))
 
-        if "milestones" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'milestones' parameter."
-            )
+        def no_base_configs(self: Any) -> Any:
+            # `resolve_training_plan` falls back to the config's
+            # optimizer and scheduler on `NotImplementedError`.
+            raise NotImplementedError
 
-        milestones = cfg_scheduler.params["milestones"]
-        if not check_type(milestones, list[int]):
-            raise TypeError(
-                "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
-                f"Got `{milestones}`."
-            )
-
-        scheduler = SequentialLR(
-            optimizer, schedulers=schedulers_list, milestones=milestones
+        stubs: dict[str, Any] = {}
+        for method in getattr(cls, "__abstractmethods__", ()):  # type: ignore[union-attr]
+            if method == "rules":
+                stubs["rules"] = lambda self: []
+            elif method == "get_base_configs":
+                stubs["get_base_configs"] = no_base_configs
+        # `register=False`: the shim must not replace the original
+        # class in the STRATEGIES registry.
+        metaclass = cast(Any, type(cls))
+        concrete = metaclass(cls.__name__, (cls,), stubs, register=False)
+        legacy = cast(Any, concrete)(
+            pl_module=pl_module, **training_strategy.params
         )
+        return LegacyStrategyAdapter(legacy)
 
-    elif cfg_scheduler.name == "ReduceLROnPlateau":
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-        if cfg_scheduler.params.get("mode") == "max":
-            if main_metric is None:
-                raise ValueError(
-                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
-                )
-            node_name, metric_name = main_metric
-            formatted = nodes.formatted_name(node_name)
-            monitor = f"val/metric/{formatted}/{metric_name}"
-        else:
-            monitor = "val/loss"
-
-        scheduler = {
-            "scheduler": scheduler,
-            "monitor": monitor,
-            "frequency": cfg.trainer.validation_interval,
-        }
-
-    else:
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-
-    return [optimizer], [scheduler]
-
-
-def build_callbacks(
-    cfg: Config,
-    main_metric: tuple[str, str] | None,
-    save_dir: Path,
-    nodes: Nodes,
-) -> list[pl.Callback]:
-    """Configure Pytorch Lightning callbacks."""
-    model_name = cfg.model.name
-
-    callbacks: list[pl.Callback] = [
-        TrainingManager(),
-        LuxonisModelSummary(max_depth=2, rich=cfg.rich_logging),
-    ]
-
-    for callback in cfg.trainer.callbacks:
-        if callback.active:
-            callbacks.append(
-                from_registry(CALLBACKS, callback.name, **callback.params)
-            )
-        else:
-            logger.info(f"Callback '{callback.name}' is inactive.")
-
-    if cfg.trainer.accumulate_grad_batches is not None:
-        if not any(
-            isinstance(cb, GradientAccumulationScheduler) for cb in callbacks
-        ):
-            gas = GradientAccumulationScheduler(
-                scheduling={0: cfg.trainer.accumulate_grad_batches}
-            )
-            callbacks.append(gas)
-        else:
-            logger.warning(
-                "'GradientAccumulationScheduler' is already present "
-                "in the callbacks list. The `accumulate_grad_batches` "
-                "parameter in the config will be ignored."
-            )
-    if main_metric is not None:
-        node_name, metric_name = main_metric
-        formatted_node = nodes.formatted_name(node_name)
-        metric_path = f"{formatted_node}/{metric_name}"
-        filename_path = metric_path.replace("/", "_")
-        callbacks.append(
-            ModelCheckpoint(
-                dirpath=save_dir / "best_val_metric",
-                filename=f"{model_name}_{filename_path}="
-                f"{{val/metric/{metric_path}:.4f}}"
-                f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
-                monitor=f"val/metric/{metric_path}",
-                auto_insert_metric_name=False,
-                save_top_k=cfg.trainer.save_top_k,
-                mode="max",
-            )
-        )
-
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=save_dir / "min_val_loss",
-            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
-            monitor="val/loss",
-            auto_insert_metric_name=False,
-            save_top_k=cfg.trainer.save_top_k,
-            mode="min",
-        )
+    return from_registry(
+        STRATEGIES,
+        training_strategy.name,
+        **training_strategy.params,
+        pl_module=pl_module,
     )
-    return callbacks
 
 
 def postprocess_metrics(
@@ -549,6 +555,102 @@ def postprocess_metrics(
             )
 
 
+def metric_artifact_image_name(
+    mode: Literal["test", "val"],
+    formatted_node_name: str,
+    metric_name: str,
+    artifact_name: str,
+) -> str:
+    """Build the tracker image name for a metric artifact.
+
+    The epoch is deliberately not part of the name - C{log_image}
+    inserts the step as its own path segment, the same way visualization
+    images are named.
+
+    """
+    return (
+        f"{mode}/metrics/{formatted_node_name}/{metric_name}/{artifact_name}"
+    )
+
+
+def mlflow_image_key(name: str, step: int) -> str:
+    """Return the MLflow artifact path an image is logged under.
+
+    Mirrors the path construction of C{LuxonisTracker.log_image}, which
+    splits the caption off the name and puts the step in between.
+
+    """
+    base_path, caption = name.rsplit("/", 1)
+    return f"{base_path}/{step}/{caption}.png"
+
+
+def log_metric_artifacts(
+    tracker: LuxonisTrackerPL,
+    metric: BaseMetric,
+    computed: Any,
+    *,
+    mode: Literal["test", "val"],
+    formatted_node_name: str,
+    metric_name: str,
+    current_epoch: int,
+) -> None:
+    """Render and log the image artifacts of a single metric.
+
+    Must be called before the metric is reset, as artifacts may be
+    derived from the metric's state. Every failure is reported and
+    swallowed - a metric that cannot produce or upload a figure must not
+    bring down the run.
+
+    """
+    try:
+        artifacts = metric.get_artifacts(computed)
+    except Exception:
+        logger.exception(
+            "Failed to generate artifacts for metric "
+            f"'{metric_name}'. Skipping artifact logging."
+        )
+        return
+
+    if not isinstance(artifacts, dict):
+        logger.warning(
+            f"Metric '{metric_name}' returned artifacts of type "
+            f"'{type(artifacts).__name__}', expected a dict of "
+            "images. Skipping artifact logging."
+        )
+        return
+
+    for artifact_name, artifact in artifacts.items():
+        try:
+            if not isinstance(artifact, Tensor):
+                logger.warning(
+                    f"Skipping metric artifact '{artifact_name}' from "
+                    f"metric '{metric_name}': expected a tensor of shape "
+                    f"[C, H, W], got a '{type(artifact).__name__}'."
+                )
+                continue
+            if artifact.dim() != 3:
+                logger.warning(
+                    f"Skipping metric artifact '{artifact_name}' from "
+                    f"metric '{metric_name}': expected shape [C, H, W], "
+                    f"got {tuple(artifact.shape)}."
+                )
+                continue
+
+            tracker.log_image(
+                name=metric_artifact_image_name(
+                    mode, formatted_node_name, metric_name, artifact_name
+                ),
+                img=artifact.detach().cpu().numpy().transpose(1, 2, 0),
+                step=current_epoch,
+            )
+        except Exception:
+            logger.exception(
+                f"Failed to log metric artifact '{artifact_name}' from "
+                f"metric '{metric_name}'. The artifact is dropped for "
+                f"epoch {current_epoch}."
+            )
+
+
 T = TypeVar("T", bound=BaseAttachedModule)
 
 
@@ -560,17 +662,50 @@ def _init_attached_module(
 ) -> tuple[str, T]:
     Module = registry.get(cfg.name)
     module_name = cfg.identifier
-    module = Module(**cfg.params, node=node, **kwargs)
+    params = dict(cfg.params)
+    if registry is METRICS:
+        params = _translate_predefined_metric_params(
+            node, cfg.name, Module, params
+        )
+    module = Module(**params, node=node, **kwargs)
     if module_name == "ConfusionMatrix":
         module_name = "mcc"
     return module_name, module
 
 
+def _translate_predefined_metric_params(
+    node: BaseNode,
+    metric_name: str,
+    Module: type[Any],
+    params: Params,
+) -> Params:
+    if "per_class_metrics" not in params:
+        return params
+
+    per_class_metrics = params.pop("per_class_metrics")
+    if per_class_metrics is None:
+        return params
+
+    task = None
+    with suppress(RuntimeError):
+        task = node.task
+
+    aliases = Module.get_predefined_model_params_aliases(task)
+    param_name = aliases.get("per_class_metrics")
+    if param_name is None:
+        task_name = task.name if task is not None else "unknown"
+        logger.warning(
+            "Ignoring `per_class_metrics` for metric "
+            f"'{metric_name}' on task '{task_name}' because it does not "
+            "support a per-class override."
+        )
+        return params
+
+    params[param_name] = per_class_metrics
+    return params
+
+
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
-
-
-def _to_module_dict(modules: dict[str, A]) -> dict[str, A]:
-    return nn.ModuleDict(modules)  # type: ignore
 
 
 def log_balanced_class_images(
@@ -586,38 +721,25 @@ def log_balanced_class_images(
     current_epoch: int,
 ) -> tuple[int, list[int], list[int]]:
     """Log images with balanced class distribution."""
-    logged_indices = []
-
-    batch_size = next(
-        iter(next(iter(visualizations.values())).values())
-    ).shape[0]
-    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
-    present_classes = [
-        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
-        for idx in range(batch_size)
-    ]
-    for idx, classes in enumerate(present_classes):
-        if classes:
-            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
-            if class_log_counts[min_logged_class] == min(class_log_counts):
-                logged_indices.append(idx)
-                for c in classes:
-                    class_log_counts[c] += 1
-
-    for node_name, node_visualizations in visualizations.items():
-        node_logged_images = n_logged_images
-        formatted_node_name = nodes.formatted_name(node_name)
-        for viz_name, viz_batch in node_visualizations.items():
-            for idx in logged_indices:
-                if node_logged_images >= max_log_images:
-                    break
-                tracker.log_image(
-                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}/{node_logged_images}",
-                    viz_batch[idx].detach().cpu().numpy().transpose(1, 2, 0),
-                    step=current_epoch,
-                )
-                node_logged_images += 1
-
+    logged_indices = _select_balanced_indices(
+        visualizations, labels, cls_task_keys, class_log_counts
+    )
+    balanced = {
+        node_name: {
+            viz_name: viz_batch[logged_indices]
+            for viz_name, viz_batch in node_visualizations.items()
+        }
+        for node_name, node_visualizations in visualizations.items()
+    }
+    node_logged_images = log_sequential_images(
+        tracker,
+        nodes,
+        balanced,
+        n_logged_images,
+        max_log_images,
+        mode,
+        current_epoch,
+    )
     return node_logged_images, class_log_counts, logged_indices
 
 
@@ -769,3 +891,33 @@ def check_tensor_device(
     if isinstance(x, (list | tuple)):
         return all(isinstance(i, Tensor) and i.device == device for i in x)
     raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
+
+
+def _select_balanced_indices(
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_task_keys: list[str],
+    class_log_counts: list[int],
+) -> list[int]:
+    """Pick batch indices that keep per-class logging balanced.
+
+    Mutates C{class_log_counts} in place.
+
+    """
+    logged_indices = []
+    batch_size = next(
+        iter(next(iter(visualizations.values())).values())
+    ).shape[0]
+    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
+    present_classes = [
+        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        for idx in range(batch_size)
+    ]
+    for idx, classes in enumerate(present_classes):
+        if classes:
+            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
+            if class_log_counts[min_logged_class] == min(class_log_counts):
+                logged_indices.append(idx)
+                for c in classes:
+                    class_log_counts[c] += 1
+    return logged_indices

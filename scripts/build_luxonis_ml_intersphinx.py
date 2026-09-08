@@ -1,7 +1,5 @@
 """Build a local LuxonisML intersphinx inventory for pydoctor."""
 
-from __future__ import annotations
-
 import argparse
 import importlib.util
 import os

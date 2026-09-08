@@ -39,6 +39,7 @@ class BaseDetectionHead(BaseHead):
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
+        self._keep_detections_pre_nms = False
 
         if len(self.in_channels) < self.n_heads:
             logger.warning(
@@ -52,6 +53,24 @@ class BaseDetectionHead(BaseHead):
             self.attach_index = (-self.n_heads - 1, -1)
 
         self.stride = self.fit_stride_to_heads()
+
+    @property
+    def keep_detections_pre_nms(self) -> bool:
+        """Whether the pre-NMS candidates are part of the output
+        packet.
+        """
+        return self._keep_detections_pre_nms
+
+    def request_detections_pre_nms(self) -> None:
+        """Ask the head to add the decoded pre-NMS candidates to its
+        output packet under the ``"detections_pre_nms"`` key.
+
+        The candidate tensor is of shape C{[B, n_anchors, 5 +
+        n_classes]}, which is large enough to matter for peak memory, so
+        attached modules that need it have to opt in.
+
+        """
+        self._keep_detections_pre_nms = True
 
     def _forward(
         self, inputs: list[Tensor]
@@ -73,6 +92,7 @@ class BaseDetectionHead(BaseHead):
             "iou_threshold": self.iou_thres,
             "conf_threshold": self.conf_thres,
             "max_det": self.max_det,
+            "strides": self.stride.tolist(),
         }
 
     def get_output_names(self, default: list[str]) -> list[str]:

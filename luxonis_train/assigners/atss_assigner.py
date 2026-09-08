@@ -232,11 +232,11 @@ class ATSSAssigner(nn.Module):
 
         overlaps_mean_per_gt = candidate_overlaps.mean(dim=-1, keepdim=True)
         overlaps_std_per_gt = candidate_overlaps.std(dim=-1, keepdim=True)
-        overlaps_thr_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
+        overlaps_threshold_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
 
         return torch.where(
             _candidate_overlaps
-            > overlaps_thr_per_gt.repeat([1, 1, self.n_anchors]),
+            > overlaps_threshold_per_gt.repeat([1, 1, self.n_anchors]),
             is_in_topk,
             torch.zeros_like(is_in_topk),
         )

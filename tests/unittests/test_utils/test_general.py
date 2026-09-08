@@ -1,8 +1,10 @@
+import numpy as np
 import pytest
 import torch
 from pytest_subtests import SubTests
 
 from luxonis_train.utils.general import (
+    decode_text_metadata_labels,
     infer_upscale_factor,
     instances_from_batch,
     safe_download,
@@ -113,3 +115,62 @@ def test_instances_from_batch(subtests: SubTests):
                 torch.tensor([[10], [20]]),
             )
         )
+
+
+def test_instances_from_batch_empty_shapes_each_payload():
+    bboxes = torch.empty((0, 6))
+    keypoints = torch.empty((0, 52))
+    instances = list(instances_from_batch(bboxes, keypoints, batch_size=2))
+    assert len(instances) == 2
+    for bbox, keypoint in instances:
+        assert bbox.shape == (0, 6)
+        assert keypoint.shape == (0, 52)
+
+
+@pytest.mark.parametrize(
+    ("codes", "expected"),
+    [
+        ([[104, 105]], ["hi"]),
+        ([[104, 105, 0], [111, 107, 0]], ["hi", "ok"]),
+        ([[0, 0, 0], [104, 105, 0]], ["", "hi"]),
+        ([104, 105], ["hi"]),
+    ],
+)
+def test_decode_text_metadata_labels(
+    codes: list[int] | list[list[int]], expected: list[str]
+):
+    decoded = decode_text_metadata_labels(
+        {"/metadata/text": np.array(codes)}, {"/metadata/text": str}
+    )
+    assert decoded["/metadata/text"].tolist() == expected
+
+
+@pytest.mark.parametrize(
+    "codes", [[[-1, 104]], [[104.5, 105]], [[104, 105], [106, 107.5]]]
+)
+def test_decode_text_metadata_labels_keeps_raw_on_invalid_code(
+    codes: list[list[float]],
+):
+    decoded = decode_text_metadata_labels(
+        {"/metadata/text": np.array(codes)}, {"/metadata/text": str}
+    )
+    assert decoded["/metadata/text"].tolist() == np.array(codes).tolist()
+
+
+@pytest.mark.parametrize(
+    "label", [np.array([]), np.array(["hi", "ok"]), np.array([b"hi"])]
+)
+def test_decode_text_metadata_labels_returns_array_unchanged(
+    label: np.ndarray,
+):
+    decoded = decode_text_metadata_labels(
+        {"/metadata/text": label}, {"/metadata/text": str}
+    )
+    assert decoded["/metadata/text"].tolist() == label.tolist()
+
+
+def test_decode_text_metadata_labels_passes_through_non_text():
+    decoded = decode_text_metadata_labels(
+        {"/metadata/id": np.array([1, 2, 3])}, {"/metadata/id": int}
+    )
+    assert decoded["/metadata/id"].tolist() == [1, 2, 3]

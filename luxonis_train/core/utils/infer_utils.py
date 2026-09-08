@@ -10,7 +10,7 @@ import torch
 import torch.utils.data as torch_data
 from lightning.pytorch.callbacks import BasePredictionWriter
 from loguru import logger
-from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
 from torch.utils.data._utils.collate import default_collate
@@ -19,6 +19,7 @@ import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.typing import Labels
 from luxonis_train.utils import Counter
 
 IMAGE_FORMATS = {
@@ -59,8 +60,8 @@ def prepare_and_infer_image(
     npy_img = model.loaders["val"].augment_test_image(images)
     torch_img = torch.tensor(npy_img).unsqueeze(0).permute(0, 3, 1, 2).float()
 
-    return model.lightning_module.forward(
-        {"image": torch_img},
+    return model.lightning_module.full_forward(
+        {model.lightning_module.image_source: torch_img},
         images=get_denormalized_images(model.cfg, torch_img),
         compute_visualizations=True,
     )
@@ -90,41 +91,67 @@ def infer_from_video(
         ret, frame = cap.read()
         if not ret:  # pragma: no cover
             break
-        if model.cfg.trainer.preprocessing.color_space == "RGB":
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # TODO: batched inference
-        outputs = prepare_and_infer_image(
-            model, {"image": torch.tensor(frame)}
-        )
-        renders = process_visualizations(outputs.visualizations)
-
-        for (node_name, viz_name), [viz] in renders.items():
-            if save_dir is not None:
-                name = f"{node_name}_{viz_name}"
-                if name not in writers:
-                    w, h = viz.shape[1], viz.shape[0]
-                    writers[name] = cv2.VideoWriter(
-                        filename=str(save_dir / f"{name}.mp4"),  # type: ignore
-                        fourcc=cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
-                        fps=cap.get(cv2.CAP_PROP_FPS),  # type: ignore
-                        frameSize=(w, h),  # type: ignore
-                    )
-                if name in writers:
-                    writers[name].write(viz)
-            else:  # pragma: no cover
-                cv2.imshow(f"{node_name}/{viz_name}", viz)
+        renders = _infer_video_frame(model, frame)
+        _write_or_show_renders(renders, writers, save_dir, cap)
 
         if not save_dir and window_closed():  # pragma: no cover
             break
 
     cap.release()
-    if save_dir is None:  # pragma: no cover
-        with suppress(cv2.error):  # type: ignore
-            cv2.destroyAllWindows()
-
+    _close_video_windows(save_dir)
     for writer in writers.values():
         writer.release()
+
+
+def _infer_video_frame(
+    model: "lxt.LuxonisModel", frame: np.ndarray
+) -> dict[tuple[str, str], list[np.ndarray]]:
+    if model.cfg.trainer.preprocessing.color_space == "RGB":
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # TODO: batched inference
+    outputs = prepare_and_infer_image(model, {"image": torch.tensor(frame)})
+    return process_visualizations(outputs.visualizations)
+
+
+def _write_or_show_renders(
+    renders: dict[tuple[str, str], list[np.ndarray]],
+    writers: dict[str, cv2.VideoWriter],
+    save_dir: Path | None,
+    capture: cv2.VideoCapture,
+) -> None:
+    for (node_name, viz_name), [viz] in renders.items():
+        if save_dir is None:  # pragma: no cover
+            cv2.imshow(f"{node_name}/{viz_name}", viz)
+            continue
+        name = f"{node_name}_{viz_name}"
+        writer = writers.get(name)
+        if writer is None:
+            writer = _create_video_writer(name, viz, save_dir, capture)
+            writers[name] = writer
+        writer.write(viz)
+
+
+def _create_video_writer(
+    name: str,
+    visualization: np.ndarray,
+    save_dir: Path,
+    capture: cv2.VideoCapture,
+) -> cv2.VideoWriter:
+    width, height = visualization.shape[1], visualization.shape[0]
+    return cv2.VideoWriter(
+        filename=str(save_dir / f"{name}.mp4"),
+        fourcc=cv2.VideoWriter.fourcc(*"mp4v"),
+        fps=capture.get(cv2.CAP_PROP_FPS),
+        frameSize=(width, height),
+    )
+
+
+def _close_video_windows(save_dir: Path | None) -> None:
+    if save_dir is not None:
+        return
+    with suppress(cv2.error):  # type: ignore
+        cv2.destroyAllWindows()
 
 
 def infer_from_loader(
@@ -252,18 +279,18 @@ def _save_renders_batch(
 def create_loader_from_directory(
     img_paths: Iterable[PathType],
     model: "lxt.LuxonisModel",
-    add_path_annotation: bool = False,
     batch_size: int | None = None,
+    return_sample_metadata: bool = False,
 ) -> torch_data.DataLoader:
     """Create a DataLoader from a directory of images.
 
     Args:
         img_paths (``Iterable[PathType]``): Iterable of paths to the images.
         model (LuxonisModel): Model to use for inference.
-        add_path_annotation (bool): Whether to add the image path as an
-            annotation in the dataset.
         batch_size (int | None): Batch size for the DataLoader. If ``None``,
             the model's default batch size is used.
+        return_sample_metadata (bool): Whether the DataLoader also returns the
+            per-sample metadata. Passed to ``LuxonisLoaderTorch``.
 
     Returns:
         torch_data.DataLoader: The DataLoader for the images.
@@ -272,14 +299,13 @@ def create_loader_from_directory(
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
 
-    def generator() -> DatasetIterator:
-        for img_path in img_paths:
-            data: dict[str, Any] = {"file": img_path}
-            if add_path_annotation:
-                data["annotation"] = {"metadata": {"path": str(img_path)}}
-            yield data
-
-    dataset.add(generator())
+    dataset.add(
+        {
+            "file": img_path,
+            "sample_metadata": {"path": str(img_path)},
+        }
+        for img_path in img_paths
+    )
     dataset.make_splits(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
     )
@@ -292,26 +318,21 @@ def create_loader_from_directory(
         augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
+        return_sample_metadata=return_sample_metadata,
     )
 
-    def collate_fix_paths(batch: list[tuple[Tensor, dict[str, Any]]]) -> Any:
-        for _, m in batch:
-            m["/metadata/path"] = (
-                m["/metadata/path"]
-                .view(-1)
-                .byte()
-                .cpu()
-                .numpy()
-                .tobytes()
-                .rstrip(b"\0")
-                .decode("utf-8", "ignore")
-            )
-        return default_collate(batch)
+    def collate_with_metadata(
+        batch: list[tuple[Any, Labels, dict[str, Any]]],
+    ) -> Any:
+        samples = [(img, labels) for img, labels, _ in batch]
+        sample_metadata = [metadata for *_, metadata in batch]
+        inputs, labels = default_collate(samples)
+        return inputs, labels, sample_metadata
 
     return torch_data.DataLoader(
         loader,
-        collate_fn=collate_fix_paths
-        if add_path_annotation
+        collate_fn=collate_with_metadata
+        if return_sample_metadata
         else default_collate,
         batch_size=batch_size or model.cfg.trainer.batch_size,
         pin_memory=True,

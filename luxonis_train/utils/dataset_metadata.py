@@ -107,7 +107,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return len(self._classes[task_name])
         n_classes = len(next(iter(self._classes.values())))
@@ -127,20 +128,16 @@ class DatasetMetadata:
                 Defaults to ``None``.
 
         Returns:
-            int: Number of keypoints for the specified task.
+            int: Number of keypoints for the specified task, or ``0`` if the task
+                does not involve keypoints.
 
         Raises:
-            ValueError: If ``task_name`` is not present in the dataset.
             RuntimeError: If ``task_name`` was not provided and the dataset
                 contains different numbers of keypoints for different tasks.
 
         """
         if task_name is not None:
-            if task_name not in self._n_keypoints:
-                raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
-                )
-            return self._n_keypoints[task_name]
+            return self._n_keypoints.get(task_name, 0)
         n_keypoints = next(iter(self._n_keypoints.values()))
         for n in self._n_keypoints.values():
             if n != n_keypoints:
@@ -170,7 +167,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))
@@ -187,7 +185,7 @@ class DatasetMetadata:
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
         """Dict[str, type[int] | type[`Category
-        <luxonis_ml.data.datasets.Category>`] | type[float] |
+        <luxonis_ml.ldf.annotation.Category>`] | type[float] |
         type[str]]: Metadata names mapped to their types.
 
         Raises:

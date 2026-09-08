@@ -1,0 +1,55 @@
+# Example configuration for training a predefined light OCR recognition model
+
+model:
+  name: ocr_recognition_light
+  predefined_model:
+    name: OCRRecognitionModel
+    variant: light
+    params:
+      alphabet: english
+      max_text_len: 40
+      ignore_unknown: true
+      loss_params:
+        use_focal_loss: false
+      finetuning:
+        head:
+          - parameters:
+              module_type: Linear
+            optimizer:
+              params:
+                weight_decay: 0.0004
+
+loader:
+  params:
+    dataset_name: toy_ocr
+
+trainer:
+  preprocessing:
+    train_image_size: [48, 320]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+
+  batch_size: 4
+  accumulate_grad_batches: 2
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
+  epochs: 200
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 8
+
+  callbacks:
+    - name: ConvertOnTrainEnd
+
+  optimizer:
+    name: AdamW
+    params:
+      lr: 0.001
+      weight_decay: 0.00005
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: 200
+      eta_min: 0.0001

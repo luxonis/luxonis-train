@@ -6,7 +6,7 @@ from luxonis_train.core import LuxonisModel
 
 
 def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
-    opts |= {"loader.params.dataset_name": coco_dataset.dataset_name}
+    opts |= {"loader.params.dataset_name": coco_dataset.identifier}
 
     model = LuxonisModel(get_config(), opts)
     results = model.test(finalize_tracker=False)

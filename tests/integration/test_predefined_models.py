@@ -1,22 +1,57 @@
+import tarfile
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import cv2
 import numpy as np
 import pytest
+from _pytest.mark import ParameterSet
 from luxonis_ml.data import LuxonisLoader
 from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
-from tests.conftest import LuxonisTestDatasets
+from luxonis_train.core.utils.aimet_utils import check_aimet_available
+from tests.conftest import LuxonisTestDataset, LuxonisTestDatasets
 from tests.integration.backbone_model_utils import (
     PREDEFINED_MODELS,
     prepare_predefined_model_config,
 )
 
+InferSubtest: TypeAlias = Literal[
+    "single_image", "image_dir", "video", "loader"
+]
 
+
+def skip_if_no_aimet() -> None:
+    try:
+        check_aimet_available()
+    except ImportError:
+        pytest.skip("AIMET is not installed")
+
+
+def _predefined_model_params() -> list[ParameterSet]:
+    params = []
+    for config_name, extra_opts in PREDEFINED_MODELS:
+        marker = (
+            pytest.mark.predefined_heavy
+            if "heavy" in config_name
+            else pytest.mark.predefined_light
+        )
+        params.append(
+            pytest.param(
+                config_name,
+                extra_opts,
+                marks=marker,
+                id=config_name,
+            )
+        )
+    return params
+
+
+@pytest.mark.predefined_light
 def test_model_construction():
-    cfg = "configs/detection_light_model.yaml"
+    cfg = "luxonis_train/configs/detection_light_model.yaml"
     model = LuxonisModel(
         cfg,
         {
@@ -32,7 +67,9 @@ def test_model_construction():
         assert not node.visualizers
 
 
-@pytest.mark.parametrize(("config_name", "extra_opts"), PREDEFINED_MODELS)
+@pytest.mark.parametrize(
+    ("config_name", "extra_opts"), _predefined_model_params()
+)
 def test_predefined_models(
     config_name: str,
     extra_opts: Params | None,
@@ -65,44 +102,22 @@ def test_predefined_models(
             model.run_save_dir / "archive" / f"{config_name}.onnx.tar.xz"
         ).exists()
 
+    with subtests.test("quantize"):
+        skip_if_no_aimet()
+        save_dir = model.quantize()
+        assert (save_dir / f"{config_name}.encodings").exists()
+        assert (save_dir / f"{config_name}.onnx").exists()
+        assert (save_dir / f"{config_name}.onnx.data").exists()
+        archive_path = save_dir / f"{config_name}.onnx.tar.xz"
+        assert archive_path.exists()
+        with tarfile.open(archive_path) as tar:
+            archive_entries = set(tar.getnames())
+        assert "config.json" in archive_entries
+        assert f"{config_name}.onnx" in archive_entries
+        assert f"{config_name}.onnx.data" in archive_entries
+
     if config_name != "embeddings_model":
-        with subtests.test("infer"):
-            loader = LuxonisLoader(dataset)
-            img_dir = tmp_path / "images"
-            video_path = tmp_path / "video.avi"
-            video_writer = cv2.VideoWriter(
-                str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
-            )
-            img_dir.mkdir()
-            for i, (img, _) in enumerate(loader):
-                assert isinstance(img, np.ndarray)
-                img = cv2.resize(img, (256, 256))
-                cv2.imwrite(str(img_dir / f"{i}.png"), img)
-                video_writer.write(img)
-            video_writer.release()
-
-            for subtest in ["single_image", "image_dir", "video", "loader"]:
-                with subtests.test(f"infer/{subtest}"):
-                    save_dir = tmp_path / f"infer_{subtest}"
-                    if subtest == "single_image":
-                        source = img_dir / "0.png"
-                    elif subtest == "image_dir":
-                        source = img_dir
-                    elif subtest == "video":
-                        source = video_path
-                    else:
-                        source = None
-
-                    model.infer(source_path=source, save_dir=save_dir)
-
-                    if subtest == "single_image":
-                        assert len(list(save_dir.rglob("*.png"))) == 1
-                    elif subtest == "image_dir":
-                        assert len(list(save_dir.iterdir())) == len(loader)
-                    elif subtest == "video":
-                        assert len(list(save_dir.rglob("*.mp4"))) == 1
-                    if subtest is None:
-                        assert len(list(save_dir.iterdir())) == len(loader)
+        _run_infer_subtests(model, dataset, tmp_path, subtests)
 
     # TODO: Support annotation for all models
     if (
@@ -128,3 +143,51 @@ def test_predefined_models(
             opts | {"tracker.run_name": f"{config_name}_reload"},
         )
         model_reload.test()
+
+
+def _run_infer_subtests(
+    model: LuxonisModel,
+    dataset: LuxonisTestDataset,
+    tmp_path: Path,
+    subtests: SubTests,
+) -> None:
+    with subtests.test("infer"):
+        loader = LuxonisLoader(dataset)
+        img_dir = tmp_path / "images"
+        video_path = tmp_path / "video.avi"
+        video_writer = cv2.VideoWriter(
+            str(video_path), cv2.VideoWriter.fourcc(*"XVID"), 1, (256, 256)
+        )
+        img_dir.mkdir()
+        for i, (img, _) in enumerate(loader):
+            assert isinstance(img, np.ndarray)
+            img = cv2.resize(img, (256, 256))
+            cv2.imwrite(str(img_dir / f"{i}.png"), img)
+            video_writer.write(img)
+        video_writer.release()
+
+        sources: dict[InferSubtest, Path | None] = {
+            "single_image": img_dir / "0.png",
+            "image_dir": img_dir,
+            "video": video_path,
+            "loader": None,
+        }
+        for subtest, source in sources.items():
+            with subtests.test(f"infer/{subtest}"):
+                save_dir = tmp_path / f"infer_{subtest}"
+                model.infer(source_path=source, save_dir=save_dir)
+                _assert_infer_output(subtest, save_dir, loader)
+
+
+def _assert_infer_output(
+    subtest: InferSubtest, save_dir: Path, loader: LuxonisLoader
+) -> None:
+    if subtest == "single_image":
+        assert len(list(save_dir.rglob("*.png"))) == 1
+    elif subtest == "image_dir":
+        assert len(list(save_dir.iterdir())) == len(loader)
+    elif subtest == "video":
+        assert len(list(save_dir.rglob("*.mp4"))) == 1
+    # The "loader" subtest infers the "val" split while `loader` counts
+    # the "train" split, so a file-count check would compare mismatched
+    # splits; it is intentionally not asserted.

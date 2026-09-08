@@ -64,7 +64,8 @@ class RecSubNet(BaseNode):
         version of the image by eliminating the noise or anomalies.
 
         This architecture is based on the paper:
-        "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
+        "DRAEM - A discriminatively trained reconstruction embedding
+        for surface anomaly detection" (https://arxiv.org/abs/2108.07610).
 
         Args:
             base_channels (int): The base width of the network. Determines the number of filters in the encoder and decoder.

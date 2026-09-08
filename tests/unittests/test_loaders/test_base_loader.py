@@ -9,7 +9,7 @@ from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 class DummyLoader(BaseLoaderTorch):
     def __len__(self) -> int: ...
 
-    def get(self, idx: int) -> LuxonisLoaderTorchOutput: ...
+    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput: ...
 
     def get_classes(self) -> dict[str, dict[str, int]]: ...
 
@@ -68,6 +68,7 @@ def test_collate_fn(
     inputs, annotations = loader.collate_fn(batch)
 
     with subtests.test("inputs"):
+        assert isinstance(inputs, dict)
         assert inputs["features"].shape == (batch_size, 3, 224, 224)
         assert inputs["features"].dtype == torch.float32
 
@@ -90,3 +91,22 @@ def test_collate_fn(
         assert "/boundingbox" in annotations
         assert annotations["/boundingbox"].shape == (batch_size, 6)
         assert annotations["/boundingbox"].dtype == torch.float32
+
+
+@pytest.mark.parametrize("tensor_first", [True, False])
+def test_collate_fn_rejects_mixed_input_types(tensor_first: bool):
+    loader = DummyLoader(view=["train"])
+    labels = {"/classification": torch.randint(0, 2, (2,), dtype=torch.int64)}
+    tensor_sample = (torch.rand(3, 8, 8, dtype=torch.float32), labels)
+    dict_sample = (
+        {"features": torch.rand(3, 8, 8, dtype=torch.float32)},
+        labels,
+    )
+    batch = (
+        [tensor_sample, dict_sample]
+        if tensor_first
+        else [dict_sample, tensor_sample]
+    )
+
+    with pytest.raises(TypeError, match="same input type"):
+        loader.collate_fn(batch)

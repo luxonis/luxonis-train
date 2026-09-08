@@ -153,7 +153,7 @@ def compute_pose_oks(
     if pose_area is None:
         if gt_bboxes is None:
             raise ValueError(
-                "Either '``pose_area``' or '``gt_bboxes``' must be provided."
+                "Either 'pose_area' or 'gt_bboxes' must be provided."
             )
         width = gt_bboxes[:, :, 2] - gt_bboxes[:, :, 0]
         height = gt_bboxes[:, :, 3] - gt_bboxes[:, :, 1]

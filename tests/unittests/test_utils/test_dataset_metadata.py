@@ -29,8 +29,7 @@ def test_n_keypoints(metadata: DatasetMetadata):
     assert metadata.n_keypoints("color-segmentation") == 0
     assert metadata.n_keypoints("detection") == 0
     assert metadata.n_keypoints() == 0
-    with pytest.raises(ValueError, match="Task 'segmentation'"):
-        metadata.n_keypoints("segmentation")
+    assert metadata.n_keypoints("segmentation") == 0
     metadata._n_keypoints["segmentation"] = 1
     with pytest.raises(RuntimeError, match="different number of keypoints"):
         metadata.n_keypoints()

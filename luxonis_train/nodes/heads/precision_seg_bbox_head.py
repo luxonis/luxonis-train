@@ -26,7 +26,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         - Attach index: ``(-n_heads - 1, -1)`` by default
         - Inputs: list of feature tensors
         - Outputs: training returns ``features``, ``prototypes``, and
-          ``mask_coeficients``; evaluation also returns
+          ``mask_coefficients``; evaluation also returns
           ``boundingbox`` and ``instance_segmentation``; export returns
           raw ``boundingbox``, ``masks``, and ``prototypes`` tensors.
 
@@ -143,7 +143,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             return {
                 "features": features_list,
                 "prototypes": prototypes,
-                "mask_coeficients": mask_coefficients,
+                "mask_coefficients": mask_coefficients,
             }
 
         pred_bboxes = self._prepare_bbox_inference_output(
@@ -165,10 +165,12 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         results = {
             "features": features_list,
             "prototypes": prototypes,
-            "mask_coeficients": mask_coefficients,
+            "mask_coefficients": mask_coefficients,
             "boundingbox": [],
             self.task.main_output: [],
         }
+        if self.keep_detections_pre_nms:
+            results["detections_pre_nms"] = preds_combined
 
         for i, pred in enumerate(preds):
             height, width = self.original_in_shape[-2:]

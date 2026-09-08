@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
 
-from .reparametrizable import Reparametrizable
+from .reparameterizable import Reparameterizable
 from .utils import ModuleFactory, autopad
 
 
@@ -221,7 +221,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: Callable[[Tensor], Tensor] | None | bool = True,
+        activation: Callable[[Tensor], Tensor] | bool | None = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -326,7 +326,7 @@ class SqueezeExciteBlock(nn.Sequential):
 
 
 # TODO: Maybe a better name?
-class GeneralReparametrizableBlock(Reparametrizable):
+class GeneralReparameterizableBlock(Reparameterizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -343,9 +343,9 @@ class GeneralReparametrizableBlock(Reparametrizable):
         refine_block: nn.Module | Literal["se"] | None = None,
         use_scale_layer: bool = True,
         scale_layer_padding: int | tuple[int, int] | None = None,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
     ):
-        """General reparametrizable block with train and deploy states.
+        """General reparameterizable block with train and deploy states.
 
         Args:
             in_channels (int): Number of input channels.
@@ -354,7 +354,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
             stride (int): Stride. Defaults to ``1``.
             padding (int): Padding. Defaults to ``1``.
             groups (int): Groups. Defaults to ``1``.
-            n_branches (int): Number of convolutional branches. During reparametrization, the branches are fused to a single convolutional layer. Defaults to ``1``.
+            n_branches (int): Number of convolutional branches. During reparameterization, the branches are fused to a single convolutional layer. Defaults to ``1``.
             refine_block (``nn.Module | Literal["se"] | None``): A block to refine the output. Placed after the convolutional branches and before the activation function. Can be one of the following: - torch module - string ``"se"`` which will use `SqueezeExciteBlock` - None for no operation Defaults to ``None``.
             use_scale_layer (bool): Whether to add a 1x1 scale branch. Defaults to ``True``.
             scale_layer_padding (int | tuple[int, int] | None): Padding for the scale branch. Defaults to None.
@@ -442,17 +442,17 @@ class GeneralReparametrizableBlock(Reparametrizable):
         return self.__class__.__name__
 
     @override
-    def reparametrize(self) -> None:
+    def reparameterize(self) -> None:
         """Fuse training-time branches into a single convolution branch.
 
         The method creates ``fused_branch`` from the dense, scale, and
         skip branches and switches subsequent forward passes to the
         fused branch. It raises ``RuntimeError`` if the block has
-        already been reparametrized.
+        already been reparameterized.
 
         """
         if self.fused_branch is not None:
-            raise RuntimeError(f"{self.name} is already reparametrized")
+            return
 
         kernel, bias = self._fuse_parameters()
         fused_branch = nn.Conv2d(
@@ -474,10 +474,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
     @override
     def restore(self) -> None:
         if self.fused_branch is None:
-            raise RuntimeError(
-                f"Cannot restore '{self.name}' "
-                "that has not yet been reparametrized."
-            )
+            return
 
         # Not sure if this is necessary
         for param in self.fused_branch.parameters():
@@ -557,7 +554,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         if running_var is None or running_mean is None:
             raise ValueError(
                 "Running variance and mean must be "
-                "provided for reparametrization."
+                "provided for reparameterization."
             )
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1).to(kernel.device)
@@ -591,8 +588,7 @@ class BlockRepeater(nn.Sequential):
         if "out_channels" in kwargs:
             kwargs["in_channels"] = kwargs["out_channels"]
 
-        for _ in range(n_repeats - 1):
-            blocks.append(module(**kwargs))
+        blocks.extend(module(**kwargs) for _ in range(n_repeats - 1))
 
         super().__init__(*blocks)
 
@@ -658,7 +654,7 @@ class BottleRep(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        module: ModuleFactory = GeneralReparametrizableBlock,
+        module: ModuleFactory = GeneralReparameterizableBlock,
         weight: bool = True,
         **kwargs,
     ):
@@ -667,7 +663,7 @@ class BottleRep(nn.Module):
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
-            module (ModuleFactory): Block factory to use. Defaults to `GeneralReparametrizableBlock`.
+            module (ModuleFactory): Block factory to use. Defaults to ``GeneralReparameterizableBlock``.
             weight (bool): If using learnable or static shortcut weight. Defaults to ``True``.
             **kwargs (``Any``): Keyword arguments forwarded to ``module``.
 
@@ -722,10 +718,10 @@ class SpatialPyramidPoolingBlock(nn.Module):
         return self.conv2(x)
 
 
-class AttentionRefinmentBlock(nn.Module):
+class AttentionRefinementBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
-        """Attention Refinment block.
+        """Attention Refinement block.
 
         Adapted from `https://github.com/taveraantonio/BiseNetv1 <https://github.com/taveraantonio/BiseNetv1>`_.
 

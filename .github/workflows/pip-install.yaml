@@ -1,0 +1,44 @@
+name: Pip Install
+
+# Nothing else in CI installs from the `requirements*.txt` exports,
+# so this workflow checks that path stays usable for pip users.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "requirements*.txt"
+      - "scripts/export_requirements.sh"
+      - ".github/workflows/pip-install.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pip-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version-file: .python-version
+
+      - name: Install from the exported requirements
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Install LuxonisTrain without dependencies
+        run: pip install --no-cache-dir --no-deps .
+
+      - name: Import LuxonisTrain
+        run: python -c "import luxonis_train; print(luxonis_train.__version__)"

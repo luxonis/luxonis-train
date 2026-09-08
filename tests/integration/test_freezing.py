@@ -7,23 +7,44 @@ from tensorboard.backend.event_processing import event_accumulator
 from luxonis_train.core import LuxonisModel
 
 
+# The frozen head owns a parameter group for the whole run, so both
+# series are logged from the first epoch. Only the head's group is
+# rebased to `lr_after_unfreeze` at the unfreeze epoch.
 @pytest.mark.parametrize(
     ("lr_after_unfreeze", "expected_lrs"),
     [
         (
             0.001,
             {
-                "lr-SGD": [(0, 0.000100), (1, 0.002080)],
-                "lr-SGD/pg1": [(2, 0.010000), (3, 0.008365)],
-                "lr-SGD/pg2": [(2, 0.001000), (3, 0.000837)],
+                "lr-SGD/default": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
+                "lr-SGD/default/DDRNetSegmentationHead": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                    (2, 0.001000),
+                    (3, 0.000837),
+                ],
             },
         ),
         (
             0.01,
             {
-                "lr-SGD": [(0, 0.000100), (1, 0.002080)],
-                "lr-SGD/pg1": [(2, 0.010000), (3, 0.008365)],
-                "lr-SGD/pg2": [(2, 0.010000), (3, 0.008365)],
+                "lr-SGD/default": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
+                "lr-SGD/default/DDRNetSegmentationHead": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
             },
         ),
     ],
@@ -34,7 +55,7 @@ def test_freezing_parametrized(
     coco_dataset: LuxonisDataset,
     image_size: tuple[int, int],
 ):
-    config_file = "configs/segmentation_light_model.yaml"
+    config_file = "luxonis_train/configs/segmentation_light_model.yaml"
     opts = {
         "model.predefined_model.params": {
             "head_params": {

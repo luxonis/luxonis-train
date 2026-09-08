@@ -1,9 +1,11 @@
+import json
 import tempfile
 import threading
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
-from threading import ExceptHookArgs
-from typing import Any, Literal, overload
+from threading import ExceptHookArgs, Thread
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -20,7 +22,18 @@ from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
+from torch import Tensor
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.data.dataloader import DataLoader
 from typeguard import typechecked
+
+if TYPE_CHECKING:
+    import optuna
+    from aimet_torch import (  # pyright: ignore[reportMissingImports]
+        QuantizationSimModel,
+    )
+    from sqlalchemy import URL
 
 from luxonis_train.callbacks import (
     FailOnNoTrainBatches,
@@ -29,6 +42,12 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
+from luxonis_train.config.config import (
+    AIMETConfig,
+    CallbackConfig,
+    TunerConfig,
+)
+from luxonis_train.config.predefined import resolve_predefined_config
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import get_main_metric
 from luxonis_train.loaders import (
@@ -36,11 +55,18 @@ from luxonis_train.loaders import (
     DummyLoader,
     LuxonisLoaderTorch,
 )
-from luxonis_train.registry import LOADERS
+from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
+from luxonis_train.registry import (
+    LOADERS,
+    OPTIMIZERS,
+    SCHEDULERS,
+    from_registry,
+)
 from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
+    get_tracker_init_params,
     setup_logging,
 )
 from luxonis_train.utils.general import safe_download
@@ -56,6 +82,7 @@ from .utils.export_utils import (
     get_preprocessing,
     hubai_export,
     make_initializers_unique,
+    rename_onnx_outputs,
     replace_weights,
     try_onnx_simplify,
 )
@@ -70,23 +97,21 @@ from .utils.train_utils import create_trainer
 
 
 class LuxonisModel:
-    """Common logic of the core components.
-
-    This class contains common logic of the core components (trainer,
-    evaluator, exporter, etc.).
-
-    """
+    """Train, evaluate, and export a configured model."""
 
     def __init__(
         self,
-        cfg: PathType | Params | Config | None,
+        cfg: PathType | Params | Config | None = None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
-        allow_empty_dataset: bool = False,
+        model: str | None = None,
+        variant: str | None = None,
         weights: PathType | dict[str, Any] | None = None,
+        allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
-        """Construct a new Core instance.
+        """Load the configuration and initialize the training
+        components.
 
         Loads the config and initializes loaders, dataloaders, augmentations,
         lightning components, and tracking.
@@ -97,6 +122,11 @@ class LuxonisModel:
                 restoring config from a checkpoint.
             opts (``Params | list[str] | tuple[str, ...] | None``): Command-line
                 override values for the config.
+            model (str | None): Name of a packaged predefined model, optionally
+                suffixed with a version, for example ``"detection:v1"``.
+                Mutually exclusive with ``cfg``.
+            variant (str | None): Variant of the packaged predefined model.
+                Defaults to the model's default variant.
             allow_empty_dataset (bool): If ``True``, initializes the model even
                 if the dataset is empty or cannot be created. This is useful
                 for debugging or commands that do not require a dataset.
@@ -108,41 +138,33 @@ class LuxonisModel:
                 restored from the checkpoint.
 
         """
-        if weights is not None:
-            if isinstance(weights, dict):
-                if "state_dict" not in weights:
-                    weights = {"state_dict": weights}
-                ckpt = weights
-            elif isinstance(weights, PathType):
-                weights = safe_download(weights)
-                if weights is None:
-                    raise RuntimeError(
-                        f"Failed to download weights from {weights}."
+        if variant is not None and model is None:
+            raise ValueError(
+                "'variant' requires 'model' to be specified as well."
+            )
+        if model is not None:
+            if cfg is not None:
+                raise ValueError("'cfg' and 'model' are mutually exclusive.")
+            resolved = resolve_predefined_config(model, variant)
+            cfg = resolved.path
+            if isinstance(opts, dict):
+                model_opts = dict(
+                    zip(
+                        resolved.opts[::2],
+                        resolved.opts[1::2],
+                        strict=True,
                     )
-                ckpt = torch.load(weights, map_location="cpu")  # nosemgre
-            else:  # pragma: no cover
-                raise ValueError(
-                    f"Invalid type for weights: {type(weights)}. "
-                    "Expected str or dict."
                 )
+                opts = opts | model_opts
+            elif resolved.opts:
+                opts = [*(opts or []), *resolved.opts]
 
-            if cfg is None:
-                cfg = ckpt.get("config")
-                if cfg is None:
-                    raise ValueError(
-                        "Checkpoint does not contain the 'config' key. "
-                        "Cannot restore `LuxonisModel` from checkpoint."
-                    )
-            if "dataset_metadata" in ckpt and dataset_metadata is None:
-                try:
-                    dataset_metadata = DatasetMetadata(
-                        **ckpt["dataset_metadata"]
-                    )
-                except Exception as e:  # pragma: no cover
-                    logger.error(
-                        "Failed to load dataset metadata from the checkpoint. "
-                        f"Error: {e}"
-                    )
+        restored_predefined_model: dict[str, Any] | None = None
+        if weights is not None:
+            weights, ckpt = self._normalize_weights_and_load_ckpt(weights)
+            cfg, dataset_metadata, restored_predefined_model = (
+                self._restore_cfg_and_metadata(ckpt, cfg, dataset_metadata)
+            )
 
         if isinstance(cfg, Config):
             self.cfg = cfg
@@ -156,13 +178,97 @@ class LuxonisModel:
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
+        self._init_tracker_and_trainer()
+        self._build_loaders()
+        self._build_pytorch_loaders()
+
+        self.dataset_metadata = self._resolve_dataset_metadata(
+            dataset_metadata
+        )
+        logger.info(f"Dataset metadata: {self.dataset_metadata}")
+        self.config_file = self.run_save_dir / "training_config.yaml"
+        self.cfg.save_data(self.config_file)
+
+        self.input_shapes = self.loaders["train"].input_shapes
+
+        self.lightning_module = LuxonisLightningModule(
+            cfg=self.cfg,
+            dataset_metadata=self.dataset_metadata,
+            save_dir=self.run_save_dir,
+            input_shapes=self.input_shapes,
+            _core=self,
+        )
+        self.lightning_module._ckpt_predefined_model = (
+            restored_predefined_model
+        )
+
+        if weights is not None:
+            self._load_initial_weights(weights)
+        self._exported_models: dict[str, Path] = {}
+
+    @staticmethod
+    @typechecked
+    def _normalize_weights_and_load_ckpt(
+        weights: PathType | dict[str, Any],
+    ) -> tuple[PathType | dict[str, Any], dict[str, Any]]:
+        if isinstance(weights, dict):
+            if "state_dict" not in weights:
+                weights = {"state_dict": weights}
+            return weights, weights
+        if isinstance(weights, PathType):
+            downloaded = safe_download(weights)
+            if downloaded is None:
+                raise RuntimeError(
+                    f"Failed to download weights from {weights}."
+                )
+            ckpt = torch.load(downloaded, map_location="cpu")  # nosemgrep
+            return downloaded, ckpt
+        raise ValueError(  # pragma: no cover
+            f"Invalid type for weights: {type(weights)}. Expected str or dict."
+        )
+
+    @staticmethod
+    def _restore_cfg_and_metadata(
+        ckpt: dict[str, Any],
+        cfg: PathType | Params | Config | None,
+        dataset_metadata: DatasetMetadata | None,
+    ) -> tuple[
+        PathType | Params | Config,
+        DatasetMetadata | None,
+        dict[str, Any] | None,
+    ]:
+        restored_predefined_model = None
+        if cfg is None:
+            cfg = ckpt.get("config")
+            if cfg is None:
+                raise ValueError(
+                    "Checkpoint does not contain the 'config' key. "
+                    "Cannot restore `LuxonisModel` from checkpoint."
+                )
+            # The dumped config has no `predefined_model` block, so
+            # provenance is inherited from the checkpoint — but only
+            # when the config itself came from that checkpoint. A
+            # user-supplied config warm-started from a checkpoint
+            # must not claim the checkpoint's predefined model.
+            restored_predefined_model = ckpt.get("predefined_model")
+        if "dataset_metadata" in ckpt and dataset_metadata is None:
+            try:
+                dataset_metadata = DatasetMetadata(**ckpt["dataset_metadata"])
+            except Exception as e:  # pragma: no cover
+                logger.error(
+                    "Failed to load dataset metadata from the checkpoint. "
+                    f"Error: {e}"
+                )
+        return cfg, dataset_metadata, restored_predefined_model
+
+    def _init_tracker_and_trainer(self) -> None:
         rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
             mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
-            **self.cfg.tracker.model_dump(),
+            **get_tracker_init_params(self.cfg.tracker),
         )
 
         self.run_save_dir = (
@@ -192,20 +298,11 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
+    def _build_loaders(self) -> None:
         self.loaders: dict[View, BaseLoaderTorch] = {}
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
-        if issubclass(Loader, LuxonisLoaderTorch):
-            model_tasks = {
-                node.task_name for node in self.cfg.model.head_nodes
-            }
-            if model_tasks and None not in model_tasks:
-                logger.info(
-                    f"Using {model_tasks} to filter task names from the dataset"
-                )
-                self.cfg.loader.params["filter_task_names"] = sorted(
-                    model_tasks  # type: ignore
-                )
+        self._maybe_filter_task_names(Loader)
 
         for view in ("train", "val", "test"):
             if (
@@ -215,49 +312,66 @@ class LuxonisModel:
             ):
                 self.cfg.loader.params["delete_existing"] = False
 
-            try:
-                self.loaders[view] = Loader(
-                    view={
-                        "train": self.cfg.loader.train_view,
-                        "val": self.cfg.loader.val_view,
-                        "test": self.cfg.loader.test_view,
-                    }[view],
-                    image_source=self.cfg.loader.image_source,
-                    height=self.cfg_preprocessing.train_image_size.height,
-                    width=self.cfg_preprocessing.train_image_size.width,
-                    augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
-                    color_space=self.cfg_preprocessing.color_space,
-                    keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                    seed=self.cfg.trainer.seed,
-                    **self.cfg.loader.params,  # type: ignore
-                )
-            except Exception:
-                if not self.allow_empty_dataset:
-                    logger.error(
-                        "Unable to initialize loader. If you want to run "
-                        "the model without an existing dataset, "
-                        "set `allow_empty_dataset=True`."
-                    )
-                    raise
-                logger.warning(
-                    f"Failed to initialize loader '{loader_name}' "
-                    f"for view '{view}'. Using `DummyLoader` instead."
-                )
-                self.cfg.loader.name = DummyLoader.__name__
-                self.loaders[view] = DummyLoader(
-                    cfg=self.cfg,
-                    view={
-                        "train": self.cfg.loader.train_view,
-                        "val": self.cfg.loader.val_view,
-                        "test": self.cfg.loader.test_view,
-                    }[view],
-                    image_source=self.cfg.loader.image_source,
-                    height=self.cfg_preprocessing.train_image_size.height,
-                    width=self.cfg_preprocessing.train_image_size.width,
-                    color_space=self.cfg_preprocessing.color_space,
-                    **self.cfg.loader.params,  # type: ignore
-                )
+            self.loaders[view] = self._create_loader(view, Loader, loader_name)
 
+        self._log_loader_sizes()
+
+    def _maybe_filter_task_names(self, Loader: type) -> None:
+        if not issubclass(Loader, LuxonisLoaderTorch):
+            return
+        model_tasks = {node.task_name for node in self.cfg.model.head_nodes}
+        if model_tasks and None not in model_tasks:
+            logger.info(
+                f"Using {model_tasks} to filter task names from the dataset"
+            )
+            self.cfg.loader.params["filter_task_names"] = sorted(
+                model_tasks  # type: ignore
+            )
+
+    def _create_loader(
+        self, view: View, Loader: type, loader_name: str
+    ) -> BaseLoaderTorch:
+        view_name = {
+            "train": self.cfg.loader.train_view,
+            "val": self.cfg.loader.val_view,
+            "test": self.cfg.loader.test_view,
+        }[view]
+        try:
+            return Loader(
+                view=view_name,
+                image_source=self.cfg.loader.image_source,
+                height=self.cfg_preprocessing.train_image_size.height,
+                width=self.cfg_preprocessing.train_image_size.width,
+                augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
+                color_space=self.cfg_preprocessing.color_space,
+                keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
+                seed=self.cfg.trainer.seed,
+                **self.cfg.loader.params,  # type: ignore
+            )
+        except Exception:
+            if not self.allow_empty_dataset:
+                logger.error(
+                    "Unable to initialize loader. If you want to run "
+                    "the model without an existing dataset, "
+                    "set `allow_empty_dataset=True`."
+                )
+                raise
+            logger.warning(
+                f"Failed to initialize loader '{loader_name}' "
+                f"for view '{view}'. Using `DummyLoader` instead."
+            )
+            self.cfg.loader.name = DummyLoader.__name__
+            return DummyLoader(
+                cfg=self.cfg,
+                view=view_name,
+                image_source=self.cfg.loader.image_source,
+                height=self.cfg_preprocessing.train_image_size.height,
+                width=self.cfg_preprocessing.train_image_size.width,
+                color_space=self.cfg_preprocessing.color_space,
+                **self.cfg.loader.params,  # type: ignore
+            )
+
+    def _log_loader_sizes(self) -> None:
         for name, loader in self.loaders.items():
             logger.info(
                 f"{name.capitalize()} loader - view: {loader.view}, size: {len(loader)}"
@@ -265,6 +379,7 @@ class LuxonisModel:
             if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
 
+    def _build_pytorch_loaders(self) -> None:
         sampler = None
         # TODO: implement weighted sampler
         if self.cfg.trainer.use_weighted_sampler:
@@ -272,35 +387,12 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        self.pytorch_loaders: dict[View, torch_data.DataLoader] = {}
+        self.pytorch_loaders: dict[
+            View,
+            torch_data.DataLoader[LuxonisLoaderTorchOutput],
+        ] = {}
         for view in ("train", "val", "test"):
-            if self.cfg.trainer.n_validation_batches is not None and view in {
-                "val",
-                "test",
-            }:
-                generator = torch.Generator()
-                generator.manual_seed(self.cfg.trainer.seed or 42)
-                if self.cfg.trainer.n_validation_batches == -1:
-                    loader = self.loaders[view]
-                else:
-                    n_samples = (
-                        self.cfg.trainer.n_validation_batches
-                        * self.cfg.trainer.batch_size
-                    )
-                    subset_size = min(n_samples, len(self.loaders[view]))
-                    if subset_size < len(self.loaders[view]):
-                        logger.warning(
-                            f"Limiting {view} evaluation to the first "
-                            f"{subset_size} / {len(self.loaders[view])} "
-                            f"samples because "
-                            f"`n_validation_batches="
-                            f"{self.cfg.trainer.n_validation_batches}`."
-                        )
-                    indices = range(subset_size)
-                    loader = torch_data.Subset(self.loaders[view], indices)
-            else:
-                loader = self.loaders[view]
-
+            loader, generator = self._resolve_eval_subset(view)
             self.pytorch_loaders[view] = torch_data.DataLoader(
                 loader,
                 batch_size=self.cfg.trainer.batch_size,
@@ -314,53 +406,80 @@ class LuxonisModel:
                 ),
                 pin_memory=self.cfg.trainer.pin_memory,
                 sampler=sampler if view == "train" else None,
-                generator=generator
-                if (
-                    self.cfg.trainer.n_validation_batches is not None
-                    and view in ["val", "test"]
-                )
-                else None,
+                generator=generator,
             )
 
-        if dataset_metadata is not None:
-            if isinstance(self.loaders["train"], DummyLoader) and set(
-                self.cfg.loader.params.keys()
-            ).intersection(
-                {
-                    "class_names",
-                    "n_classes",
-                    "n_keypoints",
-                }
-            ):
-                logger.warning(
-                    "Dataset metadata from the checkpoint are "
-                    "overridden by extra loader parameters. "
-                    "The checkpoint metadata will not be used."
-                )
-                self.dataset_metadata = DatasetMetadata.from_loader(
-                    self.loaders["train"]
-                )
-            else:
-                self.dataset_metadata = dataset_metadata
+    def _resolve_eval_subset(
+        self, view: View
+    ) -> tuple[
+        BaseLoaderTorch | torch_data.Subset[LuxonisLoaderTorchOutput],
+        torch.Generator | None,
+    ]:
+        n_val = self.cfg.trainer.n_validation_batches
+        if n_val is None or view not in {"val", "test"}:
+            return self.loaders[view], None
+
+        generator = torch.Generator()
+        generator.manual_seed(self.cfg.trainer.seed or 42)
+        if n_val == -1:
+            return self.loaders[view], generator
+
+        n_samples = n_val * self.cfg.trainer.batch_size
+        subset_size = min(n_samples, len(self.loaders[view]))
+        if subset_size < len(self.loaders[view]):
+            logger.warning(
+                f"Limiting {view} evaluation to the first "
+                f"{subset_size} / {len(self.loaders[view])} "
+                f"samples because "
+                f"`n_validation_batches="
+                f"{self.cfg.trainer.n_validation_batches}`."
+            )
+        indices = range(subset_size)
+        return torch_data.Subset(self.loaders[view], indices), generator
+
+    def _resolve_dataset_metadata(
+        self, dataset_metadata: DatasetMetadata | None
+    ) -> DatasetMetadata:
+        if dataset_metadata is None:
+            return DatasetMetadata.from_loader(self.loaders["train"])
+        if isinstance(self.loaders["train"], DummyLoader) and set(
+            self.cfg.loader.params.keys()
+        ).intersection({"class_names", "n_classes", "n_keypoints"}):
+            logger.warning(
+                "Dataset metadata from the checkpoint are "
+                "overridden by extra loader parameters. "
+                "The checkpoint metadata will not be used."
+            )
+            return DatasetMetadata.from_loader(self.loaders["train"])
+        return dataset_metadata
+
+    def _load_initial_weights(
+        self, weights: PathType | dict[str, Any]
+    ) -> None:
+        if isinstance(weights, dict):
+            if "state_dict" not in weights:
+                weights = {"state_dict": weights}
+            ckpt = weights
         else:
-            self.dataset_metadata = DatasetMetadata.from_loader(
-                self.loaders["train"]
+            ckpt = LuxonisFileSystem.download(str(weights), self.run_save_dir)
+        if self.cfg.model.weights is not None:
+            logger.warning(
+                "Weights provided in the command line, but config weights are set. "
+                "Ignoring weights provided in config."
             )
-        logger.info(f"Dataset metadata: {self.dataset_metadata}")
-        self.config_file = self.run_save_dir / "training_config.yaml"
-        self.cfg.save_data(self.config_file)
+        self.lightning_module.load_checkpoint(ckpt)
 
-        self.input_shapes = self.loaders["train"].input_shapes
+    @property
+    def train_loader(self) -> DataLoader:
+        return self.pytorch_loaders["train"]
 
-        self.lightning_module = LuxonisLightningModule(
-            cfg=self.cfg,
-            dataset_metadata=self.dataset_metadata,
-            save_dir=self.run_save_dir,
-            input_shapes=self.input_shapes,
-            _core=self,
-        )
+    @property
+    def val_loader(self) -> DataLoader:
+        return self.pytorch_loaders["val"]
 
-        self._exported_models: dict[str, Path] = {}
+    @property
+    def test_loader(self) -> DataLoader:
+        return self.pytorch_loaders["test"]
 
     def save_checkpoint(
         self,
@@ -464,8 +583,8 @@ class LuxonisModel:
             self._train(
                 resume_weights,
                 self.lightning_module,
-                self.pytorch_loaders["train"],
-                self.pytorch_loaders["val"],
+                self.train_loader,
+                self.val_loader,
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
@@ -482,8 +601,8 @@ class LuxonisModel:
                 args=(
                     resume_weights,
                     self.lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.train_loader,
+                    self.val_loader,
                 ),
                 daemon=True,
             )
@@ -519,36 +638,11 @@ class LuxonisModel:
             logger.warning(
                 "No model weights specified. Exporting model without weights."
             )
-        if save_path is None:
-            export_path = (
-                self.run_save_dir
-                / "export"
-                / (self.cfg.exporter.name or self.cfg.model.name)
-            )
-        else:
-            save_path = Path(save_path)
-            if save_path.suffix:
-                export_path = save_path.with_suffix("")
-            else:
-                export_path = save_path / (
-                    self.cfg.exporter.name or self.cfg.model.name
-                )
+        export_path = self._resolve_export_path(save_path)
         export_path.parent.mkdir(parents=True, exist_ok=True)
 
         if ckpt_only:
-            logger.info("Re-exporting the checkpoint file.")
-            with replace_weights(self.lightning_module, weights):
-                # Needs to be called to attach the model to the trainer
-                self.pl_trainer.strategy._lightning_module = (
-                    self.lightning_module
-                )
-                self.pl_trainer.save_checkpoint(
-                    str(export_path.with_suffix(".ckpt")), weights_only=False
-                )
-                logger.info(
-                    f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
-                )
-            return export_path.with_suffix(".ckpt")
+            return self._export_ckpt_only(export_path, weights)
 
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
@@ -576,10 +670,7 @@ class LuxonisModel:
         mean_values = self.cfg.exporter.mean_values or mean
 
         for path in self._exported_models.values():
-            if self.cfg.exporter.upload_to_run:
-                self.tracker.upload_artifact(path, typ="export")
-            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
-                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
+            self._upload_export_artifact(path)
 
         if len(self.input_shapes) > 1:
             logger.error(
@@ -588,6 +679,61 @@ class LuxonisModel:
             )
             return onnx_save_path
 
+        modelconverter_config = self._build_modelconverter_config(
+            onnx_save_path, scale_values, mean_values, color_space
+        )
+
+        yaml_path = export_path.with_suffix(".yaml")
+        with open(yaml_path, "w") as f:
+            yaml.safe_dump(
+                modelconverter_config,
+                f,
+                sort_keys=False,
+                default_flow_style=False,
+            )
+        self._upload_export_artifact(yaml_path, name=str(yaml_path))
+
+        return onnx_save_path
+
+    def _resolve_export_path(self, save_path: PathType | None) -> Path:
+        model_name = self.cfg.exporter.name or self.cfg.model.name
+        if save_path is None:
+            return self.run_save_dir / "export" / model_name
+        save_path = Path(save_path)
+        if save_path.suffix:
+            return save_path.with_suffix("")
+        return save_path / model_name
+
+    def _export_ckpt_only(
+        self, export_path: Path, weights: PathType | dict[str, Any] | None
+    ) -> Path:
+        logger.info("Re-exporting the checkpoint file.")
+        with replace_weights(self.lightning_module, weights):
+            # Needs to be called to attach the model to the trainer
+            self.pl_trainer.strategy._lightning_module = self.lightning_module
+            self.pl_trainer.save_checkpoint(
+                str(export_path.with_suffix(".ckpt")), weights_only=False
+            )
+            logger.info(
+                f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
+            )
+        return export_path.with_suffix(".ckpt")
+
+    def _upload_export_artifact(
+        self, path: PathType, name: str | None = None
+    ) -> None:
+        if self.cfg.exporter.upload_to_run:
+            self.tracker.upload_artifact(path, name=name, typ="export")
+        if self.cfg.exporter.upload_url is not None:  # pragma: no cover
+            LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
+
+    def _build_modelconverter_config(
+        self,
+        onnx_save_path: Path,
+        scale_values: list[float] | None,
+        mean_values: list[float] | None,
+        color_space: str,
+    ) -> dict[str, Any]:
         inputs = []
         outputs = []
         inputs_dict = get_inputs(self._exported_models["onnx"])
@@ -607,7 +753,7 @@ class LuxonisModel:
                     "shape": metadata["shape"],
                 }
             )
-        modelconverter_config = {
+        return {
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
@@ -615,20 +761,6 @@ class LuxonisModel:
             "inputs": inputs,
             "outputs": outputs,
         }
-
-        with open(export_path.with_suffix(".yaml"), "w") as f:
-            yaml.safe_dump(
-                modelconverter_config,
-                f,
-                sort_keys=False,
-                default_flow_style=False,
-            )
-            if self.cfg.exporter.upload_to_run:
-                self.tracker.upload_artifact(f.name, name=f.name, typ="export")
-            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
-                LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
-
-        return onnx_save_path
 
     @overload
     def test(
@@ -646,7 +778,7 @@ class LuxonisModel:
         view: Literal["train", "test", "val"] = "test",
         weights: PathType | dict[str, Any] | None = ...,
         finalize_tracker: bool = True,
-    ) -> None: ...
+    ) -> Thread: ...
 
     @typechecked
     def test(
@@ -655,7 +787,7 @@ class LuxonisModel:
         view: Literal["train", "val", "test"] = "test",
         weights: PathType | dict[str, Any] | None = None,
         finalize_tracker: bool = True,
-    ) -> Mapping[str, float] | None:
+    ) -> Mapping[str, float] | Thread:
         """Runs testing.
 
         Args:
@@ -671,8 +803,8 @@ class LuxonisModel:
                 responsible for eventually calling ``finalize_run()``.
 
         Returns:
-            ``Mapping[str, float] | None``: Test results when ``new_thread`` is
-            ``False``; otherwise ``None``.
+            ``Mapping[str, float] | Thread``: Test results when ``new_thread`` is
+            ``False``; otherwise the thread that runs the test.
 
         """
         weights = self.resolve_weights(weights)
@@ -698,7 +830,8 @@ class LuxonisModel:
                 target=_run_test,
                 daemon=True,
             )
-            return self.thread.start()
+            self.thread.start()
+            return self.thread
         return _run_test()
 
     def finalize_run(self, status: str = "success") -> None:
@@ -807,148 +940,6 @@ class LuxonisModel:
     def tune(self) -> None:
         """Run Optuna tuning of hyperparameters."""
         import optuna
-        from optuna.integration import PyTorchLightningPruningCallback
-        from sqlalchemy import URL
-
-        from .utils.tune_utils import (
-            get_trial_params,
-            rename_params_for_logging,
-        )
-
-        def _objective(trial: optuna.trial.Trial) -> float:
-            """Objective function used to optimize Optuna study."""
-            cfg_tracker = self.cfg.tracker
-            tracker_params = cfg_tracker.model_dump()
-            tracker_params["run_name"] = (
-                tracker_params["run_name"] or self.tracker.run_name
-            )
-            child_tracker = LuxonisTrackerPL(
-                rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-                is_sweep=True,
-                **tracker_params,
-            )
-
-            run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
-
-            assert self.cfg.tuner is not None
-            curr_params = get_trial_params(
-                all_augs, self.cfg.tuner.params, trial
-            )
-            curr_params["model.predefined_model"] = None
-
-            cfg_copy = self.cfg.model_copy(deep=True)
-            # manually remove Normalize so it doesn't
-            # get duplicated when creating new cfg instance
-            cfg_copy.trainer.preprocessing.augmentations = [
-                a
-                for a in cfg_copy.trainer.preprocessing.augmentations
-                if a.name != "Normalize"
-            ]
-            cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
-
-            unsupported_callbacks = {
-                "UploadCheckpoint",
-                "ExportOnTrainEnd",
-                "ArchiveOnTrainEnd",
-                "TestOnTrainEnd",
-            }
-
-            filtered_callbacks = []
-            for cb in cfg.trainer.callbacks:
-                if cb.name in unsupported_callbacks:
-                    logger.warning(
-                        f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
-                    )
-                else:
-                    filtered_callbacks.append(cb)
-
-            cfg.trainer.callbacks = filtered_callbacks
-
-            renamed_params = rename_params_for_logging(
-                curr_params, self.cfg.tuner.params
-            )
-            child_tracker.log_hyperparams(renamed_params)
-
-            cfg.save_data(run_save_dir / "training_config.yaml")
-            cfg.trainer.n_sanity_val_steps = 0
-            lightning_module = LuxonisLightningModule(
-                cfg=cfg,
-                dataset_metadata=self.dataset_metadata,
-                save_dir=run_save_dir,
-                input_shapes=self.loaders["train"].input_shapes,
-                _core=self,
-            )
-            callbacks: list[pl.Callback] = [
-                (
-                    LuxonisRichProgressBar()
-                    if cfg.rich_logging
-                    else LuxonisTQDMProgressBar()
-                )
-            ]
-
-            if cfg.tuner.monitor == "loss":
-                monitor = "val/loss"
-            else:
-                main_metric = get_main_metric(cfg)
-                if main_metric is None:  # pragma: no cover
-                    raise ValueError(
-                        "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
-                    )
-                all_mlflow_logging_keys = self.get_mlflow_logging_keys()
-                search_name = (
-                    "mcc"
-                    if main_metric.metric_name == "ConfusionMatrix"
-                    else main_metric.metric_name
-                )
-                monitor = next(
-                    (
-                        k
-                        for k in all_mlflow_logging_keys["metrics"]
-                        if search_name in k
-                        and main_metric.node_name in k
-                        and "val" in k
-                    ),
-                    None,
-                )
-                if monitor is None:
-                    raise ValueError(
-                        f"Could not find monitor key for main metric '{main_metric.metric_name}' "
-                        f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
-                    )
-
-            pruner_callback = PyTorchLightningPruningCallback(
-                trial, monitor=monitor
-            )
-            graceful_interrupt_callback = GracefulInterruptCallback(
-                self.run_save_dir, self.tracker
-            )
-            fail_no_train_batches_callback = FailOnNoTrainBatches()
-
-            callbacks.append(pruner_callback)
-            callbacks.append(graceful_interrupt_callback)
-            callbacks.append(fail_no_train_batches_callback)
-
-            if self.cfg.trainer.seed is not None:
-                pl.seed_everything(cfg.trainer.seed, workers=True)
-
-            pl_trainer = create_trainer(
-                cfg.trainer, logger=child_tracker, callbacks=callbacks
-            )
-
-            try:
-                pl_trainer.fit(
-                    lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
-                )
-                pruner_callback.check_pruned()
-
-            # Pruning is done by raising an error
-            except optuna.TrialPruned as e:
-                logger.info(e)
-
-            return pl_trainer.callback_metrics[monitor].item()
 
         cfg_tuner = self.cfg.tuner
         if cfg_tuner is None:
@@ -957,9 +948,206 @@ class LuxonisModel:
             )
 
         all_augs = [a.name for a in self.cfg_preprocessing.augmentations]
+        self._init_parent_tracker()
+
+        logger.info("Starting tuning...")
+
+        pruner = (
+            optuna.pruners.MedianPruner()
+            if cfg_tuner.use_pruner
+            else optuna.pruners.NopPruner()
+        )
+        storage = self._build_optuna_storage(cfg_tuner)
+
+        study = optuna.create_study(
+            study_name=cfg_tuner.study_name,
+            storage=storage.render_as_string(hide_password=False)
+            if storage
+            else None,
+            direction="minimize"
+            if cfg_tuner.monitor == "loss"
+            else "maximize",
+            pruner=pruner,
+            load_if_exists=cfg_tuner.continue_existing_study,
+        )
+
+        study.optimize(
+            lambda trial: self._tune_objective(trial, all_augs),
+            n_trials=cfg_tuner.n_trials,
+            timeout=cfg_tuner.timeout,
+        )
+        logger.info(
+            f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
+        )
+
+        study_df = study.trials_dataframe()
+        study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
+
+        logger.info(
+            f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
+        )
+
+        self.parent_tracker.log_hyperparams(study.best_params)
+
+        self._finalize_wandb_tuning(study)
+
+    def _tune_objective(
+        self, trial: "optuna.trial.Trial", all_augs: list[str]
+    ) -> float:
+        """Objective function used to optimize Optuna study."""
+        import optuna
+        from optuna.integration import PyTorchLightningPruningCallback
+
+        from .utils.tune_utils import rename_params_for_logging
+
+        assert self.cfg.tuner is not None
+
+        cfg_tracker = self.cfg.tracker
+        tracker_params = get_tracker_init_params(cfg_tracker)
+        tracker_params["run_name"] = (
+            tracker_params["run_name"] or self.tracker.run_name
+        )
+        child_tracker = LuxonisTrackerPL(
+            rank=rank_zero_only.rank,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
+            is_sweep=True,
+            **tracker_params,
+        )
+
+        run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
+
+        cfg, curr_params = self._build_tuning_config(trial, all_augs)
+        cfg.trainer.callbacks = self._filter_tuning_callbacks(cfg)
+
+        renamed_params = rename_params_for_logging(
+            curr_params, self.cfg.tuner.params
+        )
+        child_tracker.log_hyperparams(renamed_params)
+
+        cfg.save_data(run_save_dir / "training_config.yaml")
+        cfg.trainer.n_sanity_val_steps = 0
+        lightning_module = LuxonisLightningModule(
+            cfg=cfg,
+            dataset_metadata=self.dataset_metadata,
+            save_dir=run_save_dir,
+            input_shapes=self.loaders["train"].input_shapes,
+            _core=self,
+        )
+        callbacks: list[pl.Callback] = [
+            (
+                LuxonisRichProgressBar()
+                if cfg.rich_logging
+                else LuxonisTQDMProgressBar()
+            )
+        ]
+
+        monitor = self._resolve_tuning_monitor(cfg)
+
+        pruner_callback = PyTorchLightningPruningCallback(
+            trial, monitor=monitor
+        )
+        callbacks.append(pruner_callback)
+        callbacks.append(
+            GracefulInterruptCallback(self.run_save_dir, self.tracker)
+        )
+        callbacks.append(FailOnNoTrainBatches())
+
+        if self.cfg.trainer.seed is not None:
+            pl.seed_everything(cfg.trainer.seed, workers=True)
+
+        pl_trainer = create_trainer(
+            cfg.trainer, logger=child_tracker, callbacks=callbacks
+        )
+
+        try:
+            pl_trainer.fit(
+                lightning_module,
+                self.train_loader,
+                self.val_loader,
+            )
+            pruner_callback.check_pruned()
+
+        # Pruning is done by raising an error
+        except optuna.TrialPruned as e:
+            logger.info(e)
+
+        return pl_trainer.callback_metrics[monitor].item()
+
+    def _build_tuning_config(
+        self, trial: "optuna.trial.Trial", all_augs: list[str]
+    ) -> tuple[Config, Params]:
+        from .utils.tune_utils import get_trial_params
+
+        assert self.cfg.tuner is not None
+        curr_params = get_trial_params(all_augs, self.cfg.tuner.params, trial)
+        curr_params["model.predefined_model"] = None
+
+        cfg_copy = self.cfg.model_copy(deep=True)
+        # manually remove Normalize so it doesn't
+        # get duplicated when creating new cfg instance
+        cfg_copy.trainer.preprocessing.augmentations = [
+            a
+            for a in cfg_copy.trainer.preprocessing.augmentations
+            if a.name != "Normalize"
+        ]
+        cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
+        return cfg, curr_params
+
+    @staticmethod
+    def _filter_tuning_callbacks(cfg: Config) -> list[CallbackConfig]:
+        unsupported_callbacks = {
+            "UploadCheckpoint",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+            "TestOnTrainEnd",
+        }
+
+        filtered_callbacks = []
+        for cb in cfg.trainer.callbacks:
+            if cb.name in unsupported_callbacks:
+                logger.warning(
+                    f"Callback '{cb.name}' is not supported for tuning and is removed from the callbacks list."
+                )
+            else:
+                filtered_callbacks.append(cb)
+        return filtered_callbacks
+
+    def _resolve_tuning_monitor(self, cfg: Config) -> str:
+        if cfg.tuner.monitor == "loss":
+            return "val/loss"
+
+        main_metric = get_main_metric(cfg)
+        if main_metric is None:  # pragma: no cover
+            raise ValueError(
+                "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
+            )
+        all_mlflow_logging_keys = self.get_mlflow_logging_keys()
+        search_name = (
+            "mcc"
+            if main_metric.metric_name == "ConfusionMatrix"
+            else main_metric.metric_name
+        )
+        monitor = next(
+            (
+                k
+                for k in all_mlflow_logging_keys["metrics"]
+                if search_name in k
+                and main_metric.node_name in k
+                and "val" in k
+            ),
+            None,
+        )
+        if monitor is None:
+            raise ValueError(
+                f"Could not find monitor key for main metric '{main_metric.metric_name}' "
+                f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
+            )
+        return monitor
+
+    def _init_parent_tracker(self) -> None:
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
-        tracker_params = cfg_tracker.model_dump()
+        tracker_params = get_tracker_init_params(cfg_tracker)
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["is_wandb"] = False
         tracker_params["run_name"] = (
@@ -975,64 +1163,33 @@ class LuxonisModel:
             # Experiment needs to be interacted with to create actual MLFlow run
             self.parent_tracker.experiment["mlflow"].active_run()
 
-        logger.info("Starting tuning...")
+    @staticmethod
+    def _build_optuna_storage(cfg_tuner: TunerConfig) -> "URL | None":
+        from sqlalchemy import URL
 
-        pruner = (
-            optuna.pruners.MedianPruner()
-            if cfg_tuner.use_pruner
-            else optuna.pruners.NopPruner()
-        )
-
-        if cfg_tuner.storage.active:
-            storage = URL.create(
-                cfg_tuner.storage.backend,
-                username=cfg_tuner.storage.username,
-                password=cfg_tuner.storage.password.get_secret_value()
-                if cfg_tuner.storage.password is not None
-                else None,
-                host=cfg_tuner.storage.host,
-                database=cfg_tuner.storage.database,
-                port=cfg_tuner.storage.port,
-            )
-            logger.info(f"Using '{storage}' as Optuna storage.")
-        else:
-            storage = None
-
-        study = optuna.create_study(
-            study_name=cfg_tuner.study_name,
-            storage=storage.render_as_string(hide_password=False)
-            if storage
+        if not cfg_tuner.storage.active:
+            return None
+        storage = URL.create(
+            cfg_tuner.storage.backend,
+            username=cfg_tuner.storage.username,
+            password=cfg_tuner.storage.password.get_secret_value()
+            if cfg_tuner.storage.password is not None
             else None,
-            direction="minimize"
-            if cfg_tuner.monitor == "loss"
-            else "maximize",
-            pruner=pruner,
-            load_if_exists=cfg_tuner.continue_existing_study,
+            host=cfg_tuner.storage.host,
+            database=cfg_tuner.storage.database,
+            port=cfg_tuner.storage.port,
         )
+        logger.info(f"Using '{storage}' as Optuna storage.")
+        return storage
 
-        study.optimize(
-            _objective, n_trials=cfg_tuner.n_trials, timeout=cfg_tuner.timeout
-        )
-        logger.info(
-            f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
-        )
-
-        study_df = study.trials_dataframe()
-        study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
-
-        logger.info(
-            f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
-        )
-
-        self.parent_tracker.log_hyperparams(study.best_params)
-
+    def _finalize_wandb_tuning(self, study: "optuna.study.Study") -> None:
         if self.cfg.tracker.is_wandb:  # pragma: no cover
             # If wandb used then init parent tracker separately at the end
             wandb_parent_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
                 _auto_finalize=True,
                 **(
-                    self.cfg.tracker.model_dump()
+                    get_tracker_init_params(self.cfg.tracker)
                     | {"run_name": self.parent_tracker.run_name}
                 ),
             )
@@ -1083,6 +1240,11 @@ class LuxonisModel:
             path = self._exported_models["onnx"]
 
         path = Path(path)
+        executable_paths: list[PathType] = [path]
+
+        external_data_path = path.with_name(f"{path.name}.data")
+        if external_data_path.exists():
+            executable_paths.append(external_data_path)
 
         executable_fname = path.name
         archive_name += path.suffix
@@ -1143,7 +1305,7 @@ class LuxonisModel:
             archive_name=archive_name,
             save_path=str(archive_save_directory),
             cfg_dict=cfg_dict,
-            executables_paths=[str(path)],  # TODO: what if more executables?
+            executables_paths=executable_paths,
         ).make_archive()
 
         logger.info(f"NN Archive saved to {archive_path}")
@@ -1199,30 +1361,62 @@ class LuxonisModel:
         )
         scale_values = self.cfg.exporter.scale_values or scale
         mean_values = self.cfg.exporter.mean_values or mean
-        if self.cfg.exporter.reverse_input_channels is not None:
-            reverse_input_channels = self.cfg.exporter.reverse_input_channels
-        else:
-            logger.info(
-                "`exporter.reverse_input_channels` not specified. "
-                "Using the `trainer.preprocessing.color_space` value "
-                "to determine if the channels should be reversed. "
-                f"`color_space` = '{color_space}' -> "
-                f"`reverse_input_channels` = `{color_space == 'RGB'}`"
-            )
-            reverse_input_channels = color_space == "RGB"
+        reverse_input_channels = self._resolve_reverse_input_channels(
+            color_space
+        )
 
         convert_save_dir = (
             Path(save_dir) if save_dir else Path(self.run_save_dir)
         )
 
         conversion_artifacts: dict[str, Path] = {}
-        if self.cfg.exporter.blobconverter.active:
-            logger.warning(
-                "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
-                "Please consider using the HubAI SDK instead."
-            )
-            try:
-                blob_path = blobconverter_export(
+        blob_path = self._convert_blobconverter(
+            onnx_path,
+            scale_values,
+            mean_values,
+            reverse_input_channels,
+            convert_save_dir,
+        )
+        if blob_path is not None:
+            conversion_artifacts["blob"] = blob_path
+
+        hubai_archive_path = self._convert_hubai(
+            archive_path, convert_save_dir
+        )
+        if hubai_archive_path is not None:
+            conversion_artifacts["hubai_archive"] = hubai_archive_path
+
+        return archive_path, conversion_artifacts
+
+    def _resolve_reverse_input_channels(self, color_space: str) -> bool:
+        if self.cfg.exporter.reverse_input_channels is not None:
+            return self.cfg.exporter.reverse_input_channels
+        logger.info(
+            "`exporter.reverse_input_channels` not specified. "
+            "Using the `trainer.preprocessing.color_space` value "
+            "to determine if the channels should be reversed. "
+            f"`color_space` = '{color_space}' -> "
+            f"`reverse_input_channels` = `{color_space == 'RGB'}`"
+        )
+        return color_space == "RGB"
+
+    def _convert_blobconverter(
+        self,
+        onnx_path: Path,
+        scale_values: list[float] | None,
+        mean_values: list[float] | None,
+        reverse_input_channels: bool,
+        convert_save_dir: Path,
+    ) -> Path | None:
+        if not self.cfg.exporter.blobconverter.active:
+            return None
+        logger.warning(
+            "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
+            "Please consider using the HubAI SDK instead."
+        )
+        try:
+            blob_path = Path(
+                blobconverter_export(
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
@@ -1230,61 +1424,439 @@ class LuxonisModel:
                     str(convert_save_dir),
                     str(onnx_path),
                 )
-                blob_path = Path(blob_path)
-                self._exported_models["blob"] = blob_path
-                conversion_artifacts["blob"] = blob_path
-                if self.cfg.exporter.upload_to_run:
-                    self.tracker.upload_artifact(blob_path, typ="export")
-                if self.cfg.exporter.upload_url is not None:
-                    LuxonisFileSystem.upload(
-                        blob_path, self.cfg.exporter.upload_url
-                    )
-            except ImportError:
-                logger.error("Failed to import `blobconverter`")
-                logger.warning(
-                    "`blobconverter` not installed. Skipping .blob model conversion. "
-                    "Ensure `blobconverter` is installed in your environment."
+            )
+            self._exported_models["blob"] = blob_path
+            if self.cfg.exporter.upload_to_run:
+                self.tracker.upload_artifact(blob_path, typ="export")
+            if self.cfg.exporter.upload_url is not None:
+                LuxonisFileSystem.upload(
+                    blob_path, self.cfg.exporter.upload_url
                 )
+        except ImportError:
+            logger.error("Failed to import `blobconverter`")
+            logger.warning(
+                "`blobconverter` not installed. Skipping .blob model conversion. "
+                "Ensure `blobconverter` is installed in your environment."
+            )
+            return None
+        else:
+            return blob_path
 
-        if self.cfg.exporter.hubai.active:
-            try:
-                dataset_name = None
-                if "train" in self.loaders and hasattr(
-                    self.loaders["train"], "dataset"
-                ):
-                    dataset = getattr(self.loaders["train"], "dataset", None)
-                    if dataset is not None:
-                        dataset_name = getattr(dataset, "dataset_name", None)
-                hubai_archive_path = Path(
-                    hubai_export(
-                        cfg=self.cfg.exporter.hubai,
-                        quantization_mode=self.cfg.exporter.quantization_mode,
-                        archive_path=archive_path,
-                        export_path=convert_save_dir,
-                        model_name=self.cfg.model.name,
-                        dataset_name=dataset_name,
-                    )
+    def _convert_hubai(
+        self, archive_path: Path, convert_save_dir: Path
+    ) -> Path | None:
+        if not self.cfg.exporter.hubai.active:
+            return None
+        try:
+            hubai_archive_path = Path(
+                hubai_export(
+                    cfg=self.cfg.exporter.hubai,
+                    quantization_mode=self.cfg.exporter.quantization_mode,
+                    archive_path=archive_path,
+                    export_path=convert_save_dir,
+                    model_name=self.cfg.model.name,
+                    dataset_name=self._get_train_dataset_name(),
                 )
-                conversion_artifacts["hubai_archive"] = hubai_archive_path
-                self._exported_models["hubai_archive"] = hubai_archive_path
-                if self.cfg.archiver.upload_to_run:
-                    self.tracker.upload_artifact(
-                        hubai_archive_path, typ="archive"
-                    )
-                if self.cfg.archiver.upload_url is not None:
-                    LuxonisFileSystem.upload(
-                        hubai_archive_path, self.cfg.archiver.upload_url
-                    )
-            except ImportError:
-                logger.error("Failed to import `hubai_sdk`")
-                logger.warning(
-                    "`hubai-sdk` not installed. Skipping HubAI conversion. "
-                    "Ensure `hubai-sdk` is installed in your environment."
+            )
+            self._exported_models["hubai_archive"] = hubai_archive_path
+            if self.cfg.archiver.upload_to_run:
+                self.tracker.upload_artifact(hubai_archive_path, typ="archive")
+            if self.cfg.archiver.upload_url is not None:
+                LuxonisFileSystem.upload(
+                    hubai_archive_path, self.cfg.archiver.upload_url
                 )
-            except ValueError as e:
-                raise ValueError(f"HubAI conversion failed: {e}") from e
+        except ImportError:
+            logger.exception(
+                "Unable to import `hubai_sdk`, skipping HubAI conversion."
+            )
+            return None
+        except ValueError as e:
+            raise ValueError(f"HubAI conversion failed: {e}") from e
+        else:
+            return hubai_archive_path
 
-        return archive_path, conversion_artifacts
+    def _get_train_dataset_name(self) -> str | None:
+        loader = self.loaders["train"]
+        if not isinstance(loader, LuxonisLoaderTorch):
+            return None
+        return loader.dataset.identifier
+
+    def quantize(
+        self,
+        weights: PathType | None = None,
+        epochs: int | None = None,
+        quant_scheme: Literal["min_max", "tf", "tf_enhanced"] | None = None,
+        default_output_bw: int | None = None,
+        default_param_bw: int | None = None,
+        config_file: str | None = None,
+        default_data_type: Literal["int", "float"] | None = None,
+        adaround: bool | None = None,
+        adaround_iterations: int | None = None,
+        adaround_reg_param: float | None = None,
+        adaround_beta_range: tuple[int, int] | None = None,
+        adaround_warm_start: float | None = None,
+        fold_batch_norms: bool | None = None,
+        cross_layer_equalization: bool | None = None,
+        batch_norm_reestimation: bool | None = None,
+        sequential_mse: bool | None = None,
+        optimizer: Optimizer | None = None,
+        scheduler: LRScheduler | None = None,
+        in_place: bool = False,
+    ) -> Path:
+        """Quantize the model using AIMET.
+
+        Args:
+            weights (``PathType | None``): ``Path`` to the checkpoint from which to
+                load weights.
+            epochs (int | None): Number of epochs to run quantization-aware
+                training for.
+            quant_scheme (``Literal["min_max", "tf", "tf_enhanced"] | None``):
+                Quantization scheme to use. If not specified, the value from the
+                configuration file is used.
+            default_output_bw (int | None): Default bitwidth used for quantizing
+                outputs. If not specified, the value from the configuration file is
+                used.
+            default_param_bw (int | None): Default bitwidth used for quantizing
+                parameters. If not specified, the value from the configuration file
+                is used.
+            config_file (str | None): ``Path`` to the AIMET configuration file. If
+                not specified, the value from the configuration file is used.
+            default_data_type (``Literal["int", "float"] | None``): Default data
+                type used for quantization. If not specified, the value from the
+                configuration file is used.
+            adaround (bool | None): Whether to use Adaround for weight
+                quantization. If not specified, the value from the configuration
+                file is used.
+            adaround_iterations (int | None): Number of iterations to run Adaround
+                for. If not specified, the value from the configuration file is
+                used.
+            adaround_reg_param (float | None): Regularization parameter used for
+                Adaround. If not specified, the value from the configuration file
+                is used.
+            adaround_beta_range (``tuple[int, int] | None``): Beta range used for
+                Adaround. If not specified, the value from the configuration file
+                is used.
+            adaround_warm_start (float | None): Warm start value used for Adaround.
+                If not specified, the value from the configuration file is used.
+            fold_batch_norms (bool | None): Whether to fold batch norms before
+                quantization. If not specified, the value from the configuration
+                file is used.
+            cross_layer_equalization (bool | None): Whether to perform cross-layer
+                equalization before quantization. If not specified, the value from
+                the configuration file is used.
+            batch_norm_reestimation (bool | None): Whether to perform batch norm
+                reestimation after folding batch norms. If not specified, the value
+                from the configuration file is used.
+            sequential_mse (bool | None): Whether to run sequential MSE. If not
+                specified, the value from the configuration file is used.
+            optimizer (``Optimizer | None``): Optimizer used for quantization-aware
+                training. If not specified, the optimizer from the configuration
+                file is used.
+            scheduler (``LRScheduler | None``): Learning rate scheduler used for
+                quantization-aware training. If not specified, the scheduler from
+                the configuration file is used.
+            in_place (bool): Whether to quantize the original model in place, or to
+                quantize a copy of it. Defaults to ``False``, which quantizes a
+                copy. ``True`` modifies the original model in place, which can save
+                memory but overwrites the original model's weights and structure.
+
+        """
+        from .utils.aimet_utils import (
+            check_aimet_available,
+            get_ptq_calibration_loader,
+            quantization_aware_training,
+        )
+
+        check_aimet_available()
+
+        save_dir = self.run_save_dir / "aimet"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        cfg = self.cfg.exporter.aimet
+        aimet_config_file = self._prepare_aimet_config_file(
+            config_file, cfg, save_dir
+        )
+
+        (
+            adaround,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
+            sequential_mse,
+        ) = self._resolve_aimet_overrides(
+            cfg,
+            adaround,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
+            sequential_mse,
+        )
+
+        model = self._build_quant_model(in_place, weights)
+
+        # Lightning test loops use inference mode by default, which can
+        # leak inference tensors into lazily initialized loss buffers that
+        # are later reused by QAT under autograd.
+        quant_eval_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=[
+                LuxonisRichProgressBar()
+                if self.cfg.rich_logging
+                else LuxonisTQDMProgressBar()
+            ],
+            precision=self.cfg.trainer.precision,
+            inference_mode=False,
+        )
+
+        pre_quant_test = quant_eval_trainer.test(model, self.val_loader)[0]
+
+        dummy_inputs_dict, input_names, dummy_inputs = (
+            self._build_dummy_inputs(model)
+        )
+        ptq_loader = get_ptq_calibration_loader(
+            val_dataset=self.loaders["val"],
+            collate_fn=self.loaders["val"].collate_fn,
+            batch_size=self.cfg.trainer.batch_size,
+            num_workers=self.cfg.trainer.n_workers,
+            pin_memory=self.cfg.trainer.pin_memory,
+            max_calibration_images=cfg.max_calibration_images,
+        )
+
+        sim = self._run_ptq(
+            model,
+            dummy_inputs,
+            ptq_loader,
+            save_dir,
+            cfg,
+            aimet_config_file,
+            adaround,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
+            sequential_mse,
+            quant_scheme,
+            default_output_bw,
+            default_param_bw,
+            default_data_type,
+            adaround_iterations,
+            adaround_reg_param,
+            adaround_beta_range,
+            adaround_warm_start,
+        )
+        model = cast(LuxonisLightningModule, sim.model)
+
+        model.eval()
+        ptq_test = quant_eval_trainer.test(model, self.val_loader)[0]
+
+        optimizer, scheduler = self._resolve_qat_optimizer_scheduler(
+            optimizer, scheduler, sim, cfg
+        )
+
+        model = quantization_aware_training(
+            sim,
+            dummy_inputs,
+            self.train_loader,
+            optimizer,
+            scheduler,
+            epochs if epochs is not None else cfg.epochs,
+            fold_batch_norms,
+            batch_norm_reestimation,
+        ).eval()
+
+        qat_test = quant_eval_trainer.test(model, self.val_loader)[0]
+
+        self._export_quantized_onnx(
+            sim, model, dummy_inputs, dummy_inputs_dict, input_names, save_dir
+        )
+
+        self._print_quant_results(model, pre_quant_test, ptq_test, qat_test)
+        logger.info(f"AIMET artifacts saved in: {save_dir}")
+        return save_dir
+
+    @staticmethod
+    def _prepare_aimet_config_file(
+        config_file: str | None, cfg: AIMETConfig, save_dir: Path
+    ) -> str | None:
+        aimet_config_file = config_file or cfg.config
+        if isinstance(aimet_config_file, dict):
+            with open(save_dir / "aimet_config.json", "w") as f:
+                json.dump(aimet_config_file, f, indent=4)
+            aimet_config_file = str(save_dir / "aimet_config.json")
+        return aimet_config_file
+
+    @staticmethod
+    def _resolve_aimet_overrides(
+        cfg: AIMETConfig,
+        adaround: bool | None,
+        fold_batch_norms: bool | None,
+        cross_layer_equalization: bool | None,
+        batch_norm_reestimation: bool | None,
+        sequential_mse: bool | None,
+    ) -> tuple[bool, bool, bool, bool, bool]:
+        def pick(override: bool | None, default: bool) -> bool:
+            return default if override is None else override
+
+        return (
+            pick(adaround, cfg.adaround.active),
+            pick(fold_batch_norms, cfg.fold_batch_norms),
+            pick(cross_layer_equalization, cfg.cross_layer_equalization),
+            pick(batch_norm_reestimation, cfg.batch_norm_reestimation),
+            pick(sequential_mse, cfg.sequential_mse),
+        )
+
+    def _build_quant_model(
+        self, in_place: bool, weights: PathType | None
+    ) -> "LuxonisLightningModule":
+        if not in_place:
+            model = deepcopy(self.lightning_module)
+        else:
+            model = self.lightning_module
+
+        model.reparameterize().eval()
+
+        if weights is not None:
+            model.load_checkpoint(weights)
+        return model
+
+    @staticmethod
+    def _build_dummy_inputs(
+        model: "LuxonisLightningModule",
+    ) -> tuple[dict[str, Tensor], list[str], Tensor]:
+        dummy_inputs_dict = {
+            input_name: torch.randn([1, *shape]).to(model.device)
+            for shapes in model.nodes.loader_input_shapes.values()
+            for input_name, shape in shapes.items()
+        }
+
+        if len(dummy_inputs_dict) > 1:
+            raise NotImplementedError(
+                "Quantization is not yet supported for models "
+                "with multiple inputs."
+            )
+        input_names = list(dummy_inputs_dict.keys())
+        dummy_inputs = next(iter(dummy_inputs_dict.values()))
+        return dummy_inputs_dict, input_names, dummy_inputs
+
+    @staticmethod
+    def _run_ptq(
+        model: LuxonisLightningModule,
+        dummy_inputs: Tensor,
+        ptq_loader: DataLoader,
+        save_dir: Path,
+        cfg: AIMETConfig,
+        aimet_config_file: str | None,
+        adaround: bool,
+        fold_batch_norms: bool,
+        cross_layer_equalization: bool,
+        batch_norm_reestimation: bool,
+        sequential_mse: bool,
+        quant_scheme: Literal["min_max", "tf", "tf_enhanced"] | None,
+        default_output_bw: int | None,
+        default_param_bw: int | None,
+        default_data_type: Literal["int", "float"] | None,
+        adaround_iterations: int | None,
+        adaround_reg_param: float | None,
+        adaround_beta_range: tuple[int, int] | None,
+        adaround_warm_start: float | None,
+    ) -> "QuantizationSimModel":
+        from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
+            QuantizationDataType,
+            QuantScheme,
+        )
+
+        from .utils.aimet_utils import post_training_quantization
+
+        return post_training_quantization(
+            model,
+            dummy_inputs,
+            ptq_loader,
+            save_dir,
+            QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
+            default_output_bw or cfg.default_output_bw,
+            default_param_bw or cfg.default_param_bw,
+            QuantizationDataType[default_data_type or cfg.default_data_type],
+            aimet_config_file,
+            adaround,
+            adaround_iterations
+            if adaround_iterations is not None
+            else cfg.adaround.default_num_iterations,
+            adaround_reg_param
+            if adaround_reg_param is not None
+            else cfg.adaround.default_reg_param,
+            adaround_beta_range or cfg.adaround.default_beta_range,
+            adaround_warm_start
+            if adaround_warm_start is not None
+            else cfg.adaround.default_warm_start,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
+            sequential_mse,
+        )
+
+    @staticmethod
+    def _resolve_qat_optimizer_scheduler(
+        optimizer: Optimizer | None,
+        scheduler: LRScheduler | None,
+        sim: "QuantizationSimModel",
+        cfg: AIMETConfig,
+    ) -> tuple[Optimizer, LRScheduler]:
+        if optimizer is None:
+            optimizer = from_registry(
+                OPTIMIZERS,
+                cfg.optimizer.name,
+                params=sim.model.parameters(),
+                **cfg.optimizer.params,
+            )
+        if scheduler is None:
+            scheduler = from_registry(
+                SCHEDULERS,
+                cfg.scheduler.name,
+                optimizer=optimizer,
+                **cfg.scheduler.params,
+            )
+        return optimizer, scheduler
+
+    def _export_quantized_onnx(
+        self,
+        sim: "QuantizationSimModel",
+        model: LuxonisLightningModule,
+        dummy_inputs: Tensor,
+        dummy_inputs_dict: dict[str, Tensor],
+        input_names: list[str],
+        save_dir: Path,
+    ) -> None:
+        model.set_export_mode(mode=True)
+        output_names = model._get_output_onnx_names(
+            deepcopy(dummy_inputs_dict)
+        )
+
+        onnx_path = (save_dir / self.cfg.model.name).with_suffix(".onnx")
+        sim.onnx.export(
+            dummy_inputs,
+            onnx_path,
+            input_names=input_names,
+            output_names=output_names,
+        )
+        rename_onnx_outputs(onnx_path, output_names)
+        self._archive(path=onnx_path, save_dir=save_dir)
+
+    @staticmethod
+    def _print_quant_results(
+        model: LuxonisLightningModule,
+        pre_quant_test: Mapping[str, float],
+        ptq_test: Mapping[str, float],
+        qat_test: Mapping[str, float],
+    ) -> None:
+        table = []
+        for key, value in pre_quant_test.items():
+            log_key = key.replace("test/metric/", "").replace("test/loss/", "")
+            table.append((log_key, value, ptq_test[key], qat_test[key]))
+        model.progress_bar.print_table(
+            "Quantization results",
+            table,
+            ["Name", "Pre-Quant", "PTQ", "QAT"],
+        )
 
     @property
     def environ(self) -> Environ:
@@ -1338,6 +1910,8 @@ class LuxonisModel:
         self, weights: PathType | dict[str, Any] | None
     ) -> PathType | dict[str, Any] | None:
         if isinstance(weights, dict):
+            if "state_dict" not in weights:
+                weights = {"state_dict": weights}
             return weights
 
         if weights is None:

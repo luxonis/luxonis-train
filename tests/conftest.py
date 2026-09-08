@@ -18,7 +18,6 @@ from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
-from PIL import Image
 
 from luxonis_train.config.config import OnnxExportConfig
 
@@ -257,12 +256,12 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
         rng = np.random.default_rng()
         for _ in range(n_squares):
             top_left = (
-                rng.integers(0, w // 2),
-                rng.integers(0, h // 2),
+                int(rng.integers(0, w // 2)),
+                int(rng.integers(0, h // 2)),
             )
             bottom_right = (
-                rng.integers(w // 2, w),
-                rng.integers(h // 2, h),
+                int(rng.integers(w // 2, w)),
+                int(rng.integers(h // 2, h)),
             )
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
@@ -272,6 +271,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
     ) -> DatasetIterator:
         for path in train_paths:
             img = cv2.imread(str(path))
+            assert img is not None
             img_h, img_w, _ = img.shape
             mask = np.zeros((img_h, img_w), dtype=np.uint8)
             yield {
@@ -284,6 +284,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
 
         for path in test_paths:
             img = cv2.imread(str(path))
+            assert img is not None
             img_h, img_w, _ = img.shape
             mask = random_square_mask((img_h, img_w))
             poly = cv2.findContours(
@@ -322,7 +323,7 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
         "val": test_paths[len(train_paths) // 2 :],
         "test": test_paths[: len(test_paths) // 2],
     }
-    dataset.make_splits(definitions=definitions)
+    dataset.make_splits(definitions)
     return dataset
 
 
@@ -390,30 +391,6 @@ def test_datasets(
     )
 
 
-@pytest.fixture(scope="session")
-def embeddings_visualizer_references(
-    data_dir: Path,
-) -> tuple[np.ndarray, np.ndarray]:
-    remote_dir = "gs://luxonis-test-bucket/luxonis-train-test-data/reference_images/embeddings_visualizer"
-    ref_dir = data_dir / "reference_images" / "embeddings_visualizer"
-    ref_dir.mkdir(parents=True, exist_ok=True)
-
-    kde_ref_path = ref_dir / "kdeplot.png"
-    scatter_ref_path = ref_dir / "scatterplot.png"
-
-    if not kde_ref_path.exists():
-        LuxonisFileSystem.download(f"{remote_dir}/kdeplot.png", dest=ref_dir)
-    if not scatter_ref_path.exists():
-        LuxonisFileSystem.download(
-            f"{remote_dir}/scatterplot.png", dest=ref_dir
-        )
-
-    kde_ref = np.array(Image.open(kde_ref_path).convert("RGB"))
-    scatter_ref = np.array(Image.open(scatter_ref_path).convert("RGB"))
-
-    return kde_ref, scatter_ref
-
-
 @pytest.fixture
 def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
     return {
@@ -429,6 +406,18 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
         ],
         "tracker.save_directory": str(save_dir),
         "trainer.preprocessing.train_image_size": image_size,
+        "exporter.aimet": {
+            "active": False,
+            "epochs": 1,
+            "fold_batch_norms": True,
+            "batch_norm_reestimation": True,
+            "cross_layer_equalization": True,
+            "sequential_mse": True,
+        },
+        "exporter.aimet.adaround": {
+            "active": True,
+            "default_num_iterations": 1,
+        },
     }
 
 
@@ -461,6 +450,14 @@ def pytest_configure(config: Config):
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line(
         "markers", "predefined: mark test as a predefined model test"
+    )
+    config.addinivalue_line(
+        "markers",
+        "predefined_light: mark test as a light predefined model test",
+    )
+    config.addinivalue_line(
+        "markers",
+        "predefined_heavy: mark test as a heavy predefined model test",
     )
     config.addinivalue_line(
         "markers", "combinations: mark test as a combinations test"

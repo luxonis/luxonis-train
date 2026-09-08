@@ -1,9 +1,11 @@
+from contextlib import suppress
+
 import torch
 from torch import Tensor, nn
 from typeguard import typechecked
 
 from luxonis_train.nodes.blocks import (
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SqueezeExciteBlock,
 )
 
@@ -31,6 +33,34 @@ class AffineBlock(nn.Module):
         return self.scale * x + self.bias
 
 
+with suppress(ImportError):
+    from aimet_torch.v2.nn import QuantizationMixin
+
+    @QuantizationMixin.implements(AffineBlock)
+    class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
+        def __quant_init__(self):
+            super().__quant_init__()
+
+            # Declare the number of input/output quantizers
+            self.input_quantizers = nn.ModuleList([None])  # type: ignore
+            self.output_quantizers = nn.ModuleList([None])  # type: ignore
+
+        def forward(self, x: Tensor) -> Tensor:
+            # Quantize input tensors
+            if self.input_quantizers[0]:
+                x = self.input_quantizers[0](x)
+
+            # Run forward with quantized inputs and parameters
+            with self._patch_quantized_parameters():
+                ret = super().forward(x)
+
+            # Quantize output tensors
+            if self.output_quantizers[0]:
+                ret = self.output_quantizers[0](ret)
+
+            return ret
+
+
 class LCNetV3Block(nn.Module):
     @typechecked
     def __init__(
@@ -43,7 +73,7 @@ class LCNetV3Block(nn.Module):
         n_branches: int = 4,
     ):
         super().__init__()
-        self.dw_conv = GeneralReparametrizableBlock(
+        self.dw_conv = GeneralReparameterizableBlock(
             in_channels=in_channels,
             out_channels=in_channels,
             kernel_size=kernel_size,
@@ -63,7 +93,7 @@ class LCNetV3Block(nn.Module):
         else:
             self.se = nn.Identity()
 
-        self.pw_conv = GeneralReparametrizableBlock(
+        self.pw_conv = GeneralReparameterizableBlock(
             in_channels=in_channels,
             out_channels=out_channels,
             padding=0,

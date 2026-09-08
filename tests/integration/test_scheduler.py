@@ -52,8 +52,10 @@ def test_scheduler(
     opts: Params, coco_dataset: LuxonisDataset, scheduler_config: ParamValue
 ):
     opts |= {
-        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "loader.params.dataset_name": coco_dataset.identifier,
         "trainer.scheduler": scheduler_config,
     }
-    model = LuxonisModel("configs/detection_light_model.yaml", opts)
+    model = LuxonisModel(
+        "luxonis_train/configs/detection_light_model.yaml", opts
+    )
     model.train()

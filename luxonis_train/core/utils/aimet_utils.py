@@ -1,0 +1,297 @@
+import math
+from collections.abc import Callable, Sized
+from importlib.util import find_spec
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
+
+import torch.utils.data as torch_data
+from lightning.pytorch.accelerators import CUDAAccelerator
+from loguru import logger
+from rich.progress import track
+from torch import Tensor, nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.data import DataLoader
+
+from luxonis_train.lightning import LuxonisLightningModule
+from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
+
+if TYPE_CHECKING:
+    from aimet_torch import (  # pyright: ignore[reportMissingImports]
+        QuantizationSimModel,
+    )
+    from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
+        QuantizationDataType,
+        QuantScheme,
+    )
+
+
+def check_aimet_available() -> None:
+    if not find_spec("aimet_torch"):
+        raise ImportError(
+            "AIMET library is not installed. Please install "
+            "`luxonis-train` with the `aimet` extra enabled "
+            "(pip install luxonis-train[aimet])"
+        )
+
+
+def get_ptq_calibration_loader(
+    val_dataset: torch_data.Dataset[LuxonisLoaderTorchOutput],
+    collate_fn: Callable[[list[LuxonisLoaderTorchOutput]], Any],
+    batch_size: int,
+    num_workers: int,
+    pin_memory: bool,
+    max_calibration_images: int | None,
+) -> DataLoader:
+    loader: torch_data.Dataset[LuxonisLoaderTorchOutput] = val_dataset
+    if max_calibration_images is not None:
+        dataset_size = len(cast(Sized, loader))
+        subset_size = min(max_calibration_images, dataset_size)
+        if max_calibration_images > dataset_size:
+            logger.warning(
+                "PTQ calibration requested "
+                f"{max_calibration_images} images, but the validation dataset "
+                f"only has {dataset_size}. Using the available {dataset_size}."
+            )
+        elif subset_size < dataset_size:
+            logger.info(
+                "Limiting PTQ calibration to the first "
+                f"{subset_size} / {dataset_size} validation samples because "
+                f"`exporter.aimet.max_calibration_images={max_calibration_images}`."
+            )
+        loader = torch_data.Subset(loader, range(subset_size))
+
+    return torch_data.DataLoader(
+        loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=pin_memory,
+    )
+
+
+def post_training_quantization(
+    model: LuxonisLightningModule,
+    dummy_inputs: Tensor,
+    val_loader: DataLoader,
+    save_dir: Path,
+    quant_scheme: "QuantScheme | None" = None,
+    default_output_bw: int = 8,
+    default_param_bw: int = 8,
+    default_data_type: "QuantizationDataType | None" = None,
+    config_file: str | None = None,
+    adaround: bool = False,
+    adaround_iterations: int | None = None,
+    adaround_reg_param: float = 0.01,
+    adaround_beta_range: tuple[int, int] = (20, 2),
+    adaround_warm_start: float = 0.2,
+    fold_batch_norms: bool = False,
+    cross_layer_equalization: bool = False,
+    batch_norm_reestimation: bool = False,
+    sequential_mse: bool = False,
+) -> "QuantizationSimModel":
+    check_aimet_available()
+
+    from aimet_torch import (  # pyright: ignore[reportMissingImports]
+        QuantizationSimModel,
+    )
+    from aimet_torch.adaround.adaround_weight import (  # pyright: ignore[reportMissingImports]
+        Adaround,
+        AdaroundParameters,
+    )
+    from aimet_torch.batch_norm_fold import (  # pyright: ignore[reportMissingImports]
+        fold_all_batch_norms,
+    )
+    from aimet_torch.common.defs import (  # pyright: ignore[reportMissingImports]
+        QuantizationDataType,
+        QuantScheme,
+    )
+    from aimet_torch.common.quantsim_config.utils import (  # pyright: ignore[reportMissingImports]
+        get_path_for_per_channel_config,
+    )
+    from aimet_torch.cross_layer_equalization import (  # pyright: ignore[reportMissingImports]
+        equalize_model,
+    )
+    from aimet_torch.seq_mse import (  # pyright: ignore[reportMissingImports]
+        apply_seq_mse,
+    )
+
+    quant_scheme = (
+        QuantScheme.min_max if quant_scheme is None else quant_scheme
+    )
+    default_data_type = (
+        QuantizationDataType.int
+        if default_data_type is None
+        else default_data_type
+    )
+
+    def pass_calibration_data(model: nn.Module) -> None:
+        assert len(val_loader) > 0, (
+            "Validation loader must have at least one batch"
+        )
+        for imgs, _ in track(
+            val_loader,
+            description="Computing quantization encodings",
+            total=len(val_loader),
+        ):
+            model.forward(imgs)
+
+    if CUDAAccelerator.is_available():
+        dummy_inputs = dummy_inputs.cuda()
+        model.cuda()
+
+    model.eval()
+
+    if fold_batch_norms and not batch_norm_reestimation:
+        logger.info("Folding batch norms into preceding layers")
+        fold_all_batch_norms(
+            model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
+        )
+    if cross_layer_equalization:
+        logger.info("Applying cross-layer equalization")
+        equalize_model(
+            model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
+        )
+
+    if adaround:
+        ada_params = AdaroundParameters(
+            data_loader=val_loader,
+            num_batches=min(
+                len(val_loader),
+                math.ceil(2000 / val_loader.batch_size),  # type: ignore
+            ),
+            default_num_iterations=adaround_iterations,  # type: ignore
+            default_reg_param=adaround_reg_param,
+            default_beta_range=adaround_beta_range,
+            default_warm_start=adaround_warm_start,
+        )
+        model = cast(
+            LuxonisLightningModule,
+            Adaround.apply_adaround(
+                model,
+                dummy_inputs,
+                ada_params,
+                path=str(save_dir),
+                filename_prefix="adaround",
+            ),
+        )
+
+    if batch_norm_reestimation and config_file is None:
+        config_file = get_path_for_per_channel_config()
+
+    sim = QuantizationSimModel(
+        model=model,
+        dummy_input=dummy_inputs,
+        quant_scheme=quant_scheme,
+        default_output_bw=default_output_bw,
+        default_param_bw=default_param_bw,
+        config_file=config_file,
+        default_data_type=default_data_type,
+        in_place=True,
+    )
+    if sequential_mse:
+        logger.info("Applying sequential MSE")
+
+        apply_seq_mse(
+            sim,
+            data_loader=val_loader,
+            num_candidates=20,
+            forward_fn=_patched_forward_pass,
+        )
+
+    if adaround:
+        sim.set_and_freeze_param_encodings(
+            str(save_dir / "adaround.encodings")
+        )
+
+    sim.compute_encodings(pass_calibration_data)
+    return sim
+
+
+def quantization_aware_training(
+    sim: "QuantizationSimModel",
+    dummy_inputs: Tensor,
+    train_loader: DataLoader,
+    optimizer: Optimizer,
+    scheduler: LRScheduler,
+    epochs: int,
+    fold_batch_norms: bool = False,
+    batch_norm_reestimation: bool = False,
+) -> LuxonisLightningModule:
+    check_aimet_available()
+
+    from aimet_torch.batch_norm_fold import (  # pyright: ignore[reportMissingImports]
+        fold_all_batch_norms,
+    )
+    from aimet_torch.bn_reestimation import (  # pyright: ignore[reportMissingImports]
+        reestimate_bn_stats,
+    )
+
+    model = cast(LuxonisLightningModule, sim.model)
+
+    model.train()
+    if CUDAAccelerator.is_available():
+        model.cuda()
+    previous_automatic_optimization = model.automatic_optimization
+    model.automatic_optimization = False
+
+    try:
+        assert len(train_loader) > 0, (
+            "Training loader must have at least one batch"
+        )
+
+        for epoch in range(epochs):
+            for imgs, labels in track(
+                train_loader,
+                description=(
+                    "Running Quantization-Aware Training "
+                    f"(epoch {epoch + 1}/{epochs})"
+                ),
+                total=len(train_loader),
+            ):
+                optimizer.zero_grad()
+                loss = model.compute_training_loss((imgs, labels))
+                loss.backward()
+                optimizer.step()
+            scheduler.step()
+
+        if batch_norm_reestimation:
+            logger.info("Reestimating batch norm statistics")
+
+            reestimate_bn_stats(
+                model, train_loader, forward_fn=_patched_forward_pass
+            )
+
+            if fold_batch_norms:
+                logger.info("Folding batch norms into preceding layers")
+                try:
+                    fold_all_batch_norms(
+                        model,
+                        input_shapes=dummy_inputs.shape,
+                        dummy_input=dummy_inputs,
+                    )
+                except Exception as e:  # pragma: no cover
+                    if not _is_aimet_graph_trace_error(e):  # pragma: no cover
+                        raise
+                    logger.warning(
+                        "Skipping post-QAT batch norm folding because AIMET "
+                        "failed to trace the quantized model graph. "
+                        f"Error: {e}"
+                    )
+    finally:
+        model.automatic_optimization = previous_automatic_optimization
+    return model
+
+
+def _is_aimet_graph_trace_error(exc: Exception) -> bool:  # pragma: no cover
+    return exc.__class__.__name__ == "_UnsafeGraphError" or (
+        "Failed to trace computation graph" in str(exc)
+    )
+
+
+def _patched_forward_pass(
+    model: nn.Module, inputs: LuxonisLoaderTorchOutput
+) -> Any:
+    return model(inputs[0])

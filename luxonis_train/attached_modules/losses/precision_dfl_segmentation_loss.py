@@ -18,14 +18,14 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         - Registry name: ``PrecisionDFLSegmentationLoss``
         - Task: INSTANCE_SEGMENTATION
         - Attached node types: ``PrecisionSegmentBBoxHead``
-        - Inputs: ``features``, ``prototypes``, ``mask_coeficients``,
+        - Inputs: ``features``, ``prototypes``, ``mask_coefficients``,
           ``target_boundingbox``, ``target_instance_segmentation``
         - Outputs: scalar total loss and ``class``/``iou``/``dfl``/``seg``
           sub-losses
 
     Prediction format:
         ``features`` contains detection feature maps, ``prototypes`` contains
-        prototype masks, and ``mask_coeficients`` contains per-anchor mask
+        prototype masks, and ``mask_coefficients`` contains per-anchor mask
         coefficients.
 
     Target format:
@@ -86,7 +86,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         self,
         features: list[Tensor],
         prototypes: Tensor,
-        mask_coeficients: Tensor,
+        mask_coefficients: Tensor,
         target_boundingbox: Tensor,
         target_instance_segmentation: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
@@ -114,7 +114,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
-        mask_coeficients = mask_coeficients.permute(0, 2, 1).contiguous()
+        mask_coefficients = mask_coefficients.permute(0, 2, 1).contiguous()
 
         target_boundingbox = self._preprocess_bbox_target(
             target_boundingbox, batch_size
@@ -164,7 +164,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             assigned_bboxes,
             img_idx,
             prototypes,
-            mask_coeficients,
+            mask_coefficients,
         )
 
         loss = (
@@ -204,7 +204,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             pred_masks (``Tensor``): Predicted mask coefficients. Shape: (B, N_anchor, 32).
 
         Returns:
-            Tensor: Scalar segmentation loss normalized by the number of positive anchors.
+            ``Tensor``: Scalar segmentation loss normalized by the number of positive anchors.
 
         """
         _, _, h, w = proto.shape

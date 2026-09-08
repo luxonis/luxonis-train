@@ -2,18 +2,73 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
+      concurrency_group:
+        description: "Optional concurrency group for an external caller"
+        required: false
+        default: ""
+      ml_ref:
+        description: "luxonis-ml version (branch/tag/SHA)"
+        required: false
+        default: main
+      train_ref:
+        description: "luxonis-train version (branch/tag/SHA)"
+        required: false
+        default: main
+  workflow_call:
+    inputs:
+      cancel_in_progress:
+        description: "Cancel an in-progress run in the same concurrency group"
+        required: false
+        type: boolean
+        default: true
+      concurrency_group:
+        description: "Optional concurrency group for an external caller"
+        required: false
+        type: string
+        default: ""
+      ml_ref:
+        description: "luxonis-ml version (branch/tag/SHA)"
+        required: false
+        type: string
+        default: main
+      train_ref:
+        description: "luxonis-train version (branch/tag/SHA)"
+        required: false
+        type: string
+        default: main
+    secrets:
+      GOOGLE_APPLICATION_CREDENTIALS:
+        description: "GCP service-account JSON"
+        required: true
+      CODECOV_TOKEN:
+        description: "Codecov upload token"
+        required: true
+      HUBAI_API_KEY:
+        description: "HubAI API key"
+        required: true
   pull_request:
     paths:
-      - "requirements.txt"
+      - ".python-version"
       - "pyproject.toml"
+      - "uv.lock"
+      - "requirements*.txt"
+      - "scripts/**"
+      - ".pre-commit-config.yaml"
       - "luxonis_train/**"
       - "tests/**"
       - ".github/workflows/ci.yaml"
       - "!**/*.md"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # External callers can provide an isolated concurrency group.
+  group: ${{ inputs.concurrency_group || format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ inputs.cancel_in_progress || !inputs.concurrency_group }}
 
 permissions:
   pull-requests: write
@@ -25,15 +80,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - name: Install pre-commit
-        run: python -m pip install 'pre-commit<4.0.0'
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+      - name: Run pre-commit hooks
+        run: >-
+          uv run --locked --only-group dev prek run
+          --all-files --show-diff-on-failure --color=always
+        env:
+          # CI can run from a checked-out protected branch via workflow_call.
+          # Keep this hook for local commits, but skip it for full CI lint runs.
+          SKIP: no-commit-to-branch
 
   docs:
     needs:
@@ -41,26 +107,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - name: Install pydoctor
-        run: pip install pydoctor
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync docs dependencies
+        run: uv sync --locked --only-group docs
 
       - name: Install released version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == true
-        run: pip install luxonis-ml[utils]
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
-        run: pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
+        run: |
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Build LuxonisML intersphinx inventory
-        run: python scripts/build_luxonis_ml_intersphinx.py
+        run: uv run --no-sync python scripts/build_luxonis_ml_intersphinx.py
 
       - name: Build docs
-        run: pydoctor
+        run: uv run --no-sync pydoctor
 
   type-check:
     needs:
@@ -68,32 +146,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -e .[dev]
+      - name: Sync dependencies
+        run: uv sync --locked --extra aimet --group dev --group docs
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Pyright check
-        uses: jakebailey/pyright-action@8ec14b5cfe41f26e5f41686a31eb6012758217ef
-        with:
-          level: warning
-          warnings: true
-          python-version: "3.10"
-          project: pyproject.toml
+        run: uv run --no-sync pyright --warnings --project pyproject.toml
 
   # Tests that the `luxonis-train.config.Config` works
   # even when the dependencies of `luxonis-train` are
@@ -107,33 +188,46 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync config test dependencies
+        run: uv sync --locked --only-group config-test
 
       - name: Install released version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == true
-        run: pip install luxonis-ml[utils]
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+
+      - name: Install package without runtime dependencies
+        run: uv pip install --python .venv -e . --no-deps
 
       - name: Test config without dependencies
         run: |
-          pip install semver~=3.0 pydantic-extra-types~=2.10
-          pip install -e . --no-deps
-          python -c 'from luxonis_train.config import Config; \
-                     from pathlib import Path; \
-                     [Config.get_config(p)
-                       for p in Path("configs").rglob("*.yaml")]'
+          uv run --no-sync pytest -x tests/unittests/test_config.py \
+            --confcutdir=tests/unittests \
+            --cov=luxonis_train/config \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=100 \
+            --junitxml=junit.xml \
+            -o junit_family=legacy
 
   doctests:
     needs:
@@ -199,30 +293,38 @@ jobs:
 
     strategy:
       matrix:
-        suite: [unit, predefined, combinations, misc]
+        suite: [unit, predefined_light, predefined_heavy, combinations, misc]
 
     runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          python-version: "3.10"
-          cache: pip
+          version: "0.11.28"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -e .[dev]
+      - name: Sync dependencies
+        run: uv sync --locked --extra aimet --group dev
 
-      - name: Install dev version of LuxonisML
-        if: startsWith(github.head_ref, 'release/') == false
+      - name: Install released version of LuxonisML
+        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+
+      - name: Install source version of LuxonisML
+        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
+        env:
+          ML_REF: ${{ inputs.ml_ref || 'main' }}
         run: |
-          pip uninstall luxonis-ml -y
-          pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+          uv pip uninstall --python .venv luxonis-ml -y
+          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Authenticate to Google Cloud
         id: google-auth
@@ -238,25 +340,75 @@ jobs:
           LUXONISML_BUCKET: luxonis-test-bucket
           SUITE: ${{ matrix.suite }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
-        run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
+        run: >-
+          uv run --no-sync pytest -x --cov --cov-report=xml:coverage-${SUITE}.xml
+          --junitxml=junit-${SUITE}.xml -o junit_family=legacy -m "${SUITE}"
 
       - name: Upload test results to Codecov
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3
+        if: ${{ always() }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
           fail_ci_if_error: false
+          files: junit-${{ matrix.suite }}.xml
           flags: ${{ matrix.suite }}
-
-      - name: Upload coverage results to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          flags: ${{ matrix.suite }}
+          disable_search: true
+          handle_no_reports_found: true
 
       - name: Upload coverage as artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-${{ matrix.suite }}
-          path: coverage.xml
+          path: coverage-${{ matrix.suite }}.xml
+          if-no-files-found: ignore
           overwrite: true
+
+  # Coverage is uploaded once, after all the suites have finished. Uploading
+  # each suite on its own makes Codecov report the partial runs as the total.
+  coverage:
+    needs: tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      # Required by codecov-action, it builds the path-fixing file network
+      # from the checked out repository.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ inputs.train_ref && 'Luxonis/luxonis-train' || github.repository }}
+          ref: ${{ inputs.train_ref || github.head_ref || github.ref }}
+          persist-credentials: false
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: coverage-*
+          path: coverage
+          merge-multiple: true
+
+      - name: Collect coverage files
+        id: coverage-files
+        shell: bash
+        run: |
+          files=$(find coverage -type f -name 'coverage-*.xml' | sort | paste -sd, -)
+          if [[ -z "$files" ]]; then
+            echo "No coverage files found" >&2
+            exit 1
+          fi
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage results to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          files: ${{ steps.coverage-files.outputs.files }}
+          flags: pytest
+          name: pytest
+          disable_search: true

@@ -1,8 +1,11 @@
+import json
+import re
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
+from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple, cast
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
@@ -42,8 +45,11 @@ from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
 import luxonis_train as lxt
-from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.registry import NODES
 from luxonis_train.upgrade import upgrade_config
+
+if TYPE_CHECKING:
+    from luxonis_train.config.predefined_models import BasePredefinedModel
 
 
 class ImageSize(NamedTuple):
@@ -82,11 +88,111 @@ class FreezingConfig(BaseModelExtraForbid):
     lr_after_unfreeze: NonNegativeFloat | None = None
 
 
+class ParameterPattern(BaseModelExtraForbid):
+    name: str | None = None
+    module_type: str | None = None
+
+    @model_validator(mode="after")
+    def validate_pattern(self) -> Self:
+        if self.name is None and self.module_type is None:
+            raise ValueError(
+                "At least one of `name` or `module_type` must be specified for parameter pattern."
+            )
+        if self.name == "":
+            raise ValueError("Parameter pattern `name` cannot be empty.")
+        if self.module_type == "":
+            raise ValueError(
+                "Parameter pattern `module_type` cannot be empty."
+            )
+        return self
+
+    def matches(self, module_type: str, parameter_name: str) -> bool:
+        if self.name is not None and not re.search(
+            self.name, parameter_name, flags=re.IGNORECASE
+        ):
+            return False
+        return self.module_type is None or bool(
+            re.search(self.module_type, module_type, flags=re.IGNORECASE)
+        )
+
+
+class SchedulerConfig(ConfigItem):
+    name: str = "ConstantLR"
+
+    def get_sequential_lr_params(self) -> "SequentialLRParams":
+        if self.name != "SequentialLR":
+            raise RuntimeError(
+                f"Scheduler '{self.name}' is not 'SequentialLR'. "
+                "Cannot get `SequentialLR` parameters."
+            )
+
+        if "schedulers" not in self.params or "milestones" not in self.params:
+            raise ValueError(
+                "SequentialLR requires 'schedulers' and 'milestones' parameters."
+            )
+        return SequentialLRParams(**self.params)  # type: ignore
+
+    def to_finetuning(self) -> "FinetuningSchedulerConfig":
+        return FinetuningSchedulerConfig(name=self.name, params=self.params)
+
+
+class SequentialLRParams(BaseModelExtraForbid):
+    schedulers: list[SchedulerConfig]
+    milestones: list[int]
+    last_epoch: int = -1
+
+
+class FinetuningSchedulerConfig(SchedulerConfig):
+    name: str | None = None
+
+
+class OptimizerConfig(ConfigItem):
+    name: str = "Adam"
+
+    def to_finetuning(self) -> "FinetuningOptimizerConfig":
+        return FinetuningOptimizerConfig(name=self.name, params=self.params)
+
+
+class FinetuningOptimizerConfig(OptimizerConfig):
+    name: str | None = None
+
+
+class FinetuningConfig(BaseModelExtraForbid):
+    parameters: list[ParameterPattern] | None = None
+    optimizer: FinetuningOptimizerConfig | None = None
+    scheduler: FinetuningSchedulerConfig | None = None
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def validate_parameters(cls, value: Any) -> Any:
+        parsed_patterns = []
+        if isinstance(value, str | dict | ParameterPattern):
+            value = [value]
+        if not isinstance(value, list):
+            return value
+        if not value:
+            raise ValueError(
+                "`parameters` must contain at least one parameter pattern."
+            )
+        for item in value:
+            if isinstance(item, str):
+                parsed_patterns.append(ParameterPattern(name=item))
+            elif isinstance(item, dict):
+                parsed_patterns.append(ParameterPattern(**item))
+            elif isinstance(item, ParameterPattern):
+                parsed_patterns.append(item)
+            else:
+                raise TypeError(
+                    "Parameter patterns must be strings, dictionaries, "
+                    "or ParameterPattern instances."
+                )
+        return parsed_patterns
+
+
 class NodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
-    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
@@ -98,6 +204,15 @@ class NodeConfig(ConfigItem):
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
+    finetuning: list[FinetuningConfig] = []
+    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
+
+    @field_validator("finetuning", mode="before")
+    @classmethod
+    def validate_finetuning(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
 
     @property
     def identifier(self) -> str:
@@ -106,6 +221,7 @@ class NodeConfig(ConfigItem):
 
 class PredefinedModelConfig(ConfigItem):
     variant: str | Literal["default", "none"] | None = "default"
+    version: int | Literal["latest"] = "latest"
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
@@ -123,9 +239,16 @@ class ModelConfig(BaseModelExtraForbid):
     @field_validator("nodes", mode="before")
     @classmethod
     def validate_nodes(cls, nodes: ParamValue) -> Any:
-        logged_general_warning = False
         if not check_type(nodes, list[dict]):
             return nodes
+
+        return cls._populate_implicit_node_inputs(nodes)
+
+    @staticmethod
+    def _populate_implicit_node_inputs(
+        nodes: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        logged_general_warning = False
         names = []
         last_body_index: int | None = None
         for i, node in enumerate(nodes):
@@ -138,25 +261,24 @@ class ModelConfig(BaseModelExtraForbid):
                 last_body_index = i - 1
             name = node.get("alias") or name
             names.append(name)
-            if i > 0 and "inputs" not in node and "input_sources" not in node:
-                if last_body_index is not None:
-                    prev_name = names[last_body_index]
-                else:
-                    prev_name = names[i - 1]
+            if i == 0 or "inputs" in node or "input_sources" in node:
+                continue
 
-                if not logged_general_warning:
-                    logger.warning(
-                        f"Field `inputs` not specified for node '{name}'. "
-                        "Assuming the model follows a linear multi-head topology "
-                        "(backbone -> (neck?) -> head1, head2, ...). "
-                        "If this is incorrect, please specify the `inputs` field explicitly."
-                    )
-                    logged_general_warning = True
-
+            previous_index = (
+                last_body_index if last_body_index is not None else i - 1
+            )
+            prev_name = names[previous_index]
+            if not logged_general_warning:
                 logger.warning(
-                    f"Setting `inputs` of '{name}' to '{prev_name}'. "
+                    f"Field `inputs` not specified for node '{name}'. "
+                    "Assuming the model follows a linear multi-head topology "
+                    "(backbone -> (neck?) -> head1, head2, ...). "
+                    "If this is incorrect, please specify the `inputs` field explicitly."
                 )
-                node["inputs"] = [prev_name]
+                logged_general_warning = True
+
+            logger.warning(f"Setting `inputs` of '{name}' to '{prev_name}'. ")
+            node["inputs"] = [prev_name]
         return nodes
 
     @model_validator(mode="after")
@@ -164,15 +286,25 @@ class ModelConfig(BaseModelExtraForbid):
         if self.predefined_model is None:
             return self
 
-        logger.info(f"Using predefined model: `{self.predefined_model.name}`")
-        kwargs = dict(self.predefined_model.params or {})
+        from luxonis_train.config.predefined_versions import (
+            resolve_predefined_class,
+            resolved_class_name,
+        )
+
+        cls = resolve_predefined_class(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        resolved = resolved_class_name(
+            self.predefined_model.name, self.predefined_model.version
+        )
+        message = f"Using predefined model: `{self.predefined_model.name}`"
+        if resolved != self.predefined_model.name:
+            message += f" (resolved to `{resolved}`)"
+        logger.info(message)
+        kwargs: dict[str, Any] = dict(self.predefined_model.params or {})
         if not kwargs.get("variant"):
             kwargs["variant"] = self.predefined_model.variant
-        model = from_registry(
-            MODELS,
-            self.predefined_model.name,
-            **kwargs,
-        )
+        model = cast("BasePredefinedModel", cls(**kwargs))
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
             include_metrics=self.predefined_model.include_metrics,
@@ -220,15 +352,14 @@ class ModelConfig(BaseModelExtraForbid):
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
-            outputs: list[str] = []  # nodes which are not inputs to any nodes
             inputs = {
                 node_name for node in self.nodes for node_name in node.inputs
             }
-            for node in self.nodes:
-                name = node.alias or node.name
-                if name not in inputs:
-                    outputs.append(name)
-            self.outputs = outputs
+            self.outputs = [
+                node.alias or node.name
+                for node in self.nodes
+                if (node.alias or node.name) not in inputs
+            ]
         if self.nodes and not self.outputs:
             raise ValueError("No outputs specified.")
         return self
@@ -236,57 +367,72 @@ class ModelConfig(BaseModelExtraForbid):
     @model_validator(mode="after")
     def check_for_invalid_characters(self) -> Self:
         for node in self.nodes:
-            for modules in [
-                node.losses,
-                node.metrics,
-                node.visualizers,
-            ]:
-                for module in [node, *modules]:
-                    invalid_parts = []
-                    if module.alias and "/" in module.alias:
-                        invalid_parts.append(f"alias '{module.alias}'")
-                    if module.name and "/" in module.name:
-                        invalid_parts.append(f"name '{module.name}'")
-
-                    if invalid_parts:
-                        error_message = (
-                            f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
-                            "Please rename to remove any '/' characters."
-                        )
-                        raise ValueError(error_message)
+            for module in self._node_modules(node):
+                self._validate_module_characters(module)
 
         return self
 
     @model_validator(mode="after")
     def check_unique_names(self) -> Self:
         for node in self.nodes:
-            for modules in [
-                node.losses,
-                node.metrics,
-                node.visualizers,
-            ]:
-                names: set[str] = set()
-                node_index = 0
-                for module in [node, *modules]:
-                    module: AttachedModuleConfig | NodeConfig
-                    name = module.alias or module.name
-                    if name in names:
-                        if module.alias is None:
-                            if isinstance(module, NodeConfig):
-                                module.alias = module.name
-                            else:
-                                module.alias = f"{name}_{node.alias}"
-
-                        if module.alias in names:
-                            new_alias = f"{module.alias}_{node_index}"
-                            logger.warning(
-                                f"Duplicate name: {module.alias}. Renaming to {new_alias}."
-                            )
-                            module.alias = new_alias
-                            node_index += 1
-
-                    names.add(name)
+            self._make_node_module_names_unique(node, node.losses)
+            self._make_node_module_names_unique(node, node.metrics)
+            self._make_node_module_names_unique(node, node.visualizers)
         return self
+
+    @staticmethod
+    def _node_modules(
+        node: NodeConfig,
+    ) -> list[AttachedModuleConfig | NodeConfig]:
+        return [node, *node.losses, *node.metrics, *node.visualizers]
+
+    @staticmethod
+    def _validate_module_characters(
+        module: AttachedModuleConfig | NodeConfig,
+    ) -> None:
+        invalid_parts = [
+            f"{field} '{value}'"
+            for field, value in (
+                ("alias", module.alias),
+                ("name", module.name),
+            )
+            if value and "/" in value
+        ]
+        if invalid_parts:
+            raise ValueError(
+                f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
+                "Please rename to remove any '/' characters."
+            )
+
+    @staticmethod
+    def _make_node_module_names_unique(
+        node: NodeConfig,
+        modules: Sequence[AttachedModuleConfig],
+    ) -> None:
+        names: set[str] = set()
+        node_index = 0
+        for module in [node, *modules]:
+            name = module.alias or module.name
+            if name not in names:
+                names.add(name)
+                continue
+
+            if module.alias is None:
+                module.alias = (
+                    module.name
+                    if isinstance(module, NodeConfig)
+                    else f"{name}_{node.alias}"
+                )
+
+            if module.alias in names:
+                new_alias = f"{module.alias}_{node_index}"
+                logger.warning(
+                    f"Duplicate name: {module.alias}. Renaming to {new_alias}."
+                )
+                module.alias = new_alias
+                node_index += 1
+
+            names.add(name)
 
     @property
     def head_nodes(self) -> list[NodeConfig]:
@@ -526,38 +672,14 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="Adam")
-    )
-    scheduler: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="ConstantLR")
-    )
+    optimizer: OptimizerConfig = Field(default_factory=OptimizerConfig)
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
 
     training_strategy: ConfigItem | None = None
 
     @model_validator(mode="after")
-    def validate_scheduler(self) -> Self:
-        if self.scheduler.name == "CosineAnnealingLR":
-            if "T_max" not in self.scheduler.params:
-                self.scheduler.params["T_max"] = self.epochs
-                logger.warning(
-                    "`T_max` was not set for 'CosineAnnealingLR'"
-                    "Automatically setting `T_max` to number of epochs."
-                )
-            elif self.scheduler.params["T_max"] != self.epochs:
-                logger.warning(
-                    "Parameter `T_max` of 'CosineAnnealingLR' is "
-                    "not equal to the number of epochs. "
-                    "Make sure this is intended."
-                    f"`T_max`: {self.scheduler.params['T_max']}, "
-                    f"Number of epochs: {self.epochs}"
-                )
-
-        return self
-
-    @model_validator(mode="after")
     def validate_gradient_acc_scheduler(self) -> Self:
-        """Keys in the GradientAccumulationSheduler.params.scheduling
+        """Keys in the GradientAccumulationScheduler.params.scheduling
         should be ints but yaml can sometime auto-convert them to
         strings.
 
@@ -574,10 +696,13 @@ class TrainerConfig(BaseModelExtraForbid):
                 # fail due to GradientAccumulationScheduler param verification
                 continue
 
-            callback.params["scheduling"] = {
-                int(k) if isinstance(k, str) and k.isdigit() else k: v
-                for k, v in scheduling.items()
-            }
+            callback.params["scheduling"] = cast(
+                ParamValue,
+                {
+                    int(k) if isinstance(k, str) and k.isdigit() else k: v
+                    for k, v in scheduling.items()
+                },
+            )
         return self
 
     @model_validator(mode="after")
@@ -603,7 +728,7 @@ class TrainerConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
-    def check_n_workes_platform(self) -> Self:
+    def check_n_workers_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
         ) and self.n_workers != 0:
@@ -730,6 +855,60 @@ def _validate_quantization_mode(value: str) -> str:
     return value
 
 
+class AdaroundConfig(BaseModelExtraForbid):
+    active: bool = False
+    default_num_iterations: PositiveInt | None = None
+    default_reg_param: float = 0.01
+    default_beta_range: tuple[int, int] = (20, 2)
+    default_warm_start: float = 0.2
+
+
+class AIMETConfig(BaseModelExtraForbid):
+    active: bool = False
+
+    default_output_bw: Literal[4, 8, 16] = 8
+    default_param_bw: Literal[4, 8, 16] = 8
+    default_data_type: Literal["int", "float"] = "int"
+    quant_scheme: Literal["min_max", "tf", "tf_enhanced"] = "min_max"
+    config: Params | None = None
+    max_calibration_images: PositiveInt | None = None
+
+    fold_batch_norms: bool = False
+    cross_layer_equalization: bool = False
+    batch_norm_reestimation: bool = False
+    sequential_mse: bool = False
+    adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
+
+    epochs: NonNegativeInt = 20
+    optimizer: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
+    )
+    scheduler: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(
+            name="StepLR", params={"step_size": 5, "gamma": 0.1}
+        )
+    )
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def validate_config(cls, value: ParamValue) -> Any:
+        if isinstance(value, str):
+            try:
+                fs = LuxonisFileSystem(value)
+                return json.loads(fs.read_text(""))
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load AIMET config from file '{value}': {e}"
+                ) from e
+        return value
+
+    @field_serializer("default_data_type", "quant_scheme")
+    def serialize_enums(self, value: Any) -> str:
+        if isinstance(value, Enum):
+            return value.name
+        return value
+
+
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
@@ -746,6 +925,7 @@ class ExportConfig(ArchiveConfig):
         default_factory=BlobconverterExportConfig
     )
     hubai: HubAIExportConfig = Field(default_factory=HubAIExportConfig)
+    aimet: AIMETConfig = Field(default_factory=AIMETConfig)
 
     @field_validator("scale_values", "mean_values", mode="before")
     @classmethod
@@ -855,7 +1035,7 @@ class Config(LuxonisConfig):
                 "Expected a boolean."
             )
 
-        with suppress(ModuleNotFoundError):
+        with suppress(ImportError):
             from luxonis_train.utils import setup_logging
 
             setup_logging(use_rich=use_rich)
@@ -896,6 +1076,13 @@ class Config(LuxonisConfig):
         """Automatically populates config fields based on rules, with
         warnings.
         """
+        self._populate_mosaic_sizes()
+        self._limit_validation_batches_for_shared_views()
+        self._configure_predefined_model_defaults()
+        self._add_default_callbacks()
+        return self
+
+    def _populate_mosaic_sizes(self) -> None:
         # Rule: Mosaic4 should have out_width and out_height
         # matching train_image_size if not provided
         for augmentation in self.trainer.preprocessing.augmentations:
@@ -911,118 +1098,133 @@ class Config(LuxonisConfig):
                     "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
 
-        # Rule: If all views are the same, set n_validation_batches
-        if (
+    def _limit_validation_batches_for_shared_views(self) -> None:
+        shared_views = (
             self.loader.train_view
             == self.loader.val_view
             == self.loader.test_view
-        ):
-            if self.trainer.n_validation_batches is None:
-                self.trainer.n_validation_batches = 10
-                logger.warning(
-                    "Train, validation, and test views are the same. "
-                    "Automatically setting `n_validation_batches` to 10 "
-                    "to prevent validation/testing on the full train set. "
-                    "If this behavior is not desired, set "
-                    "`smart_cfg_auto_populate` to `False`."
-                )
-            else:
-                logger.warning(
-                    "Train, validation, and test views are the same. "
-                    "Make sure this is intended."
-                )
-
-        # Rule: Check if a predefined model is used and adjust
-        # config accordingly to achieve best training results
-        predefined_model_cfg = self.model.predefined_model
-        if predefined_model_cfg is not None:
-            logger.info(
-                "Predefined model detected. "
-                "Adjusting  parameters for best training results. "
+        )
+        if not shared_views:
+            return
+        if self.trainer.n_validation_batches is None:
+            self.trainer.n_validation_batches = 10
+            logger.warning(
+                "Train, validation, and test views are the same. "
+                "Automatically setting `n_validation_batches` to 10 "
+                "to prevent validation/testing on the full train set. "
                 "If this behavior is not desired, set "
                 "`smart_cfg_auto_populate` to `False`."
             )
-            model_name = predefined_model_cfg.name
-            accumulate_grad_batches = int(64 / self.trainer.batch_size)
+            return
+        logger.warning(
+            "Train, validation, and test views are the same. "
+            "Make sure this is intended."
+        )
+
+    def _configure_predefined_model_defaults(self) -> None:
+        from luxonis_train.config.predefined_versions import family_name
+
+        predefined_model_cfg = self.model.predefined_model
+        if predefined_model_cfg is None:
+            return
+        logger.info(
+            "Predefined model detected. Adjusting parameters for best training "
+            "results. If this behavior is not desired, set "
+            "`smart_cfg_auto_populate` to `False`."
+        )
+        # `name` may carry an explicit `:vN`/`:latest` suffix; the
+        # rules below apply per family, not per pinned version.
+        model_name = family_name(predefined_model_cfg.name)
+        if self.trainer.accumulate_grad_batches is not None:
+            accumulate_grad_batches = self.trainer.accumulate_grad_batches
+            logger.info(
+                f"Keeping the explicitly configured "
+                f"'accumulate_grad_batches' of {accumulate_grad_batches}."
+            )
+        else:
+            accumulate_grad_batches = max(1, 64 // self.trainer.batch_size)
             self.trainer.accumulate_grad_batches = accumulate_grad_batches
             logger.info(
                 f"Setting 'accumulate_grad_batches' to "
                 f"{accumulate_grad_batches} "
-                f"(trainer.batch_size={self.trainer.batch_size})",
-                accumulate_grad_batches,
-                self.trainer.batch_size,
+                f"(trainer.batch_size={self.trainer.batch_size})"
             )
-            loss_params = predefined_model_cfg.params.get("loss_params", {})
-            if not isinstance(loss_params, dict):
-                raise ValueError(
-                    f"Invalid value for loss_params: {loss_params}. "
-                    "Expected a dictionary."
-                )
-            gradient_accumulation_schedule = None
-            if model_name == "InstanceSegmentationModel":
-                loss_params.update(
-                    {
-                        "bbox_loss_weight": 7.5 * accumulate_grad_batches,
-                        "class_loss_weight": 0.5 * accumulate_grad_batches,
-                        "dfl_loss_weight": 1.5 * accumulate_grad_batches,
-                    }
-                )
-                gradient_accumulation_schedule = {
-                    0: 1,
-                    1: (1 + accumulate_grad_batches) // 2,
-                    2: accumulate_grad_batches,
-                }
-                logger.info(
-                    f"InstanceSegmentationModel: Updated loss_params: {loss_params}"
-                )
-                logger.info(
-                    f"InstanceSegmentationModel: Set gradient "
-                    f"accumulation schedule to: {gradient_accumulation_schedule}"
-                )
-            elif model_name == "KeypointDetectionModel":
-                loss_params.update(
-                    {
-                        "iou_loss_weight": 7.5 * accumulate_grad_batches,
-                        "class_loss_weight": 0.5 * accumulate_grad_batches,
-                        "regr_kpts_loss_weight": 12 * accumulate_grad_batches,
-                        "vis_kpts_loss_weight": 1 * accumulate_grad_batches,
-                    }
-                )
-                gradient_accumulation_schedule = {
-                    0: 1,
-                    1: (1 + accumulate_grad_batches) // 2,
-                    2: accumulate_grad_batches,
-                }
-                logger.info(
-                    f"KeypointDetectionModel: Updated loss_params: {loss_params}"
-                )
-                logger.info(
-                    f"KeypointDetectionModel: Set gradient accumulation "
-                    f"schedule to: {gradient_accumulation_schedule}"
-                )
-            elif model_name == "DetectionModel":
-                loss_params.update(
-                    {
-                        "iou_loss_weight": 2.5 * accumulate_grad_batches,
-                        "class_loss_weight": 1 * accumulate_grad_batches,
-                    }
-                )
-                logger.info(
-                    f"DetectionModel: Updated loss_params: {loss_params}"
-                )
-            predefined_model_cfg.params["loss_params"] = loss_params
-            if gradient_accumulation_schedule:
-                for callback in self.trainer.callbacks:
-                    if callback.name == "GradientAccumulationScheduler":
-                        callback.params["scheduling"] = (  # type: ignore
-                            gradient_accumulation_schedule
-                        )
-                        logger.info(
-                            f"GradientAccumulationScheduler callback "
-                            f"updated with scheduling: {gradient_accumulation_schedule}"
-                        )
-                        break
+        loss_params = predefined_model_cfg.params.get("loss_params", {})
+        if not isinstance(loss_params, dict):
+            raise ValueError(  # noqa: TRY004
+                f"Invalid value for loss_params: {loss_params}. Expected a dictionary."
+            )
+        schedule = self._update_predefined_model_loss_params(
+            model_name, loss_params, accumulate_grad_batches
+        )
+        predefined_model_cfg.params["loss_params"] = loss_params
+        if schedule is not None:
+            self._set_gradient_accumulation_schedule(schedule)
 
+    @staticmethod
+    def _update_predefined_model_loss_params(
+        model_name: str,
+        loss_params: Params,
+        accumulate_grad_batches: int,
+    ) -> dict[int, int] | None:
+        weights = {
+            "InstanceSegmentationModel": {
+                "bbox_loss_weight": 7.5,
+                "class_loss_weight": 0.5,
+                "dfl_loss_weight": 1.5,
+            },
+            "KeypointDetectionModel": {
+                "iou_loss_weight": 7.5,
+                "class_loss_weight": 0.5,
+                "regr_kpts_loss_weight": 12,
+                "vis_kpts_loss_weight": 1,
+            },
+            "DetectionModel": {
+                "iou_loss_weight": 2.5,
+                "class_loss_weight": 1,
+            },
+        }
+        model_weights = weights.get(model_name)
+        if model_weights is None:
+            return None
+        loss_params.update(
+            {
+                name: weight * accumulate_grad_batches
+                for name, weight in model_weights.items()
+            }
+        )
+        logger.info(f"{model_name}: Updated loss_params: {loss_params}")
+        if model_name == "DetectionModel":
+            return None
+        schedule = {
+            0: 1,
+            1: (1 + accumulate_grad_batches) // 2,
+            2: accumulate_grad_batches,
+        }
+        logger.info(
+            f"{model_name}: Set gradient accumulation schedule to: {schedule}"
+        )
+        return schedule
+
+    def _set_gradient_accumulation_schedule(
+        self, schedule: dict[int, int]
+    ) -> None:
+        callback = next(
+            (
+                callback
+                for callback in self.trainer.callbacks
+                if callback.name == "GradientAccumulationScheduler"
+            ),
+            None,
+        )
+        if callback is None:
+            return
+        callback.params["scheduling"] = schedule  # type: ignore
+        logger.info(
+            f"GradientAccumulationScheduler callback updated with scheduling: {schedule}"
+        )
+
+    def _add_default_callbacks(self) -> None:
         default_callbacks = [
             "UploadCheckpoint",
             "TestOnTrainEnd",
@@ -1033,5 +1235,3 @@ class Config(LuxonisConfig):
             if not any(cb.name == cb_name for cb in self.trainer.callbacks):
                 self.trainer.callbacks.append(CallbackConfig(name=cb_name))
                 logger.info(f"Added {cb_name} callback.")
-
-        return self

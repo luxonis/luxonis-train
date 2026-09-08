@@ -66,8 +66,14 @@ class VariantMeta(AutoRegisterMeta):
                 raise NotImplementedError(
                     f"'{cls.__name__}' was called with the 'variant' "
                     f"parameter set to '{variant}', but the `get_variants` "
-                    "method was not implented."
+                    "method was not implemented."
                 ) from e
+            default, variants = "", {}
+            implemented = False
+        else:
+            implemented = True
+
+        if not implemented:
             logger.warning(
                 f"'{cls.__name__}' was called with the 'variant' "
                 "parameter set to 'default', but the `get_variants` "
@@ -173,19 +179,22 @@ def add_variant_aliases(
         handling.
 
     """
-    skip_missing = aliases == "yolo"
-    if skip_missing:
+    if aliases == "yolo":
         aliases = {
             "tiny": ["t"],
             "nano": ["n"],
             "small": ["s"],
             "medium": ["m"],
             "large": ["l"],
+            "t": ["tiny"],
+            "n": ["nano"],
+            "s": ["small"],
+            "m": ["medium"],
+            "l": ["large"],
         }
-    for alias, names in aliases.items():
-        for name in names:
-            if skip_missing and name not in variants:
-                continue
-            variants[alias] = variants[name]
+    for name, alias_names in aliases.items():
+        if name in variants:
+            for alias in alias_names:
+                variants[alias] = variants[name]
 
     return variants

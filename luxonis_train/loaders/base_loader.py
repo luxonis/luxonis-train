@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -16,7 +16,12 @@ from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
+LuxonisLoaderTorchOutput = tuple[dict[str, Tensor] | Tensor, Labels]
+
+MIXED_INPUT_TYPES_ERROR = (
+    "All samples in a batch must have the same input type. "
+    "Got a mix of tensors and dictionaries."
+)
 
 
 class BaseLoaderTorch(
@@ -175,27 +180,16 @@ class BaseLoaderTorch(
         """
         return self.input_shapes[self.image_source]
 
-    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
+    def augment_test_image(self, img: dict[str, Tensor] | Tensor) -> Tensor:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not expose interface "
             "for test-time augmentation. Implement "
             "`augment_test_image` method to expose this functionality."
         )
 
+    @abstractmethod
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.get(idx)
-        if isinstance(img, Tensor):
-            img = {self.image_source: img}
-        return img, labels
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """Get the length of the dataset."""
-        ...
-
-    @abstractmethod
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
-        """Load sample from dataset.
+        """Load a sample from the dataset.
 
         Args:
             idx (int): Sample index.
@@ -206,6 +200,9 @@ class BaseLoaderTorch(
 
         """
         ...
+
+    @abstractmethod
+    def __len__(self) -> int: ...
 
     @abstractmethod
     def get_classes(self) -> dict[str, dict[str, int]]:
@@ -268,13 +265,18 @@ class BaseLoaderTorch(
         Returns:
             ``np.ndarray[np.uint8]``: Image as a NumPy array.
 
+        Raises:
+            ValueError: If the image cannot be read.
+
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError(f"Unable to read image from '{path}'")
         if self.color_space == "RGB":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif self.color_space == "GRAY":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        return img
+        return cast(npt.NDArray[np.uint8], img)
 
     def _getter_check_none(
         self,
@@ -300,7 +302,7 @@ class BaseLoaderTorch(
     def collate_fn(
         self,
         batch: list[LuxonisLoaderTorchOutput],
-    ) -> tuple[dict[str, Tensor], Labels]:
+    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
         """Default collate function used for training.
 
         Args:
@@ -312,43 +314,66 @@ class BaseLoaderTorch(
             format expected by the model.
 
         """
-        inputs: tuple[dict[str, Tensor], ...]
+        inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...]
         labels: tuple[Labels, ...]
         inputs, labels = zip(*batch, strict=True)
 
-        out_inputs = {
-            k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]
+        out_inputs = self._collate_inputs(inputs)
+        out_labels = {
+            task: self._collate_annotations(
+                task, [label[task] for label in labels]
+            )
+            for task in labels[0]
+        }
+        return out_inputs, out_labels
+
+    @staticmethod
+    def _collate_inputs(
+        inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...],
+    ) -> dict[str, Tensor] | Tensor:
+        first = inputs[0]
+        if not isinstance(first, dict):
+            tensors = [item for item in inputs if isinstance(item, Tensor)]
+            if len(tensors) != len(inputs):
+                raise TypeError(MIXED_INPUT_TYPES_ERROR)
+            return torch.stack(tensors, 0)
+        input_dicts = [item for item in inputs if isinstance(item, dict)]
+        if len(input_dicts) != len(inputs):
+            raise TypeError(MIXED_INPUT_TYPES_ERROR)
+        return {
+            name: torch.stack([item[name] for item in input_dicts], 0)
+            for name in first
         }
 
-        out_labels: Labels = {}
+    @staticmethod
+    def _collate_annotations(task: str, annotations: list[Tensor]) -> Tensor:
+        task_type = get_task_type(task)
+        if task_type in {"keypoints", "boundingbox"}:
+            return BaseLoaderTorch._add_batch_indices(annotations)
+        if task_type == "instance_segmentation":
+            return torch.cat(annotations, 0)
+        if task_type == "metadata/text":
+            return BaseLoaderTorch._pad_text_annotations(annotations)
+        if task_is_metadata(task):
+            return torch.cat(annotations, 0)
+        return torch.stack(annotations, 0)
 
-        for task in labels[0]:
-            task_type = get_task_type(task)
-            annos = [label[task] for label in labels]
+    @staticmethod
+    def _add_batch_indices(annotations: list[Tensor]) -> Tensor:
+        indexed_annotations = []
+        for index, annotation in enumerate(annotations):
+            indexed = torch.zeros(
+                (annotation.shape[0], annotation.shape[1] + 1)
+            )
+            indexed[:, 0] = index
+            indexed[:, 1:] = annotation
+            indexed_annotations.append(indexed)
+        return torch.cat(indexed_annotations, 0)
 
-            if task_type in {"keypoints", "boundingbox"}:
-                label_box: list[Tensor] = []
-                for i, ann in enumerate(annos):
-                    new_ann = torch.zeros((ann.shape[0], ann.shape[1] + 1))
-                    # add batch index to separate boxes from different images
-                    new_ann[:, 0] = i
-                    new_ann[:, 1:] = ann
-                    label_box.append(new_ann)
-                out_labels[task] = torch.cat(label_box, 0)
-            elif task_type == "instance_segmentation":
-                out_labels[task] = torch.cat(annos, 0)
-            elif task_is_metadata(task):
-                if task_type == "metadata/text":
-                    max_len = max(len(anno) for anno in annos)
-                    padded_annos = torch.zeros(
-                        len(annos), max_len, dtype=torch.int32
-                    )
-                    for i, anno in enumerate(annos):
-                        padded_annos[i, : len(anno)] = anno
-                    out_labels[task] = padded_annos
-                else:
-                    out_labels[task] = torch.cat(annos, 0)
-            else:
-                out_labels[task] = torch.stack(annos, 0)
-
-        return out_inputs, out_labels
+    @staticmethod
+    def _pad_text_annotations(annotations: list[Tensor]) -> Tensor:
+        max_length = max(len(annotation) for annotation in annotations)
+        padded = torch.zeros(len(annotations), max_length, dtype=torch.int32)
+        for index, annotation in enumerate(annotations):
+            padded[index, : len(annotation)] = annotation
+        return padded

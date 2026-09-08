@@ -3,13 +3,13 @@ from luxonis_ml.typing import Params
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 from tests.conftest import LuxonisTestDataset, LuxonisTestDatasets
 
-BACKBONES = [
+BACKBONES: list[str] = [
     backbone
     for backbone in BACKBONES
     if backbone not in {"PPLCNetV3", "GhostFaceNet", "RecSubNet"}
 ]
 
-PREDEFINED_MODELS = [
+PREDEFINED_MODELS: list[tuple[str, Params | None]] = [
     ("anomaly_detection_model", None),
     ("embeddings_model", None),
     ("fomo_light_model", None),
@@ -42,7 +42,7 @@ def prepare_predefined_model_config(
     config_name: str, opts: Params, test_datasets: LuxonisTestDatasets
 ) -> tuple[str, dict, LuxonisTestDataset]:
     """Prepare configuration and options for non-backbone models."""
-    config_file = f"configs/{config_name}.yaml"
+    config_file = f"luxonis_train/configs/{config_name}.yaml"
 
     # Choose dataset based on config name
     if config_name == "embeddings_model":
@@ -70,11 +70,13 @@ def prepare_predefined_model_config(
     # Apply dataset-specific overrides
     if config_name == "embeddings_model":
         opts |= {
-            "loader.params.dataset_name": test_datasets.embedding_dataset.dataset_name,
+            "loader.params.dataset_name": test_datasets.embedding_dataset.identifier,
             "trainer.batch_size": 16,
             "trainer.preprocessing.train_image_size": [48, 64],
         }
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
+    elif "instance_segmentation" in config_name:
+        opts |= {"exporter.aimet.batch_norm_reestimation": False}
 
     return config_file, opts, dataset

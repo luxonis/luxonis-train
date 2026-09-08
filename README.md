@@ -18,6 +18,8 @@
 
 ![Title Image](media/example_viz/title.png)
 
+<a name="key-features"></a>
+
 ### ✨ Key Features
 
 - **No Coding Required**: Define your training pipeline entirely through a single `YAML` configuration file.
@@ -42,25 +44,42 @@ Get started with `LuxonisTrain` in just a few steps:
 
    This will create the `luxonis_train` executable in your `PATH`.
 
-1. **Use the provided `configs/detection_light_model.yaml` configuration file**
+1. **Pick a bundled predefined model**
 
-   You can download the file by executing the following command:
+   Every predefined model ships with the wheel. List them with:
 
    ```bash
-   wget https://raw.githubusercontent.com/luxonis/luxonis-train/main/configs/detection_light_model.yaml
+   luxonis_train list-models
    ```
 
 1. **Find a suitable dataset for your task**
 
    We will use a sample COCO dataset from `RoboFlow` in this example.
 
+   > [!IMPORTANT]
+   > A `roboflow://` source needs the `ROBOFLOW_API_KEY` environment variable.
+   > Get your key from the
+   > [Roboflow settings](https://app.roboflow.com/settings/api). The
+   > [Roboflow documentation](https://docs.roboflow.com/reference/authentication/authentication/find-your-roboflow-api-key)
+   > gives the steps.
+
 1. **Start training**
 
    ```bash
-   luxonis_train train                   \
-     --config detection_light_model.yaml \
+   luxonis_train train                  \
+     --model detection --variant light  \
      loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
    ```
+
+   `--model detection --variant light` runs the bundled `detection_light_model.yaml` configuration. Everything after the options is an override applied on top of it, which is how you point the configuration at your data. Once you have your own dataset registered, the usual form is:
+
+   ```bash
+   luxonis_train train                  \
+     --model detection --variant light  \
+     loader.params.dataset_name "my_dataset"
+   ```
+
+   To change more than a handful of fields, write your own config file and pass it with `--config` instead. See [Configuration](#configuration).
 
 1. **Monitor progress with `TensorBoard`**
 
@@ -111,6 +130,14 @@ pip install luxonis-train
 
 This will also install the `luxonis_train` CLI. For more information on how to use it, see [CLI Usage](#cli).
 
+### AIMET Quantization Support
+
+To enable support for AIMET quantization, install the `luxonis-train[aimet]` extra:
+
+```bash
+pip install luxonis-train[aimet]
+```
+
 <a name="usage"></a>
 
 ## 📝 Usage
@@ -135,6 +162,8 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 - `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
+- `quantize` - Quantize the model using `AIMET` quantization techniques
+- `list-models` - List packaged predefined models along with their variants and available versions
 
 **To get help on any command:**
 
@@ -143,6 +172,58 @@ luxonis_train <command> --help
 ```
 
 Specific usage examples can be found in the respective sections below.
+
+**Selecting a model.** Every command that accepts `--config <path>` also accepts `--model <name>` (optionally with `--variant`). The two are mutually exclusive and answer different questions:
+
+- `--config my_config.yaml` runs **your** config file.
+- `--model detection --variant light` runs the matching **packaged** configuration (here `detection_light_model.yaml`), read straight from the installed package. There is no local file to download or edit, and a config file in your working directory is not picked up.
+
+Both forms accept the same `key value` overrides, so you can adapt a packaged configuration from the command line:
+
+```bash
+# Train the packaged detection model on your own dataset
+luxonis_train train                  \
+  --model detection --variant light  \
+  loader.params.dataset_name "my_dataset"
+
+# Same, but pin the predefined-model version explicitly
+luxonis_train train --model detection:v1 --variant light
+```
+
+Use `luxonis_train list-models` to see the available `(model, variant)` combos and version numbers, and `luxonis_train info --model detection` to see what a predefined model contains.
+
+The Python API accepts the same packaged model selection directly:
+
+```python
+from luxonis_train import LuxonisModel
+
+model = LuxonisModel(
+    model="detection:v1",
+    variant="medium",
+    opts={"loader.params.dataset_name": "my_dataset"},
+)
+```
+
+Packaged configurations are a starting point, not a customization mechanism: as soon as you need to change more than a few fields (augmentations, losses, the training schedule), write your own config file. A few lines are enough, since it can build on the same predefined model:
+
+```yaml
+model:
+  predefined_model:
+    name: DetectionModel
+    params:
+      variant: light
+
+loader:
+  params:
+    dataset_name: my_dataset
+
+trainer:
+  epochs: 300
+```
+
+and run it with `luxonis_train train --config my_config.yaml`. The packaged YAMLs are good templates for this; they are visible [in this repository](https://github.com/luxonis/luxonis-train/tree/main/luxonis_train/configs) and, in an installed environment, under the directory printed by `python -c "from luxonis_train.config.predefined import configs_dir; print(configs_dir())"`.
+
+**Predefined-model versioning.** The `model.predefined_model` block accepts an optional `version` field (default `"latest"`). When we ship a breaking architecture change to, say, `DetectionModel`, it will land in a new `v2` package alongside the current one (`predefined_models/detection/v2/`); the class keeps its name, its version is inferred from the package, and it registers as `DetectionModel:v2`. Existing configs pinned to `version: 1` keep resolving to the old architecture, and loading a checkpoint whose training-time version differs from the current-config version prints a clear warning telling you which `version` to pin. The equivalent CLI form is `--model detection:v1`, `--model detection:v2`, or `--model detection:latest`.
 
 > [!NOTE]
 > CLI commands `train`, `test`, and `tune` can be run with `--debug`
@@ -162,6 +243,10 @@ model:
   # the model architecture manually
   predefined_model:
     name: DetectionModel
+    # Optional: pin an explicit architecture version. Defaults to
+    # "latest". Pin to an integer (e.g. `version: 1`) to reproduce an
+    # older checkpoint after a breaking change.
+    version: latest
     params:
       variant: light
 
@@ -206,11 +291,12 @@ trainer:
 
 ### 📚 Configuration Reference
 
-**For a complete reference of all available configuration options, see our [Configuration Documentation](configs/README.md).**
+**For a complete reference of all available configuration options, see our [Configuration Documentation](luxonis_train/configs/README.md).**
 
 > [!TIP]
-> We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
-> These are great starting points that you can customize for your specific needs.
+> We provide a set of predefined configuration files for common computer vision tasks in the `luxonis_train/configs` directory.
+> They ship with the package and are what `--model` / `--variant` select, so they can be used without a local copy.
+> They are also great starting points to copy and customize for your specific needs.
 
 <a name="data-preparation"></a>
 
@@ -286,14 +372,19 @@ The easiest way to load data is to use a directory with the dataset in one of th
 - URL to a remote dataset
   - The dataset will be downloaded to a `"data"` directory in the current working directory
   - **Supported URL protocols:**
-    - `s3://bucket/path/to/directory` fo **AWS S3**
-    - `gs://buclet/path/to/directory` for **Google Cloud Storage**
-    - `roboflow://workspace/project/version/format` for **RoboFlow**
+    - `s3://bucket/path/to/directory` for **AWS S3**
+    - `gs://bucket/path/to/directory` for **Google Cloud Storage**
+    - `roboflow://{workspace}/{project}/{version}/{format}` for **RoboFlow**
       - `workspace` - name of the workspace the dataset belongs to
       - `project` - name of the project the dataset belongs to
       - `version` - version of the dataset
       - `format` - one of `coco`, `darknet`, `voc`, `yolov4pytorch`, `mt-yolov6`, `createml`, `tensorflow`, `folder`, `png-mask-semantic`
       - **example:** `roboflow://team-roboflow/coco-128/2/coco`
+    - `ultralytics://{username}/datasets/{slug}` for **Ultralytics**
+      - `username` - name of the dataset author
+      - `slug` - name of the dataset
+      - Optional `?v={version}` attached at the end for specific version of the dataset
+      - **example:** `ultralytics://ultralytics/datasets/coco8`
 
 **Example:**
 
@@ -327,8 +418,10 @@ loader:
 > To inspect the loader output, use the `luxonis_train inspect` command:
 >
 > ```bash
-> luxonis_train inspect --config configs/detection_light_model.yaml
+> luxonis_train inspect --model detection --variant light
 > ```
+>
+> `--config my_config.yaml` works the same, with the loader section of your own config.
 >
 > **The `inspect` command is currently only available in the CLI**
 
@@ -343,16 +436,30 @@ Once your configuration file and dataset are ready, start the training process.
 **CLI:**
 
 ```bash
-luxonis_train train --config configs/detection_light_model.yaml
+# your own config file
+luxonis_train train --config my_config.yaml
+
+# or a packaged predefined model, unmodified
+luxonis_train train --model detection --variant light
+```
+
+The `--model` form trains the packaged configuration as it ships, which is rarely what you want on its own. At the very least you need to provide your own dataset. Overrides do that without a config file of your own:
+
+```bash
+luxonis_train train                  \
+  --model detection --variant light  \
+  loader.params.dataset_name "my_dataset"
 ```
 
 > [!TIP]
-> To change a configuration parameter from the command line, use the following syntax:
+> Any configuration parameter can be changed this way, whether the config came from `--config` or `--model`. The value is looked up by its dotted path in the config:
 >
 > ```bash
-> luxonis_train train                           \
->   --config configs/detection_light_model.yaml \
->   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
+> luxonis_train train \
+>   --model detection --variant light \
+>   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco" \
+>   trainer.epochs 300 \
+>   trainer.batch_size 8
 > ```
 
 **Python API:**
@@ -361,8 +468,14 @@ luxonis_train train --config configs/detection_light_model.yaml
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel(
-  "configs/detection_light_model.yaml",
-  {"loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco"}
+    "my_config.yaml",
+    {
+        "loader.params.dataset_dir": "roboflow://team-roboflow/coco-128/2/coco",
+        "trainer": {
+            "epochs": 300,
+            "batch_size": 8,
+        },
+    },
 )
 model.train()
 ```
@@ -399,8 +512,8 @@ Evaluate your trained model on a specific dataset view (`train`, `val`, or `test
 **CLI:**
 
 ```bash
-luxonis_train test --config configs/detection_light_model.yaml \
-                   --view val                                  \
+luxonis_train test --model detection --variant light \
+                   --view val                        \
                    --weights path/to/checkpoint.ckpt
 ```
 
@@ -409,7 +522,7 @@ luxonis_train test --config configs/detection_light_model.yaml \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 model.test(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -429,25 +542,25 @@ Run inference on images, datasets, or videos.
 - **Inference on a Dataset View:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --view val                                  \
+luxonis_train infer --model detection --variant light \
+                    --view val                        \
                     --weights path/to/checkpoint.ckpt
 ```
 
 - **Inference on a Video File:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --weights path/to/checkpoint.ckpt           \
+luxonis_train infer --model detection --variant light \
+                    --weights path/to/checkpoint.ckpt \
                     --source-path path/to/video.mp4
 ```
 
 - **Inference on an Image Directory:**
 
 ```bash
-luxonis_train infer --config configs/detection_light_model.yaml \
-                    --weights path/to/checkpoint.ckpt           \
-                    --source-path path/to/images                \
+luxonis_train infer --model detection --variant light \
+                    --weights path/to/checkpoint.ckpt \
+                    --source-path path/to/images      \
                     --save-dir path/to/save_directory
 ```
 
@@ -456,7 +569,7 @@ luxonis_train infer --config configs/detection_light_model.yaml \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 
 # infer on a dataset view
 model.infer(weights="path/to/checkpoint.ckpt", view="val")
@@ -478,14 +591,14 @@ model.infer(
 
 Export your trained models to `ONNX` for downstream conversion and deployment.
 
-To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
+To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
 
-You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
+You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_export.yaml).
 
 **CLI:**
 
 ```bash
-luxonis_train export --config configs/example_export.yaml --weights path/to/weights.ckpt
+luxonis_train export --config my_export_config.yaml --weights path/to/weights.ckpt
 ```
 
 **Python API:**
@@ -493,7 +606,7 @@ luxonis_train export --config configs/example_export.yaml --weights path/to/weig
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/example_export.yaml")
+model = LuxonisModel("my_export_config.yaml")
 model.export(weights="path/to/weights.ckpt")
 ```
 
@@ -512,8 +625,8 @@ The archive contains the exported model together with all the metadata needed fo
 **CLI:**
 
 ```bash
-luxonis_train archive                         \
-  --config configs/detection_light_model.yaml \
+luxonis_train archive                \
+  --model detection --variant light  \
   --weights path/to/checkpoint.ckpt
 ```
 
@@ -522,7 +635,7 @@ luxonis_train archive                         \
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
@@ -538,12 +651,12 @@ Convert is the unified flow for deployment. It performs:
 1. **Archive**: `.onnx` -> `.tar.xz` (NN Archive)
 1. **Platform-specific conversion** (optional): NN Archive -> platform NN Archive via HubAI SDK (recommended) or `blobconverter` (deprecated, RVC2 legacy `.blob`)
 
-Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
+Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
 
 **CLI:**
 
 ```bash
-luxonis_train convert --config configs/detection_light_model.yaml --weights path/to/checkpoint.ckpt
+luxonis_train convert --model detection --variant light --weights path/to/checkpoint.ckpt
 ```
 
 **Python API:**
@@ -551,7 +664,7 @@ luxonis_train convert --config configs/detection_light_model.yaml --weights path
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/detection_light_model.yaml")
+model = LuxonisModel("my_config.yaml")
 archive_path, conversion_artifacts = model.convert(
     weights="path/to/checkpoint.ckpt"
 )
@@ -572,7 +685,7 @@ Optimize your model's performance using hyperparameter tuning powered by [`Optun
 
 **Configuration:**
 
-Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in your configuration file.
+Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#tuner) section in your configuration file. A full example is available [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_tuning.yaml).
 
 ```yaml
 
@@ -590,7 +703,7 @@ tuner:
 **CLI:**
 
 ```bash
-luxonis_train tune --config configs/example_tuning.yaml
+luxonis_train tune --config my_tuning_config.yaml
 ```
 
 **Python API:**
@@ -598,7 +711,7 @@ luxonis_train tune --config configs/example_tuning.yaml
 ```python
 from luxonis_train import LuxonisModel
 
-model = LuxonisModel("configs/example_tuning.yaml")
+model = LuxonisModel("my_tuning_config.yaml")
 model.tune()
 ```
 
@@ -614,9 +727,9 @@ model.tune()
 - [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
 - [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
 - [**Callbacks**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md): Allow custom code to be executed at different stages of training.
-- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#optimizer): Control how the model's weights are updated.
-- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#scheduler): Adjust the learning rate during training.
-- [**Training Strategy**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#training-strategy): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
+- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#optimizer): Control how the model's weights are updated.
+- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#scheduler): Adjust the learning rate during training.
+- [**Training Strategy**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#training-strategy): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
 
 **Creating Custom Components:**
 
@@ -624,7 +737,7 @@ Implement custom components by subclassing the respective base classes and/or re
 Registered components can be referenced in the config file. Custom components need to inherit from their respective base classes:
 
 - **Loaders** - [`BaseLoaderTorch`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
-- **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
+- **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/base_node.py)
 - **Losses** - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
 - **Metrics** - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
 - **Visualizers** - [`BaseVisualizer`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
@@ -667,6 +780,7 @@ from torch import Tensor
 
 from luxonis_train import BaseLoss, Tasks
 
+
 # Subclasses of `BaseNode`, `BaseLoss`, `BaseMetric`
 # and `BaseVisualizer` are registered automatically.
 class CustomLoss(BaseLoss):
@@ -699,7 +813,7 @@ trainer:
   callbacks:
     - name: CustomCallback
       params:
-        lr: "Hello from the custom callback!"
+        message: "Hello from the custom callback!"
 ```
 
 > [!NOTE]

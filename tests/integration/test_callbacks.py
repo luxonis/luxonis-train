@@ -10,7 +10,7 @@ from luxonis_train.core import LuxonisModel
 
 
 def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
-    config_file = "configs/segmentation_light_model.yaml"
+    config_file = "luxonis_train/configs/segmentation_light_model.yaml"
     opts |= {
         "rich_logging": False,
         "trainer.seed": 42,
@@ -56,6 +56,8 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
+        # AIMET fails when determinism is enabled
+        "exporter.aimet.active": False,
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, allow_empty_dataset=True)

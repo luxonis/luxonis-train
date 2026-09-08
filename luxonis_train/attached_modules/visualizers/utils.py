@@ -1,7 +1,7 @@
 import colorsys
 import io
 from collections.abc import Mapping
-from typing import Literal
+from typing import Literal, cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -98,7 +98,7 @@ def torch_img_to_numpy(
     arr = np.ascontiguousarray(arr)
     if reverse_colors:
         arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-    return arr
+    return cast(npt.NDArray[np.uint8], arr)
 
 
 def numpy_to_torch_img(img: np.ndarray) -> Tensor:
@@ -412,106 +412,11 @@ def combine_visualizations(
         ``Tensor``: Combined visualization image.
 
     """
-
-    def resize_to_match(
-        fst: Tensor,
-        snd: Tensor,
-        *,
-        keep_size: Literal["larger", "smaller", "first", "second"] = "larger",
-        resize_along: Literal["width", "height", "exact"] = "height",
-        keep_aspect_ratio: bool = True,
-    ) -> tuple[Tensor, Tensor]:
-        """Resizes two images so they have the same size.
-
-        Resizes two images so they can be concateneted together. It's possible to
-        configure how the images are resized.
-
-        Args:
-            fst (``Tensor[C, H, W]``): First image.
-            snd (``Tensor[C, H, W]``): Second image.
-            keep_size (``Literal["larger", "smaller", "first", "second"]``): Which size to keep.
-                Options are: - "larger": Resize the smaller image to match the size of the larger
-                image. - "smaller": Resize the larger image to match the size of the smaller image.
-                - "first": Resize the second image to match the size of the first image. -
-                "second": Resize the first image to match the size of the second image.
-            resize_along (``Literal["width", "height", "exact"]``): Which dimensions to match. Options
-                are: - "width": Resize images along the width dimension. - "height": Resize images
-                along the height dimension. - "exact": Resize images to match both width and height
-                dimensions.
-            keep_aspect_ratio (bool): Whether to keep the aspect ratio of the images. Only takes
-                effect when the "exact" option is selected for the ``resize_along`` argument.
-                Defaults to ``True``.
-
-        Returns:
-            ``tuple[Tensor[C, H, W], Tensor[C, H, W]]``: Resized images.
-
-        """
-        if resize_along not in ["width", "height", "exact"]:
-            raise ValueError(
-                "Invalid value for resize_along: {resize_along}. "
-                "Valid options are: 'width', 'height', 'exact'."
-            )
-
-        *_, h1, w1 = fst.shape
-
-        *_, h2, w2 = snd.shape
-
-        if keep_size == "larger":
-            target_width = max(w1, w2)
-            target_height = max(h1, h2)
-        elif keep_size == "smaller":
-            target_width = min(w1, w2)
-            target_height = min(h1, h2)
-        elif keep_size == "first":
-            target_width = w1
-            target_height = h1
-        elif keep_size == "second":
-            target_width = w2
-            target_height = h2
-        else:
-            raise ValueError(
-                f"Invalid value for keep_size: {keep_size}. "
-                "Valid options are: 'larger', 'smaller', 'first', 'second'."
-            )
-
-        if resize_along == "width":
-            target_height = h1 if keep_size in ["first", "larger"] else h2
-        elif resize_along == "height":
-            target_width = w1 if keep_size in ["first", "larger"] else w2
-
-        if keep_aspect_ratio:
-            ar1 = w1 / h1
-            ar2 = w2 / h2
-            if resize_along == "width" or (
-                resize_along == "exact" and target_width / target_height > ar1
-            ):
-                target_height_fst = int(target_width / ar1)
-                target_width_fst = target_width
-            else:
-                target_width_fst = int(target_height * ar1)
-                target_height_fst = target_height
-            if resize_along == "width" or (
-                resize_along == "exact" and target_width / target_height > ar2
-            ):
-                target_height_snd = int(target_width / ar2)
-                target_width_snd = target_width
-            else:
-                target_width_snd = int(target_height * ar2)
-                target_height_snd = target_height
-        else:
-            target_width_fst, target_height_fst = target_width, target_height
-            target_width_snd, target_height_snd = target_width, target_height
-
-        fst_resized = TF.resize(fst, [target_height_fst, target_width_fst])
-        snd_resized = TF.resize(snd, [target_height_snd, target_width_snd])
-
-        return fst_resized, snd_resized
-
     match visualization:
         case Tensor() as viz:
             return viz
         case (Tensor(data=viz_labels), Tensor(data=viz_predictions)):
-            viz_labels, viz_predictions = resize_to_match(
+            viz_labels, viz_predictions = _resize_to_match(
                 viz_labels, viz_predictions
             )
             return torch.cat([viz_labels, viz_predictions], dim=-1)
@@ -528,3 +433,106 @@ def combine_visualizations(
                 "two tensors or a tuple of a tensor and a list of tensors. "
                 f"Got: `{type(visualization)}`."
             )
+
+
+def _target_size_for_keep_size(
+    keep_size: Literal["larger", "smaller", "first", "second"],
+    w1: int,
+    h1: int,
+    w2: int,
+    h2: int,
+) -> tuple[int, int]:
+    if keep_size == "larger":
+        return max(w1, w2), max(h1, h2)
+    if keep_size == "smaller":
+        return min(w1, w2), min(h1, h2)
+    if keep_size == "first":
+        return w1, h1
+    if keep_size == "second":
+        return w2, h2
+    raise ValueError(
+        f"Invalid value for keep_size: {keep_size}. "
+        "Valid options are: 'larger', 'smaller', 'first', 'second'."
+    )
+
+
+def _fit_to_aspect_ratio(
+    target_width: int,
+    target_height: int,
+    aspect_ratio: float,
+    resize_along: Literal["width", "height", "exact"],
+) -> tuple[int, int]:
+    """Adjust one image's target size to preserve its aspect ratio."""
+    if resize_along == "width" or (
+        resize_along == "exact" and target_width / target_height > aspect_ratio
+    ):
+        return target_width, int(target_width / aspect_ratio)
+    return int(target_height * aspect_ratio), target_height
+
+
+def _resize_to_match(
+    fst: Tensor,
+    snd: Tensor,
+    *,
+    keep_size: Literal["larger", "smaller", "first", "second"] = "larger",
+    resize_along: Literal["width", "height", "exact"] = "height",
+    keep_aspect_ratio: bool = True,
+) -> tuple[Tensor, Tensor]:
+    """Resizes two images so they have the same size.
+
+    Resizes two images so they can be concateneted together. It's possible to
+    configure how the images are resized.
+
+    Args:
+        fst (``Tensor[C, H, W]``): First image.
+        snd (``Tensor[C, H, W]``): Second image.
+        keep_size (``Literal["larger", "smaller", "first", "second"]``): Which size to keep.
+            Options are: - "larger": Resize the smaller image to match the size of the larger
+            image. - "smaller": Resize the larger image to match the size of the smaller image.
+            - "first": Resize the second image to match the size of the first image. -
+            "second": Resize the first image to match the size of the second image.
+        resize_along (``Literal["width", "height", "exact"]``): Which dimensions to match. Options
+            are: - "width": Resize images along the width dimension. - "height": Resize images
+            along the height dimension. - "exact": Resize images to match both width and height
+            dimensions.
+        keep_aspect_ratio (bool): Whether to keep the aspect ratio of the images. Only takes
+            effect when the "exact" option is selected for the ``resize_along`` argument.
+            Defaults to ``True``.
+
+    Returns:
+        ``tuple[Tensor[C, H, W], Tensor[C, H, W]]``: Resized images.
+
+    """
+    if resize_along not in ["width", "height", "exact"]:
+        raise ValueError(
+            f"Invalid value for resize_along: {resize_along}. "
+            "Valid options are: 'width', 'height', 'exact'."
+        )
+
+    *_, h1, w1 = fst.shape
+    *_, h2, w2 = snd.shape
+
+    target_width, target_height = _target_size_for_keep_size(
+        keep_size, w1, h1, w2, h2
+    )
+
+    if resize_along == "width":
+        target_height = h1 if keep_size in ["first", "larger"] else h2
+    elif resize_along == "height":
+        target_width = w1 if keep_size in ["first", "larger"] else w2
+
+    if keep_aspect_ratio:
+        target_width_fst, target_height_fst = _fit_to_aspect_ratio(
+            target_width, target_height, w1 / h1, resize_along
+        )
+        target_width_snd, target_height_snd = _fit_to_aspect_ratio(
+            target_width, target_height, w2 / h2, resize_along
+        )
+    else:
+        target_width_fst, target_height_fst = target_width, target_height
+        target_width_snd, target_height_snd = target_width, target_height
+
+    fst_resized = TF.resize(fst, [target_height_fst, target_width_fst])
+    snd_resized = TF.resize(snd, [target_height_snd, target_width_snd])
+
+    return fst_resized, snd_resized

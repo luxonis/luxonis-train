@@ -7,7 +7,7 @@ from luxonis_train.nodes.blocks import (
     BlockRepeater,
     ConvBlock,
     CSPStackRepBlock,
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
 )
 
 
@@ -71,7 +71,7 @@ class RepUpBlock(PANUpBlockBase):
             in_channels=in_channels,
             out_channels=out_channels,
             encode_block=BlockRepeater(
-                GeneralReparametrizableBlock,
+                GeneralReparameterizableBlock,
                 in_channels=in_channels_next + out_channels,
                 out_channels=out_channels,
                 n_repeats=n_repeats,
@@ -169,7 +169,7 @@ class RepDownBlock(PANDownBlockBase):
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
             encode_block=BlockRepeater(
-                GeneralReparametrizableBlock,
+                GeneralReparameterizableBlock,
                 n_repeats=n_repeats,
                 in_channels=downsample_out_channels + in_channels_next,
                 out_channels=out_channels,

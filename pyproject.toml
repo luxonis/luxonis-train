@@ -1,14 +1,40 @@
 [project]
 name = "luxonis-train"
+dynamic = ["version"]
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license-files = ["LICENSE"]
 license = "Apache-2.0"
 authors = [{ name = "Luxonis", email = "support@luxonis.com" }]
 maintainers = [{ name = "Luxonis", email = "support@luxonis.com" }]
 keywords = ["ml", "training", "luxonis", "oak"]
-dynamic = ["dependencies", "optional-dependencies", "version"]
+dependencies = [
+  "blobconverter~=1.4",
+  "cyclopts~=4.2",
+  "faster-coco-eval~=1.7",
+  "grad-cam~=1.5",
+  "hubai-sdk>=0.3.4",
+  "lightning~=2.5",
+  "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]>=0.10.0",
+  "onnxruntime~=1.23",
+  "onnxscript~=0.5",
+  "onnxsim~=0.4",
+  "onnx~=1.19",
+  "optuna-integration~=4.6",
+  "optuna~=4.6",
+  "psutil~=7.1",
+  "pynvim~=0.6",
+  "pytorch-metric-learning~=2.9",
+  "seaborn~=0.13",
+  "semver~=3.0",
+  "tabulate~=0.9",
+  "tensorboard~=2.20",
+  "termcolor~=3.2",
+  "torchmetrics~=1.8",
+  "torchvision~=0.26",
+  "torch<2.13",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3.10",
@@ -26,16 +52,48 @@ luxonis_train = "luxonis_train.__main__:app.meta"
 repository = "https://github.com/luxonis/luxonis-train"
 issues = "https://github.com/luxonis/luxonis-train/issues"
 
+[project.optional-dependencies]
+aimet = ["aimet-torch~=2.36"]
+
+[dependency-groups]
+config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
+dev = [
+  "complexipy~=7.0",
+  "prek~=0.4",
+  "pyright~=1.1",
+  "pytest-cov~=7.1",
+  "pytest-order~=1.5",
+  "pytest-subtests~=0.15",
+  "pytest-timeout~=2.4",
+  "ruff~=0.16",
+]
+docs = ["pydoctor~=25.10"]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["luxonis_train*"]
+
+[tool.setuptools.package-data]
+"luxonis_train.configs" = ["*.yaml"]
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
 version = { attr = "luxonis_train.__version__" }
 
 [tool.ruff]
@@ -50,24 +108,26 @@ docstring-code-line-length = "dynamic"
 [tool.ruff.lint]
 select = [
   "ANN",
+  "ASYNC",
   "B",
   "C4",
   "D",
   "DTZ",
   "E",
   "ERA",
+  "EXE",
   "F",
   "FLY",
   "FURB",
+  "G",
   "I",
   "ICN",
   "INP",
   "INT",
   "ISC",
   "NPY",
-  "PERF101",
-  "PERF102",
-  "PERF402",
+  "PERF",
+  "PGH",
   "PIE",
   "PL",
   "PT",
@@ -79,6 +139,7 @@ select = [
   "RUF",
   "S",
   "SIM",
+  "SLOT",
   "T10",
   "T20",
   "TID",
@@ -93,25 +154,25 @@ ignore = [
   "ANN204",
   "ANN401",
   "D1",
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D105",
-  "D107",
   "D202",
   "D203",
   "D205",
   "D212",
   "D213",
   "E501",
+  "G004",
   "ICN002",
   "NPY002",
+  "PERF203",
+  # Blanket `type: ignore` comments; they leave with the type-gate
+  # follow-up, so coding them now would be churn.
+  "PGH003",
   "PLC0415",
   "PLR0911",
   "PLR0912",
   "PLR0913",
   "PLR0915",
+  "PLR0917",
   "PLR2004",
   "PLW2901",
   "PTH123",
@@ -130,6 +191,9 @@ unfixable = ["B905"]
 "scripts/*" = ["INP001", "T201"]
 "__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"__future__".msg = "Do not use imports from __future__."
 
 [tool.docformatter]
 black = true
@@ -153,7 +217,12 @@ intersphinx-file = [
 ]
 
 [tool.pyright]
+pythonVersion = "3.10"
 typeCheckingMode = "basic"
+# The first three entries are pyright's own defaults, which a custom
+# `exclude` would otherwise drop. `build` holds a stale copy of the
+# package that setuptools leaves behind.
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "build", "dist"]
 reportMissingTypeStubs = "none"
 reportPrivateImportUsage = "none"
 reportPrivateUsage = "none"
@@ -170,6 +239,11 @@ markers = [
   "unit: mark a test as a unit test",
   "integration: mark a test as an integration test",
 ]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+  "ignore::FutureWarning",
+]
 
 [tool.coverage.run]
 omit = [
@@ -180,8 +254,8 @@ omit = [
   "**/_remote_module_non_scriptable.py",
   # These are not related to our `config.py`,
   # see https://github.com/nedbat/coveragepy/issues/1653
-  "config.py",
-  "config-3.py",
+  "./config.py",
+  "./config-3.py",
 ]
 parallel = true
 concurrency = ["multiprocessing"]
@@ -205,3 +279,15 @@ exclude_also = [
   "logger\\.",
   "if TYPE_CHECKING",
 ]
+
+[tool.typos.files]
+# Diagram files hold opaque element ids that typos mangles.
+extend-exclude = ["*.drawio"]
+
+[tool.typos.default.extend-identifiers]
+# The ONNX scatter operator.
+ScatterND = "ScatterND"
+
+[tool.typos.default.extend-words]
+# The task-aligned detection paper the TAL assigner comes from.
+TOOD = "TOOD"
