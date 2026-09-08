@@ -1196,18 +1196,17 @@ class LuxonisModel:
         return storage
 
     def _finalize_wandb_tuning(self, study: "optuna.study.Study") -> None:
-        if not self.cfg.tracker.is_wandb:  # pragma: no cover
-            return
-        # If wandb used then init parent tracker separately at the end
-        wandb_parent_tracker = LuxonisTrackerPL(
-            rank=rank_zero_only.rank,
-            _auto_finalize=True,
-            **(
-                get_tracker_init_params(self.cfg.tracker)
-                | {"run_name": self.parent_tracker.run_name}
-            ),
-        )
-        wandb_parent_tracker.log_hyperparams(study.best_params)
+        if self.cfg.tracker.is_wandb:  # pragma: no cover
+            # If wandb used then init parent tracker separately at the end
+            wandb_parent_tracker = LuxonisTrackerPL(
+                rank=rank_zero_only.rank,
+                _auto_finalize=True,
+                **(
+                    get_tracker_init_params(self.cfg.tracker)
+                    | {"run_name": self.parent_tracker.run_name}
+                ),
+            )
+            wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
         self,

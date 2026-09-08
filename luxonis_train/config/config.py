@@ -1214,7 +1214,7 @@ class Config(LuxonisConfig):
             ),
             None,
         )
-        if callback is None:  # pragma: no cover
+        if callback is None:
             return
         callback.params["scheduling"] = schedule  # type: ignore
         logger.info(
