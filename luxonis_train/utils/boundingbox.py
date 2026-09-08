@@ -517,27 +517,26 @@ def _select_detections(
     conf_thres: float,
     multi_label: bool,
 ) -> tuple[Tensor, Tensor]:
-    keep_mask = torch.zeros(bboxes.size(0)).bool()
     if multi_label:
-        box_idx, class_idx = (
+        # A box repeats once for each of its classes above the threshold.
+        keep_idx, class_idx = (
             (curr_out[:, 5 : 5 + n_classes] > conf_thres)
             .nonzero(as_tuple=False)
             .T
         )
-        keep_mask[box_idx] = True
         curr_out = torch.cat(
             (
-                bboxes[keep_mask],
-                curr_out[keep_mask, class_idx + 5, None],
+                bboxes[keep_idx],
+                curr_out[keep_idx, class_idx + 5, None],
                 class_idx[:, None].float(),
             ),
             1,
         )
     else:
         conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(1, keepdim=True)
-        keep_mask[conf.view(-1) > conf_thres] = True
-        curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
-    return curr_out, keep_mask
+        keep_idx = (conf.view(-1) > conf_thres).nonzero().view(-1)
+        curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_idx]
+    return curr_out, keep_idx
 
 
 def _filter_keep_classes(curr_out: Tensor, keep_classes: list[int]) -> Tensor:
@@ -587,13 +586,13 @@ def _nms_single_image(
     if bbox_format != "xyxy":
         bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
 
-    curr_out, keep_mask = _select_detections(
+    curr_out, keep_idx = _select_detections(
         curr_out, bboxes, n_classes, conf_thres, multi_label
     )
 
     if has_additional:
         curr_out = torch.hstack(
-            [curr_out, x[candidate_mask_i][keep_mask, 5 + n_classes :]]
+            [curr_out, x[candidate_mask_i][keep_idx, 5 + n_classes :]]
         )
 
     if keep_classes is not None:

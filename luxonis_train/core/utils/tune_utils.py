@@ -105,9 +105,9 @@ def _suggest_trial_value(
     if key_type in {"float", "int"}:
         return _suggest_numeric_value(trial, key_name, key_type, value)
     if key_type == "loguniform" and _is_pair_of_floats(value):
-        return trial.suggest_loguniform(key_name, *value)
+        return trial.suggest_float(key_name, *value, log=True)
     if key_type == "uniform" and _is_pair_of_floats(value):
-        return trial.suggest_uniform(key_name, *value)
+        return trial.suggest_float(key_name, *value)
     raise _unsupported_combination(key_type, value)
 
 
