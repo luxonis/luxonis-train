@@ -152,56 +152,6 @@ class EMACallback(pl.Callback):
             return
         self._restore_loaded_ema_state(self.loaded_ema_state_dict)
 
-    def _restore_loaded_ema_state(
-        self, loaded_checkpoint: Mapping[str, Tensor]
-    ) -> None:
-        loaded_state = filter_checkpoint_state_dict(loaded_checkpoint)
-        current_state = self.ema.state_dict_ema
-        comparable_current = filter_checkpoint_state_dict(current_state)
-        incompatible = self._warn_about_state_differences(
-            comparable_current, loaded_state
-        )
-        target_device = next(iter(current_state.values())).device
-        for key, value in loaded_state.items():
-            if key in current_state and key not in incompatible:
-                current_state[key] = value.to(target_device)
-        self.ema.state_dict_ema = current_state
-        if self.loaded_ema_updates is not None:
-            self.ema.updates = self.loaded_ema_updates
-        self.loaded_ema_state_dict = None
-        self.loaded_ema_updates = None
-
-    def _warn_about_state_differences(
-        self,
-        current_state: Mapping[str, torch.Tensor],
-        loaded_state: Mapping[str, torch.Tensor],
-    ) -> set[str]:
-        current_keys, loaded_keys = set(current_state), set(loaded_state)
-        missing, extra = current_keys - loaded_keys, loaded_keys - current_keys
-        incompatible = {
-            key
-            for key in current_keys & loaded_keys
-            if current_state[key].shape != loaded_state[key].shape
-        }
-        self._warn_for_state_keys(
-            missing,
-            "EMA checkpoint is missing keys present in the current model. "
-            "Keeping freshly initialized EMA values for: ",
-        )
-        self._warn_for_state_keys(
-            extra,
-            "EMA checkpoint contains keys not present in the current model. Ignoring: ",
-        )
-        self._warn_for_state_keys(
-            incompatible,
-            "EMA checkpoint contains keys with incompatible shapes. Ignoring: ",
-        )
-        return incompatible
-
-    def _warn_for_state_keys(self, keys: set[str], message: str) -> None:
-        if keys:
-            logger.warning(f"{message}{self._format_key_list(keys)}")
-
     def on_train_batch_end(
         self,
         trainer: pl.Trainer,
@@ -337,6 +287,56 @@ class EMACallback(pl.Callback):
         @param callback_state: Pytorch Lightning callback state.
         """
         self._load_ema_state(callback_state)
+
+    def _restore_loaded_ema_state(
+        self, loaded_checkpoint: Mapping[str, Tensor]
+    ) -> None:
+        loaded_state = filter_checkpoint_state_dict(loaded_checkpoint)
+        current_state = self.ema.state_dict_ema
+        comparable_current = filter_checkpoint_state_dict(current_state)
+        incompatible = self._warn_about_state_differences(
+            comparable_current, loaded_state
+        )
+        target_device = next(iter(current_state.values())).device
+        for key, value in loaded_state.items():
+            if key in current_state and key not in incompatible:
+                current_state[key] = value.to(target_device)
+        self.ema.state_dict_ema = current_state
+        if self.loaded_ema_updates is not None:
+            self.ema.updates = self.loaded_ema_updates
+        self.loaded_ema_state_dict = None
+        self.loaded_ema_updates = None
+
+    def _warn_about_state_differences(
+        self,
+        current_state: Mapping[str, torch.Tensor],
+        loaded_state: Mapping[str, torch.Tensor],
+    ) -> set[str]:
+        current_keys, loaded_keys = set(current_state), set(loaded_state)
+        missing, extra = current_keys - loaded_keys, loaded_keys - current_keys
+        incompatible = {
+            key
+            for key in current_keys & loaded_keys
+            if current_state[key].shape != loaded_state[key].shape
+        }
+        self._warn_for_state_keys(
+            missing,
+            "EMA checkpoint is missing keys present in the current model. "
+            "Keeping freshly initialized EMA values for: ",
+        )
+        self._warn_for_state_keys(
+            extra,
+            "EMA checkpoint contains keys not present in the current model. Ignoring: ",
+        )
+        self._warn_for_state_keys(
+            incompatible,
+            "EMA checkpoint contains keys with incompatible shapes. Ignoring: ",
+        )
+        return incompatible
+
+    def _warn_for_state_keys(self, keys: set[str], message: str) -> None:
+        if keys:
+            logger.warning(f"{message}{self._format_key_list(keys)}")
 
     def _load_ema_state(self, state_dict: dict[str, Any]) -> None:
         if state_dict:

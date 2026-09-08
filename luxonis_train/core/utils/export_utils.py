@@ -20,11 +20,6 @@ if TYPE_CHECKING:
     from onnx import GraphProto, TensorProto
 
 
-class _InitializerInfo(TypedDict):
-    data: "TensorProto"
-    usage_count: int
-
-
 @contextmanager
 def replace_weights(
     module: "lxt.LuxonisLightningModule",
@@ -269,6 +264,53 @@ def hubai_export(
         _cleanup_remote_model(client, cfg, created_model_id, variant_id)
 
 
+def make_initializers_unique(onnx_path: PathType) -> None:
+    """Each initializer that is used by multiple nodes gets duplicated
+    so each node has its own copy.
+
+    @type onnx_path: PathType
+    @param onnx_path: Path to the ONNX model file to modify.
+    """
+    import onnx
+
+    onnx_path = str(onnx_path)
+    model = onnx.load(onnx_path)
+    graph = model.graph
+
+    initializer_info = _collect_initializer_info(graph)
+    if not initializer_info:
+        logger.warning("No initializers found in the model")
+        return
+
+    name_mapping, new_initializers, duplicated_count = (
+        _build_unique_initializers(initializer_info)
+    )
+
+    del graph.initializer[:]
+    graph.initializer.extend(new_initializers)
+
+    _remap_node_inputs(graph, name_mapping)
+
+    onnx.save(model, onnx_path)
+    try:
+        onnx.checker.check_model(onnx_path)
+    except Exception as e:
+        logger.warning(
+            f"ONNX checker failed after making initializers unique: {e}. "
+            "If you encounter issues, try exporting with unique_onnx_initializers=False."
+        )
+
+    logger.info(
+        f"Processed {len(initializer_info)} initializers: "
+        f"{duplicated_count} shared initializers were duplicated"
+    )
+
+
+class _InitializerInfo(TypedDict):
+    data: "TensorProto"
+    usage_count: int
+
+
 def _find_existing_model_id(
     client: "HubAIClient", model_name: str
 ) -> str | None:
@@ -369,48 +411,6 @@ def _cleanup_remote_model(
         logger.warning(
             f"Failed to cleanup HubAI {resource_type} '{resource_id}': {e}"
         )
-
-
-def make_initializers_unique(onnx_path: PathType) -> None:
-    """Each initializer that is used by multiple nodes gets duplicated
-    so each node has its own copy.
-
-    @type onnx_path: PathType
-    @param onnx_path: Path to the ONNX model file to modify.
-    """
-    import onnx
-
-    onnx_path = str(onnx_path)
-    model = onnx.load(onnx_path)
-    graph = model.graph
-
-    initializer_info = _collect_initializer_info(graph)
-    if not initializer_info:
-        logger.warning("No initializers found in the model")
-        return
-
-    name_mapping, new_initializers, duplicated_count = (
-        _build_unique_initializers(initializer_info)
-    )
-
-    del graph.initializer[:]
-    graph.initializer.extend(new_initializers)
-
-    _remap_node_inputs(graph, name_mapping)
-
-    onnx.save(model, onnx_path)
-    try:
-        onnx.checker.check_model(onnx_path)
-    except Exception as e:
-        logger.warning(
-            f"ONNX checker failed after making initializers unique: {e}. "
-            "If you encounter issues, try exporting with unique_onnx_initializers=False."
-        )
-
-    logger.info(
-        f"Processed {len(initializer_info)} initializers: "
-        f"{duplicated_count} shared initializers were duplicated"
-    )
 
 
 def _collect_initializer_info(

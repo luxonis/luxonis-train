@@ -124,6 +124,41 @@ def upgrade_config(config: PathType | Params) -> Params:
     return cfg._dict
 
 
+def upgrade_installation() -> None:
+    latest_version = get_latest_version()
+    if latest_version is None:
+        logger.info("Failed to check for updates. Try again later.")
+        return
+    if latest_version == lxt.__semver__:
+        logger.info(f"luxonis-train is up-to-date (v{lxt.__version__}).")
+    else:
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U pip".split()
+        )
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U luxonis_train".split()
+        )
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U luxonis_ml[data]".split()
+        )
+        logger.info(
+            f"luxonis-train updated from v{lxt.__version__} to v{latest_version}."
+        )
+
+
+def get_latest_version() -> Version | None:
+    import requests
+
+    url = "https://pypi.org/pypi/luxonis_train/json"
+    response = requests.get(url, timeout=5)
+    if response.status_code == 200:
+        data = response.json()
+        versions = list(data["releases"].keys())
+        versions.sort(key=lambda s: [int(u) for u in s.split(".")])
+        return Version.parse(versions[-1])
+    return None
+
+
 def _load_config(config: PathType | Params) -> NestedDict:
     if isinstance(config, dict):
         return NestedDict(config)
@@ -219,38 +254,3 @@ def _migrate_attached_modules(
             logger.info(
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
-
-
-def upgrade_installation() -> None:
-    latest_version = get_latest_version()
-    if latest_version is None:
-        logger.info("Failed to check for updates. Try again later.")
-        return
-    if latest_version == lxt.__semver__:
-        logger.info(f"luxonis-train is up-to-date (v{lxt.__version__}).")
-    else:
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U pip".split()
-        )
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U luxonis_train".split()
-        )
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U luxonis_ml[data]".split()
-        )
-        logger.info(
-            f"luxonis-train updated from v{lxt.__version__} to v{latest_version}."
-        )
-
-
-def get_latest_version() -> Version | None:
-    import requests
-
-    url = "https://pypi.org/pypi/luxonis_train/json"
-    response = requests.get(url, timeout=5)
-    if response.status_code == 200:
-        data = response.json()
-        versions = list(data["releases"].keys())
-        versions.sort(key=lambda s: [int(u) for u in s.split(".")])
-        return Version.parse(versions[-1])
-    return None

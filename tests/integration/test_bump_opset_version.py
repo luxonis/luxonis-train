@@ -16,17 +16,6 @@ from tests.integration.backbone_model_utils import (
 from tests.integration.test_combinations import BACKBONES, get_config
 
 
-def _to_array(x: Any) -> np.ndarray:
-    """Convert any list/dict/sparse ONNX output to a numpy array."""
-    if hasattr(x, "to_dense"):
-        x = x.to_dense()
-    if isinstance(x, dict):
-        x = np.concatenate([v for _, v in sorted(x.items())], axis=None)
-    elif isinstance(x, list):
-        x = np.concatenate([np.ravel(v) for v in x])
-    return np.asarray(x)
-
-
 # for pyright safety
 def get_opset_version(cfg: dict[str, Any]) -> int | None:
     exporter = cfg.get("exporter")
@@ -148,3 +137,14 @@ def test_opset_bump_equivalence(
                 atol=1e-5,
                 err_msg=f"Output {i} differs between opset {current_opset} and {target_opset}",
             )
+
+
+def _to_array(x: Any) -> np.ndarray:
+    """Convert any list/dict/sparse ONNX output to a numpy array."""
+    if hasattr(x, "to_dense"):
+        x = x.to_dense()
+    if isinstance(x, dict):
+        x = np.concatenate([v for _, v in sorted(x.items())], axis=None)
+    elif isinstance(x, list):
+        x = np.concatenate([np.ravel(v) for v in x])
+    return np.asarray(x)

@@ -737,35 +737,6 @@ def log_balanced_class_images(
     return node_logged_images, class_log_counts, logged_indices
 
 
-def _select_balanced_indices(
-    visualizations: dict[str, dict[str, Tensor]],
-    labels: Labels,
-    cls_task_keys: list[str],
-    class_log_counts: list[int],
-) -> list[int]:
-    """Pick batch indices that keep per-class logging balanced.
-
-    Mutates C{class_log_counts} in place.
-    """
-    logged_indices = []
-    batch_size = next(
-        iter(next(iter(visualizations.values())).values())
-    ).shape[0]
-    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
-    present_classes = [
-        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
-        for idx in range(batch_size)
-    ]
-    for idx, classes in enumerate(present_classes):
-        if classes:
-            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
-            if class_log_counts[min_logged_class] == min(class_log_counts):
-                logged_indices.append(idx)
-                for c in classes:
-                    class_log_counts[c] += 1
-    return logged_indices
-
-
 def log_sequential_images(
     tracker: LuxonisTrackerPL,
     nodes: Nodes,
@@ -904,3 +875,32 @@ def check_tensor_device(
     if isinstance(x, (list | tuple)):
         return all(isinstance(i, Tensor) and i.device == device for i in x)
     raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
+
+
+def _select_balanced_indices(
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_task_keys: list[str],
+    class_log_counts: list[int],
+) -> list[int]:
+    """Pick batch indices that keep per-class logging balanced.
+
+    Mutates C{class_log_counts} in place.
+    """
+    logged_indices = []
+    batch_size = next(
+        iter(next(iter(visualizations.values())).values())
+    ).shape[0]
+    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
+    present_classes = [
+        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        for idx in range(batch_size)
+    ]
+    for idx, classes in enumerate(present_classes):
+        if classes:
+            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
+            if class_log_counts[min_logged_class] == min(class_log_counts):
+                logged_indices.append(idx)
+                for c in classes:
+                    class_log_counts[c] += 1
+    return logged_indices

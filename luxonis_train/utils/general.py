@@ -362,6 +362,36 @@ def instances_from_batch(
     yield from _batched_instances(bboxes, args, batch_size)
 
 
+def decode_text_metadata_labels(
+    labels: dict[str, np.ndarray],
+    metadata_types: dict[str, type],
+) -> dict[str, np.ndarray]:
+    """Decode text metadata labels from character-code arrays."""
+    decoded_labels: dict[str, np.ndarray] = {}
+
+    for task, label in labels.items():
+        if metadata_types.get(task) is not str:
+            decoded_labels[task] = np.asarray(label)
+        else:
+            decoded_labels[task] = _decode_text_label(label)
+
+    return decoded_labels
+
+
+class Counter:
+    """Simple counter that can be used to generate unique IDs or
+    indices.
+    """
+
+    def __init__(self, start: int = 0):
+        self._count = start
+
+    def __call__(self) -> int:
+        current = self._count
+        self._count += 1
+        return current
+
+
 def _empty_batch_instances(
     bboxes: Tensor, args: tuple[Tensor, ...], batch_size: int | None
 ) -> Iterator[Tensor | tuple[Tensor, ...]]:
@@ -386,22 +416,6 @@ def _batched_instances(
             get_batch_instances(index, bboxes, payload)
             for payload in (None, *args)
         )
-
-
-def decode_text_metadata_labels(
-    labels: dict[str, np.ndarray],
-    metadata_types: dict[str, type],
-) -> dict[str, np.ndarray]:
-    """Decode text metadata labels from character-code arrays."""
-    decoded_labels: dict[str, np.ndarray] = {}
-
-    for task, label in labels.items():
-        if metadata_types.get(task) is not str:
-            decoded_labels[task] = np.asarray(label)
-        else:
-            decoded_labels[task] = _decode_text_label(label)
-
-    return decoded_labels
 
 
 def _decode_text_label(label: np.ndarray) -> np.ndarray:
@@ -431,17 +445,3 @@ def _decode_text_row(row: np.ndarray) -> str | None:
             break
         chars.append(chr(value))
     return "".join(chars)
-
-
-class Counter:
-    """Simple counter that can be used to generate unique IDs or
-    indices.
-    """
-
-    def __init__(self, start: int = 0):
-        self._count = start
-
-    def __call__(self) -> int:
-        current = self._count
-        self._count += 1
-        return current

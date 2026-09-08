@@ -268,122 +268,6 @@ def non_max_suppression(
     return output
 
 
-def _validate_nms_thresholds(conf_thres: float, iou_thres: float) -> None:
-    if not (0 <= conf_thres <= 1):
-        raise ValueError(
-            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
-        )
-    if not (0 <= iou_thres <= 1):
-        raise ValueError(
-            f"IoU threshold must be in range [0,1] but set to {iou_thres}."
-        )
-
-
-def _apply_objectness(
-    curr_out: Tensor, n_classes: int, predicts_objectness: bool
-) -> Tensor:
-    if predicts_objectness and n_classes == 1:
-        curr_out[:, 5 : 5 + n_classes] = curr_out[:, 4:5]
-    else:
-        curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
-    return curr_out
-
-
-def _select_detections(
-    curr_out: Tensor,
-    bboxes: Tensor,
-    n_classes: int,
-    conf_thres: float,
-    multi_label: bool,
-) -> tuple[Tensor, Tensor]:
-    keep_mask = torch.zeros(bboxes.size(0)).bool()
-    if multi_label:
-        box_idx, class_idx = (
-            (curr_out[:, 5 : 5 + n_classes] > conf_thres)
-            .nonzero(as_tuple=False)
-            .T
-        )
-        keep_mask[box_idx] = True
-        curr_out = torch.cat(
-            (
-                bboxes[keep_mask],
-                curr_out[keep_mask, class_idx + 5, None],
-                class_idx[:, None].float(),
-            ),
-            1,
-        )
-    else:
-        conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(1, keepdim=True)
-        keep_mask[conf.view(-1) > conf_thres] = True
-        curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
-    return curr_out, keep_mask
-
-
-def _filter_keep_classes(curr_out: Tensor, keep_classes: list[int]) -> Tensor:
-    return curr_out[
-        (
-            curr_out[:, 5:6]
-            == torch.tensor(keep_classes, device=curr_out.device)
-        ).any(1)
-    ]
-
-
-def _run_batched_nms(
-    curr_out: Tensor, iou_thres: float, agnostic: bool, max_det: int
-) -> Tensor:
-    keep_indices = batched_nms(
-        boxes=curr_out[:, :4],
-        scores=curr_out[:, 4],
-        iou_threshold=iou_thres,
-        idxs=curr_out[:, 5].int() * (0 if agnostic else 1),
-    )
-    return curr_out[keep_indices[:max_det]]
-
-
-def _nms_single_image(
-    x: Tensor,
-    candidate_mask_i: Tensor,
-    *,
-    n_classes: int,
-    conf_thres: float,
-    iou_thres: float,
-    keep_classes: list[int] | None,
-    agnostic: bool,
-    multi_label: bool,
-    bbox_format: BBoxFormatType,
-    max_det: int,
-    predicts_objectness: bool,
-    has_additional: bool,
-) -> Tensor | None:
-    """Run NMS for a single image; returns None when nothing is kept."""
-    curr_out = x[candidate_mask_i]
-    if curr_out.size(0) == 0:
-        return None
-
-    curr_out = _apply_objectness(curr_out, n_classes, predicts_objectness)
-
-    bboxes = curr_out[:, :4]
-    if bbox_format != "xyxy":
-        bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
-
-    curr_out, keep_mask = _select_detections(
-        curr_out, bboxes, n_classes, conf_thres, multi_label
-    )
-
-    if has_additional:
-        curr_out = torch.hstack(
-            [curr_out, x[candidate_mask_i][keep_mask, 5 + n_classes :]]
-        )
-
-    if keep_classes is not None:
-        curr_out = _filter_keep_classes(curr_out, keep_classes)
-
-    if not curr_out.size(0):
-        return None
-
-    return _run_batched_nms(curr_out, iou_thres, agnostic, max_det)
-
-
 def anchors_for_fpn_features(
     features: list[Tensor],
     strides: Tensor,
@@ -540,6 +424,187 @@ def compute_iou_loss(
     return loss_iou, iou.detach().clamp(0)
 
 
+def keypoints_to_bboxes(
+    keypoints: list[Tensor],
+    img_height: int,
+    img_width: int,
+    box_width: int = 5,
+    visibility_threshold: float = 0.5,
+) -> list[Tensor]:
+    """Convert keypoints to bounding boxes in xyxy format with cls_id
+    and score, filtering low-visibility keypoints.
+
+    @type keypoints: list[Tensor]
+    @param keypoints: List of tensors of keypoints with shape [N, 1, 4]
+        (x, y, v, cls_id).
+    @type img_height: int
+    @param img_height: Height of the image.
+    @type img_width: int
+    @param img_width: Width of the image.
+    @type box_width: int
+    @param box_width: Width of the bounding box in pixels. Defaults to
+        2.
+    @type visibility_threshold: float
+    @param visibility_threshold: Minimum visibility score to include a
+        keypoint. Defaults to 0.5.
+    @rtype: list[Tensor]
+    @return: List of tensors of bounding boxes with shape [N, 6] (x_min,
+        y_min, x_max, y_max, score, cls_id).
+    """
+    half_box = box_width / 2
+    bboxes_list = []
+
+    for keypoints_per_image in keypoints:
+        if keypoints_per_image.numel() == 0:
+            bboxes_list.append(
+                torch.zeros((0, 6), device=keypoints_per_image.device)
+            )
+            continue
+
+        keypoints_per_image = keypoints_per_image.squeeze(1)
+
+        visible_mask = keypoints_per_image[:, 2] >= visibility_threshold
+        keypoints_per_image = keypoints_per_image[visible_mask]
+
+        if keypoints_per_image.numel() == 0:
+            bboxes_list.append(
+                torch.zeros((0, 6), device=keypoints_per_image.device)
+            )
+            continue
+
+        x_coords = keypoints_per_image[:, 0]
+        y_coords = keypoints_per_image[:, 1]
+        scores = keypoints_per_image[:, 2]
+        cls_ids = keypoints_per_image[:, 3]
+
+        x_min = (x_coords - half_box).clamp(min=0)
+        y_min = (y_coords - half_box).clamp(min=0)
+        x_max = (x_coords + half_box).clamp(max=img_width)
+        y_max = (y_coords + half_box).clamp(max=img_height)
+        bboxes = torch.stack(
+            [x_min, y_min, x_max, y_max, scores, cls_ids], dim=-1
+        )
+        bboxes_list.append(bboxes)
+
+    return bboxes_list
+
+
+def _validate_nms_thresholds(conf_thres: float, iou_thres: float) -> None:
+    if not (0 <= conf_thres <= 1):
+        raise ValueError(
+            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
+        )
+    if not (0 <= iou_thres <= 1):
+        raise ValueError(
+            f"IoU threshold must be in range [0,1] but set to {iou_thres}."
+        )
+
+
+def _apply_objectness(
+    curr_out: Tensor, n_classes: int, predicts_objectness: bool
+) -> Tensor:
+    if predicts_objectness and n_classes == 1:
+        curr_out[:, 5 : 5 + n_classes] = curr_out[:, 4:5]
+    else:
+        curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
+    return curr_out
+
+
+def _select_detections(
+    curr_out: Tensor,
+    bboxes: Tensor,
+    n_classes: int,
+    conf_thres: float,
+    multi_label: bool,
+) -> tuple[Tensor, Tensor]:
+    keep_mask = torch.zeros(bboxes.size(0)).bool()
+    if multi_label:
+        box_idx, class_idx = (
+            (curr_out[:, 5 : 5 + n_classes] > conf_thres)
+            .nonzero(as_tuple=False)
+            .T
+        )
+        keep_mask[box_idx] = True
+        curr_out = torch.cat(
+            (
+                bboxes[keep_mask],
+                curr_out[keep_mask, class_idx + 5, None],
+                class_idx[:, None].float(),
+            ),
+            1,
+        )
+    else:
+        conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(1, keepdim=True)
+        keep_mask[conf.view(-1) > conf_thres] = True
+        curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
+    return curr_out, keep_mask
+
+
+def _filter_keep_classes(curr_out: Tensor, keep_classes: list[int]) -> Tensor:
+    return curr_out[
+        (
+            curr_out[:, 5:6]
+            == torch.tensor(keep_classes, device=curr_out.device)
+        ).any(1)
+    ]
+
+
+def _run_batched_nms(
+    curr_out: Tensor, iou_thres: float, agnostic: bool, max_det: int
+) -> Tensor:
+    keep_indices = batched_nms(
+        boxes=curr_out[:, :4],
+        scores=curr_out[:, 4],
+        iou_threshold=iou_thres,
+        idxs=curr_out[:, 5].int() * (0 if agnostic else 1),
+    )
+    return curr_out[keep_indices[:max_det]]
+
+
+def _nms_single_image(
+    x: Tensor,
+    candidate_mask_i: Tensor,
+    *,
+    n_classes: int,
+    conf_thres: float,
+    iou_thres: float,
+    keep_classes: list[int] | None,
+    agnostic: bool,
+    multi_label: bool,
+    bbox_format: BBoxFormatType,
+    max_det: int,
+    predicts_objectness: bool,
+    has_additional: bool,
+) -> Tensor | None:
+    """Run NMS for a single image; returns None when nothing is kept."""
+    curr_out = x[candidate_mask_i]
+    if curr_out.size(0) == 0:
+        return None
+
+    curr_out = _apply_objectness(curr_out, n_classes, predicts_objectness)
+
+    bboxes = curr_out[:, :4]
+    if bbox_format != "xyxy":
+        bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
+
+    curr_out, keep_mask = _select_detections(
+        curr_out, bboxes, n_classes, conf_thres, multi_label
+    )
+
+    if has_additional:
+        curr_out = torch.hstack(
+            [curr_out, x[candidate_mask_i][keep_mask, 5 + n_classes :]]
+        )
+
+    if keep_classes is not None:
+        curr_out = _filter_keep_classes(curr_out, keep_classes)
+
+    if not curr_out.size(0):
+        return None
+
+    return _run_batched_nms(curr_out, iou_thres, agnostic, max_det)
+
+
 def _empty_iou_loss(
     pred_bboxes: Tensor, target_bboxes: Tensor
 ) -> tuple[Tensor, Tensor]:
@@ -608,68 +673,3 @@ def _reduce_iou_loss(
     return (
         loss_iou / target_scores.sum() if target_scores.sum() > 1 else loss_iou
     )
-
-
-def keypoints_to_bboxes(
-    keypoints: list[Tensor],
-    img_height: int,
-    img_width: int,
-    box_width: int = 5,
-    visibility_threshold: float = 0.5,
-) -> list[Tensor]:
-    """Convert keypoints to bounding boxes in xyxy format with cls_id
-    and score, filtering low-visibility keypoints.
-
-    @type keypoints: list[Tensor]
-    @param keypoints: List of tensors of keypoints with shape [N, 1, 4]
-        (x, y, v, cls_id).
-    @type img_height: int
-    @param img_height: Height of the image.
-    @type img_width: int
-    @param img_width: Width of the image.
-    @type box_width: int
-    @param box_width: Width of the bounding box in pixels. Defaults to
-        2.
-    @type visibility_threshold: float
-    @param visibility_threshold: Minimum visibility score to include a
-        keypoint. Defaults to 0.5.
-    @rtype: list[Tensor]
-    @return: List of tensors of bounding boxes with shape [N, 6] (x_min,
-        y_min, x_max, y_max, score, cls_id).
-    """
-    half_box = box_width / 2
-    bboxes_list = []
-
-    for keypoints_per_image in keypoints:
-        if keypoints_per_image.numel() == 0:
-            bboxes_list.append(
-                torch.zeros((0, 6), device=keypoints_per_image.device)
-            )
-            continue
-
-        keypoints_per_image = keypoints_per_image.squeeze(1)
-
-        visible_mask = keypoints_per_image[:, 2] >= visibility_threshold
-        keypoints_per_image = keypoints_per_image[visible_mask]
-
-        if keypoints_per_image.numel() == 0:
-            bboxes_list.append(
-                torch.zeros((0, 6), device=keypoints_per_image.device)
-            )
-            continue
-
-        x_coords = keypoints_per_image[:, 0]
-        y_coords = keypoints_per_image[:, 1]
-        scores = keypoints_per_image[:, 2]
-        cls_ids = keypoints_per_image[:, 3]
-
-        x_min = (x_coords - half_box).clamp(min=0)
-        y_min = (y_coords - half_box).clamp(min=0)
-        x_max = (x_coords + half_box).clamp(max=img_width)
-        y_max = (y_coords + half_box).clamp(max=img_height)
-        bboxes = torch.stack(
-            [x_min, y_min, x_max, y_max, scores, cls_ids], dim=-1
-        )
-        bboxes_list.append(bboxes)
-
-    return bboxes_list
