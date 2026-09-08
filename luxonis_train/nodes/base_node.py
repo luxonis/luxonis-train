@@ -629,7 +629,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                         logger.warning(
                             f"Non-standard parameter name '{name}' used in `{self.name}.forward`. "
                             f"The node expects a single argument of type `{param.annotation}` "
-                            f"and it got a single input packet wit ha single key '{key_name}'. "
+                            f"and it got a single input packet with a single key '{key_name}'. "
                             "Assuming the input corresponds to that parameter. "
                             "If this is incorrect, please double check the parameter name or "
                             "the input packets."
