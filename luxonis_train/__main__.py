@@ -691,15 +691,10 @@ def config(
     @param output: Where to save the upgraded config. If left empty, the
         old file will be overridden.
     """
-    if config.suffix == "json":
-        cfg = json.loads(config.read_text(encoding="utf-8"))
-    else:
-        cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
-
-    new_cfg = upgrade_config(cfg)
+    new_cfg = upgrade_config(config)
 
     output = output or config
-    if output.suffix == "json":
+    if output.suffix == ".json":
         output.write_text(json.dumps(new_cfg, indent=2))
     else:
         with open(output, "w") as f:
