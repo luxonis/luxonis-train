@@ -39,9 +39,6 @@ class VariantMeta(AutoRegisterMeta):
             cls.__init__(obj, *args, **kwargs)
             return obj
 
-        # `__init__` stays outside the handler below. A node that has no
-        # variants often builds itself from a remote checkpoint, and a
-        # failure there must not chain onto the `NotImplementedError`.
         try:
             default, variants = obj.get_variants()
         except NotImplementedError as e:
