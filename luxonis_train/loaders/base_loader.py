@@ -18,6 +18,11 @@ from luxonis_train.utils.general import get_attribute_check_none
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor] | Tensor, Labels]
 
+MIXED_INPUT_TYPES_ERROR = (
+    "All samples in a batch must have the same input type. "
+    "Got a mix of tensors and dictionaries."
+)
+
 
 class BaseLoaderTorch(
     Dataset[LuxonisLoaderTorchOutput],
@@ -361,10 +366,13 @@ class BaseLoaderTorch(
     ) -> dict[str, Tensor] | Tensor:
         first = inputs[0]
         if not isinstance(first, dict):
-            return torch.stack(
-                [item for item in inputs if isinstance(item, Tensor)], 0
-            )
+            tensors = [item for item in inputs if isinstance(item, Tensor)]
+            if len(tensors) != len(inputs):
+                raise TypeError(MIXED_INPUT_TYPES_ERROR)
+            return torch.stack(tensors, 0)
         input_dicts = [item for item in inputs if isinstance(item, dict)]
+        if len(input_dicts) != len(inputs):
+            raise TypeError(MIXED_INPUT_TYPES_ERROR)
         return {
             name: torch.stack([item[name] for item in input_dicts], 0)
             for name in first
