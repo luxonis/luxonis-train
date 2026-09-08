@@ -39,6 +39,9 @@ class VariantMeta(AutoRegisterMeta):
             cls.__init__(obj, *args, **kwargs)
             return obj
 
+        # `__init__` stays outside the handler below. A node that has no
+        # variants often builds itself from a remote checkpoint, and a
+        # failure there must not chain onto the `NotImplementedError`.
         try:
             default, variants = obj.get_variants()
         except NotImplementedError as e:
@@ -48,6 +51,12 @@ class VariantMeta(AutoRegisterMeta):
                     f"parameter set to '{variant}', but the `get_variants` "
                     "method was not implemented."
                 ) from e
+            default, variants = "", {}
+            implemented = False
+        else:
+            implemented = True
+
+        if not implemented:
             logger.warning(
                 f"'{cls.__name__}' was called with the 'variant' "
                 "parameter set to 'default', but the `get_variants` "
