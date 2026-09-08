@@ -52,7 +52,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         self,
         features: list[Tensor],
         prototypes: Tensor,
-        mask_coeficients: Tensor,
+        mask_coefficients: Tensor,
         target_boundingbox: Tensor,
         target_instance_segmentation: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
@@ -80,7 +80,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
-        mask_coeficients = mask_coeficients.permute(0, 2, 1).contiguous()
+        mask_coefficients = mask_coefficients.permute(0, 2, 1).contiguous()
 
         target_boundingbox = self._preprocess_bbox_target(
             target_boundingbox, batch_size
@@ -130,7 +130,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             assigned_bboxes,
             img_idx,
             prototypes,
-            mask_coeficients,
+            mask_coefficients,
         )
 
         loss = (

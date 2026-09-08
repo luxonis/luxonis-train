@@ -174,10 +174,11 @@ class BBoxVisualizer(BaseVisualizer):
         @param target_canvas: The canvas containing the labels.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas containing the predictions.
-        @type prediction: Tensor
-        @param prediction: The predicted bounding boxes. The shape
-            should be [N, 6], where N is the number of bounding boxes
-            and the last dimension is [x1, y1, x2, y2, conf, class].
+        @type predictions: list[Tensor]
+        @param predictions: The predicted bounding boxes. The shape of
+            each tensor should be [N, 6], where N is the number of
+            bounding boxes and the last dimension is [x1, y1, x2, y2,
+            conf, class].
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """

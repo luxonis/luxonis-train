@@ -54,7 +54,7 @@ class CrossEntropyLoss(BaseLoss):
 
         if target.ndim != predictions.ndim - 1:
             raise RuntimeError(
-                f"Target tensor dimension should equeal to preds dimension - 1 ({predictions.ndim - 1}) "
+                f"Target tensor dimension should be equal to preds dimension - 1 ({predictions.ndim - 1}) "
                 f"but is ({target.ndim})."
             )
         return self.criterion(predictions, target)

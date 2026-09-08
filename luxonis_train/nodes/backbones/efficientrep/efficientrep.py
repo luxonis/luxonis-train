@@ -8,7 +8,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     BlockRepeater,
     CSPStackRepBlock,
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils import make_divisible
@@ -59,12 +59,12 @@ class EfficientRep(BaseNode):
         @type n_repeats: list[int] | None
         @param n_repeats: List of number of repeats of RepVGGBlock. If
             unspecified, defaults to [1, 6, 12, 18, 6].
-        @type depth_mul: float
-        @param depth_mul: Depth multiplier. If provided, overrides the
-            variant value.
-        @type width_mul: float
-        @param width_mul: Width multiplier. If provided, overrides the
-            variant value.
+        @type depth_multiplier: float
+        @param depth_multiplier: Depth multiplier. If provided,
+            overrides the variant value.
+        @type width_multiplier: float
+        @param width_multiplier: Width multiplier. If provided,
+            overrides the variant value.
         @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
         @param block: Base block used when building the backbone. If
             provided, overrides the variant value.
@@ -85,7 +85,7 @@ class EfficientRep(BaseNode):
             for i in n_repeats
         ]
 
-        self.repvgg_encoder = GeneralReparametrizableBlock(
+        self.repvgg_encoder = GeneralReparameterizableBlock(
             in_channels=self.in_channels,
             out_channels=channels_list[0],
             kernel_size=3,
@@ -95,7 +95,7 @@ class EfficientRep(BaseNode):
         self.blocks = cast(list[nn.Sequential], nn.ModuleList())
         for i in range(4):
             curr_block = nn.Sequential(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=channels_list[i],
                     out_channels=channels_list[i + 1],
                     kernel_size=3,
@@ -103,7 +103,7 @@ class EfficientRep(BaseNode):
                 ),
                 (
                     BlockRepeater(
-                        GeneralReparametrizableBlock,
+                        GeneralReparameterizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
                         n_repeats=n_repeats[i + 1],

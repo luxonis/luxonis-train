@@ -100,27 +100,32 @@ target-version = "py310"
 line-length = 79
 indent-width = 4
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint]
 select = [
   "ANN",
+  "ASYNC",
   "B",
   "C4",
   "D",
   "DTZ",
   "E",
   "ERA",
+  "EXE",
   "F",
   "FLY",
   "FURB",
+  "G",
   "I",
   "ICN",
   "INP",
   "INT",
   "ISC",
   "NPY",
-  "PERF101",
-  "PERF102",
-  "PERF402",
+  "PERF",
+  "PGH",
   "PIE",
   "PL",
   "PT",
@@ -132,6 +137,7 @@ select = [
   "RUF",
   "S",
   "SIM",
+  "SLOT",
   "T10",
   "T20",
   "TID",
@@ -146,25 +152,25 @@ ignore = [
   "ANN204",
   "ANN401",
   "D1",
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D105",
-  "D107",
   "D202",
   "D203",
   "D205",
   "D212",
   "D213",
   "E501",
+  "G004",
   "ICN002",
   "NPY002",
+  "PERF203",
+  # Blanket `type: ignore` comments; they leave with the type-gate
+  # follow-up, so coding them now would be churn.
+  "PGH003",
   "PLC0415",
   "PLR0911",
   "PLR0912",
   "PLR0913",
   "PLR0915",
+  "PLR0917",
   "PLR2004",
   "PLW2901",
   "PTH123",
@@ -183,6 +189,9 @@ unfixable = ["B905"]
 "__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"__future__".msg = "Do not use imports from __future__."
+
 [tool.docformatter]
 black = true
 style = "epytext"
@@ -192,6 +201,10 @@ wrap-descriptions = 72
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
+# The first three entries are pyright's own defaults, which a custom
+# `exclude` would otherwise drop. `build` holds a stale copy of the
+# package that setuptools leaves behind.
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "build", "dist"]
 reportMissingTypeStubs = "none"
 reportPrivateImportUsage = "none"
 reportPrivateUsage = "none"
@@ -243,3 +256,15 @@ exclude_also = [
   "logger\\.",
   "if TYPE_CHECKING",
 ]
+
+[tool.typos.files]
+# Diagram files hold opaque element ids that typos mangles.
+extend-exclude = ["*.drawio"]
+
+[tool.typos.default.extend-identifiers]
+# The ONNX scatter operator.
+ScatterND = "ScatterND"
+
+[tool.typos.default.extend-words]
+# The task-aligned detection paper the TAL assigner comes from.
+TOOD = "TOOD"

@@ -43,8 +43,8 @@ class EmbeddingsVisualizer(BaseVisualizer):
         @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
-        @type embeddings: Tensor
-        @param embeddings: The embeddings to visualize.
+        @type predictions: Tensor
+        @param predictions: The embeddings to visualize.
         @type target: Tensor
         @param target: Ids of the embeddings.
         @rtype: Tensor

@@ -1,6 +1,9 @@
 from copy import deepcopy
 
-from luxonis_train.variants import add_variant_aliases
+import pytest
+from luxonis_ml.typing import Kwargs
+
+from luxonis_train.variants import VariantBase, add_variant_aliases
 
 
 def test_add_variant_aliases():
@@ -27,3 +30,18 @@ def test_add_variant_aliases():
         "large": {"param3": 3},
         "l": {"param3": 3},
     }
+
+
+def test_init_error_is_not_chained_to_the_variant_lookup():
+    class Remote(VariantBase, register=False):
+        @staticmethod
+        def get_variants() -> tuple[str, dict[str, Kwargs]]:
+            raise NotImplementedError
+
+        def __init__(self, **kwargs):
+            raise RuntimeError("gateway timeout")
+
+    with pytest.raises(RuntimeError, match="gateway timeout") as exc_info:
+        Remote(variant="default")
+
+    assert exc_info.value.__context__ is None

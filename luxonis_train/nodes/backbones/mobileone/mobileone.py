@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SqueezeExciteBlock,
 )
 from luxonis_train.nodes.blocks.utils import forward_gather
@@ -83,7 +83,7 @@ class MobileOne(BaseNode):
 
         self.stages = nn.ModuleList(
             [
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self.in_channels,
                     out_channels=self._in_channels,
                     kernel_size=3,
@@ -177,7 +177,7 @@ class MobileOne(BaseNode):
 
             # Depthwise conv
             blocks.append(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self._in_channels,
                     out_channels=self._in_channels,
                     kernel_size=3,
@@ -191,7 +191,7 @@ class MobileOne(BaseNode):
             )
             # Pointwise conv
             blocks.append(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self._in_channels,
                     out_channels=out_channels,
                     kernel_size=1,

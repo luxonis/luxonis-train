@@ -4,7 +4,7 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    AttentionRefinmentBlock,
+    AttentionRefinementBlock,
     ConvBlock,
     FeatureFusionBlock,
 )
@@ -113,8 +113,8 @@ class ContextPath(nn.Module):
         *_, down16, down32 = self.backbone(x)
 
         if not hasattr(self, "arm16"):
-            self.arm16 = AttentionRefinmentBlock(down16.shape[1], 128)
-            self.arm32 = AttentionRefinmentBlock(down32.shape[1], 128)
+            self.arm16 = AttentionRefinementBlock(down16.shape[1], 128)
+            self.arm32 = AttentionRefinementBlock(down32.shape[1], 128)
 
             self.global_context = nn.Sequential(
                 nn.AdaptiveAvgPool2d(1),

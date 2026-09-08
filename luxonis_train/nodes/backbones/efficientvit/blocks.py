@@ -266,11 +266,11 @@ class LightweightMLABlock(nn.Module):
         @type dimension: int
         @param dimension: Size of each head. Default is 8.
         @type use_bias: list[bool, bool]
-        @param biases: List specifying if bias is used in qkv and
+        @param use_bias: List specifying if bias is used in qkv and
             projection layers.
         @type use_norm: list[bool, bool]
-        @param norms: List specifying if normalization is applied in qkv
-            and projection layers.
+        @param use_norm: List specifying if normalization is applied in
+            qkv and projection layers.
         @type activations: list[nn.Module, nn.Module]
         @param activations: List of activation functions for qkv and
             projection layers.
@@ -409,8 +409,10 @@ class LightweightMLABlock(nn.Module):
         qkv_output = self.qkv_layer(x)
 
         multi_scale_outputs = [qkv_output]
-        for aggregator in self.multi_scale_aggregators:
-            multi_scale_outputs.append(aggregator(qkv_output))
+        multi_scale_outputs.extend(
+            aggregator(qkv_output)
+            for aggregator in self.multi_scale_aggregators
+        )
 
         qkv_output = torch.cat(multi_scale_outputs, dim=1)
 

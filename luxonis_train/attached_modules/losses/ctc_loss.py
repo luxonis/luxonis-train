@@ -25,12 +25,12 @@ class CTCLoss(BaseLoss):
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the CTC loss, optionally applying focal loss.
 
-        @type preds: Tensor
-        @param preds: Network predictions of shape (B, T, C), where T is
-            the sequence length, B is the batch size, and C is the
-            number of classes.
-        @type targets: Tensor
-        @param targets: Encoded target sequences.
+        @type predictions: Tensor
+        @param predictions: Network predictions of shape (B, T, C),
+            where T is the sequence length, B is the batch size, and C
+            is the number of classes.
+        @type target: Tensor
+        @param target: Encoded target sequences.
         @rtype: Tensor
         @return: The computed loss as a scalar tensor.
         """

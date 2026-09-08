@@ -84,11 +84,11 @@ class PPLCNetV3(BaseNode):
         if self.use_detection_backbone:
             blocks_out_channels = [blocks[i].out_channels for i in range(1, 5)]
 
-            detecion_out_channels = [
+            detection_out_channels = [
                 int(c * self.scale) for c in [16, 24, 56, 480]
             ]
 
-            self.detecion_blocks = nn.ModuleList(
+            self.detection_blocks = nn.ModuleList(
                 [
                     nn.Conv2d(
                         in_channels=in_channels,
@@ -99,7 +99,9 @@ class PPLCNetV3(BaseNode):
                         bias=True,
                     )
                     for in_channels, out_channels in zip(
-                        blocks_out_channels, detecion_out_channels, strict=True
+                        blocks_out_channels,
+                        detection_out_channels,
+                        strict=True,
                     )
                 ]
             )
@@ -121,7 +123,7 @@ class PPLCNetV3(BaseNode):
 
         if self.use_detection_backbone:
             for i in range(4):
-                out[i] = self.detecion_blocks[i](out[i])
+                out[i] = self.detection_blocks[i](out[i])
             return out
 
         out.append(self.avg_pool(x))
