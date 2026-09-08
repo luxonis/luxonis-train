@@ -64,9 +64,9 @@ def get_trial_params(
                     )
                 new_value = trial.suggest_int(key_name, low, high, step=step)
             case "loguniform", [float(low), float(high)]:
-                new_value = trial.suggest_loguniform(key_name, low, high)
+                new_value = trial.suggest_float(key_name, low, high, log=True)
             case "uniform", [float(low), float(high)]:
-                new_value = trial.suggest_uniform(key_name, low, high)
+                new_value = trial.suggest_float(key_name, low, high)
             case _, _:
                 raise KeyError(
                     f"Combination of {key_type} and {value} not supported"
