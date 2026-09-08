@@ -780,6 +780,7 @@ from torch import Tensor
 
 from luxonis_train import BaseLoss, Tasks
 
+
 # Subclasses of `BaseNode`, `BaseLoss`, `BaseMetric`
 # and `BaseVisualizer` are registered automatically.
 class CustomLoss(BaseLoss):
