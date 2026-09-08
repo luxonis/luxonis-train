@@ -11,6 +11,7 @@ from luxonis_train.utils.boundingbox import (
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
+    non_max_suppression,
 )
 
 
@@ -112,3 +113,74 @@ def test_anchors_for_fpn_features():
     assert isinstance(n_anchors_list, list)
     assert isinstance(stride_tensor, Tensor)
     assert len(n_anchors_list) == len(features)
+
+
+@pytest.mark.parametrize(
+    ("conf_thres", "iou_thres", "message"),
+    [(1.5, 0.45, "Confidence threshold"), (0.25, 1.5, "IoU threshold")],
+)
+def test_non_max_suppression_rejects_out_of_range_thresholds(
+    conf_thres: float, iou_thres: float, message: str
+):
+    preds = torch.zeros(1, 2, 7)
+    with pytest.raises(ValueError, match=message):
+        non_max_suppression(
+            preds, 2, conf_thres=conf_thres, iou_thres=iou_thres
+        )
+
+
+def test_non_max_suppression_multi_label_labels_each_box():
+    # One class per box stays above the threshold. A box with two classes
+    # above it hits a pre-existing shape mismatch in `_select_detections`.
+    preds = torch.tensor(
+        [
+            [
+                [10.0, 10.0, 20.0, 20.0, 0.9, 0.9, 0.1],
+                [50.0, 50.0, 60.0, 60.0, 0.9, 0.1, 0.9],
+            ]
+        ]
+    )
+    out = non_max_suppression(preds, 2, conf_thres=0.5, multi_label=True)[0]
+    assert sorted(out[:, 5].tolist()) == [0.0, 1.0]
+
+
+def test_non_max_suppression_single_class_copies_objectness():
+    preds = torch.tensor([[[10.0, 10.0, 20.0, 20.0, 0.9, 0.2]]])
+    out = non_max_suppression(preds, 1, conf_thres=0.5)[0]
+    assert out.shape[0] == 1
+    assert out[0, 4].item() == pytest.approx(0.9)
+
+
+def test_non_max_suppression_filters_to_kept_classes():
+    preds = torch.tensor(
+        [
+            [
+                [10.0, 10.0, 20.0, 20.0, 0.9, 0.9, 0.1],
+                [50.0, 50.0, 60.0, 60.0, 0.9, 0.1, 0.9],
+            ]
+        ]
+    )
+    kept = non_max_suppression(preds, 2, conf_thres=0.3, keep_classes=[1])[0]
+    assert kept[:, 5].tolist() == [1.0]
+    dropped = non_max_suppression(preds, 2, conf_thres=0.3, keep_classes=[7])[
+        0
+    ]
+    assert dropped.shape[0] == 0
+
+
+def test_compute_iou_loss_rejects_unknown_reduction():
+    bboxes = torch.tensor([[10.0, 10.0, 20.0, 20.0]])
+    with pytest.raises(ValueError, match="Unknown reduction type"):
+        compute_iou_loss(
+            bboxes,
+            bboxes,
+            reduction="bogus",  # type: ignore
+        )
+
+
+def test_non_max_suppression_converts_bbox_format():
+    preds = torch.tensor([[[15.0, 15.0, 10.0, 10.0, 0.9, 0.9]]])
+    out = non_max_suppression(preds, 1, conf_thres=0.5, bbox_format="cxcywh")[
+        0
+    ]
+    assert out[0, :4].tolist() == [10.0, 10.0, 20.0, 20.0]
