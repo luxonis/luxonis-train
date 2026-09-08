@@ -26,7 +26,7 @@ from luxonis_train.utils import get_signature
 
 MetricResult = Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
 
-_DistReduceFx = (
+DistReduceFx = (
     Literal["sum", "mean", "cat", "min", "max"]
     | Callable[[Tensor], Tensor]
     | Callable[[list[Tensor]], Tensor]
@@ -82,7 +82,7 @@ class MetricState:
     """
 
     default: Tensor | Number | list | None = None
-    dist_reduce_fx: _DistReduceFx | EllipsisType = ...
+    dist_reduce_fx: DistReduceFx | EllipsisType = ...
     persistent: bool = False
 
 
@@ -151,8 +151,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     @staticmethod
     def _metric_state_reducer(
         default: Tensor | list,
-        reducer: _DistReduceFx | EllipsisType,
-    ) -> _DistReduceFx:
+        reducer: DistReduceFx | EllipsisType,
+    ) -> DistReduceFx:
         if reducer is not ...:
             return reducer
         return "cat" if isinstance(default, list) else "sum"
