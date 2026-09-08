@@ -129,19 +129,38 @@ def test_non_max_suppression_rejects_out_of_range_thresholds(
         )
 
 
-def test_non_max_suppression_multi_label_labels_each_box():
-    # One class per box stays above the threshold. A box with two classes
-    # above it hits a pre-existing shape mismatch in `_select_detections`.
+def test_non_max_suppression_multi_label_repeats_a_box_per_class():
     preds = torch.tensor(
         [
             [
-                [10.0, 10.0, 20.0, 20.0, 0.9, 0.9, 0.1],
-                [50.0, 50.0, 60.0, 60.0, 0.9, 0.1, 0.9],
+                [10.0, 10.0, 20.0, 20.0, 1.0, 0.9, 0.8],
+                [50.0, 50.0, 60.0, 60.0, 1.0, 0.1, 0.9],
             ]
         ]
     )
     out = non_max_suppression(preds, 2, conf_thres=0.5, multi_label=True)[0]
-    assert sorted(out[:, 5].tolist()) == [0.0, 1.0]
+
+    # The first box clears the threshold on both classes, so it repeats.
+    assert sorted(
+        (int(label), round(conf, 2)) for *_, conf, label in out.tolist()
+    ) == [(0, 0.9), (1, 0.8), (1, 0.9)]
+    assert out[out[:, 5] == 0, :4].tolist() == [[10.0, 10.0, 20.0, 20.0]]
+
+
+def test_non_max_suppression_multi_label_carries_additional_data():
+    preds = torch.tensor(
+        [
+            [
+                [10.0, 10.0, 20.0, 20.0, 1.0, 0.9, 0.8, 7.0],
+                [50.0, 50.0, 60.0, 60.0, 1.0, 0.1, 0.9, 8.0],
+            ]
+        ]
+    )
+    out = non_max_suppression(preds, 2, conf_thres=0.5, multi_label=True)[0]
+
+    assert out.shape == (3, 7)
+    # Both rows of the repeated box keep that box's trailing column.
+    assert sorted(out[:, 6].tolist()) == [7.0, 7.0, 8.0]
 
 
 def test_non_max_suppression_single_class_copies_objectness():
