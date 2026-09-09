@@ -40,11 +40,7 @@ class DDRNetSegmentationHead(BaseHead):
         configurable upsampling to segmentation logits.
 
     Variants:
-        - ``None``:
-            - Default: yes
-            - Aliases: None
-            - Parameters:
-                - No predefined variants.
+        None. Configure the node through ``params``.
 
     See Also:
         `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py>`_

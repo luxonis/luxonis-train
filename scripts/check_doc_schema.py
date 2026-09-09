@@ -53,11 +53,13 @@ FORBIDDEN_VARIANT_TEXT = [
     "csv-table:: Variant",
     "Variant parameters",
     "Variant layer parameters",
+    # A node with no variants says so in one line. It does not invent a
+    # variant named `None` that carries "No predefined variants".
+    "No predefined variants",
+    "- ``None``:",
 ]
 COMPACT_VARIANT_PARAM_RE = re.compile(r"- ``[^`:=]+=.*``")
-UNQUOTED_VARIANT_RE = re.compile(
-    r"^        - ``(?!None``:|\")[^`]+``:", re.MULTILINE
-)
+UNQUOTED_VARIANT_RE = re.compile(r"^        - ``(?!\")[^`]+``:", re.MULTILINE)
 UNQUOTED_ALIAS_RE = re.compile(r"Aliases: ``(?!\")[^`]+``")
 SCHEMA_LITERAL_SINGLE_BACKTICK_RE = re.compile(r"(?<!`)`([^`]+)`(?!`)")
 SCHEMA_LITERAL_NAMES = {
@@ -361,8 +363,8 @@ def check_variant_format() -> list[str]:
             )
         if UNQUOTED_VARIANT_RE.search(text):
             errors.append(
-                f"{rel(path)}: contains unquoted variant keys; use "
-                '``"variant"`` or ``None``'
+                f"{rel(path)}: contains unquoted variant keys; quote "
+                'them, as ``"light"``'
             )
         if UNQUOTED_ALIAS_RE.search(text):
             errors.append(

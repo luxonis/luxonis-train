@@ -31,11 +31,7 @@ class BiSeNetHead(BaseHead):
         to produce segmentation logits.
 
     Variants:
-        - ``None``:
-            - Default: yes
-            - Aliases: None
-            - Parameters:
-                - No predefined variants.
+        None. Configure the node through ``params``.
 
     See Also:
         `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
