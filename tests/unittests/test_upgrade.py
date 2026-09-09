@@ -30,3 +30,28 @@ def test_upgrade_config_parses_json_file(tmp_path: Path):
         "version": lxt.__version__,
         "model": {"name": "dummy"},
     }
+
+
+def test_upgrade_moves_exporter_output_names_to_the_only_head():
+    assert upgrade_config(
+        {
+            "version": "0.3.0",
+            "model": {
+                "name": "dummy",
+                "nodes": [{"name": "EfficientBBoxHead"}],
+            },
+            "exporter": {"output_names": ["boxes", "scores"]},
+        }
+    ) == {
+        "version": lxt.__version__,
+        "model": {
+            "name": "dummy",
+            "nodes": [
+                {
+                    "name": "EfficientBBoxHead",
+                    "params": {"export_output_names": ["boxes", "scores"]},
+                }
+            ],
+        },
+        "exporter": {},
+    }
