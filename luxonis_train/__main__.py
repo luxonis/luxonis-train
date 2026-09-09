@@ -1,3 +1,12 @@
+"""The ``luxonis_train`` command line interface.
+
+Every command builds a `LuxonisModel
+<luxonis_train.core.core.LuxonisModel>` from a config and calls one of
+its methods. ``--model`` and ``--variant`` select a packaged config, so
+``--config`` is optional.
+
+"""
+
 import importlib
 import importlib.util
 import json
@@ -566,8 +575,6 @@ def info(*, model: str, variant: str | None = None):
             packaged model's default variant.
 
     """
-    import inspect
-
     from rich.console import Console
     from rich.panel import Panel
     from rich.text import Text
@@ -612,7 +619,7 @@ def info(*, model: str, variant: str | None = None):
     resolved_name = resolved_class_name(class_family, version)
 
     console = Console()
-    description = inspect.cleandoc(model_class.__dict__.get("__doc__") or "")
+    description = _docstring_to_text(model_class.__dict__.get("__doc__"))
     if not description:
         description = f"Predefined {class_family} architecture."
     console.print(
@@ -879,8 +886,6 @@ def _print_node_panel(
     node_name: str,
     node_config: "NodeConfig",
 ) -> None:
-    import inspect
-
     from rich.panel import Panel
     from rich.text import Text
 
@@ -890,8 +895,7 @@ def _print_node_panel(
     node_doc = (
         node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
     )
-    node_doc = inspect.cleandoc(node_doc or "")
-    body = Text(node_doc or "No documentation available.")
+    body = Text(_docstring_to_text(node_doc) or "No documentation available.")
     variant_label = node_config.variant or "default"
     console.print(
         Panel(
@@ -900,6 +904,23 @@ def _print_node_panel(
             border_style="green",
         )
     )
+
+
+def _docstring_to_text(doc: str | None) -> str:
+    """Flatten the reST markup of a docstring for terminal output."""
+    import inspect
+    import re
+
+    text = inspect.cleandoc(doc or "")
+    # reST comments and directives carry no meaning in a terminal; a
+    # `code-block` keeps its literal body, which follows it indented.
+    text = re.sub(
+        r"^[ \t]*\.\. .*(?:\n[ \t]*\n)?", "", text, flags=re.MULTILINE
+    )
+    text = re.sub(r"`([^`<]+?)(\s*)<([^>]+)>`_", r"\1\2(\3)", text)
+    text = re.sub(r":\w+:`([^`]+)`", r"\1", text)
+    text = text.replace("``", "")
+    return re.sub(r"`([^`]+)`_?", r"\1", text)
 
 
 if __name__ == "__main__":
