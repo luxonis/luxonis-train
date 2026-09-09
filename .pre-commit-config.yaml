@@ -66,6 +66,13 @@ repos:
         pass_filenames: false
         files: ^luxonis_train/.*\.py$
 
+      - id: gen-component-docs
+        name: generated component docs are up to date
+        entry: python scripts/gen_component_docs.py --check
+        language: system
+        pass_filenames: false
+        files: ^(luxonis_train/(nodes|attached_modules|config/predefined_models)/.*\.py|scripts/gen_component_docs\.py)$
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

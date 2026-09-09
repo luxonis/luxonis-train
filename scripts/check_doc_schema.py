@@ -22,38 +22,33 @@ ATTACHED_SKIP = {"BaseLoss", "BaseMetric", "BaseVisualizer"}
 REGISTERED_ATTACHED_FACTORIES = {"ConfusionMatrix", "MeanAveragePrecision"}
 
 NODE_MARKERS = [
-    "Metadata:",
-    "Provenance:",
-    "Variants:",
-    "- Node type:",
-    "- Registry name:",
-    "- Task:",
-    "- Attach index:",
-    "- Inputs:",
-    "- Outputs:",
+    "Inputs:",
+    "Outputs:",
+    "References:",
     "- Source:",
     "- License:",
-    "- Implementation notes:",
+    "Notes:",
+    "Variants:",
 ]
 ATTACHED_MARKERS = [
-    "Metadata:",
-    "Provenance:",
-    "- Module type:",
-    "- Registry name:",
-    "- Task:",
-    "- Attached node types:",
-    "- Inputs:",
-    "- Outputs:",
+    "Inputs:",
+    "Outputs:",
+    "References:",
     "- Source:",
     "- License:",
-    "- Implementation notes:",
+    "Notes:",
 ]
 FORBIDDEN_SECTION_NAMES = [
     "Node metadata",
     "Model provenance",
     "Attached module metadata",
     "Module provenance",
+    "Metadata",
+    "Provenance",
 ]
+FORBIDDEN_SECTION_RE = re.compile(
+    r"^\s*(" + "|".join(FORBIDDEN_SECTION_NAMES) + r"):\s*$", re.MULTILINE
+)
 FORBIDDEN_VARIANT_TEXT = [
     "csv-table:: Variant",
     "Variant parameters",
@@ -291,7 +286,9 @@ def missing_markers(docstring: str, markers: Iterable[str]) -> list[str]:
 
 
 def check_structured_docstrings() -> list[str]:
-    """Validate required metadata and provenance sections."""
+    """Validate the required Inputs, Outputs, References and Notes
+    sections.
+    """
     errors: list[str] = []
 
     node_classes = collect_classes(NODE_ROOT)
@@ -340,9 +337,9 @@ def check_forbidden_section_names() -> list[str]:
             text = path.read_text(encoding="utf-8")
             errors.extend(
                 f"{rel(path)}: contains old section name "
-                f"{forbidden!r}; use 'Metadata' or 'Provenance'"
-                for forbidden in FORBIDDEN_SECTION_NAMES
-                if forbidden in text
+                f"{match.group(1)!r}; use 'Inputs', 'Outputs', "
+                "'References' or 'Notes'"
+                for match in FORBIDDEN_SECTION_RE.finditer(text)
             )
     return errors
 
@@ -383,7 +380,7 @@ def check_schema_single_backtick_literals() -> list[str]:
         *collect_classes(ATTACHED_ROOT),
     ]
     for cls in schema_classes:
-        if not cls.docstring or "Metadata:" not in cls.docstring:
+        if not cls.docstring or "References:" not in cls.docstring:
             continue
         for match in SCHEMA_LITERAL_SINGLE_BACKTICK_RE.finditer(cls.docstring):
             value = match.group(1)
