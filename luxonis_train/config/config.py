@@ -432,7 +432,7 @@ class ModelConfig(BaseModelExtraForbid):
                 module.alias = new_alias
                 node_index += 1
 
-            names.add(name)
+            names.add(module.alias or module.name)
 
     @property
     def head_nodes(self) -> list[NodeConfig]:

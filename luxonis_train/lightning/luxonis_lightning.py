@@ -1176,6 +1176,8 @@ def _prepare_balanced_labels(labels: Labels) -> Labels:
     # Remove background class from segmentation tasks
     for k in (k for k in labels_copy if "/segmentation" in k):
         cls_key = f"{k[: -len('/segmentation')]}/classification"
+        if cls_key not in labels_copy:
+            continue
         labels_copy[cls_key] = (
             labels_copy[cls_key][:, 1:]
             if labels_copy[cls_key].shape[1] > 1

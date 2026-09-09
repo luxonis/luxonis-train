@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -9,6 +8,7 @@ from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.data.datasets import DatasetRecord
 from luxonis_ml.typing import PathType
+from pydantic import ValidationError
 from torch import Tensor
 
 import luxonis_train as lxt
@@ -111,6 +111,18 @@ def _annotated_records(
         if isinstance(record, DatasetRecord):  # pragma: no cover
             yield record
             continue
-        # Skip predictions that are invalid, e.g. outside the clipping range.
-        with suppress(Exception):
+        try:
             yield DatasetRecord(**record)
+        except ValidationError as error:
+            errors = error.errors(include_url=False)
+            if (
+                len(errors) != 1
+                or errors[0]["loc"] != ("annotation", "boundingbox")
+                or "BBox annotation has value outside of automatic clipping range"
+                not in errors[0]["msg"]
+            ):
+                raise
+            logger.debug(
+                "Skipping annotation with an out-of-range bounding box: {}",
+                error,
+            )

@@ -142,6 +142,16 @@ def test_too_few_input_packets_are_reported():
         Node().run([{"features": [torch.zeros(2)]}])
 
 
+def test_too_few_input_packets_for_tensors_are_reported():
+    class Node(BaseNode, register=False):
+        attach_index = -1
+
+        def forward(self, x: Tensor, y: Tensor) -> Tensor: ...
+
+    with pytest.raises(RuntimeError, match="expects at least 2 inputs"):
+        Node().run([{"features": [torch.zeros(2)]}])
+
+
 def test_unsupported_parameter_annotation_is_rejected():
     class Node(BaseNode, register=False):
         def forward(self, count: int) -> Tensor: ...

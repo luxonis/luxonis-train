@@ -99,7 +99,7 @@ def default_annotate(
             keep_aspect_ratio,
         )
         yield from _emit_annotations(
-            head, img_path, preds_for_image, transformed, i, required_labels
+            head, img_path, preds_for_image, transformed, required_labels
         )
 
 
@@ -117,7 +117,11 @@ def _build_preds_for_image(
     head_output: Packet[Tensor], required_labels: set[str], i: int
 ) -> dict[str, Tensor]:
     return {
-        task: head_output["ocr"][i] if task == "text" else head_output[task][i]
+        task: (
+            head_output["ocr"][i].unsqueeze(0)
+            if task == "text"
+            else head_output[task][i]
+        )
         for task in required_labels
     }
 
@@ -125,10 +129,9 @@ def _build_preds_for_image(
 def _is_all_empty(
     preds_for_image: dict[str, Tensor], required_labels: set[str]
 ) -> bool:
-    return all(
-        len(preds_for_image[task]) == 0
-        for task in required_labels
-        if task != "text"
+    non_text_labels = required_labels - {"text"}
+    return bool(non_text_labels) and all(
+        len(preds_for_image[task]) == 0 for task in non_text_labels
     )
 
 
@@ -264,7 +267,6 @@ def _annotate_classification(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     transformed: _Transformed,
-    i: int,
 ) -> DatasetIterator:
     assert "pred_classes" in transformed
     yield {
@@ -272,7 +274,7 @@ def _annotate_classification(
         "task_name": head.task_name,
         "annotation": {
             "class": head.classes.inverse[
-                int(transformed["pred_classes"][i].argmax())
+                int(transformed["pred_classes"].argmax())
             ],
         },
     }
@@ -282,13 +284,12 @@ def _annotate_text(
     head: "lxt.nodes.BaseHead",
     img_path: Path,
     transformed: _Transformed,
-    i: int,
 ) -> DatasetIterator:
     assert "pred_text" in transformed
     yield {
         "file": str(img_path),
         "task_name": head.task_name,
-        "annotation": {"metadata": {"text": transformed["pred_text"][i][0]}},
+        "annotation": {"metadata": {"text": transformed["pred_text"][0][0]}},
     }
 
 
@@ -297,7 +298,6 @@ def _emit_annotations(
     img_path: Path,
     preds_for_image: dict[str, Tensor],
     transformed: _Transformed,
-    i: int,
     required_labels: set[str],
 ) -> DatasetIterator:
     for task in required_labels:
@@ -314,6 +314,6 @@ def _emit_annotations(
         elif task == "segmentation":
             yield from _annotate_segmentation(head, img_path, transformed)
         elif task == "classification":
-            yield from _annotate_classification(head, img_path, transformed, i)
+            yield from _annotate_classification(head, img_path, transformed)
         elif task == "text":
-            yield from _annotate_text(head, img_path, transformed, i)
+            yield from _annotate_text(head, img_path, transformed)

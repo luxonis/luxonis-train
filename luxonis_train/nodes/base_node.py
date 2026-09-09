@@ -627,6 +627,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         else:
             idx = 0
 
+        if idx >= len(inputs):
+            raise RuntimeError(
+                f"Node '{self.name}' expects at least {idx + 1} inputs, "
+                f"but received only {len(inputs)}."
+            )
         packet = inputs[idx]
         if input_name not in packet:
             raise RuntimeError(
