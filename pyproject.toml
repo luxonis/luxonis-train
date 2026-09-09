@@ -211,6 +211,7 @@ warnings-as-errors = true
 intersphinx = [
   "https://docs.python.org/3/objects.inv",
   "https://pytorch.org/docs/stable/objects.inv",
+  "https://lightning.ai/docs/pytorch/stable/objects.inv",
 ]
 intersphinx-file = [
   "docs/_intersphinx/luxonis_ml/objects.inv::https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-ml/api-reference/",
