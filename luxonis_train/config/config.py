@@ -61,11 +61,21 @@ if TYPE_CHECKING:
 
 
 class ImageSize(NamedTuple):
+    """The height and the width of an image, in pixels."""
+
     height: int
     width: int
 
 
 class AttachedModuleConfig(ConfigItem):
+    """The fields every attached module shares.
+
+    Attributes:
+        alias: A name for this module in the logs. Two modules of the
+            same class on one node need one.
+
+    """
+
     alias: str | None = None
 
     @property
@@ -74,6 +84,19 @@ class AttachedModuleConfig(ConfigItem):
 
 
 class LossModuleConfig(AttachedModuleConfig):
+    """A loss attached to a node.
+
+    ``name`` is the class name of a registered loss and ``params``
+    reaches its constructor. See
+    `luxonis_train.attached_modules.losses`. At least one node in a
+    config must carry a loss.
+
+    Attributes:
+        weight: The factor this loss contributes to the total. A weight
+            of 0 removes the loss from training.
+
+    """
+
     weight: NonNegativeFloat = 1.0
 
     @model_validator(mode="after")
@@ -87,16 +110,60 @@ class LossModuleConfig(AttachedModuleConfig):
 
 
 class MetricModuleConfig(AttachedModuleConfig):
+    """A metric attached to a node.
+
+    ``name`` is the class name of a registered metric and ``params``
+    reaches its constructor. See
+    `luxonis_train.attached_modules.metrics`.
+
+    Attributes:
+        is_main_metric: Track checkpoints on this metric. Only one
+            metric in a config can set it.
+
+    """
+
     is_main_metric: bool = False
 
 
 class FreezingConfig(BaseModelExtraForbid):
+    """Whether a node trains, and when it starts.
+
+    Attributes:
+        active: Freeze the node, so its weights do not update.
+        unfreeze_after: When to unfreeze. An integer counts epochs, and
+            a fraction takes that share of the training.
+        lr_after_unfreeze: The base learning rate for the groups of this
+            node from the unfreeze epoch on.
+
+            It replaces the ``lr`` of the group, its ``initial_lr``, and
+            the entry of the scheduler, and the scheduler continues from
+            its current position with the new base. Left out, the groups
+            resume at whatever value the scheduler has reached.
+
+    """
+
     active: bool = False
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
     lr_after_unfreeze: NonNegativeFloat | None = None
 
 
 class ParameterPattern(BaseModelExtraForbid):
+    """A pattern that selects the parameters of a node.
+
+    ``re.search`` matches both fields, without anchors and without case.
+    ``module_type: Linear`` therefore also claims ``LazyLinear`` and the
+    ``NonDynamicallyQuantizableLinear`` inside
+    ``nn.MultiheadAttention``, and ``name: conv1`` also claims
+    ``branch1.conv10.weight``. Anchor the pattern, as in ``module_type:
+    ^Linear$``, when you mean an exact match.
+
+    Attributes:
+        name: A pattern matched against the name of a parameter.
+        module_type: A pattern matched against the class name of the
+            module that owns a parameter.
+
+    """
+
     name: str | None = None
     module_type: str | None = None
 
@@ -125,6 +192,14 @@ class ParameterPattern(BaseModelExtraForbid):
 
 
 class SchedulerConfig(ConfigItem):
+    """The scheduler to use.
+
+    ``name`` is the class name of any scheduler of
+    ``torch.optim.lr_scheduler``, and ``params`` reaches its
+    constructor.
+
+    """
+
     name: str = "ConstantLR"
 
     def get_sequential_lr_params(self) -> "SequentialLRParams":
@@ -145,16 +220,42 @@ class SchedulerConfig(ConfigItem):
 
 
 class SequentialLRParams(BaseModelExtraForbid):
+    """The parameters ``SequentialLR`` requires.
+
+    Attributes:
+        schedulers: The schedulers to run, in order.
+        milestones: The epochs at which one scheduler hands over to the
+            next.
+        last_epoch: The epoch to resume from.
+
+    """
+
     schedulers: list[SchedulerConfig]
     milestones: list[int]
     last_epoch: int = -1
 
 
 class FinetuningSchedulerConfig(SchedulerConfig):
+    """A scheduler override, whose ``name`` may be left out.
+
+    An override that omits ``name`` inherits the name of the trainer-
+    level scheduler and merges into its ``params``. An override that
+    names a different scheduler drops those ``params`` and uses only its
+    own.
+
+    """
+
     name: str | None = None
 
 
 class OptimizerConfig(ConfigItem):
+    """The optimizer to use.
+
+    ``name`` is the class name of any optimizer of ``torch.optim``, and
+    ``params`` reaches its constructor.
+
+    """
+
     name: str = "Adam"
 
     def to_finetuning(self) -> "FinetuningOptimizerConfig":
@@ -162,10 +263,61 @@ class OptimizerConfig(ConfigItem):
 
 
 class FinetuningOptimizerConfig(OptimizerConfig):
+    """An optimizer override, whose ``name`` may be left out.
+
+    An override that omits ``name`` inherits the name of the trainer-
+    level optimizer and merges into its ``params``. An override that
+    names a different optimizer drops those ``params`` and uses only its
+    own.
+
+    """
+
     name: str | None = None
 
 
 class FinetuningConfig(BaseModelExtraForbid):
+    """A different optimizer or scheduler for part of a node.
+
+    Use it to train a pretrained backbone at a lower learning rate than
+    a fresh head.
+
+    The trainer evaluates the entries of a node in order, and the first
+    entry whose pattern matches a parameter claims it. Put the specific
+    rules first and the general ones last.
+
+    Entries that share an optimizer name, a scheduler name, and the
+    scheduler ``params`` collapse into one optimizer with one parameter
+    group for each entry, so a different ``lr`` between entries still
+    applies. Any other difference produces a separate inner optimizer,
+    and one `CompositeOptimizer
+    <luxonis_train.optimizers.composite_optimizer.CompositeOptimizer>`
+    drives them all. Training therefore stays in the automatic
+    optimization of Lightning, and gradient accumulation and gradient
+    clipping keep working.
+
+    Every parameter reaches an optimizer. A parameter that no entry
+    claims falls to a default group that uses the trainer-level
+    optimizer and scheduler. A frozen parameter stays in its group and
+    is skipped while it is frozen, so a node that unfreezes mid-training
+    already has an optimizer waiting.
+
+    Every parameter group carries a name, so `lightning.pytorch.callbacks.LearningRateMonitor` logs
+    one series for each group instead of ``pg1``, ``pg2``, and so on. A
+    finetuning entry is named ``<node>/<index>``, a strategy group
+    ``strategy/<tag>``, and the default group ``default``. A group that
+    has to be scoped to one node gains the node name, as in
+    ``default/<node>``. A configuration that produces a single group
+    leaves it unnamed.
+
+    Attributes:
+        parameters: The parameters this entry claims. Left out, the
+            entry claims every parameter of the node. A plain string is
+            short for a pattern on the parameter name.
+        optimizer: The optimizer for the claimed parameters.
+        scheduler: The scheduler for the claimed parameters.
+
+    """
+
     parameters: list[ParameterPattern] | None = None
     optimizer: FinetuningOptimizerConfig | None = None
     scheduler: FinetuningSchedulerConfig | None = None
@@ -198,6 +350,33 @@ class FinetuningConfig(BaseModelExtraForbid):
 
 
 class NodeConfig(ConfigItem):
+    """One node of the model graph.
+
+    ``name`` is the class name of a registered node and ``params``
+    reaches its constructor. See `luxonis_train.nodes` for the nodes.
+
+    Attributes:
+        alias: A name for this node in the graph. Other nodes refer to
+            the alias, and the weights bind to it.
+        inputs: The nodes that feed this one. Left empty on the first
+            node, the node reads from the loader.
+        input_sources: The loader outputs that feed this node, when it
+            reads the data directly.
+        remove_on_export: Drop this node from the exported model.
+        task_name: The task of the dataset this head reads. Set it when
+            a dataset carries more than one task.
+        metadata_task_override: The dataset metadata field this head
+            reads, when its name differs from the default.
+        variant: The variant of the node. Each node docstring lists the
+            variants it declares.
+        losses: The losses attached to this node.
+        metrics: The metrics attached to this node.
+        visualizers: The visualizers attached to this node.
+        finetuning: Optimizer and scheduler overrides for this node.
+        freezing: Whether this node trains.
+
+    """
+
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
@@ -228,6 +407,24 @@ class NodeConfig(ConfigItem):
 
 
 class PredefinedModelConfig(ConfigItem):
+    """A reference to a predefined model, with its parameters.
+
+    ``name`` selects the model and ``params`` reaches its constructor.
+    See `luxonis_train.config.predefined_models` for the models and the
+    parameters each one accepts.
+
+    Attributes:
+        variant: The variant to build. Most models offer ``light``,
+            ``medium``, and ``heavy``.
+        version: The version of the model. ``latest`` follows the newest
+            one, and an integer pins the graph a config was written
+            against.
+        include_losses: Add the losses of the model.
+        include_metrics: Add the metrics of the model.
+        include_visualizers: Add the visualizers of the model.
+
+    """
+
     variant: str | Literal["default", "none"] | None = "default"
     version: int | Literal["latest"] = "latest"
     include_losses: bool = True
@@ -236,6 +433,24 @@ class PredefinedModelConfig(ConfigItem):
 
 
 class ModelConfig(BaseModelExtraForbid):
+    """The model graph, or the predefined model that generates one.
+
+    Build the graph by hand with ``nodes``, or name a predefined model
+    and let it contribute the nodes. You can do both: the nodes a
+    predefined model generates are appended to the ones you list.
+
+    Attributes:
+        name: The name of the model. It names the output directory and
+            the exported files.
+        predefined_model: A predefined model that generates the nodes.
+        weights: A checkpoint to start from. ``trainer.resume_training``
+            decides whether the optimizer state comes with it.
+        nodes: The nodes of the graph.
+        outputs: The nodes whose outputs the exported model returns.
+            Left empty, it holds the nodes that feed no other node.
+
+    """
+
     name: str = "model"
     predefined_model: Annotated[
         PredefinedModelConfig | None, Field(exclude=True)
@@ -454,6 +669,25 @@ class ModelConfig(BaseModelExtraForbid):
 
 
 class TrackerConfig(BaseModelExtraForbid):
+    """Where the metrics, the images, and the checkpoints go.
+
+    More than one backend can be active at once.
+
+    Attributes:
+        project_name: The project the run belongs to.
+        project_id: The project identifier, which MLFlow uses instead of
+            the name.
+        run_name: The name of the run. Left out, it is generated.
+        run_id: An existing MLFlow run to continue.
+        save_directory: Where the logs, the checkpoints, and the
+            exported files go.
+        is_tensorboard: Log to TensorBoard.
+        is_wandb: Log to Weights and Biases.
+        wandb_entity: The Weights and Biases entity that owns the run.
+        is_mlflow: Log to MLFlow.
+
+    """
+
     project_name: str | None = None
     project_id: str | None = None
     run_name: str | None = None
@@ -466,6 +700,21 @@ class TrackerConfig(BaseModelExtraForbid):
 
 
 class LoaderConfig(ConfigItem):
+    """Where the data comes from, and which splits each stage reads.
+
+    ``name`` is the class name of a registered loader and ``params``
+    reaches its constructor. See `luxonis_train.loaders`.
+
+    Attributes:
+        name: The class name of a registered loader. See
+            `luxonis_train.loaders`.
+        image_source: The name of the input group that holds the image.
+        train_view: The dataset splits to train on.
+        val_view: The dataset splits to validate on.
+        test_view: The dataset splits to test on.
+
+    """
+
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
     train_view: list[str] = ["train"]
@@ -522,6 +771,19 @@ class LoaderConfig(ConfigItem):
 
 
 class NormalizeAugmentationConfig(BaseModelExtraForbid):
+    """The normalization applied after every other augmentation.
+
+    The default ``params`` hold the ImageNet mean and standard
+    deviation. Naming ``Normalize`` in ``augmentations`` instead
+    overrides this section.
+
+    Attributes:
+        active: Normalize the images.
+        params: The parameters of the ``Albumentations`` ``Normalize``
+            transform.
+
+    """
+
     active: bool = True
     params: Params = {
         "mean": [0.485, 0.456, 0.406],
@@ -530,6 +792,28 @@ class NormalizeAugmentationConfig(BaseModelExtraForbid):
 
 
 class AugmentationConfig(ConfigItem):
+    """One augmentation.
+
+    ``name`` is the name of an ``Albumentations`` transform, and
+    ``params`` reaches its constructor.
+
+    ``VerticalFlip`` and ``HorizontalFlip`` do not reorder the keypoint
+    indices. Use them only when no class of the dataset has a
+    symmetrical counterpart, such as a left arm and a right arm.
+
+    Attributes:
+        active: Apply this augmentation.
+        use_for_resizing: Resize with this augmentation instead of the
+            default one.
+
+            The ``height`` and the ``width`` are overridden with
+            ``train_image_size``, and ``keep_aspect_ratio`` is ignored.
+            With a probability below 1, the default resize covers the
+            remaining images, so an image is always resized.
+        apply_on_stages: The stages that apply this augmentation.
+
+    """
+
     active: bool = True
     use_for_resizing: bool = False
     apply_on_stages: list[Literal["train", "val", "test"]] = Field(
@@ -538,6 +822,23 @@ class AugmentationConfig(ConfigItem):
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
+    """The resizing and the augmentations applied to every image.
+
+    The augmentations come from `Albumentations
+    <https://albumentations.ai/docs/>`_, and any pixel-level or
+    spatial-level transform of that library can be named here. The batch
+    augmentations ``Mosaic4`` and ``MixUp`` are also available.
+
+    Attributes:
+        train_image_size: The size every image is resized to, as height
+            and width.
+        keep_aspect_ratio: Pad the image instead of stretching it.
+        color_space: The colour space the model trains on.
+        normalize: The normalization applied to every image.
+        augmentations: The augmentations, in the order they apply.
+
+    """
+
     train_image_size: Annotated[
         ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
@@ -639,10 +940,123 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
 
 class CallbackConfig(ConfigItem):
+    """One callback.
+
+    ``name`` is the class name of a registered callback and ``params``
+    reaches its constructor. See `luxonis_train.callbacks` for the
+    callbacks, and for the ones that are added automatically.
+
+    Attributes:
+        active: Run this callback.
+
+    """
+
     active: bool = True
 
 
 class TrainerConfig(BaseModelExtraForbid):
+    """Everything about how the model trains.
+
+    The trainer calls the callbacks in the order this section lists
+    them.
+
+    Attributes:
+        preprocessing: The resizing and the augmentations.
+        precision: The precision of the training. ``16-mixed`` is much
+            faster on a GPU that supports it.
+        accelerator: The hardware to train on.
+        devices: How many devices to use, or which ones.
+        strategy: The distribution strategy.
+        n_sanity_val_steps: How many validation batches to run before
+            training starts.
+        profiler: The Lightning profiler, which reports where the time
+            goes.
+        matmul_precision: The internal precision of a float32 matrix
+            multiplication.
+        seed: The seed of every random number generator. Set it to make
+            a run reproducible.
+        n_validation_batches: How many validation and test batches to
+            evaluate.
+
+            A positive number takes the first batches of each view, and
+            ``-1`` takes them in full. Left out,
+            ``smart_cfg_auto_populate`` may set it.
+        deterministic: Use the deterministic kernels of PyTorch. Some
+            layers have none, and ``warn`` lets those through.
+        smart_cfg_auto_populate: Fill in the fields a config leaves out,
+            and log what was filled.
+
+            The rules are:
+
+            - With no ``training_strategy``, no ``optimizer``, and no
+              ``scheduler``, the trainer uses ``Adam`` and ``ConstantLR``.
+            - ``CosineAnnealingLR`` without ``T_max`` gets ``epochs``.
+            - ``Mosaic4`` without ``out_width`` and ``out_height`` gets
+              ``train_image_size``.
+            - When ``train_view``, ``val_view``, and ``test_view`` are the
+              same and ``n_validation_batches`` is unset, it becomes 10,
+              so validation does not run over the whole training set. An
+              explicit value, ``-1`` included, is kept.
+            - A predefined model gets ``accumulate_grad_batches`` of
+              ``int(64 / batch_size)``, a gradient accumulation schedule
+              of ``{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2:
+              accumulate_grad_batches}``, and its loss weights scaled by
+              that factor.
+            - ``ConvertOnTrainEnd``, ``TestOnTrainEnd``, and
+              ``UploadCheckpoint`` are added.
+        batch_size: How many samples one step uses.
+        accumulate_grad_batches: How many batches to accumulate before a
+            step. It raises the effective batch size without the memory.
+        gradient_clip_val: The value to clip the gradients at. It can
+            stop the gradients from exploding.
+        gradient_clip_algorithm: Clip the gradients by their norm, or
+            element by element.
+        use_weighted_sampler: Sample the rare classes more often. It
+            works only on a classification task.
+        epochs: How many epochs to train.
+        overfit_batches: Train and validate on this many batches only.
+
+            Use it to check that a config learns at all, or to test a
+            visualizer. Training and validation each keep their batches
+            across epochs but draw from different data. Set ``seed`` to
+            make the choice repeatable.
+        resume_training: Continue the run that ``model.weights`` came
+            from.
+
+            The optimizer, the scheduler, and the epoch count all
+            continue, so ``epochs`` must exceed the epochs already
+            trained. Left false, only the weights load and the training
+            state starts fresh, which is what a finetuning run wants.
+        strict_weights_loading: Require the checkpoint to match the
+            model exactly. The keys of a loss, a metric, or a visualizer
+            are still allowed to be missing.
+        n_workers: How many worker processes load the data. It is forced
+            to 0 on Windows and macOS.
+        validation_interval: How many epochs pass between two validation
+            runs.
+        run_validation_after_first_epoch: Also validate after the first
+            epoch, which shows early whether a run is broken.
+        n_log_images: How many images each head contributes to the
+            logged visualizations.
+        skip_last_batch: Drop the last batch of an epoch when it is
+            smaller than the others.
+        pin_memory: Pin the memory of the data loader, which speeds up
+            the transfer to a GPU.
+        log_sub_metrics: Log the parts of a metric, such as
+            ``map_small`` beside ``map``.
+        log_sub_losses: Log the parts of a loss beside the total.
+        save_top_k: How many checkpoints to keep. ``-1`` keeps every
+            one.
+        callbacks: The callbacks to run, in order.
+        optimizer: The optimizer, for the parameters that no finetuning
+            rule and no strategy claims.
+        scheduler: The scheduler, for the parameters that no finetuning
+            rule and no strategy claims.
+        training_strategy: A strategy that owns the optimization
+            schedule. See `luxonis_train.strategies`.
+
+    """
+
     preprocessing: PreprocessingConfig = Field(
         default_factory=PreprocessingConfig
     )
@@ -795,6 +1209,18 @@ class TrainerConfig(BaseModelExtraForbid):
 
 
 class OnnxExportConfig(BaseModelExtraForbid):
+    """The options of the ONNX export.
+
+    Attributes:
+        opset_version: The ONNX opset to target.
+        dynamic_axes: The axes that stay dynamic in the exported model.
+        disable_onnx_simplification: Keep the graph as exported, without
+            simplification.
+        unique_onnx_initializers: Rename the initializers so each block
+            owns unique names.
+
+    """
+
     opset_version: PositiveInt = 16
     dynamic_axes: Params | None = None
     disable_onnx_simplification: bool = False
@@ -802,6 +1228,18 @@ class OnnxExportConfig(BaseModelExtraForbid):
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):
+    """Conversion to the ``.blob`` format.
+
+    ``blobconverter`` is deprecated and only converts for RVC2. Use
+    `HubAIExportConfig` instead.
+
+    Attributes:
+        active: Convert to ``.blob``.
+        shaves: How many SHAVE cores the blob targets.
+        version: The OpenVINO version to convert with.
+
+    """
+
     active: bool = False
     shaves: int = 6
     version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = (
@@ -810,6 +1248,28 @@ class BlobconverterExportConfig(BaseModelExtraForbid):
 
 
 class HubAIExportConfig(BaseModelExtraForbid):
+    """Conversion through the `HubAI SDK
+    <https://github.com/luxonis/hubai-sdk>`_.
+
+    This is the supported way to convert a model for a device. It needs
+    the ``HUBAI_API_KEY`` environment variable.
+
+    The name of the model, the dataset, and the input shape together
+    decide whether the upload creates a new model, a new variant, or a
+    new version of a variant. The `Luxonis documentation
+    <https://docs.luxonis.com/cloud/hubai/model-registry/concepts/>`_
+    describes the difference.
+
+    Attributes:
+        active: Convert through the HubAI SDK.
+        platform: The device to convert for. It is required when
+            ``active`` is true.
+        params: Extra arguments for the conversion.
+        delete_remote_model: Delete the uploaded variant after the
+            conversion.
+
+    """
+
     active: bool = False
     platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
     params: Params = Field(default_factory=dict)
@@ -830,6 +1290,15 @@ class HubAIExportConfig(BaseModelExtraForbid):
 
 
 class ArchiveConfig(BaseModelExtraForbid):
+    """How the NN Archive is named and uploaded.
+
+    Attributes:
+        name: The name of the archive. Left out, the model name is used.
+        upload_to_run: Attach the files to the tracked run.
+        upload_url: A location to upload the files to.
+
+    """
+
     name: str | None = None
     upload_to_run: bool = True
     upload_url: str | None = None
@@ -864,6 +1333,25 @@ def _validate_quantization_mode(value: str) -> str:
 
 
 class AdaroundConfig(BaseModelExtraForbid):
+    """Adaptive rounding of the weights during quantization.
+
+    AIMET rounds a weight to the nearest quantized value by default.
+    AdaRound instead learns the rounding from the calibration data,
+    which usually raises the accuracy of the quantized model.
+
+    Attributes:
+        active: Learn the rounding of the weights.
+        default_num_iterations: How many iterations to optimize for.
+            Left out, AIMET uses 10000 at 8 bits or more, and 15000
+            below.
+        default_reg_param: The trade-off between the rounding loss and
+            the reconstruction loss.
+        default_beta_range: The start and the end of the beta annealing.
+        default_warm_start: The share of the iterations during which the
+            rounding loss has no effect.
+
+    """
+
     active: bool = False
     default_num_iterations: PositiveInt | None = None
     default_reg_param: float = 0.01
@@ -872,6 +1360,40 @@ class AdaroundConfig(BaseModelExtraForbid):
 
 
 class AIMETConfig(BaseModelExtraForbid):
+    """Quantization with `AIMET
+    <https://quic.github.io/aimet-pages/releases/latest/index.html>`_.
+
+    The advanced techniques are slow. AdaRound alone can take from 40
+    minutes to several hours, depending on the model and the amount of
+    calibration data.
+
+    Attributes:
+        active: Quantize with AIMET.
+        default_output_bw: The bit width of the activations.
+        default_param_bw: The bit width of the parameters.
+        default_data_type: The data type of a quantized value.
+        quant_scheme: How the quantization ranges are chosen.
+        config: Extra AIMET settings, inline or as a path to a JSON
+            file. See the `AIMET documentation
+            <https://quic.github.io/aimet-pages/releases/latest/techniques/runtime_config.html>`_.
+        max_calibration_images: How many validation images calibrate the
+            quantization. Left out, the whole validation split is used.
+            It is independent of ``n_validation_batches``.
+        fold_batch_norms: Fold the batch normalization layers into the
+            convolutions first.
+        cross_layer_equalization: Balance the weight ranges across
+            consecutive layers first.
+        batch_norm_reestimation: Re-estimate the batch normalization
+            statistics after quantization.
+        sequential_mse: Optimize the quantization of each layer against
+            the output of the float model.
+        adaround: Adaptive rounding of the weights.
+        epochs: How many epochs of quantization-aware training to run.
+        optimizer: The optimizer of the quantization-aware training.
+        scheduler: The scheduler of the quantization-aware training.
+
+    """
+
     active: bool = False
 
     default_output_bw: Literal[4, 8, 16] = 8
@@ -918,6 +1440,29 @@ class AIMETConfig(BaseModelExtraForbid):
 
 
 class ExportConfig(ArchiveConfig):
+    """How the trained model is exported and converted.
+
+    Attributes:
+        name: The name of the exported model. Left out, the model name
+            is used.
+        input_shape: The input shape to export with. Left out, it comes
+            from the dataset.
+        quantization_mode: The precision the conversion targets.
+            ``FP16`` and ``FP32`` are short for the matching standard
+            modes.
+        reverse_input_channels: Swap the channel order in the exported
+            model. It applies to the ``.blob`` export.
+        scale_values: The scale of the input normalization. Left out, it
+            comes from the augmentations.
+        mean_values: The mean of the input normalization. Left out, it
+            comes from the augmentations.
+        onnx: The options of the ONNX export.
+        blobconverter: Conversion to ``.blob``, which is deprecated.
+        hubai: Conversion through the HubAI SDK.
+        aimet: Quantization with AIMET.
+
+    """
+
     name: str | None = None
     input_shape: list[int] | None = None
     quantization_mode: Annotated[
@@ -944,6 +1489,26 @@ class ExportConfig(ArchiveConfig):
 
 
 class StorageConfig(BaseModelExtraForbid):
+    """Where Optuna keeps the study.
+
+    Optuna reaches the database through SQLAlchemy, so every backend of
+    `SQLAlchemy
+    <https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls>`_
+    works. With the ``postgres`` backend, a field left out is read from
+    ``POSTGRES_USER``, ``POSTGRES_PASSWORD``, ``POSTGRES_HOST``,
+    ``POSTGRES_PORT``, and ``POSTGRES_DB``.
+
+    Attributes:
+        active: Keep the study, so it survives the process.
+        backend: The database backend.
+        username: The user of the database.
+        password: The password of the database.
+        host: The host of the database.
+        port: The port of the database.
+        database: The name of the database.
+
+    """
+
     active: bool = True
     backend: str = "sqlite"
     username: str | None = None
@@ -954,6 +1519,40 @@ class StorageConfig(BaseModelExtraForbid):
 
 
 class TunerConfig(BaseModelExtraForbid):
+    """The hyperparameter search that ``luxonis_train tune`` runs.
+
+    The tuner removes the callbacks that would upload or export a model
+    of a single trial: ``UploadCheckpoint``, ``ExportOnTrainEnd``,
+    ``ArchiveOnTrainEnd``, ``ConvertOnTrainEnd``, and
+    ``TestOnTrainEnd``.
+
+    Attributes:
+        study_name: The name of the study.
+        continue_existing_study: Add the trials to a study of the same
+            name, instead of starting over.
+        use_pruner: Stop a trial early once its result falls behind the
+            median.
+        n_trials: How many trials each process runs. Left out, it runs
+            until the timeout.
+        timeout: How many seconds the study runs for.
+        storage: Where the study is kept.
+        params: The parameters to search, and the range of each.
+
+            A key is the path of a config field with a type suffix, as
+            in ``trainer.optimizer.params.lr_float``. The suffix is one
+            of ``categorical``, ``float``, ``int``, ``loguniform``,
+            ``uniform``, or ``subset``, and it selects the `Optuna
+            <https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html>`_
+            method that samples the value.
+
+            ``subset`` only applies to the augmentations. Give a list of
+            augmentation names and a count, and each trial activates that
+            many of them.
+        monitor: Whether a trial is judged on the validation loss or on
+            the main metric.
+
+    """
+
     study_name: str = "test-study"
     continue_existing_study: bool = True
     use_pruner: bool = True
@@ -965,6 +1564,31 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
+    """The root of a configuration file.
+
+    Only the ``model`` section is required. Every other section falls
+    back to its defaults, which ``luxonis_train config`` prints in full.
+
+    Attributes:
+        rich_logging: Render the logs and the progress bar as rich
+            tables.
+        model: The model graph. This is the one section you must write.
+        loader: Where the data comes from.
+        tracker: Where the metrics and the artifacts go.
+        trainer: How the model trains.
+        exporter: How the trained model is exported and converted.
+        archiver: How the NN Archive is named and uploaded.
+        tuner: The hyperparameter search, used by ``luxonis_train
+            tune``.
+        version: The schema version the file was written for.
+            ``luxonis_train upgrade`` reads it to migrate an older file.
+        ENVIRON: Environment variables, for testing only.
+
+            A secret written here can leak into a log or a tracked run.
+            Set a real environment variable, or use a ``.env`` file.
+
+    """
+
     rich_logging: bool = True
     model: ModelConfig = Field(default_factory=ModelConfig)
 
