@@ -1,3 +1,7 @@
+"""The SVTR neck, which turns a feature map into the sequence the OCR
+head decodes.
+"""
+
 from typing import Literal
 
 import torch

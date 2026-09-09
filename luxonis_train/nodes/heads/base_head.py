@@ -1,3 +1,11 @@
+"""The base class every head inherits.
+
+A head declares the task it solves and the export parser that reads its
+outputs, which is what lets the losses, metrics, and visualizers find
+it.
+
+"""
+
 from pathlib import Path
 from typing import Any
 

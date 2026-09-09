@@ -1,3 +1,8 @@
+"""Bounding box maths: the conversions between formats, IoU and its
+variants, non-maximum suppression, and the anchors of a feature
+pyramid.
+"""
+
 import math
 from typing import Literal, TypeAlias
 

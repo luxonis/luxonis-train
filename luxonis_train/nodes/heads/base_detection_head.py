@@ -1,3 +1,10 @@
+"""The base class of the heads that predict boxes.
+
+It holds the non-maximum suppression that every detection head runs
+during validation and export.
+
+"""
+
 import torch
 from loguru import logger
 from luxonis_ml.typing import Params

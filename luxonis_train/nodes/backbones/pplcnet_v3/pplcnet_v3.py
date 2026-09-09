@@ -1,3 +1,5 @@
+"""The PPLCNetV3 backbone used by the OCR model."""
+
 from typing import TypedDict
 
 from torch import Tensor, nn

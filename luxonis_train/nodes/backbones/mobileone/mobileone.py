@@ -1,3 +1,7 @@
+"""The MobileOne backbone, which trains with multiple branches and folds
+them into one convolution for inference.
+"""
+
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from typeguard import typechecked

@@ -1,3 +1,5 @@
+"""Draws a segmentation mask as a coloured overlay."""
+
 from functools import cached_property
 
 import torch

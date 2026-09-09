@@ -1,3 +1,7 @@
+"""The base class every metric inherits, and the state descriptors that
+declare how a metric reduces across devices.
+"""
+
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass

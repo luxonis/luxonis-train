@@ -1,3 +1,5 @@
+"""Turns the predictions of a model into dataset annotations."""
+
 from pathlib import Path
 from typing import TypedDict
 

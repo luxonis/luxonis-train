@@ -1,3 +1,7 @@
+"""The YOLOv8 detection head, which regresses a distribution over
+distance bins instead of a single distance.
+"""
+
 import math
 from typing import Literal, cast
 

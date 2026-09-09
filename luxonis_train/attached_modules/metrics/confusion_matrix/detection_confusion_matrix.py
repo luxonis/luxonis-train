@@ -1,3 +1,7 @@
+"""The confusion matrix for bounding boxes, which matches predictions to
+labels by IoU.
+"""
+
 import torch
 from torch import Tensor
 from torchvision.ops import box_convert, box_iou

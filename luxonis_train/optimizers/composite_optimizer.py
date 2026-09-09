@@ -1,3 +1,11 @@
+"""An optimizer that owns several inner optimizers.
+
+Lightning sees one optimizer, so gradient accumulation and gradient
+clipping keep working however many groups the finetuning rules and the
+training strategy produce.
+
+"""
+
 from collections import OrderedDict
 from collections.abc import Callable, Iterator, MutableMapping, Sequence
 from typing import Any

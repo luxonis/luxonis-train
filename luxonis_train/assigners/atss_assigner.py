@@ -1,3 +1,7 @@
+"""Adaptive Training Sample Selection, which picks the anchors that
+supervise each ground truth box by an adaptive IoU threshold.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn

@@ -1,3 +1,5 @@
+"""The blocks of the EfficientViT backbone."""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn

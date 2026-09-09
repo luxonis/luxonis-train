@@ -1,3 +1,10 @@
+"""The registries that map a name in a config to a class.
+
+A component subclasses the base class of its registry and registers
+itself, so a config refers to it by name and never imports it.
+
+"""
+
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from luxonis_ml.utils import Registry

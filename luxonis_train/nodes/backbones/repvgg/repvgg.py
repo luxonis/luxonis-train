@@ -1,3 +1,7 @@
+"""The RepVGG backbone, which trains as a multi-branch network and folds
+into a plain stack of convolutions for inference.
+"""
+
 from collections import defaultdict
 
 from luxonis_ml.typing import Kwargs

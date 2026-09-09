@@ -1,3 +1,7 @@
+"""The RepPAN neck of YOLOv6, which merges the backbone features top
+down and then bottom up.
+"""
+
 from typing import Literal
 
 from loguru import logger

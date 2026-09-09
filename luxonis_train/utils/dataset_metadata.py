@@ -1,3 +1,7 @@
+"""The class counts, class names, and keypoint counts a node reads from
+the loader.
+"""
+
 from collections.abc import Iterator
 from pprint import pformat
 from typing import Any

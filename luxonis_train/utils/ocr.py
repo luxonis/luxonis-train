@@ -1,3 +1,7 @@
+"""The encoder and decoder between text and the token indices the OCR
+head predicts.
+"""
+
 import numpy as np
 import torch
 import torch.nn.functional as F

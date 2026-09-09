@@ -1,3 +1,7 @@
+"""OCR accuracy at the level of the whole string and of one
+character.
+"""
+
 from typing import Annotated
 
 import torch

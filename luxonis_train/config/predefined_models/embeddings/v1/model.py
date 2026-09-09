@@ -1,3 +1,5 @@
+"""The embedding learning model."""
+
 from luxonis_ml.typing import Params
 from typing_extensions import override
 

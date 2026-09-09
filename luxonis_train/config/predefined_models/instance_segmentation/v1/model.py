@@ -1,3 +1,5 @@
+"""The instance segmentation model."""
+
 from luxonis_ml.typing import Params
 from typing_extensions import override
 

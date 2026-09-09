@@ -1,3 +1,5 @@
+"""The Dice coefficient over segmentation masks."""
+
 from typing import Literal
 
 import torch

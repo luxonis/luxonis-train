@@ -1,3 +1,5 @@
+"""Binary cross entropy over raw logits."""
+
 from typing import Literal
 
 import torch

@@ -1,3 +1,10 @@
+"""The Lightning module that runs the node graph.
+
+It builds the nodes, runs them in topological order, computes the losses
+and the metrics, and decides what to log on each epoch.
+
+"""
+
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy

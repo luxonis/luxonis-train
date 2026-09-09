@@ -1,3 +1,5 @@
+"""The ReXNet-lite backbone and the linear bottleneck it repeats."""
+
 import torch
 from torch import Tensor, nn
 

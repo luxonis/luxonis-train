@@ -1,3 +1,5 @@
+"""AIMET quantization, both post-training and quantization aware."""
+
 import math
 from collections.abc import Callable, Sized
 from importlib.util import find_spec

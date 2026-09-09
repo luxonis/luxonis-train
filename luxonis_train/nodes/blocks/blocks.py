@@ -1,3 +1,5 @@
+"""The layer blocks that more than one node uses."""
+
 from collections.abc import Callable
 from typing import Literal, cast
 

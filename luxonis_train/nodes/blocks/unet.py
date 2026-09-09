@@ -1,3 +1,5 @@
+"""The encoder and decoder blocks of a U-Net."""
+
 from typing import Literal
 
 import torch

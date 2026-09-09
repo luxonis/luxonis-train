@@ -1,3 +1,7 @@
+"""Compatibility for a strategy written against the previous
+``configure_optimizers`` contract.
+"""
+
 from typing import Any
 
 from torch.optim import Optimizer

@@ -1,3 +1,5 @@
+"""The confusion matrix for classification and segmentation."""
+
 from torch import Tensor
 from torchmetrics.classification import (
     BinaryConfusionMatrix,

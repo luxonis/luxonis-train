@@ -1,3 +1,7 @@
+"""The DRAEM reconstruction subnetwork, which rebuilds an image without
+its anomalies so the head can compare the two.
+"""
+
 from luxonis_ml.typing import Kwargs
 from torch import Tensor
 from typing_extensions import override

@@ -1,3 +1,7 @@
+"""Keypoint maths: the COCO sigmas, object keypoint similarity, and the
+conversions between keypoints and boxes.
+"""
+
 import torch
 from loguru import logger
 from torch import Tensor

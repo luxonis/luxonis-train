@@ -1,3 +1,7 @@
+"""The confusion matrix for FOMO, which matches a predicted point to the
+box that contains it.
+"""
+
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override

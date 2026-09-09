@@ -1,3 +1,7 @@
+"""The inference loop over an image, a video, a directory, or a dataset,
+and the rendering of its visualizations.
+"""
+
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager, suppress

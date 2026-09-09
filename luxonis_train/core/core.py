@@ -1,3 +1,10 @@
+"""`LuxonisModel`, the entry point of the package.
+
+It owns the config, the loaders, and the Lightning module, and it
+exposes one method for each command of the CLI.
+
+"""
+
 import json
 import tempfile
 import threading

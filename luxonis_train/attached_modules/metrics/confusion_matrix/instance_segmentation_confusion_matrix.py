@@ -1,3 +1,7 @@
+"""The confusion matrix for instance segmentation, which reports one
+matrix for the boxes and one for the masks.
+"""
+
 from torch import Tensor
 from typing_extensions import override
 

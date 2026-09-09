@@ -1,3 +1,11 @@
+"""The tasks a head can solve, and the labels each one requires.
+
+A task is the contract between a head and everything that attaches to
+it: it names the predictions the head produces and the labels the loader
+must supply.
+
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass

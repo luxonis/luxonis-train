@@ -1,3 +1,5 @@
+"""Configures the logger and the warning filters."""
+
 import lightning.pytorch as pl
 import numpy as np
 import pydantic

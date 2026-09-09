@@ -1,3 +1,5 @@
+"""Turns the raw output of a segmentation head into a boolean mask."""
+
 import torch
 from torch import Tensor
 

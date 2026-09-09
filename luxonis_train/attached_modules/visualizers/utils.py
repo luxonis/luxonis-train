@@ -1,3 +1,11 @@
+"""Drawing helpers shared by the visualizers.
+
+They cover the colour choices, the font scaling, the conversions between
+tensors and images, and the merge of the label image and the prediction
+image into one canvas.
+
+"""
+
 import colorsys
 import io
 from collections.abc import Mapping

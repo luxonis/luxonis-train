@@ -1,3 +1,7 @@
+"""Maps boxes, keypoints, and masks between the letterboxed image the
+model sees and the original image.
+"""
+
 import cv2
 import numpy as np
 

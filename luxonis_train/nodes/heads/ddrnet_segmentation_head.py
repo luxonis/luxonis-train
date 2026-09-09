@@ -1,3 +1,5 @@
+"""The segmentation head of DDRNet."""
+
 from typing import Literal
 
 import torch

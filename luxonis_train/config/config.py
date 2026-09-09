@@ -1,3 +1,11 @@
+"""The schema of the configuration file.
+
+Every section of the YAML file is a model here, and `Config` is the
+root. The models reject an unknown key, so a typo fails at load time
+instead of being ignored.
+
+"""
+
 import json
 import re
 import sys

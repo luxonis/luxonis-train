@@ -1,3 +1,7 @@
+"""Perlin noise generation, and the blend that turns a texture into a
+synthetic anomaly.
+"""
+
 import math
 from collections.abc import Callable
 

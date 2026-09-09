@@ -1,3 +1,5 @@
+"""The upsampling and downsampling blocks of the RepPAN neck."""
+
 from abc import ABC
 
 import torch

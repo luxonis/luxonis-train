@@ -1,3 +1,7 @@
+"""The result of one forward pass: the outputs of every node, and the
+visualizations built from them.
+"""
+
 from dataclasses import dataclass, field
 from pprint import pformat
 

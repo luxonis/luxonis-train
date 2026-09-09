@@ -1,3 +1,5 @@
+"""The decoupled detection head of YOLOv6."""
+
 import math
 from collections.abc import Iterable
 from typing import Literal, cast

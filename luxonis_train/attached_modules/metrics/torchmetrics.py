@@ -1,3 +1,11 @@
+"""The ``torchmetrics`` classification metrics, wrapped for the
+registry.
+
+The wrapper fills in ``task`` and ``num_classes`` from the node it
+attaches to, so a config only sets what it wants to override.
+
+"""
+
 from contextlib import suppress
 from functools import cached_property
 

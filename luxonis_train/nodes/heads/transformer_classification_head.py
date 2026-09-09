@@ -1,3 +1,7 @@
+"""A classification head over the CLS embedding of a transformer
+backbone.
+"""
+
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override

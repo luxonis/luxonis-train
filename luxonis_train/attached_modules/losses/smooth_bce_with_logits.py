@@ -1,3 +1,5 @@
+"""Binary cross entropy with label smoothing."""
+
 from typing import Literal
 
 import torch

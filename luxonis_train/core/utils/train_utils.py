@@ -1,3 +1,5 @@
+"""Builds the Lightning trainer from the config."""
+
 from typing import Any
 
 import lightning.pytorch as pl

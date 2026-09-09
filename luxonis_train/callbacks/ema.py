@@ -1,3 +1,10 @@
+"""Keeps an exponential moving average of the weights.
+
+Validation, testing, visualization, and export all read the averaged
+weights, which are steadier than the ones the last step produced.
+
+"""
+
 import math
 from collections.abc import Mapping
 from copy import deepcopy

@@ -1,3 +1,5 @@
+"""The OCR head that decodes a sequence with CTC."""
+
 import math
 
 from luxonis_ml.typing import Params

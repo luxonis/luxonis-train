@@ -1,3 +1,5 @@
+"""Draws instance masks, boxes, and keypoints in one image."""
+
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers.base_visualizer import (

@@ -1,3 +1,7 @@
+"""The base class every training strategy inherits, and the rule that
+binds a parameter selector to an optimizer.
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any

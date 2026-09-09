@@ -1,3 +1,7 @@
+"""The focal loss over a FOMO heatmap, which weights the cells that hold
+an object.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor

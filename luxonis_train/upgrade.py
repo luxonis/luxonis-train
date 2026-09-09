@@ -1,3 +1,10 @@
+"""Migration of a configuration file to the current schema.
+
+Each release that renames or moves a field adds a step here, so
+``luxonis_train upgrade`` can rewrite an older config in place.
+
+"""
+
 import json
 import subprocess
 import sys

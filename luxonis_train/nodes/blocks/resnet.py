@@ -1,3 +1,5 @@
+"""The residual and bottleneck blocks of ResNet."""
+
 from torch import Tensor, nn
 from typeguard import typechecked
 

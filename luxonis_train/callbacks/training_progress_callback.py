@@ -1,3 +1,7 @@
+"""Publishes the timing of each batch and each epoch, for a caller that
+tracks progress outside the process.
+"""
+
 import time
 from math import isfinite
 from typing import Any

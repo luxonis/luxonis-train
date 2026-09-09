@@ -1,3 +1,11 @@
+"""The machinery behind the ``variant`` field of a node.
+
+A variant is a named set of constructor arguments. The metaclass
+collects the variants a class declares, so a config selects a size with
+one word instead of a list of parameters.
+
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Collection
 from typing import Literal

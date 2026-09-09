@@ -1,3 +1,7 @@
+"""Helpers shared by the metrics, for merging box and keypoint targets
+and for keeping an empty tensor the right shape.
+"""
+
 import torch
 from torch import Tensor
 from torchvision.ops import box_convert

@@ -1,3 +1,5 @@
+"""Draws instance masks together with their boxes."""
+
 from collections.abc import Mapping
 
 import torch

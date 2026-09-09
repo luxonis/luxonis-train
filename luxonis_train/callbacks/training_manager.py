@@ -1,3 +1,7 @@
+"""Freezes and unfreezes the nodes a config marks, and lets the training
+strategy update its groups after each step.
+"""
+
 import lightning.pytorch as pl
 from typing_extensions import override
 

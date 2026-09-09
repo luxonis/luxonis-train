@@ -1,3 +1,7 @@
+"""The YOLOv8 instance segmentation head, which predicts mask
+coefficients over a shared set of prototypes.
+"""
+
 from typing import Literal
 
 import torch

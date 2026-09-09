@@ -1,3 +1,5 @@
+"""The blocks of the MicroNet backbone."""
+
 from typing import Literal
 
 import torch

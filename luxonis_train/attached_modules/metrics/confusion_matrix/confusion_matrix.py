@@ -1,3 +1,7 @@
+"""The factory that returns the confusion matrix for the task of a
+node.
+"""
+
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.registry import METRICS
 from luxonis_train.tasks import Tasks

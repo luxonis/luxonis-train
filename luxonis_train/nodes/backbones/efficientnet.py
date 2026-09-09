@@ -1,3 +1,5 @@
+"""The EfficientNet backbone."""
+
 from typing import Literal, cast
 
 import torch

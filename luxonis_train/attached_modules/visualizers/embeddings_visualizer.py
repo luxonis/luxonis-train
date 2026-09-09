@@ -1,3 +1,7 @@
+"""Projects the embeddings of a batch to two dimensions and draws them
+coloured by class.
+"""
+
 from collections.abc import Callable
 
 import numpy as np

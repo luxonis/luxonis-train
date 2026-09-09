@@ -1,3 +1,5 @@
+"""The MobileNetV2 backbone."""
+
 from typing import Literal
 
 import torchvision

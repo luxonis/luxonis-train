@@ -1,3 +1,5 @@
+"""The YOLO-Pose head, which predicts keypoints beside the boxes."""
+
 from typing import Literal
 
 import torch

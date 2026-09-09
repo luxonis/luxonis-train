@@ -1,3 +1,7 @@
+"""A segmentation head over the patch tokens of a transformer
+backbone.
+"""
+
 from typing import Any
 
 import torch.nn.functional as F

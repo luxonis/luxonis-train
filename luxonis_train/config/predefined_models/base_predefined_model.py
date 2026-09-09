@@ -1,3 +1,10 @@
+"""The base class of the predefined models.
+
+`SimplePredefinedModel` covers the usual backbone, neck, and head chain,
+so a concrete model only declares its components and its variants.
+
+"""
+
 import re
 from abc import abstractmethod
 from typing import Any, Literal, cast

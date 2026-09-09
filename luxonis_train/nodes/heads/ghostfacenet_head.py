@@ -1,3 +1,5 @@
+"""The embedding head of GhostFaceNet."""
+
 # Original source: https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py
 import math
 

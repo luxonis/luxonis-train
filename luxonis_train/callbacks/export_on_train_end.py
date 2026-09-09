@@ -1,3 +1,5 @@
+"""Exports the model to ONNX when training ends."""
+
 import lightning.pytorch as pl
 from loguru import logger
 

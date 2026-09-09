@@ -1,3 +1,7 @@
+"""Logs Grad-CAM images during validation, which show the pixels a
+prediction responds to.
+"""
+
 import lightning.pytorch as pl
 import numpy as np
 import torch

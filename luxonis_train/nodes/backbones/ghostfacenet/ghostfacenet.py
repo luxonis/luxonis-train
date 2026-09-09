@@ -1,3 +1,5 @@
+"""The GhostFaceNet backbone for face embeddings."""
+
 import math
 from typing import Literal, TypedDict
 

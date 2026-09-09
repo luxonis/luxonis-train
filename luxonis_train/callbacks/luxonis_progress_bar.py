@@ -1,3 +1,11 @@
+"""The progress bars, and the optimizer summary they print.
+
+The summary lists every parameter group with its optimizer, its
+scheduler, and its share of the parameters, which is how a config with
+finetuning rules or a training strategy is checked.
+
+"""
+
 import json
 import time
 from abc import ABC, abstractmethod

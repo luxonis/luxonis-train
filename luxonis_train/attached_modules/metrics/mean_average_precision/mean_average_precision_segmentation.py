@@ -1,3 +1,5 @@
+"""Mean average precision over instance masks."""
+
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
 from typing_extensions import override

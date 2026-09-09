@@ -1,3 +1,7 @@
+"""A loader that yields empty batches, which lets a config load and a
+model export with no data present.
+"""
+
 from collections import defaultdict
 from typing import Literal
 

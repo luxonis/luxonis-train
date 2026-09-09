@@ -1,3 +1,5 @@
+"""Binary focal loss, which lowers the weight of the easy examples."""
+
 from typing import Literal
 
 from torch import Tensor

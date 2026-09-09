@@ -1,3 +1,5 @@
+"""The ResNet backbone."""
+
 from typing import Literal
 
 import torchvision

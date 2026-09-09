@@ -1,3 +1,7 @@
+"""Task Aligned Assigner, which scores each anchor by classification and
+localization together before it assigns a target.
+"""
+
 from collections.abc import Sequence
 
 import torch

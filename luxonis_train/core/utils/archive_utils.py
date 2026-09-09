@@ -1,3 +1,7 @@
+"""Builds the NN Archive: the input and output descriptions a parser
+needs to read the exported model.
+"""
+
 from pathlib import Path
 from typing import TypedDict
 

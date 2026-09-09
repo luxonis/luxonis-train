@@ -1,3 +1,10 @@
+"""The base class of the callbacks that run on a saved checkpoint.
+
+It picks between the best metric checkpoint and the best loss
+checkpoint, and skips the callback when neither exists.
+
+"""
+
 from typing import Literal
 
 import lightning.pytorch as pl

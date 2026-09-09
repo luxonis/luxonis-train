@@ -1,3 +1,7 @@
+"""The YOLOv8 detection loss with a mask term for instance
+segmentation.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor

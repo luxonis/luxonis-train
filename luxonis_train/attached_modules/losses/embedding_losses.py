@@ -1,3 +1,11 @@
+"""The ``pytorch-metric-learning`` losses, wrapped for the registry.
+
+Each loss becomes a subclass with the same name, so a config names it
+directly. Every subclass accepts a miner, a distance, a reducer, and a
+regularizer.
+
+"""
+
 import pytorch_metric_learning.distances as pml_distances
 import pytorch_metric_learning.losses as pml_losses
 import pytorch_metric_learning.miners as pml_miners

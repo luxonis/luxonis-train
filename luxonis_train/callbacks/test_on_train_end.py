@@ -1,3 +1,5 @@
+"""Runs a test pass when training ends."""
+
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger

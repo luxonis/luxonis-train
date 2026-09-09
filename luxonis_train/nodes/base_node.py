@@ -1,3 +1,11 @@
+"""The base class every node inherits.
+
+It resolves the input shapes from the nodes upstream, applies the
+variant a config selects, and exposes the export switch that a node
+reads to change its outputs.
+
+"""
+
 import inspect
 import logging
 import re

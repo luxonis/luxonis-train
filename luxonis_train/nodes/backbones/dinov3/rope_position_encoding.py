@@ -1,3 +1,7 @@
+"""Rotary position embedding for the DINOv3 attention, which encodes a
+position by rotating the query and key pairs.
+"""
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This software may be used and distributed in accordance with

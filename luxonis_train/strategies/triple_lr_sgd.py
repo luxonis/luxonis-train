@@ -1,3 +1,8 @@
+"""An SGD strategy with a warmup phase and optional cosine annealing,
+which splits the parameters into weights, biases, and normalization
+weights.
+"""
+
 import math
 
 import numpy as np

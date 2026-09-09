@@ -1,3 +1,7 @@
+"""The DRAEM discriminative subnetwork, which segments the anomaly from
+the image and its reconstruction.
+"""
+
 import torch
 from luxonis_ml.typing import Kwargs
 from torch import Tensor

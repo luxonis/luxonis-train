@@ -1,3 +1,7 @@
+"""The factory that returns the mean average precision metric for the
+task of a node.
+"""
+
 from luxonis_train.nodes import BaseNode
 from luxonis_train.registry import METRICS
 from luxonis_train.tasks import Task, Tasks

@@ -1,3 +1,7 @@
+"""The BiSeNet backbone: a shallow spatial path keeps the detail, and a
+deep context path supplies the receptive field.
+"""
+
 import torch.nn.functional as F
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn

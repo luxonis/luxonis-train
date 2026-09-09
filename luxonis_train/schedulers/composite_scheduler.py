@@ -1,3 +1,7 @@
+"""The schedulers that step the inner optimizers of a
+`CompositeOptimizer` together.
+"""
+
 from collections.abc import Sequence
 from typing import Any
 

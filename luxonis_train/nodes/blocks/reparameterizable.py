@@ -1,3 +1,7 @@
+"""The interface for a block that folds its training-time branches into
+a single operation before export.
+"""
+
 from abc import ABC, abstractmethod
 
 from torch import nn

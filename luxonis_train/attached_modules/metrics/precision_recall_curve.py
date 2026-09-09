@@ -1,3 +1,10 @@
+"""Precision, recall, and F1 over a grid of confidence thresholds.
+
+The metric re-runs non-maximum suppression on the candidates of the
+head, so its thresholds are independent of the ones the head uses.
+
+"""
+
 from typing import TYPE_CHECKING
 
 import torch

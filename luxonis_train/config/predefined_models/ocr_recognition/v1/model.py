@@ -1,3 +1,5 @@
+"""The OCR text recognition model."""
+
 from typing import Literal, TypeAlias
 
 from loguru import logger

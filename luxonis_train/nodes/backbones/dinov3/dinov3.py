@@ -1,3 +1,7 @@
+"""The DINOv3 backbone, a self-supervised vision transformer used with
+frozen weights.
+"""
+
 from typing import Literal, TypeAlias, cast
 
 import torch

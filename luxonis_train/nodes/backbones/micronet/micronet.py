@@ -1,3 +1,5 @@
+"""The MicroNet backbone for very low compute budgets."""
+
 from typing import TypedDict
 
 from torch import Tensor, nn

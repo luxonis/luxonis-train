@@ -1,3 +1,7 @@
+"""Small helpers used across the package: channel rounding, signature
+inspection, batch splitting, and downloads with a cache.
+"""
+
 import inspect
 import math
 import urllib.parse

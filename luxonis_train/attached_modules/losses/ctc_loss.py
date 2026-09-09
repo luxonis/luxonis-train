@@ -1,3 +1,7 @@
+"""Connectionist temporal classification, which trains a sequence model
+without an alignment between the input and the text.
+"""
+
 import torch
 from torch import Tensor, nn
 

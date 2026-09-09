@@ -1,3 +1,7 @@
+"""Mean average precision over keypoints, matched by object keypoint
+similarity instead of IoU.
+"""
+
 from typing import Annotated, Literal
 
 import torch

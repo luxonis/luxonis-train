@@ -1,3 +1,7 @@
+"""The FOMO head, which predicts a heatmap of object centres instead of
+boxes.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn

@@ -1,3 +1,7 @@
+"""Logs the chosen hyperparameters and the git hashes of
+``luxonis-ml`` and ``luxonis-train``.
+"""
+
 import lightning.pytorch as pl
 import yaml
 

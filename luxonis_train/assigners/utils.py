@@ -1,3 +1,7 @@
+"""Anchor bookkeeping shared by the assigners: which anchors fall inside
+a box, how to break ties, and batched IoU.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor

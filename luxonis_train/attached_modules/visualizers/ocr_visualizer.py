@@ -1,3 +1,5 @@
+"""Draws the recognized text over the image."""
+
 import cv2
 import numpy as np
 import torch

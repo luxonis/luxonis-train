@@ -1,3 +1,7 @@
+"""The default loader, over an existing dataset or a directory it parses
+into one.
+"""
+
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal

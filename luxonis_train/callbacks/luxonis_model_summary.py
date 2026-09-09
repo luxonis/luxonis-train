@@ -1,3 +1,7 @@
+"""Prints the layer summary of the model, as a rich table or as plain
+text.
+"""
+
 from io import StringIO
 from typing import Any
 

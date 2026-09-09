@@ -1,3 +1,5 @@
+"""Uploads the best checkpoint to the tracker as training runs."""
+
 from copy import copy
 from pathlib import Path
 from typing import Any

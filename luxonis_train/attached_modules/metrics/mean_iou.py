@@ -1,3 +1,5 @@
+"""Mean intersection over union over segmentation masks."""
+
 from typing import Literal
 
 import torch

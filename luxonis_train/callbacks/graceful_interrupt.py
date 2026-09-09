@@ -1,3 +1,10 @@
+"""Turns the first interrupt into a clean stop.
+
+The callback saves a resume checkpoint and skips the remaining train-end
+callbacks. A second interrupt exits at once.
+
+"""
+
 import os
 import signal
 import sys

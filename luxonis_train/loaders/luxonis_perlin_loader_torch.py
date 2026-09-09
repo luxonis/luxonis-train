@@ -1,3 +1,8 @@
+"""The loader of the anomaly detection model, which pastes Perlin noise
+from a texture dataset onto a clean image and returns the mask as the
+label.
+"""
+
 import random
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager

@@ -1,3 +1,11 @@
+"""The ONNX export, and the conversions that follow it.
+
+The module simplifies the graph, renames the outputs to the names a
+parser expects, and hands the result to the HubAI SDK or to
+blobconverter.
+
+"""
+
 import copy
 import os
 import shutil

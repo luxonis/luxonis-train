@@ -1,3 +1,7 @@
+"""The YOLOv8 detection loss: classification, box regression, and
+distribution focal loss over the regression bins.
+"""
+
 from typing import cast
 
 import torch

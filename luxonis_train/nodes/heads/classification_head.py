@@ -1,3 +1,5 @@
+"""A classification head over pooled features."""
+
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override

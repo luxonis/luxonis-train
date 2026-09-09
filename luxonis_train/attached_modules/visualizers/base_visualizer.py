@@ -1,3 +1,5 @@
+"""The base class every visualizer inherits."""
+
 from abc import abstractmethod
 from functools import cached_property
 from inspect import Parameter

@@ -1,3 +1,8 @@
+"""Helpers for building blocks: the padding a convolution needs to keep
+its size, a factory that defers module construction, and a forward pass
+that collects intermediate outputs.
+"""
+
 from collections.abc import Iterable
 from typing import Protocol, TypeVar
 

@@ -1,3 +1,5 @@
+"""Draws the points a FOMO head predicts."""
+
 import torch
 from torch import Tensor
 from torchvision.utils import draw_keypoints

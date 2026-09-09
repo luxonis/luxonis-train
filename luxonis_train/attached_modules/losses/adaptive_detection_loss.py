@@ -1,3 +1,7 @@
+"""The YOLOv6 detection loss, and the varifocal loss it uses for
+classification.
+"""
+
 from typing import Literal, cast
 
 import torch

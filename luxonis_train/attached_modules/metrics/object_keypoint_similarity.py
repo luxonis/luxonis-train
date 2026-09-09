@@ -1,3 +1,10 @@
+"""Object keypoint similarity, the keypoint counterpart of IoU.
+
+The per-keypoint sigmas set how much deviation a keypoint tolerates, so
+they change the score as much as the predictions do.
+
+"""
+
 from typing import Annotated
 
 import torch

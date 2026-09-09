@@ -1,3 +1,33 @@
+"""Callbacks that run at points in the training loop.
+
+The trainer calls the callbacks in the order the config lists them.
+
+Added automatically:
+    - `ModelCheckpoint` on the minimum validation loss, and a second
+      one on the main metric when a config sets it
+    - `GracefulInterruptCallback`, `FailOnNoTrainBatches`,
+      `LuxonisModelSummary`, and `TrainingManager`
+    - `LuxonisRichProgressBar` when ``rich_logging`` is true, and
+      `LuxonisTQDMProgressBar` when it is false
+    - `GradientAccumulationScheduler` when
+      ``trainer.accumulate_grad_batches`` is set and no scheduler is
+      configured
+    - `ConvertOnTrainEnd`, `TestOnTrainEnd`, and `UploadCheckpoint`
+      when ``smart_cfg_auto_populate`` is true
+
+Also registered:
+    `AIMETCallback`, `ArchiveOnTrainEnd`, `EMACallback`,
+    `ExportOnTrainEnd`, `GradCamCallback`, `MetadataLogger`, and
+    `TrainingProgressCallback`, plus the ``lightning.pytorch``
+    callbacks `DeviceStatsMonitor`, `EarlyStopping`,
+    `LearningRateMonitor`, `ModelPruning`, `StochasticWeightAveraging`,
+    and `Timer`.
+
+`ConvertOnTrainEnd` exports, archives, and converts in one step. Prefer
+it over a separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd`.
+
+"""
+
 from lightning.pytorch.callbacks import (
     DeviceStatsMonitor,
     EarlyStopping,

@@ -1,3 +1,7 @@
+"""Online hard example mining, which wraps another loss and keeps only
+the highest values.
+"""
+
 from typing import Literal
 
 import torch

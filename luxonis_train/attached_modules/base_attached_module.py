@@ -1,3 +1,11 @@
+"""The base class every loss, metric, and visualizer inherits.
+
+It resolves the predictions and labels a module asks for by the names of
+its ``forward`` parameters, and fails early when the node it attaches to
+cannot supply them.
+
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from contextlib import suppress

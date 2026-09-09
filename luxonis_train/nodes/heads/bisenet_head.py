@@ -1,3 +1,5 @@
+"""The BiSeNet segmentation head."""
+
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override

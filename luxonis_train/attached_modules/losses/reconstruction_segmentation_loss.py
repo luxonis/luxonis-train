@@ -1,3 +1,7 @@
+"""The DRAEM loss, which combines the structural similarity of the
+reconstruction with a focal loss over the anomaly mask.
+"""
+
 from math import exp
 from typing import Literal
 

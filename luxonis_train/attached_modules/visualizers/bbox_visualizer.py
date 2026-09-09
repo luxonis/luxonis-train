@@ -1,3 +1,5 @@
+"""Draws bounding boxes, class labels, and scores."""
+
 import logging
 
 import torch

@@ -1,3 +1,5 @@
+"""The blocks of the PPLCNetV3 backbone."""
+
 from contextlib import suppress
 
 import torch

@@ -1,3 +1,7 @@
+"""The ghost modules of GhostFaceNet, which produce part of the feature
+maps with cheap operations instead of full convolutions.
+"""
+
 import math
 from typing import Literal
 

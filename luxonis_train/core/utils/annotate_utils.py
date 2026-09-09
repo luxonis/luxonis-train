@@ -1,3 +1,7 @@
+"""Pre-annotation of a directory of images with a trained model, into a
+new dataset.
+"""
+
 from collections.abc import Iterable
 from contextlib import suppress
 from pathlib import Path

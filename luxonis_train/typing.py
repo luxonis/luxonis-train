@@ -1,3 +1,5 @@
+"""The type aliases shared across the package."""
+
 from typing import Literal, TypeAlias, TypeVar
 
 from torch import Size, Tensor

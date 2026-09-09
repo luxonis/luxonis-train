@@ -1,3 +1,7 @@
+"""Helpers behind the Lightning module: the node wrappers, the loss
+accumulator, the metric postprocessing, and the image logging.
+"""
+
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import suppress

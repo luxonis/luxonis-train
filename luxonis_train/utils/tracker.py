@@ -1,3 +1,7 @@
+"""The experiment tracker, over TensorBoard, Weights and Biases, and
+MLFlow.
+"""
+
 from typing import Any
 
 from lightning.pytorch.loggers.logger import Logger

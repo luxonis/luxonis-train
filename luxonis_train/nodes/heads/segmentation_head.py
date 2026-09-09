@@ -1,3 +1,5 @@
+"""The FCN segmentation head."""
+
 from typing import Any
 
 from luxonis_ml.typing import Params

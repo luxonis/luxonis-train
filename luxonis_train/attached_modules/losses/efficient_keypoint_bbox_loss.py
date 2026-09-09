@@ -1,3 +1,7 @@
+"""The YOLO-Pose loss, which supervises boxes, keypoint positions, and
+keypoint visibility together.
+"""
+
 from typing import Literal
 
 import torch

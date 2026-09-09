@@ -1,3 +1,5 @@
+"""The base class every loader inherits, and the type of one sample."""
+
 from abc import ABC, abstractmethod
 from typing import Any, Literal, cast
 

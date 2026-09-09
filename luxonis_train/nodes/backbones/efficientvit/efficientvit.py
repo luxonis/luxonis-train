@@ -1,3 +1,7 @@
+"""The EfficientViT backbone, which replaces softmax attention with a
+linear variant to keep the cost low at high resolution.
+"""
+
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from typeguard import typechecked

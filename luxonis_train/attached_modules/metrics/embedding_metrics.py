@@ -1,3 +1,7 @@
+"""Metrics over an embedding space: whether the closest neighbour shares
+the label, and how far the positive pairs sit.
+"""
+
 import math
 from typing import Annotated
 

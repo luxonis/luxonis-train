@@ -1,3 +1,7 @@
+"""Draws keypoints, the skeleton that connects them, and the boxes they
+belong to.
+"""
+
 from copy import deepcopy
 
 import numpy as np

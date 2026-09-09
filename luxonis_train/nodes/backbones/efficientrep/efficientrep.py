@@ -1,3 +1,7 @@
+"""The EfficientRep backbone of YOLOv6, built from reparameterizable
+blocks that fold into plain convolutions for export.
+"""
+
 from typing import Literal, cast
 
 from luxonis_ml.typing import Kwargs

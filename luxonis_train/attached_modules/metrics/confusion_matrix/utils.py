@@ -1,3 +1,7 @@
+"""Helpers for the confusion matrices: mask preprocessing and the
+Matthews correlation coefficient.
+"""
+
 import torch
 from torch import Tensor
 
