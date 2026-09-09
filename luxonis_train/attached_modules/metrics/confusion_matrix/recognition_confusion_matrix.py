@@ -51,9 +51,14 @@ class RecognitionConfusionMatrix(BaseMetric):
                 - name: RecognitionConfusionMatrix
 
     Compatible with:
-        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
-          `SegmentationHead`, `TransformerClassificationHead`,
-          `TransformerSegmentationHead`
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
 
     """
 

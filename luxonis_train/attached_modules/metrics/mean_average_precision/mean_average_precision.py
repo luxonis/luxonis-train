@@ -46,10 +46,18 @@ class MeanAveragePrecision:
                 - name: MeanAveragePrecision
 
     Compatible with:
-        - Used by: `DetectionModel`, `InstanceSegmentationModel`,
-          `KeypointDetectionModel`
-        - Nodes: `EfficientBBoxHead`, `EfficientKeypointBBoxHead`,
-          `PrecisionBBoxHead`, `PrecisionSegmentBBoxHead`
+        - Used by:
+
+          - `DetectionModel`
+          - `InstanceSegmentationModel`
+          - `KeypointDetectionModel`
+
+        - Nodes:
+
+          - `EfficientBBoxHead`
+          - `EfficientKeypointBBoxHead`
+          - `PrecisionBBoxHead`
+          - `PrecisionSegmentBBoxHead`
 
     """
 

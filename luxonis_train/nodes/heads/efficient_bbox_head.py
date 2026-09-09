@@ -89,8 +89,12 @@ class EfficientBBoxHead(BaseDetectionHead):
         - Required labels: ``boundingbox``
         - Used by: `DetectionModel`
         - Losses: `AdaptiveDetectionLoss`
-        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`,
-          `PrecisionRecallCurve`
+        - Metrics:
+
+          - `ConfusionMatrix`
+          - `MeanAveragePrecision`
+          - `PrecisionRecallCurve`
+
         - Visualizers: `BBoxVisualizer`
         - Export parser: ``YOLO``
         - Pretrained weights: available through ``weights: download``

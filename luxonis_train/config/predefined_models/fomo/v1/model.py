@@ -49,7 +49,10 @@ class FOMOModel(SimplePredefinedModel):
         - Metrics: `ConfusionMatrix`
         - Visualizers: `FOMOVisualizer`
         - Main metric: `ConfusionMatrix`
-        - Variants: ``light``, ``heavy``
+        - Variants:
+
+          - ``light``
+          - ``heavy``
 
     """
 

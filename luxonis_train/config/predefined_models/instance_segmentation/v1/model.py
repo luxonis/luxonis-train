@@ -35,10 +35,18 @@ class InstanceSegmentationModel(SimplePredefinedModel):
     Components:
         - Nodes: `EfficientRep` -> `RepPANNeck` -> `PrecisionSegmentBBoxHead`
         - Losses: `PrecisionDFLSegmentationLoss`
-        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`
+        - Metrics:
+
+          - `ConfusionMatrix`
+          - `MeanAveragePrecision`
+
         - Visualizers: `InstanceSegmentationVisualizer`
         - Main metric: `MeanAveragePrecision`
-        - Variants: ``light``, ``medium``, ``heavy``
+        - Variants:
+
+          - ``light``
+          - ``medium``
+          - ``heavy``
 
     """
 

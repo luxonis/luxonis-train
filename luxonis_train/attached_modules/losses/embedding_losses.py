@@ -91,15 +91,30 @@ for _loss_name in EMBEDDING_LOSSES:
 
         Compatible with:
             - Nodes: `GhostFaceNetHead`
-            - Registered under: ``AngularLoss``, ``CircleLoss``,
-              ``ContrastiveLoss``, ``DynamicSoftMarginLoss``, ``FastAPLoss``,
-              ``GeneralizedLiftedStructureLoss``, ``HistogramLoss``,
-              ``InstanceLoss``, ``IntraPairVarianceLoss``, ``LiftedStructureLoss``,
-              ``MarginLoss``, ``MultiSimilarityLoss``, ``NCALoss``, ``NPairsLoss``,
-              ``NTXentLoss``, ``PNPLoss``, ``RankedListLoss``,
-              ``SignalToNoiseRatioContrastiveLoss``, ``SupConLoss``,
-              ``ThresholdConsistentMarginLoss``, ``TripletMarginLoss``,
-              ``TupletMarginLoss``
+            - Registered under:
+
+              - ``AngularLoss``
+              - ``CircleLoss``
+              - ``ContrastiveLoss``
+              - ``DynamicSoftMarginLoss``
+              - ``FastAPLoss``
+              - ``GeneralizedLiftedStructureLoss``
+              - ``HistogramLoss``
+              - ``InstanceLoss``
+              - ``IntraPairVarianceLoss``
+              - ``LiftedStructureLoss``
+              - ``MarginLoss``
+              - ``MultiSimilarityLoss``
+              - ``NCALoss``
+              - ``NPairsLoss``
+              - ``NTXentLoss``
+              - ``PNPLoss``
+              - ``RankedListLoss``
+              - ``SignalToNoiseRatioContrastiveLoss``
+              - ``SupConLoss``
+              - ``ThresholdConsistentMarginLoss``
+              - ``TripletMarginLoss``
+              - ``TupletMarginLoss``
 
         """
 

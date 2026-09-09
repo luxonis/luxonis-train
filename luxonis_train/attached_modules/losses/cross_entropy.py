@@ -49,9 +49,14 @@ class CrossEntropyLoss(BaseLoss):
 
     Compatible with:
         - Used by: `ClassificationModel`
-        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
-          `SegmentationHead`, `TransformerClassificationHead`,
-          `TransformerSegmentationHead`
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
 
     """
 

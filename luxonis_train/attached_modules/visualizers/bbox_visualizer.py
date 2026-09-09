@@ -53,7 +53,10 @@ class BBoxVisualizer(BaseVisualizer):
 
     Compatible with:
         - Used by: `DetectionModel`
-        - Nodes: `EfficientBBoxHead`, `PrecisionBBoxHead`
+        - Nodes:
+
+          - `EfficientBBoxHead`
+          - `PrecisionBBoxHead`
 
     """
 

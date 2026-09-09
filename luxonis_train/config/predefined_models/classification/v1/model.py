@@ -37,10 +37,19 @@ class ClassificationModel(SimplePredefinedModel):
     Components:
         - Nodes: `ResNet` -> `ClassificationHead`
         - Losses: `CrossEntropyLoss`
-        - Metrics: `Accuracy`, `ConfusionMatrix`, `F1Score`, `Recall`
+        - Metrics:
+
+          - `Accuracy`
+          - `ConfusionMatrix`
+          - `F1Score`
+          - `Recall`
+
         - Visualizers: `ClassificationVisualizer`
         - Main metric: `F1Score`
-        - Variants: ``light``, ``heavy``
+        - Variants:
+
+          - ``light``
+          - ``heavy``
 
     """
 

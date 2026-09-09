@@ -67,7 +67,10 @@ class ObjectKeypointSimilarity(BaseMetric):
 
     Compatible with:
         - Used by: `KeypointDetectionModel`
-        - Nodes: `EfficientKeypointBBoxHead`, `FOMOHead`
+        - Nodes:
+
+          - `EfficientKeypointBBoxHead`
+          - `FOMOHead`
 
     """
 

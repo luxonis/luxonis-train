@@ -57,7 +57,10 @@ class ClassificationVisualizer(BaseVisualizer):
 
     Compatible with:
         - Used by: `ClassificationModel`
-        - Nodes: `ClassificationHead`, `TransformerClassificationHead`
+        - Nodes:
+
+          - `ClassificationHead`
+          - `TransformerClassificationHead`
 
     """
 

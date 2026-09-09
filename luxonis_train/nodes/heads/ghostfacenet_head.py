@@ -51,16 +51,36 @@ class GhostFaceNetHead(BaseHead):
         - Attach index: ``-1``, the last output of the input node
         - Required labels: ``metadata/id``
         - Used by: `EmbeddingsModel`
-        - Losses: ``AngularLoss``, ``CircleLoss``, ``ContrastiveLoss``,
-          ``DynamicSoftMarginLoss``, ``FastAPLoss``,
-          ``GeneralizedLiftedStructureLoss``, ``HistogramLoss``,
-          ``InstanceLoss``, ``IntraPairVarianceLoss``, ``LiftedStructureLoss``,
-          ``MarginLoss``, ``MultiSimilarityLoss``, ``NCALoss``, ``NPairsLoss``,
-          ``NTXentLoss``, ``PNPLoss``, ``RankedListLoss``,
-          ``SignalToNoiseRatioContrastiveLoss``, ``SupConLoss``,
-          ``ThresholdConsistentMarginLoss``, ``TripletMarginLoss``,
-          ``TupletMarginLoss``
-        - Metrics: `ClosestIsPositiveAccuracy`, `MedianDistances`
+        - Losses:
+
+          - ``AngularLoss``
+          - ``CircleLoss``
+          - ``ContrastiveLoss``
+          - ``DynamicSoftMarginLoss``
+          - ``FastAPLoss``
+          - ``GeneralizedLiftedStructureLoss``
+          - ``HistogramLoss``
+          - ``InstanceLoss``
+          - ``IntraPairVarianceLoss``
+          - ``LiftedStructureLoss``
+          - ``MarginLoss``
+          - ``MultiSimilarityLoss``
+          - ``NCALoss``
+          - ``NPairsLoss``
+          - ``NTXentLoss``
+          - ``PNPLoss``
+          - ``RankedListLoss``
+          - ``SignalToNoiseRatioContrastiveLoss``
+          - ``SupConLoss``
+          - ``ThresholdConsistentMarginLoss``
+          - ``TripletMarginLoss``
+          - ``TupletMarginLoss``
+
+        - Metrics:
+
+          - `ClosestIsPositiveAccuracy`
+          - `MedianDistances`
+
         - Visualizers: `EmbeddingsVisualizer`
 
     """

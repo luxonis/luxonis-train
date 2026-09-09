@@ -39,7 +39,11 @@ class EmbeddingsModel(BasePredefinedModel):
     Components:
         - Nodes: `GhostFaceNet` -> `GhostFaceNetHead`
         - Losses: ``SupConLoss``
-        - Metrics: `ClosestIsPositiveAccuracy`, `MedianDistances`
+        - Metrics:
+
+          - `ClosestIsPositiveAccuracy`
+          - `MedianDistances`
+
         - Visualizers: `EmbeddingsVisualizer`
         - Variants: ``default``
 

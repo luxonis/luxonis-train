@@ -550,7 +550,9 @@ def _attachment_lines(head: type) -> list[str]:
         names = sorted(
             name
             for name, cls in registry._module_dict.items()
-            if _attaches(cls, head) and name not in hidden
+            if _attaches(cls, head)
+            and name not in hidden
+            and _is_config_name(cls, registry)
         )
         if not names:
             continue
@@ -578,7 +580,9 @@ def _node_compatible(cls: type) -> list[str]:
             names = sorted(
                 name
                 for name, module in registry._module_dict.items()
-                if _attaches(module, cls) and name not in hidden
+                if _attaches(module, cls)
+                and name not in hidden
+                and _is_config_name(module, registry)
             )
             if names:
                 lines += _wrap_list(label, names, link=True)
@@ -598,8 +602,45 @@ def _wrap_list(
     if not names:
         return []
     render = _ref if link else _literal
-    joined = ", ".join(render(name) for name in names)
-    return _wrap(f"- {label}: {joined}")
+    if len(names) == 1:
+        return _wrap(f"- {label}: {render(names[0])}")
+    items = [line for name in names for line in _wrap(f"- {render(name)}")]
+    return [f"- {label}:", "", *(f"  {line}" for line in items), ""]
+
+
+def _is_config_name(cls: type, registry: object) -> bool:
+    """Whether a config may name the class.
+
+    A registry auto-registers every subclass, so it also holds base
+    classes nobody names. `TorchMetricWrapper` is one: the metrics that
+    derive from it are the names a config uses.
+
+    """
+    if _is_exported(cls):
+        return True
+    members = registry._module_dict.values()  # type: ignore[attr-defined]
+    return not any(
+        other is not cls and issubclass(other, cls) for other in members
+    )
+
+
+def _is_exported(cls: type) -> bool:
+    """Whether a package lists the class in its ``__all__``.
+
+    A class the registry holds but no package exports is not meant to be
+    named in a config.
+
+    """
+    parts = cls.__module__.split(".")
+    for i in range(len(parts) - 1, 0, -1):
+        package = sys.modules.get(".".join(parts[:i]))
+        if package is None:
+            continue
+        if getattr(package, cls.__name__, None) is cls and (
+            cls.__name__ in getattr(package, "__all__", ())
+        ):
+            return True
+    return False
 
 
 def _wrap(text: str) -> list[str]:
@@ -663,6 +704,8 @@ def _hidden_by_factory(registry: object, head: type) -> set[str]:
             continue
         if _factory_tasks(cls) is None or not _attaches(cls, head):
             continue
+        if not _is_exported(cls):
+            continue  # a base class the registry picked up on its own
         module = sys.modules[cls.__module__]
         hidden |= {
             other
@@ -765,6 +808,8 @@ def _replace(
     lines: list[str], start: int, end: int, block: list[str]
 ) -> list[str]:
     indent = " " * (len(lines[start]) - len(lines[start].lstrip()))
+    while block and not block[-1].strip():
+        block = block[:-1]
     body = [
         indent + BEGIN,
         "",

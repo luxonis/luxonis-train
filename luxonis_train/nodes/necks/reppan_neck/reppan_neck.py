@@ -85,8 +85,12 @@ class RepPANNeck(BaseNode):
 
     Compatible with:
         - Attach index: ``"all"``, every output of the input node
-        - Used by: `DetectionModel`, `InstanceSegmentationModel`,
-          `KeypointDetectionModel`
+        - Used by:
+
+          - `DetectionModel`
+          - `InstanceSegmentationModel`
+          - `KeypointDetectionModel`
+
         - Pretrained weights: available through ``weights: download``
 
     """

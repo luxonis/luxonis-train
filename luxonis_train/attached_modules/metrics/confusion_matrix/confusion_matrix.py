@@ -47,13 +47,28 @@ class ConfusionMatrix:
                 - name: ConfusionMatrix
 
     Compatible with:
-        - Used by: `ClassificationModel`, `DetectionModel`, `FOMOModel`,
-          `InstanceSegmentationModel`, `KeypointDetectionModel`,
-          `SegmentationModel`
-        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
-          `EfficientBBoxHead`, `EfficientKeypointBBoxHead`, `FOMOHead`,
-          `PrecisionBBoxHead`, `PrecisionSegmentBBoxHead`, `SegmentationHead`,
-          `TransformerClassificationHead`, `TransformerSegmentationHead`
+        - Used by:
+
+          - `ClassificationModel`
+          - `DetectionModel`
+          - `FOMOModel`
+          - `InstanceSegmentationModel`
+          - `KeypointDetectionModel`
+          - `SegmentationModel`
+
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `EfficientBBoxHead`
+          - `EfficientKeypointBBoxHead`
+          - `FOMOHead`
+          - `PrecisionBBoxHead`
+          - `PrecisionSegmentBBoxHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
 
     """
 

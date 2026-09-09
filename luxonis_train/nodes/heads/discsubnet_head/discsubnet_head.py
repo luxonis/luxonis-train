@@ -69,10 +69,21 @@ class DiscSubNetHead(BaseHead):
 
     Compatible with:
         - Attach index: ``-1``, the last output of the input node
-        - Required labels: ``original_segmentation``, ``segmentation``
+        - Required labels:
+
+          - ``original_segmentation``
+          - ``segmentation``
+
         - Used by: `AnomalyDetectionModel`
         - Losses: `ReconstructionSegmentationLoss`
-        - Metrics: `TorchMetricWrapper`
+        - Metrics:
+
+          - `Accuracy`
+          - `F1Score`
+          - `JaccardIndex`
+          - `Precision`
+          - `Recall`
+
         - Visualizers: `SegmentationVisualizer`
 
     """

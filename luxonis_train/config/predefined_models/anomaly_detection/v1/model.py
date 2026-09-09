@@ -43,7 +43,10 @@ class AnomalyDetectionModel(SimplePredefinedModel):
         - Metrics: `JaccardIndex`
         - Visualizers: `SegmentationVisualizer`
         - Main metric: `JaccardIndex`
-        - Variants: ``light``, ``heavy``
+        - Variants:
+
+          - ``light``
+          - ``heavy``
 
     """
 

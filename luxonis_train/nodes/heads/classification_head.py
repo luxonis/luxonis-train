@@ -50,10 +50,24 @@ class ClassificationHead(BaseHead):
         - Attach index: ``-1``, the last output of the input node
         - Required labels: ``classification``
         - Used by: `ClassificationModel`
-        - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
-          `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`
-        - Metrics: `Accuracy`, `ConfusionMatrix`, `F1Score`, `JaccardIndex`,
-          `Precision`, `Recall`
+        - Losses:
+
+          - `BCEWithLogitsLoss`
+          - `CrossEntropyLoss`
+          - `OHEMLoss`
+          - `SigmoidFocalLoss`
+          - `SmoothBCEWithLogitsLoss`
+          - `SoftmaxFocalLoss`
+
+        - Metrics:
+
+          - `Accuracy`
+          - `ConfusionMatrix`
+          - `F1Score`
+          - `JaccardIndex`
+          - `Precision`
+          - `Recall`
+
         - Visualizers: `ClassificationVisualizer`
         - Export parser: ``ClassificationParser``
 

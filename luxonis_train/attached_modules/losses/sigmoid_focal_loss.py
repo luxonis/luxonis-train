@@ -45,9 +45,14 @@ class SigmoidFocalLoss(BaseLoss):
                 - name: SigmoidFocalLoss
 
     Compatible with:
-        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
-          `SegmentationHead`, `TransformerClassificationHead`,
-          `TransformerSegmentationHead`
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
 
     """
 

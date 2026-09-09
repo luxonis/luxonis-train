@@ -45,10 +45,18 @@ class DetectionModel(SimplePredefinedModel):
     Components:
         - Nodes: `EfficientRep` -> `RepPANNeck` -> `EfficientBBoxHead`
         - Losses: `AdaptiveDetectionLoss`
-        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`
+        - Metrics:
+
+          - `ConfusionMatrix`
+          - `MeanAveragePrecision`
+
         - Visualizers: `BBoxVisualizer`
         - Main metric: `MeanAveragePrecision`
-        - Variants: ``light``, ``medium``, ``heavy``
+        - Variants:
+
+          - ``light``
+          - ``medium``
+          - ``heavy``
 
     """
 

@@ -53,8 +53,12 @@ class MIoU(BaseMetric):
                     num_classes: 2
 
     Compatible with:
-        - Nodes: `BiSeNetHead`, `DDRNetSegmentationHead`, `SegmentationHead`,
-          `TransformerSegmentationHead`
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerSegmentationHead`
 
     """
 
