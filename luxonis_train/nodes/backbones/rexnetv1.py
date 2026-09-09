@@ -48,6 +48,9 @@ class ReXNetV1_lite(BaseNode):
 
             - name: ReXNetV1_lite
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     def __init__(

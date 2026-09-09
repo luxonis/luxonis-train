@@ -69,6 +69,7 @@ class DDRNet(BaseNode):
               variant: 23-slim
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Used by: `SegmentationModel`
         - Pretrained weights: available through ``weights: download``
 

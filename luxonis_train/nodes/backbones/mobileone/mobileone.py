@@ -87,6 +87,9 @@ class MobileOne(BaseNode):
             - name: MobileOne
               variant: s0
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     in_channels: int

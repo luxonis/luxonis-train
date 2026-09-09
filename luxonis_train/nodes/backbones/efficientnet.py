@@ -50,6 +50,9 @@ class EfficientNet(BaseNode):
 
             - name: EfficientNet
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     def __init__(

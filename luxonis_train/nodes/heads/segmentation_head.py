@@ -50,6 +50,7 @@ class SegmentationHead(BaseHead):
               inputs: [RepPANNeck]
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``segmentation``
         - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
           `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`

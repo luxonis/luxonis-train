@@ -54,6 +54,9 @@ class ContextSpatial(BaseNode):
 
             - name: ContextSpatial
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     def __init__(

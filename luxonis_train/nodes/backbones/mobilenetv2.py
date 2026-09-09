@@ -49,6 +49,9 @@ class MobileNetV2(BaseNode):
 
             - name: MobileNetV2
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     def __init__(

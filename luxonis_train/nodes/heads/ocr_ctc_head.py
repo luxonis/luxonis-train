@@ -58,6 +58,7 @@ class OCRCTCHead(BaseHead):
                 alphabet: ["a", "b", "c"]
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``metadata/text``
         - Used by: `OCRRecognitionModel`
         - Losses: `CTCLoss`

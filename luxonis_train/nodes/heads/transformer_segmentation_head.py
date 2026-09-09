@@ -57,6 +57,7 @@ class TransformerSegmentationHead(BaseHead):
               inputs: [DinoV3]
 
     Compatible with:
+        - Attach index: ``"all"``, every output of the input node
         - Required labels: ``segmentation``
         - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
           `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`

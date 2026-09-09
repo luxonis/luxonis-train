@@ -81,6 +81,9 @@ class EfficientViT(BaseNode):
             - name: EfficientViT
               variant: n
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     in_channels: int

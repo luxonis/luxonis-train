@@ -63,6 +63,7 @@ class RecSubNet(BaseNode):
               variant: l
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Used by: `AnomalyDetectionModel`
 
     """

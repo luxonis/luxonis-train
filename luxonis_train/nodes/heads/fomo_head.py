@@ -63,6 +63,7 @@ class FOMOHead(BaseHead):
               inputs: [EfficientRep]
 
     Compatible with:
+        - Attach index: ``1``, output 1 of the input node
         - Required labels: ``boundingbox``
         - Used by: `FOMOModel`
         - Losses: `FOMOLocalizationLoss`

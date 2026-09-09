@@ -62,6 +62,7 @@ class DDRNetSegmentationHead(BaseHead):
               inputs: [DDRNet]
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``segmentation``
         - Used by: `SegmentationModel`
         - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,

@@ -47,6 +47,7 @@ class ClassificationHead(BaseHead):
               inputs: [ResNet]
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``classification``
         - Used by: `ClassificationModel`
         - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,

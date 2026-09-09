@@ -329,6 +329,9 @@ class MicroNet(BaseNode):
             - name: MicroNet
               variant: M1
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     @typechecked

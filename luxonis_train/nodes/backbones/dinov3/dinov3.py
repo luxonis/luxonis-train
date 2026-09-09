@@ -145,6 +145,9 @@ class DinoV3(BaseNode):
               params:
                 weights_link: "<path or URL to the DINOv3 weights>"
 
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     in_height: int

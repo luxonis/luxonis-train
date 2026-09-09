@@ -87,6 +87,7 @@ class EfficientRep(BaseNode):
               variant: n
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Used by: `DetectionModel`, `FOMOModel`, `InstanceSegmentationModel`,
           `KeypointDetectionModel`
         - Pretrained weights: available through ``weights: download``

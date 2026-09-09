@@ -48,6 +48,7 @@ class GhostFaceNetHead(BaseHead):
               inputs: [GhostFaceNet]
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``metadata/id``
         - Used by: `EmbeddingsModel`
         - Losses: ``AngularLoss``, ``CircleLoss``, ``ContrastiveLoss``,

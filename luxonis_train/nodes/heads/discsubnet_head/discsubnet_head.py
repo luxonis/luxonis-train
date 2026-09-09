@@ -68,6 +68,7 @@ class DiscSubNetHead(BaseHead):
               variant: n
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Required labels: ``original_segmentation``, ``segmentation``
         - Used by: `AnomalyDetectionModel`
         - Losses: `ReconstructionSegmentationLoss`

@@ -58,7 +58,15 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             task of the node. Usually defined for head nodes.
 
     Attributes:
-        attach_index (AttachIndexType): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply.
+        attach_index (AttachIndexType): Which output of the input node this node
+            reads. It is a single index, a tuple of two or three integers to take
+            a range, or ``"all"`` to take every output. Python indexing
+            conventions apply, so ``-1`` is the last output.
+
+            A subclass that leaves it unset gets it from the annotation of the
+            first `forward` parameter: ``Tensor`` gives ``-1`` and
+            ``list[Tensor]`` gives ``"all"``. Set it explicitly when `forward`
+            takes anything else, or the node cannot attach.
 
     """
 
@@ -94,7 +102,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             in_sizes (``Size | list[Size] | None``): List of input sizes for the node. Provide only in case the ``input_shapes`` were not provided.
             remove_on_export (bool): If set to True, the node will be removed from the model during export. Defaults to False.
             export_output_names (list[str] | None): List of output names for the export.
-            attach_index (AttachIndexType | None): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
+            attach_index (AttachIndexType | None): Which output of the input node this node reads. It overrides the class attribute, and the node logs a warning when it does. See the class docstring for the accepted values and for how an unset index is inferred.
             task_name (str | None): Specifies which task group from the dataset to use in case the dataset contains multiple tasks. Otherwise, the task group is inferred from the dataset metadata.
             weights (``str | Literal["download", "yolo", "none"] | None``): Checkpoint URL, special initialization mode, or weight-loading mode. Defaults to None.
 

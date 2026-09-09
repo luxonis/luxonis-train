@@ -83,6 +83,7 @@ class PPLCNetV3(BaseNode):
               variant: rec-light
 
     Compatible with:
+        - Attach index: ``-1``, the last output of the input node
         - Used by: `OCRRecognitionModel`
 
     """

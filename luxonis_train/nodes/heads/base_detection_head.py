@@ -15,7 +15,14 @@ from luxonis_train.nodes.heads import BaseHead
 
 
 class BaseDetectionHead(BaseHead):
-    """Base class for YOLO-like multi-head instance detection heads."""
+    """Base class for YOLO-like multi-head instance detection heads.
+
+    The head reads the last ``n_heads`` outputs of the node before it, so
+    its ``attach_index`` is ``(-n_heads - 1, -1)`` and follows ``n_heads``
+    rather than being fixed. Set ``attach_index`` in the node ``params``
+    to override that.
+
+    """
 
     parser = "YOLO"
 
