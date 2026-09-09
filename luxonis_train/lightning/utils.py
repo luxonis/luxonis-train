@@ -567,7 +567,7 @@ def metric_artifact_image_name(
 ) -> str:
     """Build the tracker image name for a metric artifact.
 
-    The epoch is deliberately not part of the name - C{log_image}
+    The epoch is deliberately not part of the name - ``log_image``
     inserts the step as its own path segment, the same way visualization
     images are named.
 
@@ -580,7 +580,7 @@ def metric_artifact_image_name(
 def mlflow_image_key(name: str, step: int) -> str:
     """Return the MLflow artifact path an image is logged under.
 
-    Mirrors the path construction of C{LuxonisTracker.log_image}, which
+    Mirrors the path construction of ``LuxonisTracker.log_image``, which
     splits the caption off the name and puts the step in between.
 
     """
@@ -905,7 +905,7 @@ def _select_balanced_indices(
 ) -> list[int]:
     """Pick batch indices that keep per-class logging balanced.
 
-    Mutates C{class_log_counts} in place.
+    Mutates ``class_log_counts`` in place.
 
     """
     logged_indices = []

@@ -16,6 +16,15 @@ from .utils import batch_iou, candidates_in_gt, fix_collisions
 
 
 class TaskAlignedAssigner(nn.Module):
+    """Assign a ground truth box to the anchors that score best on both
+    tasks.
+
+    The score of an anchor combines its classification confidence and
+    its IoU, so the assignment favours an anchor that is already good at
+    both.
+
+    """
+
     def __init__(
         self,
         n_classes: int,

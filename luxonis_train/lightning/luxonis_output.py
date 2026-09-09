@@ -13,6 +13,13 @@ from luxonis_train.utils import to_shape_packet
 
 @dataclass
 class LuxonisOutput:
+    """The result of one forward pass.
+
+    It holds the outputs of every node, the losses, the metrics, and the
+    visualizations, each keyed by the node they belong to.
+
+    """
+
     outputs: dict[str, Packet[Tensor]]
     losses: dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]
     visualizations: dict[str, dict[str, Tensor]] = field(default_factory=dict)

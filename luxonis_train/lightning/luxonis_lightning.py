@@ -580,7 +580,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @property
     def training_plan(self) -> TrainingPlanRuntime | None:
         """The built optimizer/scheduler runtime of the last
-        `configure_optimizers` call, or C{None} before the first call
+        `configure_optimizers` call, or ``None`` before the first call
         (and under a training strategy).
         """
         return self._training_plan

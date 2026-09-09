@@ -2,7 +2,7 @@
 
 The freeze/unfreeze schedule is a pure function of the config: a node
 with ``freezing.active`` is frozen for every epoch before its resolved
-unfreeze epoch and trainable afterwards. L{FreezeSchedule.apply} is
+unfreeze epoch and trainable afterwards. `FreezeSchedule.apply` is
 idempotent and is driven at ``setup`` time and at the start of every
 training epoch, so a resumed run converges to the correct state without
 any checkpointed callback state:
@@ -20,6 +20,7 @@ unfreeze_epoch``). A run resumed *past* the edge must not re-apply it:
 the checkpoint already carries the scheduler-evolved learning rate, and
 re-applying would permanently corrupt recursive schedulers such as
 ``StepLR``.
+
 """
 
 from dataclasses import dataclass, field
@@ -47,8 +48,9 @@ def resolve_unfreeze_epoch(
 ) -> int | None:
     """Resolve ``freezing.unfreeze_after`` to an epoch number.
 
-    C{None} means "frozen for the whole run" and resolves to the total
+    ``None`` means "frozen for the whole run" and resolves to the total
     number of epochs; a float is a fraction of the total.
+
     """
     if not freezing.active:
         return None
@@ -85,6 +87,7 @@ class NodeFreezePlan:
         trainable, so design-frozen parameters and BatchNorm layers
         constructed with ``track_running_stats=False`` keep their
         configuration.
+
         """
         parameters = list(module.parameters())
         batch_norms = [
@@ -174,7 +177,7 @@ class FreezeSchedule:
         epoch: int,
         runtime: "TrainingPlanRuntime | None" = None,
     ) -> None:
-        """Converge the model to the scheduled state for C{epoch}.
+        """Converge the model to the scheduled state for ``epoch``.
 
         Idempotent: re-derives ``requires_grad`` and BatchNorm
         statistics tracking from the schedule and the original
@@ -182,6 +185,7 @@ class FreezeSchedule:
         ``lr_after_unfreeze`` is applied only on the exact unfreeze
         epoch (see the module docstring for why a resumed run past the
         edge must not re-apply it).
+
         """
         for plan in self._plans:
             _apply_plan(plan, epoch, runtime)

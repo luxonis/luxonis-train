@@ -42,10 +42,12 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             *args (``Any``): Positional arguments forwarded to
                 `LuxonisLoaderTorch`.
             anomaly_source_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the anomaly dataset used
-                to draw random noise samples.
+                to draw random noise samples. The Describable Textures
+                Dataset (DTD) works well here.
             noise_prob (float): Probability of applying Perlin noise.
             beta (float | None): Opacity of the anomaly mask. If ``None``, a
-                random value is chosen.
+                random value is chosen, which is the better choice in
+                most cases.
             **kwargs (``Any``): Keyword arguments forwarded to `LuxonisLoaderTorch`.
 
         """

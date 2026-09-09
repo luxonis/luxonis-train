@@ -21,11 +21,11 @@ def rebase_scheduler_lr(
     scheduler: LRScheduler | ReduceLROnPlateau, index: int, lr: float
 ) -> None:
     """Rewrite the base learning rate of one parameter group inside a
-    scheduler, recursing into C{SequentialLR}/C{ChainedScheduler}
+    scheduler, recursing into ``SequentialLR``/``ChainedScheduler``
     children.
 
-    C{ReduceLROnPlateau} has no C{base_lrs}; for it the group-level
-    C{lr}/C{initial_lr} writes (done by the caller) are the rebase.
+    ``ReduceLROnPlateau`` has no ``base_lrs``; for it the group-level
+    ``lr``/``initial_lr`` writes (done by the caller) are the rebase.
 
     """
     children = getattr(scheduler, "_schedulers", None)
@@ -39,17 +39,17 @@ def rebase_scheduler_lr(
 
 class CompositeLRScheduler(LRScheduler):
     """Fans one Lightning-facing scheduler out to member schedulers,
-    each of which owns one inner optimizer of a L{CompositeOptimizer}.
+    each of which owns one inner optimizer of a `CompositeOptimizer`.
 
-    Lightning requires C{scheduler.optimizer} to be identical to an
-    optimizer returned from C{configure_optimizers}, while the member
+    Lightning requires ``scheduler.optimizer`` to be identical to an
+    optimizer returned from ``configure_optimizers``, while the member
     schedulers must be constructed against the inner optimizers (so
-    their C{base_lrs} line up with the inner parameter groups) - hence
+    their ``base_lrs`` line up with the inner parameter groups) - hence
     this wrapper.
 
-    Deliberately does not call C{LRScheduler.__init__}: the members
+    Deliberately does not call ``LRScheduler.__init__``: the members
     already performed their initial step and patched their own
-    optimizers' C{step} counters.
+    optimizers' ``step`` counters.
 
     """
 
@@ -96,9 +96,9 @@ class CompositeLRScheduler(LRScheduler):
 
 
 class CompositeReduceLROnPlateau(ReduceLROnPlateau):
-    """Plateau counterpart of L{CompositeLRScheduler}.
+    """Plateau counterpart of `CompositeLRScheduler`.
 
-    Members are real C{ReduceLROnPlateau} instances over their inner
+    Members are real ``ReduceLROnPlateau`` instances over their inner
     optimizers; Lightning passes the monitored value positionally.
 
     """

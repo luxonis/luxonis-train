@@ -10,6 +10,15 @@ from .utils import batch_iou, bbox_iou, candidates_in_gt, fix_collisions
 
 
 class ATSSAssigner(nn.Module):
+    """Assign a ground truth box to the anchors that should predict it.
+
+    The assigner sets the IoU threshold from the statistics of the
+    candidates of each box, so a large object and a small one each get a
+    sensible number of positive anchors. The detection losses use it for
+    the first few epochs, before they switch to `TaskAlignedAssigner`.
+
+    """
+
     def __init__(self, n_classes: int, topk: int = 9):
         """Initialize the Adaptive Training Sample Selection assigner.
 

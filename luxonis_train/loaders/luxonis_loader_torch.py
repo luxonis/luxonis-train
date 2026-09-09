@@ -21,6 +21,15 @@ from luxonis_train.typing import Labels
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
+    """The default loader, over a Luxonis dataset.
+
+    Give ``dataset_name`` to read a dataset that exists. Give
+    ``dataset_dir`` to parse a directory into a new one, in any of the
+    formats ``LuxonisParser`` recognizes. Give both to parse the
+    directory and save it under that name.
+
+    """
+
     def __init__(
         self,
         dataset_name: str | None = None,

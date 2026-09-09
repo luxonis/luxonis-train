@@ -17,6 +17,16 @@ from .base_strategy import BaseTrainingStrategy
 
 
 class TripleLRSGDStrategy(BaseTrainingStrategy):
+    """SGD over three parameter groups, with a warmup.
+
+    The strategy splits the parameters into the normalization weights,
+    the other weights, and the biases, and applies weight decay to the
+    weights only. A linear warmup raises the learning rate over the
+    first epochs, and the bias group starts from a higher rate. Cosine
+    annealing then decays every group to ``lre``.
+
+    """
+
     BATCH_NORM_TAG = "triple_lr/batch_norm_weights"
     WEIGHT_TAG = "triple_lr/weights"
     BIAS_TAG = "triple_lr/biases"
