@@ -3,7 +3,11 @@ import torch
 from pytest_subtests import SubTests
 from torch import Size
 
-from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
+from luxonis_train.loaders import (
+    BaseLoaderTorch,
+    LuxonisLoaderTorch,
+    LuxonisLoaderTorchOutput,
+)
 
 
 class DummyLoader(BaseLoaderTorch):
@@ -110,3 +114,17 @@ def test_collate_fn_rejects_mixed_input_types(tensor_first: bool):
 
     with pytest.raises(TypeError, match="same input type"):
         loader.collate_fn(batch)
+
+
+def test_keypoint_mapping_rejects_an_unknown_task():
+    with pytest.raises(KeyError, match="not present in dataset tasks"):
+        LuxonisLoaderTorch._validate_keypoint_task(
+            "hands", {"faces": ["keypoints"]}
+        )
+
+
+def test_keypoint_mapping_rejects_a_task_without_keypoints():
+    with pytest.raises(KeyError, match="doesn't have `keypoints`"):
+        LuxonisLoaderTorch._validate_keypoint_task(
+            "faces", {"faces": ["boundingbox"]}
+        )
