@@ -16,6 +16,7 @@ def _intersect_defaults(inners: Sequence[Optimizer]) -> dict[str, Any]:
     group whenever C{"betas" in optimizer.defaults}, so a key may only
     survive when every inner optimizer (and therefore every parameter
     group) supports it. Values are taken from the first inner.
+
     """
     keys = set(inners[0].defaults)
     for inner in inners[1:]:
@@ -30,6 +31,7 @@ class _CompositeState(MutableMapping[Tensor, Any]):
     inner optimizer owning the parameter, so code like Lightning's
     C{_optimizer_to_device} (which reassigns C{optimizer.state[p]})
     keeps working against the composite.
+
     """
 
     def __init__(self, inners: Sequence[Optimizer]):
@@ -84,6 +86,7 @@ class CompositeOptimizer(Optimizer):
     contract Lightning relies on (the C{Optimizable} protocol,
     C{step(closure)}, C{zero_grad}, C{state_dict}/C{load_state_dict})
     is implemented directly instead.
+
     """
 
     STATE_DICT_FORMAT = "luxonis_composite"
@@ -227,6 +230,7 @@ def unwrap_optimizers(
 
     Identity for plain optimizers, so callers can treat the single-
     optimizer bypass and the composite path uniformly.
+
     """
     unwrapped: list[Optimizer] = []
     for optimizer in optimizers:

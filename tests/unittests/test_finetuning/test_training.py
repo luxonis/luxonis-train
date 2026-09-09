@@ -21,6 +21,7 @@ def test_multi_optimizer_training_updates_every_optimizer(
     Only "at least one parameter per optimizer moved" can be asserted -
     `DummyLoader` yields constant images, so the first convolution's
     weight legitimately receives a zero gradient.
+
     """
     model = lxt.LuxonisModel(
         config(
@@ -88,6 +89,7 @@ def test_resuming_past_the_unfreeze_epoch_keeps_training_the_node(
     run, otherwise the node is either dropped from the optimizer (or the
     checkpointed optimizer state fails to load outright) or it silently
     stays frozen for the rest of training.
+
     """
     rule: Params = {
         "parameters": [{"module_type": "Linear"}],
@@ -217,6 +219,7 @@ def test_strategy_with_freezing_trains_unfrozen_node(
     filtered them out at build time and the exclusion-set contract could
     not adopt them later). The total partition guarantees they sit in a
     group from the start.
+
     """
     active = tiny_head_node({"parameters": [{"module_type": "Linear"}]})
     active["alias"] = "ActiveHead"

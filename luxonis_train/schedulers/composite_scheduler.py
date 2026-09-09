@@ -22,6 +22,7 @@ def rebase_scheduler_lr(
 
     C{ReduceLROnPlateau} has no C{base_lrs}; for it the group-level
     C{lr}/C{initial_lr} writes (done by the caller) are the rebase.
+
     """
     children = getattr(scheduler, "_schedulers", None)
     if children is not None:
@@ -45,6 +46,7 @@ class CompositeLRScheduler(LRScheduler):
     Deliberately does not call C{LRScheduler.__init__}: the members
     already performed their initial step and patched their own
     optimizers' C{step} counters.
+
     """
 
     def __init__(
@@ -94,6 +96,7 @@ class CompositeReduceLROnPlateau(ReduceLROnPlateau):
 
     Members are real C{ReduceLROnPlateau} instances over their inner
     optimizers; Lightning passes the monitored value positionally.
+
     """
 
     def __init__(
