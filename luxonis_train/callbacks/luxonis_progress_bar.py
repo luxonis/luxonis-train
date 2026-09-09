@@ -289,7 +289,6 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         self._print_result_tables(metrics, matrices, self._log_console)
         self._log_console.rule()
 
-        # Dump to logger
         logger.bind(file_only=True).info("\n" + self._log_buffer.getvalue())
         self._log_buffer.seek(0)
         self._log_buffer.truncate(0)

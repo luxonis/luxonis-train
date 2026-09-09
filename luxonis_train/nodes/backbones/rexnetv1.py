@@ -126,7 +126,6 @@ class ReXNetV1_lite(BaseNode):
         strides: list[int],
         kernel_sizes: int | list[int],
     ) -> tuple[list[int], list[int], list[int]]:
-        """Expand the per-stage configs into per-block lists."""
         if isinstance(kernel_sizes, int):
             kernel_sizes = [kernel_sizes] * 6
 

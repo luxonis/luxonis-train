@@ -56,34 +56,19 @@ def _loader_details(
     dataloaders = (
         flattened if isinstance(flattened, list) else [combined_loader]
     )
-    details: tuple[int | None, int | None, bool | None] = (None, None, None)
+    dataloaders = [loader for loader in dataloaders if loader is not None]
+    dataset_len = batch_size = drop_last = None
     for dataloader in dataloaders:
-        if dataloader is None:
-            continue
-        details = _merge_loader_details(details, dataloader)
-        if all(value is not None for value in details):
+        if dataset_len is None:
+            dataset = getattr(dataloader, "dataset", None)
+            if dataset is not None:
+                dataset_len = sized_len(dataset)
+        if batch_size is None:
+            batch_size = getattr(dataloader, "batch_size", None)
+        if drop_last is None:
+            drop_last = getattr(dataloader, "drop_last", None)
+        if None not in (dataset_len, batch_size, drop_last):
             break
-    return details
-
-
-def _merge_loader_details(
-    details: tuple[int | None, int | None, bool | None], dataloader: object
-) -> tuple[int | None, int | None, bool | None]:
-    dataset_len, batch_size, drop_last = details
-    if dataset_len is None:
-        dataset = getattr(dataloader, "dataset", None)
-        if dataset is not None:
-            dataset_len = sized_len(dataset)
-    batch_size = (
-        batch_size
-        if batch_size is not None
-        else getattr(dataloader, "batch_size", None)
-    )
-    drop_last = (
-        drop_last
-        if drop_last is not None
-        else getattr(dataloader, "drop_last", None)
-    )
     return dataset_len, batch_size, drop_last
 
 
@@ -123,12 +108,12 @@ def _format_details(
     ):
         missing = min_required - dataset_len
 
-    details = _join(
+    details = _format_fields(
         dataset_size=dataset_len,
         min_required_size=min_required,
         missing=missing,
     )
-    params = _join(
+    params = _format_fields(
         batch_size=batch_size,
         world_size=world_size,
         drop_last=drop_last,
@@ -137,7 +122,7 @@ def _format_details(
     return f"(details: {details}; params: {params})"
 
 
-def _join(**parts: object) -> str:
+def _format_fields(**parts: object) -> str:
     return ", ".join(
         f"{name}={value}" for name, value in parts.items() if value is not None
     )

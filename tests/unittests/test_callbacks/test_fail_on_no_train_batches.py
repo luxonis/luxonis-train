@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import lightning.pytorch as pl
 import pytest
 import torch
@@ -9,7 +7,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from luxonis_train.callbacks.fail_on_no_train_batches import (
     FailOnNoTrainBatches,
     _format_details,
-    _merge_loader_details,
     _minimum_batch_count,
     _minimum_required_size,
 )
@@ -39,16 +36,6 @@ def test_minimum_required_size_without_drop_last():
 def test_minimum_required_size_needs_batch_size_and_drop_last():
     assert _minimum_required_size(None, True, 1, 1.0) is None
     assert _minimum_required_size(8, None, 1, 1.0) is None
-
-
-def test_merge_loader_details_fills_missing_fields():
-    loader = SimpleNamespace(dataset=[1, 2, 3], batch_size=4, drop_last=True)
-    assert _merge_loader_details((None, None, None), loader) == (3, 4, True)
-
-
-def test_merge_loader_details_keeps_known_fields():
-    loader = SimpleNamespace(dataset=[1], batch_size=4, drop_last=False)
-    assert _merge_loader_details((7, 2, True), loader) == (7, 2, True)
 
 
 def test_format_details_renders_all_parts():
