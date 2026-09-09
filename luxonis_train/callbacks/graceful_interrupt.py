@@ -31,6 +31,15 @@ class GracefulInterruptCallback(pl.Callback):
     def __init__(
         self, save_dir: Path, tracker: LuxonisTrackerPL | None = None
     ):
+        """Set where the interrupt checkpoint goes.
+
+        Args:
+            save_dir (``Path``): Where to write ``resume.ckpt`` on the
+                first interrupt.
+            tracker (`LuxonisTrackerPL` | None): A tracker to upload
+                that checkpoint to.
+
+        """
         super().__init__()
         self.save_dir = Path(save_dir)
         self.tracker = tracker

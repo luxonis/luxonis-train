@@ -36,6 +36,12 @@ from luxonis_train.registry import CALLBACKS
 
 @CALLBACKS.register()
 class GPUStatsMonitor(pl.Callback):
+    """Log the utilization, the memory, and the temperature of each GPU.
+
+    The callback reads ``nvidia-smi``, so it needs an NVIDIA driver.
+
+    """
+
     def __init__(
         self,
         memory_utilization: bool = True,

@@ -9,6 +9,14 @@ from luxonis_train.registry import CALLBACKS
 
 @CALLBACKS.register()
 class AIMETCallback(NeedsCheckpoint):
+    """Quantize the model with AIMET when training ends.
+
+    The ``exporter.aimet`` section of the config holds the options. The
+    advanced techniques are slow: AdaRound alone can take from 40 minutes to
+    several hours.
+
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

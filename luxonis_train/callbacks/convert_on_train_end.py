@@ -9,8 +9,22 @@ from .needs_checkpoint import NeedsCheckpoint
 
 
 class ConvertOnTrainEnd(NeedsCheckpoint):
-    """Callback that exports, archives, and converts the model on train
-    end.
+    """Export, archive, and convert the model when training ends.
+
+    The callback runs these steps in order:
+
+    1. Export the model to ONNX.
+    2. Build an NN Archive around it.
+    3. Run ``blobconverter`` when ``exporter.blobconverter.active`` is
+       true.
+    4. Run the HubAI SDK conversion when ``exporter.hubai.active`` is
+       true.
+
+    Prefer this callback over a separate `ExportOnTrainEnd
+    <luxonis_train.callbacks.ExportOnTrainEnd>` and `ArchiveOnTrainEnd
+    <luxonis_train.callbacks.ArchiveOnTrainEnd>`, which together do the
+    first two steps only.
+
     """
 
     def on_train_end(

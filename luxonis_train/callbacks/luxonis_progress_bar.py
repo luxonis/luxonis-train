@@ -39,6 +39,13 @@ from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
+    """The behaviour both progress bars share.
+
+    A subclass prints the metrics of an epoch as a table and mirrors the
+    output to the log file.
+
+    """
+
     _epoch_start_time: float
 
     @override
@@ -423,10 +430,10 @@ def build_optimizer_summary(
     Two different denominators are used, chosen so that percentages sum
     naturally in the axis the reader cares about:
 
-        - B{Group-level} percentages are relative to all model parameters,
+        - **Group-level** percentages are relative to all model parameters,
           so summing across all groups of all optimizers gives 100% (modulo
           unclaimed / external parameters).
-        - B{Owner-level} percentages inside each group are relative to all
+        - **Owner-level** percentages inside each group are relative to all
           parameters belonging to that owner, so summing all appearances of
           a single owner across the optimizers gives 100% — telling the
           reader how each node's parameters were split across groups.
