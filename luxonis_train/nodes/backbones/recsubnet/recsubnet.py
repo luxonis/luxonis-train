@@ -63,7 +63,7 @@ class RecSubNet(BaseNode):
               variant: l
 
     Compatible with:
-        - Used by: ``AnomalyDetectionModel``
+        - Used by: `AnomalyDetectionModel`
 
     """
 

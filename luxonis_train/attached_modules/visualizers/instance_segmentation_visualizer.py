@@ -60,8 +60,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
                 - name: InstanceSegmentationVisualizer
 
     Compatible with:
-        - Used by: ``InstanceSegmentationModel``
-        - Nodes: ``PrecisionSegmentBBoxHead``
+        - Used by: `InstanceSegmentationModel`
+        - Nodes: `PrecisionSegmentBBoxHead`
 
     """
 

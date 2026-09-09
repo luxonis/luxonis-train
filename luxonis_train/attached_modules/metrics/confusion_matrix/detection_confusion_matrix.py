@@ -53,8 +53,8 @@ class DetectionConfusionMatrix(BaseMetric):
                 - name: DetectionConfusionMatrix
 
     Compatible with:
-        - Nodes: ``EfficientBBoxHead``, ``EfficientKeypointBBoxHead``,
-          ``PrecisionBBoxHead``, ``PrecisionSegmentBBoxHead``
+        - Nodes: `EfficientBBoxHead`, `EfficientKeypointBBoxHead`,
+          `PrecisionBBoxHead`, `PrecisionSegmentBBoxHead`
 
     """
 

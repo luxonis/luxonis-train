@@ -64,10 +64,10 @@ class FOMOHead(BaseHead):
 
     Compatible with:
         - Required labels: ``boundingbox``
-        - Used by: ``FOMOModel``
-        - Losses: ``FOMOLocalizationLoss``
-        - Metrics: ``ConfusionMatrix``, ``ObjectKeypointSimilarity``
-        - Visualizers: ``FOMOVisualizer``, ``KeypointVisualizer``
+        - Used by: `FOMOModel`
+        - Losses: `FOMOLocalizationLoss`
+        - Metrics: `ConfusionMatrix`, `ObjectKeypointSimilarity`
+        - Visualizers: `FOMOVisualizer`, `KeypointVisualizer`
 
     """
 

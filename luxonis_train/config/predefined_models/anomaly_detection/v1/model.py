@@ -38,11 +38,11 @@ class AnomalyDetectionModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``RecSubNet`` -> ``DiscSubNetHead``
-        - Losses: ``ReconstructionSegmentationLoss``
-        - Metrics: ``JaccardIndex``
-        - Visualizers: ``SegmentationVisualizer``
-        - Main metric: ``JaccardIndex``
+        - Nodes: `RecSubNet` -> `DiscSubNetHead`
+        - Losses: `ReconstructionSegmentationLoss`
+        - Metrics: `JaccardIndex`
+        - Visualizers: `SegmentationVisualizer`
+        - Main metric: `JaccardIndex`
         - Variants: ``light``, ``heavy``
 
     """

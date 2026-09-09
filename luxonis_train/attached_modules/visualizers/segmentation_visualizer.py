@@ -52,10 +52,9 @@ class SegmentationVisualizer(BaseVisualizer):
                 - name: SegmentationVisualizer
 
     Compatible with:
-        - Used by: ``AnomalyDetectionModel``, ``SegmentationModel``
-        - Nodes: ``BiSeNetHead``, ``DDRNetSegmentationHead``,
-          ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerSegmentationHead``
+        - Used by: `AnomalyDetectionModel`, `SegmentationModel`
+        - Nodes: `BiSeNetHead`, `DDRNetSegmentationHead`, `DiscSubNetHead`,
+          `SegmentationHead`, `TransformerSegmentationHead`
 
     """
 

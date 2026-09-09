@@ -55,8 +55,8 @@ class KeypointVisualizer(BBoxVisualizer):
                 - name: KeypointVisualizer
 
     Compatible with:
-        - Used by: ``KeypointDetectionModel``
-        - Nodes: ``EfficientKeypointBBoxHead``, ``FOMOHead``
+        - Used by: `KeypointDetectionModel`
+        - Nodes: `EfficientKeypointBBoxHead`, `FOMOHead`
 
     """
 

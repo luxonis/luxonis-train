@@ -92,11 +92,11 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
     Compatible with:
         - Required labels: ``boundingbox``, ``instance_segmentation``
-        - Used by: ``InstanceSegmentationModel``
-        - Losses: ``PrecisionDFLSegmentationLoss``
-        - Metrics: ``ConfusionMatrix``, ``MeanAveragePrecision``,
-          ``PrecisionRecallCurve``
-        - Visualizers: ``InstanceSegmentationVisualizer``
+        - Used by: `InstanceSegmentationModel`
+        - Losses: `PrecisionDFLSegmentationLoss`
+        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`,
+          `PrecisionRecallCurve`
+        - Visualizers: `InstanceSegmentationVisualizer`
         - Export parser: ``YOLOExtendedParser``
 
     """

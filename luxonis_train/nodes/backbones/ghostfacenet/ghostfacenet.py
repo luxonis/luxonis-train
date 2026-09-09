@@ -118,7 +118,7 @@ class GhostFaceNet(BaseNode):
               variant: V2
 
     Compatible with:
-        - Used by: ``EmbeddingsModel``
+        - Used by: `EmbeddingsModel`
 
     """
 

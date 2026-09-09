@@ -49,8 +49,8 @@ class CTCLoss(BaseLoss):
                 - name: CTCLoss
 
     Compatible with:
-        - Used by: ``OCRRecognitionModel``
-        - Nodes: ``OCRCTCHead``
+        - Used by: `OCRRecognitionModel`
+        - Nodes: `OCRCTCHead`
 
     """
 

@@ -55,8 +55,8 @@ class OCRAccuracy(BaseMetric):
                 - name: OCRAccuracy
 
     Compatible with:
-        - Used by: ``OCRRecognitionModel``
-        - Nodes: ``OCRCTCHead``
+        - Used by: `OCRRecognitionModel`
+        - Nodes: `OCRCTCHead`
 
     """
 

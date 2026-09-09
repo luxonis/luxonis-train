@@ -37,12 +37,12 @@ class SegmentationModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``DDRNet`` -> ``DDRNetSegmentationHead`` ->
-          ``DDRNetSegmentationHead``
-        - Losses: ``OHEMLoss``
-        - Metrics: ``ConfusionMatrix``, ``F1Score``, ``JaccardIndex``
-        - Visualizers: ``SegmentationVisualizer``
-        - Main metric: ``JaccardIndex``
+        - Nodes: `DDRNet` -> `DDRNetSegmentationHead` ->
+          `DDRNetSegmentationHead`
+        - Losses: `OHEMLoss`
+        - Metrics: `ConfusionMatrix`, `F1Score`, `JaccardIndex`
+        - Visualizers: `SegmentationVisualizer`
+        - Main metric: `JaccardIndex`
         - Variants: ``light``, ``heavy``
 
     """

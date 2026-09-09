@@ -49,8 +49,8 @@ class FOMOLocalizationLoss(BaseLoss):
                 - name: FOMOLocalizationLoss
 
     Compatible with:
-        - Used by: ``FOMOModel``
-        - Nodes: ``FOMOHead``
+        - Used by: `FOMOModel`
+        - Nodes: `FOMOHead`
 
     """
 

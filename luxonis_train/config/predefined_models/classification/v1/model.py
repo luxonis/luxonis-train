@@ -35,11 +35,11 @@ class ClassificationModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``ResNet`` -> ``ClassificationHead``
-        - Losses: ``CrossEntropyLoss``
-        - Metrics: ``Accuracy``, ``ConfusionMatrix``, ``F1Score``, ``Recall``
-        - Visualizers: ``ClassificationVisualizer``
-        - Main metric: ``F1Score``
+        - Nodes: `ResNet` -> `ClassificationHead`
+        - Losses: `CrossEntropyLoss`
+        - Metrics: `Accuracy`, `ConfusionMatrix`, `F1Score`, `Recall`
+        - Visualizers: `ClassificationVisualizer`
+        - Main metric: `F1Score`
         - Variants: ``light``, ``heavy``
 
     """

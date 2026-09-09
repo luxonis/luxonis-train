@@ -48,10 +48,10 @@ class OHEMLoss(BaseLoss):
                 - name: OHEMLoss
 
     Compatible with:
-        - Used by: ``SegmentationModel``
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Used by: `SegmentationModel`
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 

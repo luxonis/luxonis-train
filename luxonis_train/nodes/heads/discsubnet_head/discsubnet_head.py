@@ -69,10 +69,10 @@ class DiscSubNetHead(BaseHead):
 
     Compatible with:
         - Required labels: ``original_segmentation``, ``segmentation``
-        - Used by: ``AnomalyDetectionModel``
-        - Losses: ``ReconstructionSegmentationLoss``
-        - Metrics: ``TorchMetricWrapper``
-        - Visualizers: ``SegmentationVisualizer``
+        - Used by: `AnomalyDetectionModel`
+        - Losses: `ReconstructionSegmentationLoss`
+        - Metrics: `TorchMetricWrapper`
+        - Visualizers: `SegmentationVisualizer`
 
     """
 

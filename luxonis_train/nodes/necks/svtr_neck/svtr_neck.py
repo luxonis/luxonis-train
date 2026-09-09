@@ -54,7 +54,7 @@ class SVTRNeck(BaseNode):
               inputs: [PPLCNetV3]
 
     Compatible with:
-        - Used by: ``OCRRecognitionModel``
+        - Used by: `OCRRecognitionModel`
 
     """
 

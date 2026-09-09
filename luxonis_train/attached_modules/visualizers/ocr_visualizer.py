@@ -47,8 +47,8 @@ class OCRVisualizer(BaseVisualizer):
                 - name: OCRVisualizer
 
     Compatible with:
-        - Used by: ``OCRRecognitionModel``
-        - Nodes: ``OCRCTCHead``
+        - Used by: `OCRRecognitionModel`
+        - Nodes: `OCRCTCHead`
 
     """
 

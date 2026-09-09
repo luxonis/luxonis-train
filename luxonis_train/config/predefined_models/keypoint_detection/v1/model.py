@@ -37,13 +37,12 @@ class KeypointDetectionModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``EfficientRep`` -> ``RepPANNeck`` ->
-          ``EfficientKeypointBBoxHead``
-        - Losses: ``EfficientKeypointBBoxLoss``
-        - Metrics: ``ConfusionMatrix``, ``MeanAveragePrecision``,
-          ``ObjectKeypointSimilarity``
-        - Visualizers: ``KeypointVisualizer``
-        - Main metric: ``MeanAveragePrecision``
+        - Nodes: `EfficientRep` -> `RepPANNeck` -> `EfficientKeypointBBoxHead`
+        - Losses: `EfficientKeypointBBoxLoss`
+        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`,
+          `ObjectKeypointSimilarity`
+        - Visualizers: `KeypointVisualizer`
+        - Main metric: `MeanAveragePrecision`
         - Variants: ``light``, ``medium``, ``heavy``
 
     """

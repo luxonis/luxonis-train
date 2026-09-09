@@ -44,11 +44,11 @@ class FOMOModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``EfficientRep`` -> ``FOMOHead``
-        - Losses: ``FOMOLocalizationLoss``
-        - Metrics: ``ConfusionMatrix``
-        - Visualizers: ``FOMOVisualizer``
-        - Main metric: ``ConfusionMatrix``
+        - Nodes: `EfficientRep` -> `FOMOHead`
+        - Losses: `FOMOLocalizationLoss`
+        - Metrics: `ConfusionMatrix`
+        - Visualizers: `FOMOVisualizer`
+        - Main metric: `ConfusionMatrix`
         - Variants: ``light``, ``heavy``
 
     """

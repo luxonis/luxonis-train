@@ -88,11 +88,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
     Compatible with:
         - Required labels: ``boundingbox``, ``keypoints``
-        - Used by: ``KeypointDetectionModel``
-        - Losses: ``EfficientKeypointBBoxLoss``
-        - Metrics: ``ConfusionMatrix``, ``MeanAveragePrecision``,
-          ``ObjectKeypointSimilarity``, ``PrecisionRecallCurve``
-        - Visualizers: ``KeypointVisualizer``
+        - Used by: `KeypointDetectionModel`
+        - Losses: `EfficientKeypointBBoxLoss`
+        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`,
+          `ObjectKeypointSimilarity`, `PrecisionRecallCurve`
+        - Visualizers: `KeypointVisualizer`
         - Export parser: ``YOLOExtendedParser``
 
     """

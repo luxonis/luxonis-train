@@ -49,8 +49,8 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
                 - name: MeanAveragePrecisionBBox
 
     Compatible with:
-        - Nodes: ``EfficientBBoxHead``, ``EfficientKeypointBBoxHead``,
-          ``PrecisionBBoxHead``, ``PrecisionSegmentBBoxHead``
+        - Nodes: `EfficientBBoxHead`, `EfficientKeypointBBoxHead`,
+          `PrecisionBBoxHead`, `PrecisionSegmentBBoxHead`
 
     """
 

@@ -56,8 +56,8 @@ class ClosestIsPositiveAccuracy(BaseMetric):
                 - name: ClosestIsPositiveAccuracy
 
     Compatible with:
-        - Used by: ``EmbeddingsModel``
-        - Nodes: ``GhostFaceNetHead``
+        - Used by: `EmbeddingsModel`
+        - Nodes: `GhostFaceNetHead`
 
     """
 
@@ -159,8 +159,8 @@ class MedianDistances(BaseMetric):
                 - name: MedianDistances
 
     Compatible with:
-        - Used by: ``EmbeddingsModel``
-        - Nodes: ``GhostFaceNetHead``
+        - Used by: `EmbeddingsModel`
+        - Nodes: `GhostFaceNetHead`
 
     """
 

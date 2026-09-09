@@ -59,11 +59,11 @@ class OCRRecognitionModel(SimplePredefinedModel):
                   variant: light
 
     Components:
-        - Nodes: ``PPLCNetV3`` -> ``SVTRNeck`` -> ``OCRCTCHead``
-        - Losses: ``CTCLoss``
-        - Metrics: ``OCRAccuracy``
-        - Visualizers: ``OCRVisualizer``
-        - Main metric: ``OCRAccuracy``
+        - Nodes: `PPLCNetV3` -> `SVTRNeck` -> `OCRCTCHead`
+        - Losses: `CTCLoss`
+        - Metrics: `OCRAccuracy`
+        - Visualizers: `OCRVisualizer`
+        - Main metric: `OCRAccuracy`
         - Variants: ``light``
 
     """

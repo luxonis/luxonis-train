@@ -69,7 +69,7 @@ class DDRNet(BaseNode):
               variant: 23-slim
 
     Compatible with:
-        - Used by: ``SegmentationModel``
+        - Used by: `SegmentationModel`
         - Pretrained weights: available through ``weights: download``
 
     """

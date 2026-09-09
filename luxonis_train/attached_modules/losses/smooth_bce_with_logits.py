@@ -45,9 +45,9 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
                 - name: SmoothBCEWithLogitsLoss
 
     Compatible with:
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 

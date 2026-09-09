@@ -49,7 +49,7 @@ class GhostFaceNetHead(BaseHead):
 
     Compatible with:
         - Required labels: ``metadata/id``
-        - Used by: ``EmbeddingsModel``
+        - Used by: `EmbeddingsModel`
         - Losses: ``AngularLoss``, ``CircleLoss``, ``ContrastiveLoss``,
           ``DynamicSoftMarginLoss``, ``FastAPLoss``,
           ``GeneralizedLiftedStructureLoss``, ``HistogramLoss``,
@@ -59,8 +59,8 @@ class GhostFaceNetHead(BaseHead):
           ``SignalToNoiseRatioContrastiveLoss``, ``SupConLoss``,
           ``ThresholdConsistentMarginLoss``, ``TripletMarginLoss``,
           ``TupletMarginLoss``
-        - Metrics: ``ClosestIsPositiveAccuracy``, ``MedianDistances``
-        - Visualizers: ``EmbeddingsVisualizer``
+        - Metrics: `ClosestIsPositiveAccuracy`, `MedianDistances`
+        - Visualizers: `EmbeddingsVisualizer`
 
     """
 

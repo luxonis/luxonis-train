@@ -224,14 +224,8 @@ def _model_components(
     nodes = _instantiate(cls, default)
     if nodes is None:  # pragma: no cover
         return _wrap_list("Variants", variants)
-    chain = " -> ".join(f"``{node.name}``" for node in nodes)
-    out = textwrap.wrap(
-        f"- Nodes: {chain}",
-        WIDTH,
-        subsequent_indent="  ",
-        break_long_words=False,
-        break_on_hyphens=False,
-    )
+    chain = " -> ".join(_ref(node.name) for node in nodes)
+    out = _wrap(f"- Nodes: {chain}")
     for label, key in (
         ("Losses", "losses"),
         ("Metrics", "metrics"),
@@ -241,7 +235,7 @@ def _model_components(
             {module.name for node in nodes for module in getattr(node, key)}
         )
         if names:
-            out += _wrap_list(label, names)
+            out += _wrap_list(label, names, link=True)
     main = next(
         (
             metric.name
@@ -252,7 +246,7 @@ def _model_components(
         None,
     )
     if main is not None:
-        out.append(f"- Main metric: ``{main}``")
+        out.append(f"- Main metric: {_ref(main)}")
     return out + _wrap_list("Variants", variants)
 
 
@@ -291,10 +285,12 @@ def _attached_block(
         "Example:",
         *_indent(_attached_yaml(cls, example_name, kind, head)),
     ]
-    compatible = _wrap_list("Used by", _used_by().get(example_name, []))
+    compatible = _wrap_list(
+        "Used by", _used_by().get(example_name, []), link=True
+    )
     if usable:
         compatible += _wrap_list(
-            "Nodes", sorted(head.__name__ for head in usable)
+            "Nodes", sorted(head.__name__ for head in usable), link=True
         )
     if len(names) > 1:
         compatible += _wrap_list("Registered under", sorted(names))
@@ -365,6 +361,63 @@ def _attached_yaml(
     ]
 
 
+def _literal(name: str) -> str:
+    return f"``{name}``"
+
+
+def _ref(name: str) -> str:
+    """Render a config name as a link to the class it names.
+
+    pydoctor resolves a bare name against the whole package, so the
+    dotted path is unnecessary.
+
+    """
+    return f"`{name}`" if name in _registered() else _literal(name)
+
+
+@functools.cache
+def _registered() -> dict[str, type]:
+    """Every config name pydoctor documents under that same name.
+
+    A name that resolves to a differently named class is left alone: the
+    22 embedding losses all resolve to one `EmbeddingLossWrapper`, and a
+    link whose label and target disagree misleads more than it helps.
+
+    """
+    from luxonis_train.registry import (
+        LOSSES,
+        METRICS,
+        MODELS,
+        NODES,
+        VISUALIZERS,
+    )
+
+    return {
+        name: cls
+        for registry in (NODES, LOSSES, METRICS, VISUALIZERS, MODELS)
+        for name, cls in registry._module_dict.items()
+        if name == cls.__name__ and _is_declared(cls)
+    }
+
+
+def _is_declared(cls: type) -> bool:
+    """Whether a `class` statement defines the class.
+
+    pydoctor reads the source, so it never sees a class that another
+    class builds at import time.
+
+    """
+    module = sys.modules.get(cls.__module__)
+    source = getattr(module, "__file__", None)
+    if source is None or not cls.__module__.startswith("luxonis_train"):
+        return False
+    tree = ast.parse(pathlib.Path(source).read_text(encoding="utf-8"))
+    return any(
+        isinstance(node, ast.ClassDef) and node.name == cls.__name__
+        for node in ast.walk(tree)
+    )
+
+
 def _required_labels(cls: type) -> list[str]:
     """List the dataset annotations a head needs to train."""
     task = getattr(cls, "task", None)
@@ -423,7 +476,7 @@ def _attachment_lines(head: type) -> list[str]:
 
 def _node_compatible(cls: type) -> list[str]:
     lines = _required_labels(cls) + _wrap_list(
-        "Used by", _used_by().get(cls.__name__, [])
+        "Used by", _used_by().get(cls.__name__, []), link=True
     )
     if _is_head(cls):
         from luxonis_train.registry import LOSSES, METRICS, VISUALIZERS
@@ -440,7 +493,7 @@ def _node_compatible(cls: type) -> list[str]:
                 if _attaches(module, cls) and name not in hidden
             )
             if names:
-                lines += _wrap_list(label, names)
+                lines += _wrap_list(label, names, link=True)
         parser = getattr(cls, "parser", "")
         if parser:
             lines += _wrap_list("Export parser", [parser])
@@ -451,12 +504,22 @@ def _node_compatible(cls: type) -> list[str]:
     return lines
 
 
-def _wrap_list(label: str, names: list[str]) -> list[str]:
+def _wrap_list(
+    label: str, names: list[str], *, link: bool = False
+) -> list[str]:
     if not names:
         return []
-    joined = ", ".join(f"``{name}``" for name in names)
+    render = _ref if link else _literal
+    joined = ", ".join(render(name) for name in names)
+    return _wrap(f"- {label}: {joined}")
+
+
+def _wrap(text: str) -> list[str]:
+    """Wrap a bullet, keeping each ``label <target>`` link on one
+    line.
+    """
     return textwrap.wrap(
-        f"- {label}: {joined}",
+        text,
         WIDTH,
         subsequent_indent="  ",
         break_long_words=False,

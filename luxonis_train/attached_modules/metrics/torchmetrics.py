@@ -54,9 +54,8 @@ class TorchMetricWrapper(BaseMetric):
                 - name: TorchMetricWrapper
 
     Compatible with:
-        - Nodes: ``BiSeNetHead``, ``DDRNetSegmentationHead``,
-          ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerSegmentationHead``
+        - Nodes: `BiSeNetHead`, `DDRNetSegmentationHead`, `DiscSubNetHead`,
+          `SegmentationHead`, `TransformerSegmentationHead`
 
     """
 
@@ -176,10 +175,10 @@ class Accuracy(TorchMetricWrapper):
                 - name: Accuracy
 
     Compatible with:
-        - Used by: ``ClassificationModel``
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Used by: `ClassificationModel`
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `DiscSubNetHead`, `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 
@@ -230,10 +229,10 @@ class F1Score(TorchMetricWrapper):
                 - name: F1Score
 
     Compatible with:
-        - Used by: ``ClassificationModel``, ``SegmentationModel``
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Used by: `ClassificationModel`, `SegmentationModel`
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `DiscSubNetHead`, `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 
@@ -285,10 +284,10 @@ class JaccardIndex(TorchMetricWrapper):
                 - name: JaccardIndex
 
     Compatible with:
-        - Used by: ``AnomalyDetectionModel``, ``SegmentationModel``
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Used by: `AnomalyDetectionModel`, `SegmentationModel`
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `DiscSubNetHead`, `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 
@@ -340,9 +339,9 @@ class Precision(TorchMetricWrapper):
                 - name: Precision
 
     Compatible with:
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `DiscSubNetHead`, `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 
@@ -393,10 +392,10 @@ class Recall(TorchMetricWrapper):
                 - name: Recall
 
     Compatible with:
-        - Used by: ``ClassificationModel``
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``DiscSubNetHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Used by: `ClassificationModel`
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `DiscSubNetHead`, `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 

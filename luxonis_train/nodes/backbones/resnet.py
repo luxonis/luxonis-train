@@ -74,7 +74,7 @@ class ResNet(BaseNode):
               variant: 18
 
     Compatible with:
-        - Used by: ``ClassificationModel``
+        - Used by: `ClassificationModel`
 
     """
 

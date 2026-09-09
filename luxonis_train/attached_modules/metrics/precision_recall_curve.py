@@ -71,8 +71,8 @@ class PrecisionRecallCurve(BaseMetric):
                 - name: PrecisionRecallCurve
 
     Compatible with:
-        - Nodes: ``EfficientBBoxHead``, ``EfficientKeypointBBoxHead``,
-          ``PrecisionBBoxHead``, ``PrecisionSegmentBBoxHead``
+        - Nodes: `EfficientBBoxHead`, `EfficientKeypointBBoxHead`,
+          `PrecisionBBoxHead`, `PrecisionSegmentBBoxHead`
 
     """
 

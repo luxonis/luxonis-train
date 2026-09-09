@@ -63,13 +63,12 @@ class DDRNetSegmentationHead(BaseHead):
 
     Compatible with:
         - Required labels: ``segmentation``
-        - Used by: ``SegmentationModel``
-        - Losses: ``BCEWithLogitsLoss``, ``CrossEntropyLoss``, ``OHEMLoss``,
-          ``SigmoidFocalLoss``, ``SmoothBCEWithLogitsLoss``,
-          ``SoftmaxFocalLoss``
-        - Metrics: ``ConfusionMatrix``, ``DiceCoefficient``, ``MIoU``,
-          ``TorchMetricWrapper``
-        - Visualizers: ``SegmentationVisualizer``
+        - Used by: `SegmentationModel`
+        - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
+          `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`
+        - Metrics: `ConfusionMatrix`, `DiceCoefficient`, `MIoU`,
+          `TorchMetricWrapper`
+        - Visualizers: `SegmentationVisualizer`
         - Export parser: ``SegmentationParser``
         - Pretrained weights: available through ``weights: download``
 

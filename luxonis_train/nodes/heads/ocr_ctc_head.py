@@ -59,10 +59,10 @@ class OCRCTCHead(BaseHead):
 
     Compatible with:
         - Required labels: ``metadata/text``
-        - Used by: ``OCRRecognitionModel``
-        - Losses: ``CTCLoss``
-        - Metrics: ``OCRAccuracy``
-        - Visualizers: ``OCRVisualizer``
+        - Used by: `OCRRecognitionModel`
+        - Losses: `CTCLoss`
+        - Metrics: `OCRAccuracy`
+        - Visualizers: `OCRVisualizer`
         - Export parser: ``ClassificationSequenceParser``
 
     """

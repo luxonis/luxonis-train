@@ -37,10 +37,10 @@ class EmbeddingsModel(BasePredefinedModel):
                   variant: default
 
     Components:
-        - Nodes: ``GhostFaceNet`` -> ``GhostFaceNetHead``
+        - Nodes: `GhostFaceNet` -> `GhostFaceNetHead`
         - Losses: ``SupConLoss``
-        - Metrics: ``ClosestIsPositiveAccuracy``, ``MedianDistances``
-        - Visualizers: ``EmbeddingsVisualizer``
+        - Metrics: `ClosestIsPositiveAccuracy`, `MedianDistances`
+        - Visualizers: `EmbeddingsVisualizer`
         - Variants: ``default``
 
     """

@@ -48,13 +48,12 @@ class ClassificationHead(BaseHead):
 
     Compatible with:
         - Required labels: ``classification``
-        - Used by: ``ClassificationModel``
-        - Losses: ``BCEWithLogitsLoss``, ``CrossEntropyLoss``, ``OHEMLoss``,
-          ``SigmoidFocalLoss``, ``SmoothBCEWithLogitsLoss``,
-          ``SoftmaxFocalLoss``
-        - Metrics: ``Accuracy``, ``ConfusionMatrix``, ``F1Score``,
-          ``JaccardIndex``, ``Precision``, ``Recall``
-        - Visualizers: ``ClassificationVisualizer``
+        - Used by: `ClassificationModel`
+        - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
+          `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`
+        - Metrics: `Accuracy`, `ConfusionMatrix`, `F1Score`, `JaccardIndex`,
+          `Precision`, `Recall`
+        - Visualizers: `ClassificationVisualizer`
         - Export parser: ``ClassificationParser``
 
     """

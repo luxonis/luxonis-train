@@ -65,7 +65,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 - name: PrecisionDFLDetectionLoss
 
     Compatible with:
-        - Nodes: ``PrecisionBBoxHead``
+        - Nodes: `PrecisionBBoxHead`
 
     """
 

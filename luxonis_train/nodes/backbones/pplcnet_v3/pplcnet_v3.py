@@ -83,7 +83,7 @@ class PPLCNetV3(BaseNode):
               variant: rec-light
 
     Compatible with:
-        - Used by: ``OCRRecognitionModel``
+        - Used by: `OCRRecognitionModel`
 
     """
 

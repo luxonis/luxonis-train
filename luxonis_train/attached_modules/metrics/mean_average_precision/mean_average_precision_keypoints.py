@@ -71,7 +71,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 - name: MeanAveragePrecisionKeypoints
 
     Compatible with:
-        - Nodes: ``EfficientKeypointBBoxHead``
+        - Nodes: `EfficientKeypointBBoxHead`
 
     """
 

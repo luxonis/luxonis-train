@@ -51,12 +51,11 @@ class SegmentationHead(BaseHead):
 
     Compatible with:
         - Required labels: ``segmentation``
-        - Losses: ``BCEWithLogitsLoss``, ``CrossEntropyLoss``, ``OHEMLoss``,
-          ``SigmoidFocalLoss``, ``SmoothBCEWithLogitsLoss``,
-          ``SoftmaxFocalLoss``
-        - Metrics: ``ConfusionMatrix``, ``DiceCoefficient``, ``MIoU``,
-          ``TorchMetricWrapper``
-        - Visualizers: ``SegmentationVisualizer``
+        - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
+          `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`
+        - Metrics: `ConfusionMatrix`, `DiceCoefficient`, `MIoU`,
+          `TorchMetricWrapper`
+        - Visualizers: `SegmentationVisualizer`
         - Export parser: ``SegmentationParser``
 
     """

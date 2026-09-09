@@ -46,8 +46,8 @@ class FOMOVisualizer(BBoxVisualizer):
                 - name: FOMOVisualizer
 
     Compatible with:
-        - Used by: ``FOMOModel``
-        - Nodes: ``FOMOHead``
+        - Used by: `FOMOModel`
+        - Nodes: `FOMOHead`
 
     """
 

@@ -68,8 +68,8 @@ class AdaptiveDetectionLoss(BaseLoss):
                 - name: AdaptiveDetectionLoss
 
     Compatible with:
-        - Used by: ``DetectionModel``
-        - Nodes: ``EfficientBBoxHead``
+        - Used by: `DetectionModel`
+        - Nodes: `EfficientBBoxHead`
 
     """
 

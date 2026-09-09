@@ -64,8 +64,8 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                 - name: PrecisionDFLSegmentationLoss
 
     Compatible with:
-        - Used by: ``InstanceSegmentationModel``
-        - Nodes: ``PrecisionSegmentBBoxHead``
+        - Used by: `InstanceSegmentationModel`
+        - Nodes: `PrecisionSegmentBBoxHead`
 
     """
 

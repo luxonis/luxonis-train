@@ -49,12 +49,11 @@ class TransformerClassificationHead(BaseHead):
 
     Compatible with:
         - Required labels: ``classification``
-        - Losses: ``BCEWithLogitsLoss``, ``CrossEntropyLoss``, ``OHEMLoss``,
-          ``SigmoidFocalLoss``, ``SmoothBCEWithLogitsLoss``,
-          ``SoftmaxFocalLoss``
-        - Metrics: ``Accuracy``, ``ConfusionMatrix``, ``F1Score``,
-          ``JaccardIndex``, ``Precision``, ``Recall``
-        - Visualizers: ``ClassificationVisualizer``
+        - Losses: `BCEWithLogitsLoss`, `CrossEntropyLoss`, `OHEMLoss`,
+          `SigmoidFocalLoss`, `SmoothBCEWithLogitsLoss`, `SoftmaxFocalLoss`
+        - Metrics: `Accuracy`, `ConfusionMatrix`, `F1Score`, `JaccardIndex`,
+          `Precision`, `Recall`
+        - Visualizers: `ClassificationVisualizer`
         - Export parser: ``ClassificationParser``
 
     """

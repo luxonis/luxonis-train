@@ -81,10 +81,10 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
     Compatible with:
         - Required labels: ``boundingbox``
-        - Losses: ``PrecisionDFLDetectionLoss``
-        - Metrics: ``ConfusionMatrix``, ``MeanAveragePrecision``,
-          ``PrecisionRecallCurve``
-        - Visualizers: ``BBoxVisualizer``
+        - Losses: `PrecisionDFLDetectionLoss`
+        - Metrics: `ConfusionMatrix`, `MeanAveragePrecision`,
+          `PrecisionRecallCurve`
+        - Visualizers: `BBoxVisualizer`
         - Export parser: ``YOLO``
 
     """

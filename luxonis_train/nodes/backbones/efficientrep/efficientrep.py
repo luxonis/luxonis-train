@@ -87,8 +87,8 @@ class EfficientRep(BaseNode):
               variant: n
 
     Compatible with:
-        - Used by: ``DetectionModel``, ``FOMOModel``,
-          ``InstanceSegmentationModel``, ``KeypointDetectionModel``
+        - Used by: `DetectionModel`, `FOMOModel`, `InstanceSegmentationModel`,
+          `KeypointDetectionModel`
         - Pretrained weights: available through ``weights: download``
 
     """

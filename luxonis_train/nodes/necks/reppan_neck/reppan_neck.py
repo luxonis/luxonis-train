@@ -84,8 +84,8 @@ class RepPANNeck(BaseNode):
               variant: n
 
     Compatible with:
-        - Used by: ``DetectionModel``, ``InstanceSegmentationModel``,
-          ``KeypointDetectionModel``
+        - Used by: `DetectionModel`, `InstanceSegmentationModel`,
+          `KeypointDetectionModel`
         - Pretrained weights: available through ``weights: download``
 
     """

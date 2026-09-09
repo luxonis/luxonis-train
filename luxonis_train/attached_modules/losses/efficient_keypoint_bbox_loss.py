@@ -72,8 +72,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
                 - name: EfficientKeypointBBoxLoss
 
     Compatible with:
-        - Used by: ``KeypointDetectionModel``
-        - Nodes: ``EfficientKeypointBBoxHead``
+        - Used by: `KeypointDetectionModel`
+        - Nodes: `EfficientKeypointBBoxHead`
 
     """
 

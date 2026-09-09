@@ -90,7 +90,7 @@ for _loss_name in EMBEDDING_LOSSES:
                     - name: AngularLoss
 
         Compatible with:
-            - Nodes: ``GhostFaceNetHead``
+            - Nodes: `GhostFaceNetHead`
             - Registered under: ``AngularLoss``, ``CircleLoss``,
               ``ContrastiveLoss``, ``DynamicSoftMarginLoss``, ``FastAPLoss``,
               ``GeneralizedLiftedStructureLoss``, ``HistogramLoss``,

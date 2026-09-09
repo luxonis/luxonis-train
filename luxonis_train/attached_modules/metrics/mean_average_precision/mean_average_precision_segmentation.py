@@ -53,7 +53,7 @@ class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
                 - name: MeanAveragePrecisionSegmentation
 
     Compatible with:
-        - Nodes: ``PrecisionSegmentBBoxHead``
+        - Nodes: `PrecisionSegmentBBoxHead`
 
     """
 

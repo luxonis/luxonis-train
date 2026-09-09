@@ -53,8 +53,8 @@ class EmbeddingsVisualizer(BaseVisualizer):
                 - name: EmbeddingsVisualizer
 
     Compatible with:
-        - Used by: ``EmbeddingsModel``
-        - Nodes: ``GhostFaceNetHead``
+        - Used by: `EmbeddingsModel`
+        - Nodes: `GhostFaceNetHead`
 
     """
 

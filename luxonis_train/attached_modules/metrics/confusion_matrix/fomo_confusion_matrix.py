@@ -51,7 +51,7 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
                 - name: FomoConfusionMatrix
 
     Compatible with:
-        - Nodes: ``FOMOHead``
+        - Nodes: `FOMOHead`
 
     """
 

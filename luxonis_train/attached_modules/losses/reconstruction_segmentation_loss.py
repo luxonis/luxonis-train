@@ -59,8 +59,8 @@ class ReconstructionSegmentationLoss(BaseLoss):
                 - name: ReconstructionSegmentationLoss
 
     Compatible with:
-        - Used by: ``AnomalyDetectionModel``
-        - Nodes: ``DiscSubNetHead``
+        - Used by: `AnomalyDetectionModel`
+        - Nodes: `DiscSubNetHead`
 
     """
 

@@ -57,7 +57,7 @@ class InstanceSegmentationConfusionMatrix(
                 - name: InstanceSegmentationConfusionMatrix
 
     Compatible with:
-        - Nodes: ``PrecisionSegmentBBoxHead``
+        - Nodes: `PrecisionSegmentBBoxHead`
 
     """
 

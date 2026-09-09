@@ -51,9 +51,9 @@ class BCEWithLogitsLoss(BaseLoss):
                 - name: BCEWithLogitsLoss
 
     Compatible with:
-        - Nodes: ``BiSeNetHead``, ``ClassificationHead``,
-          ``DDRNetSegmentationHead``, ``SegmentationHead``,
-          ``TransformerClassificationHead``, ``TransformerSegmentationHead``
+        - Nodes: `BiSeNetHead`, `ClassificationHead`, `DDRNetSegmentationHead`,
+          `SegmentationHead`, `TransformerClassificationHead`,
+          `TransformerSegmentationHead`
 
     """
 
