@@ -314,6 +314,7 @@ def test_model_config_main_metric_and_duplicate_name_handling():
                     "metrics": [
                         {"name": "Accuracy"},
                         {"name": "Accuracy"},
+                        {"name": "Accuracy", "alias": "Accuracy_dup_0"},
                         {"name": "Accuracy"},
                     ],
                 }
@@ -327,6 +328,7 @@ def test_model_config_main_metric_and_duplicate_name_handling():
     assert node.metrics[0].is_main_metric is True
     assert node.metrics[1].alias == "Accuracy_dup"
     assert node.metrics[2].alias == "Accuracy_dup_0"
+    assert node.metrics[3].alias == "Accuracy_dup_1"
 
     nested_node = NodeConfig.model_construct(name="dup", alias=None)
     node_with_node_module = NodeConfig.model_construct(
