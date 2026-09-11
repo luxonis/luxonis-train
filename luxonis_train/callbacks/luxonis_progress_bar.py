@@ -1,3 +1,11 @@
+"""The progress bars, and the optimizer summary they print.
+
+The summary lists every parameter group with its optimizer, its
+scheduler, and its share of the parameters, which is how a config with
+finetuning rules or a training strategy is checked.
+
+"""
+
 import json
 import time
 from abc import ABC, abstractmethod
@@ -31,6 +39,13 @@ from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
+    """The behaviour both progress bars share.
+
+    A subclass prints the metrics of an epoch as a table and mirrors the
+    output to the log file.
+
+    """
+
     _epoch_start_time: float
 
     @override
@@ -56,15 +71,12 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         This includes the stage name, loss value, and tables with
         metrics.
 
-        @type stage: str
-        @param stage: Stage name.
-        @type loss: float
-        @param loss: Loss value.
-        @type metrics: Mapping[str, Mapping[str, int | str | float]]
-        @param metrics: Metrics in format {table_name: table}.
-        @type matrices: Mapping[str, Mapping[str, Mapping[str, Any]]]
-        @param matrices: Matrices in format {table_name: {name:
-            matrix}}.
+        Args:
+            stage (str): Stage name.
+            loss (float): Loss value.
+            metrics (``Mapping[str, Mapping[str, int | str | float]]``): Metrics in format {table_name: table}.
+            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``): Matrices in format {table_name: {name: matrix}}.
+
         """
         ...
 
@@ -77,13 +89,12 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     ) -> None:
         """Print a table to the console.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): Table to print as
+                an iterable of rows, where each row is a tuple of values.
+            column_names (list[str]): Names of the columns in the table.
+
         """
         ...
 
@@ -190,13 +201,12 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
     ) -> None:
         """Print a table to the console using tabulate.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): Table to print as
+                an iterable of rows, where each row is a tuple of values.
+            column_names (list[str]): Names of the columns in the table.
+
         """
         self._rule(title)
         formatted = tabulate(
@@ -332,16 +342,14 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
     ) -> None:
         """Print a table to the console using rich text.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
-        @param console: Console instance to use, if None use default
-            console. Defaults to None.
-        @type console: Console | None
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): Table to print as
+                an iterable of rows, where each row is a tuple of values.
+            column_names (list[str]): Names of the columns in the table.
+            console (Console | None): Console instance to use. If ``None``, the
+                default console is used. Defaults to ``None``.
+
         """
         console = console or self.console
         rich_table = Table(
@@ -421,10 +429,10 @@ def build_optimizer_summary(
     Two different denominators are used, chosen so that percentages sum
     naturally in the axis the reader cares about:
 
-        - B{Group-level} percentages are relative to all model parameters,
+        - **Group-level** percentages are relative to all model parameters,
           so summing across all groups of all optimizers gives 100% (modulo
           unclaimed / external parameters).
-        - B{Owner-level} percentages inside each group are relative to all
+        - **Owner-level** percentages inside each group are relative to all
           parameters belonging to that owner, so summing all appearances of
           a single owner across the optimizers gives 100% — telling the
           reader how each node's parameters were split across groups.
@@ -433,6 +441,7 @@ def build_optimizer_summary(
     training plan. Assignment percentages therefore include them, while
     every group separately reports how much of its assignment is currently
     trainable or frozen.
+
     """
     stats = _collect_owner_stats(modules, optimizers)
     return {
@@ -460,6 +469,7 @@ def log_optimizer_summary(
     Emits a pretty console version (nested rich panels, or a plaintext
     indented-list fallback) and dumps an equivalent JSON payload to the
     log file via ``logger.bind(file_only=True)``.
+
     """
     if use_rich:
         _render_optimizer_summary_rich(summary)

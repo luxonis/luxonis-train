@@ -1,8 +1,12 @@
+"""The base class every training strategy inherits, and the rule that
+binds a parameter selector to an optimizer.
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 from torch.optim import Optimizer
 
 import luxonis_train as lxt
@@ -25,6 +29,7 @@ class BaseTrainingStrategy(
     and before the default tail rule, so node-level overrides take
     precedence and every parameter the strategy does not claim still
     ends up in an optimizer.
+
     """
 
     @abstractmethod
@@ -42,6 +47,7 @@ class BaseTrainingStrategy(
         Used as the inheritance base for node ``finetuning`` rules that
         omit names and as the specification of the default tail rule
         while this strategy is active.
+
         """
         ...
 
@@ -55,6 +61,7 @@ class BaseTrainingStrategy(
 
         Called once after the optimizers are built. Handles are index-
         based and stay valid across checkpoint restores.
+
         """
         self.runtime = runtime
         self.group_handles = handles
@@ -69,6 +76,7 @@ class BaseTrainingStrategy(
         """Parameter ids claimed outside the rule system.
 
         Only the legacy-strategy adapter overrides this.
+
         """
         return set()
 
@@ -77,5 +85,6 @@ class BaseTrainingStrategy(
         additional inner optimizers.
 
         Only the legacy-strategy adapter overrides this.
+
         """
         return []

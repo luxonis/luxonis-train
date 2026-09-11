@@ -121,6 +121,7 @@ def test_precision_recall_curve_rejects_non_detection_head() -> None:
     Without the C{node} annotation this failed with a bare
     C{AttributeError} from C{nn.Module.__getattr__} instead of the
     framework's actionable error.
+
     """
     node = DummyBBoxNode(
         n_classes=2,
@@ -176,6 +177,7 @@ def test_precision_is_one_where_nothing_is_predicted() -> None:
     Reporting C{0} instead dragged the curve to the floor over the whole
     confidence range above the highest prediction score, and added a
     spurious C{(0, 0)} endpoint to the PR curve.
+
     """
     metric = make_metric(thresholds=[0.0, 0.5, 0.95])
     metric.update(
@@ -238,6 +240,7 @@ def test_update_after_reset_inside_inference_mode() -> None:
     C{inference_mode=False}, and the in-place accumulation used to fail
     with C{RuntimeError: Inplace update to inference tensor outside
     InferenceMode is not allowed}.
+
     """
     metric = make_metric(thresholds=[0.0, 0.5, 1.0])
     predictions = make_pre_nms([(10, 10, 30, 30, 0.9, 0)])
@@ -362,6 +365,7 @@ def test_nms_confidence_floor_is_positive_by_default(
     candidate, which is orders of magnitude slower than the head's own
     post-processing. The floor is a separate parameter that defaults to
     C{1e-3}.
+
     """
     calls = _record_nms(monkeypatch)
 
@@ -395,6 +399,7 @@ def test_prediction_at_lowest_threshold_is_counted() -> None:
     C{non_max_suppression} filters with a strict C{>}, so a prediction
     scoring exactly the confidence floor used to be dropped before it
     could be counted.
+
     """
     metric = make_metric(thresholds=[0.5, 0.75, 0.9], nms_conf_threshold=0.5)
     assert metric.nms_conf_threshold == 0.5
@@ -415,6 +420,7 @@ def test_exclusive_threshold_preserves_floor_in_low_precision(
     """The NMS threshold predecessor must use the prediction dtype.
 
     A float32 predecessor can round back to 0.5 in low precision.
+
     """
     score = torch.tensor(0.5, dtype=dtype)
 
@@ -498,6 +504,7 @@ def test_explicit_grid_rejects_generated_grid_parameters(
     produced a curve that ignored C{num_thresholds},
     C{min_confidence} and C{max_confidence} without any warning - and
     skipped their validation altogether.
+
     """
     with pytest.raises(ValueError, match="must not be combined"):
         PrecisionRecallCurve(
@@ -512,6 +519,7 @@ def test_confidence_axes_span_the_configured_grid() -> None:
 
     Hardcoding C{xlim=(0, 1)} squeezed the whole curve into a sliver of
     the panel for a grid that only covers the high-confidence region.
+
     """
     metric = make_metric(thresholds=[0.9, 0.95, 1.0])
     metric.update(
@@ -683,6 +691,7 @@ def test_logged_artifact_path_matches_registered_mlflow_key() -> None:
     C{.../{epoch}/<node>/<metric>/{epoch}/curves.png} while the
     registered key had no step segment at all - every consumer resolving
     the advertised key found nothing.
+
     """
     metric = make_updated_metric()
     harness = make_epoch_end_harness(metric, is_global_zero=True)
@@ -790,6 +799,7 @@ def test_evaluation_epoch_end_skips_artifact_during_sanity_check() -> None:
     batches - and pay the full rendering cost on every run. Every other
     conditional logging path in the module already guards
     C{trainer.sanity_checking}.
+
     """
     metric = make_updated_metric()
     harness = make_epoch_end_harness(
@@ -811,6 +821,7 @@ def test_artifacts_are_built_before_the_metric_is_reset() -> None:
     The artifact hook is public and may render from the metric's own
     accumulators, but it used to be called after C{metric.reset()} - so
     it silently rendered an all-zero figure next to correct scalars.
+
     """
     metric = make_updated_metric()
     observed: list[int] = []
@@ -851,6 +862,7 @@ def test_log_metric_artifacts_tolerates_unusable_artifacts(
     C{try} blocks, so a C{get_artifacts} returning e.g. a numpy image
     raised C{AttributeError} out of C{_evaluation_epoch_end} - defeating
     the whole point of handling artifact failures.
+
     """
     metric = make_updated_metric()
     metric.get_artifacts = lambda values: artifacts  # type: ignore[method-assign]
@@ -1041,6 +1053,7 @@ def test_pre_nms_candidates_are_opt_in(
     The C{[B, n_anchors, 5 + n_classes]} tensor is large enough to shift
     peak validation memory, so it used to be paid for by every detection
     model whether or not a module consumed it.
+
     """
     torch.manual_seed(1300)
     head = _make_real_head(head_cls)
@@ -1080,6 +1093,7 @@ def test_real_bbox_head_to_precision_recall_curve_e2e(
     detection heads emitted the pre-NMS candidates, so attaching it to a
     keypoint or instance-segmentation head failed at model build time or
     at the first batch.
+
     """
     torch.manual_seed(seed)
 

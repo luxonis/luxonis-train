@@ -1,3 +1,5 @@
+"""Uploads the best checkpoint to the tracker as training runs."""
+
 from copy import copy
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,7 @@ class UploadCheckpoint(pl.Callback):
     """
 
     def __init__(self):
+        """Initialize checkpoint upload state."""
         super().__init__()
         self.last_best_checkpoints = set()
 

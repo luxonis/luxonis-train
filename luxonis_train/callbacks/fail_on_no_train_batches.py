@@ -1,3 +1,7 @@
+"""Fails early when the training loader yields no batches, and reports
+the dataset size the current settings would need.
+"""
+
 from math import ceil
 
 import lightning.pytorch as pl

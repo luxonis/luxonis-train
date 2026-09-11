@@ -1,3 +1,7 @@
+"""Filters the checkpoint keys that belong to a loss, a metric, or a
+visualizer, which lets a checkpoint load into a changed config.
+"""
+
 import re
 from collections.abc import Mapping
 

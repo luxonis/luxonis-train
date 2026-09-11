@@ -14,6 +14,7 @@ def reset_deterministic_state() -> Generator[None]:
 
     Setting a seed auto-enables deterministic mode, which is global
     state that would otherwise leak into the next performed tests.
+
     """
     yield
     torch.use_deterministic_algorithms(False)

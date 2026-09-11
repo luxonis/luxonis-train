@@ -1,3 +1,24 @@
+"""Loss functions, grouped by the task they supervise.
+
+- classification and segmentation: `CrossEntropyLoss`,
+  `BCEWithLogitsLoss`, `SmoothBCEWithLogitsLoss`, `SigmoidFocalLoss`,
+  `SoftmaxFocalLoss`, and `OHEMLoss`
+- bounding boxes: `AdaptiveDetectionLoss` and
+  `PrecisionDFLDetectionLoss`
+- instance keypoints: `EfficientKeypointBBoxLoss` and
+  `FOMOLocalizationLoss`
+- instance segmentation: `PrecisionDFLSegmentationLoss`
+- anomaly detection: `ReconstructionSegmentationLoss`
+- OCR: `CTCLoss`
+- embeddings: the `pytorch-metric-learning
+  <https://kevinmusgrave.github.io/pytorch-metric-learning/losses/>`_
+  losses, wrapped by `EmbeddingLossWrapper`
+
+Each loss docstring names the heads it accepts. At least one node in a
+config must carry a loss.
+
+"""
+
 from .adaptive_detection_loss import AdaptiveDetectionLoss
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss

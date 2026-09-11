@@ -61,6 +61,7 @@ def test_valid_parameter_selectors(
            wraps single dicts into a one-element list.
         10. Pre-built ``ParameterPattern`` instance — passes through
             unchanged.
+
     """
     snapshot = build_snapshot(
         config(
@@ -131,6 +132,7 @@ def test_invalid_parameter_selectors(
         7. Pattern that compiles fine but matches nothing (``name
            ='missing'``) — build_optimizers raises so the user knows
            the rule is a no-op rather than silently skipping it.
+
     """
     with pytest.raises(expected_error, match=match):
         build_snapshot(config([tiny_head_node(finetuning)]), opts)
@@ -194,6 +196,7 @@ def test_parameter_pattern_matches(
         7. Name + module_type both match → true.
         8. Name matches but module_type doesn't → false (AND).
         9. Name doesn't match but module_type does → false (AND).
+
     """
     assert pattern.matches(module_type, parameter_name) is expected
 
@@ -207,6 +210,7 @@ def test_parameter_pattern_validator_does_not_shadow_pydantic_api():
     the class, so `ParameterPattern` alone stops behaving like every
     other config model. The validator itself must still be registered
     and still reject empty or underspecified patterns.
+
     """
     validators = ParameterPattern.__pydantic_decorators__.model_validators
     assert "validate_pattern" in validators
@@ -256,8 +260,8 @@ def test_parameter_pattern_matching_is_unanchored(
     parameter_name: str,
     expected: bool,
 ):
-    """Pins the unanchored `re.search` semantics that
-    `configs/README.md` documents.
+    """Pins the unanchored `re.search` semantics that `ParameterPattern`
+    documents.
 
     Cases (in the order listed above):
         1. `module_type` unset imposes no constraint.
@@ -273,5 +277,6 @@ def test_parameter_pattern_matching_is_unanchored(
 
     `is expected` rather than `== expected` is deliberate: `matches`
     must return a real `bool`, never a truthy `re.Match`.
+
     """
     assert pattern.matches(module_type, parameter_name) is expected

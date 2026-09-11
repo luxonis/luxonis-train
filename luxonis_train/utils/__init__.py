@@ -1,3 +1,12 @@
+"""Helpers shared across the package.
+
+The modules here hold the bounding box maths, the keypoint maths, the
+segmentation helpers, the OCR encoder and decoder, the checkpoint
+filters, the dataset metadata, the spatial transforms, and the
+experiment tracker.
+
+"""
+
 from .annotation import default_annotate
 from .boundingbox import (
     anchors_for_fpn_features,

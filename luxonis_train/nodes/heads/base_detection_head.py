@@ -1,3 +1,10 @@
+"""The base class of the heads that predict boxes.
+
+It holds the non-maximum suppression that every detection head runs
+during validation and export.
+
+"""
+
 import torch
 from loguru import logger
 from luxonis_ml.typing import Params
@@ -8,7 +15,14 @@ from luxonis_train.nodes.heads import BaseHead
 
 
 class BaseDetectionHead(BaseHead):
-    """Base class for YOLO-like multi-head instance detection heads."""
+    """Base class for YOLO-like multi-head instance detection heads.
+
+    The head reads the last ``n_heads`` outputs of the node before it, so
+    its ``attach_index`` is ``(-n_heads - 1, -1)`` and follows ``n_heads``
+    rather than being fixed. Set ``attach_index`` in the node ``params``
+    to override that.
+
+    """
 
     parser = "YOLO"
 
@@ -23,16 +37,15 @@ class BaseDetectionHead(BaseHead):
         max_det: int,
         **kwargs,
     ):
-        """
+        """Initialize the base detection head.
 
-        @type n_heads: int
-        @param n_heads: Number of output heads.
-        @type conf_thres: float
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
+        Args:
+            n_heads (int): Number of output heads.
+            conf_thres (float): Confidence threshold for NMS.
+            iou_thres (float): IoU threshold for NMS.
+            max_det (int): Maximum number of detections retained after NMS.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 
@@ -57,19 +70,19 @@ class BaseDetectionHead(BaseHead):
 
     @property
     def keep_detections_pre_nms(self) -> bool:
-        """Whether the pre-NMS candidates are part of the output packet.
-
-        @type: bool
+        """Whether the pre-NMS candidates are part of the output
+        packet.
         """
         return self._keep_detections_pre_nms
 
     def request_detections_pre_nms(self) -> None:
         """Ask the head to add the decoded pre-NMS candidates to its
-        output packet under the C{"detections_pre_nms"} key.
+        output packet under the ``"detections_pre_nms"`` key.
 
         The candidate tensor is of shape C{[B, n_anchors, 5 +
         n_classes]}, which is large enough to matter for peak memory, so
         attached modules that need it have to opt in.
+
         """
         self._keep_detections_pre_nms = True
 

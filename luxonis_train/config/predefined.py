@@ -106,17 +106,17 @@ def list_predefined_models() -> dict[str, list[str | None]]:
 
 
 def _default_variant(model: str) -> str | None:
-    """Return the variant used when `--variant` is omitted."""
+    """Return the variant used when ``--variant`` is omitted."""
     return list_predefined_models()[model][0]
 
 
 def default_config_path(model: str) -> Path:
-    """Path to the YAML backing `model`'s default variant."""
+    """Path to the YAML backing ``model``'s default variant."""
     return _config_path(_filename(model, _default_variant(model)))
 
 
 def class_family(model: str) -> str | None:
-    """Registry family of the class behind `model`'s default YAML."""
+    """Registry family of the class behind ``model``'s default YAML."""
     try:
         data = yaml.safe_load(default_config_path(model).read_text())
         return data["model"]["predefined_model"]["name"]

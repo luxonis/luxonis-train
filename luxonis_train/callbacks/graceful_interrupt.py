@@ -1,3 +1,10 @@
+"""Turns the first interrupt into a clean stop.
+
+The callback saves a resume checkpoint and skips the remaining train-end
+callbacks. A second interrupt exits at once.
+
+"""
+
 import os
 import signal
 import sys
@@ -18,11 +25,21 @@ class GracefulInterruptCallback(pl.Callback):
     Behavior:
      - First interrupt: save checkpoint, stop training, skip all train-end callbacks.
      - Second interrupt: immediate exit, skip saving resume.ckpt.
+
     """
 
     def __init__(
         self, save_dir: Path, tracker: LuxonisTrackerPL | None = None
     ):
+        """Set where the interrupt checkpoint goes.
+
+        Args:
+            save_dir (``Path``): Where to write ``resume.ckpt`` on the
+                first interrupt.
+            tracker (`LuxonisTrackerPL` | None): A tracker to upload
+                that checkpoint to.
+
+        """
         super().__init__()
         self.save_dir = Path(save_dir)
         self.tracker = tracker

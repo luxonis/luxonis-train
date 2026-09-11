@@ -187,6 +187,7 @@ def test_ema_swapping_across_training(
         checkpoint save.
 
         It should revert to training weights on training epoch start.
+
         """
 
         def on_train_epoch_start(

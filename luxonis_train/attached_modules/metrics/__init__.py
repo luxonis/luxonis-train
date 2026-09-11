@@ -1,3 +1,21 @@
+"""Metrics computed on the predictions of a node.
+
+`Accuracy`, `F1Score`, `JaccardIndex`, `Precision`, and `Recall` wrap
+the matching ``torchmetrics`` classes. `MIoU`, `DiceCoefficient`,
+`ObjectKeypointSimilarity`, `MeanAveragePrecision`,
+`PrecisionRecallCurve`, `OCRAccuracy`, `ConfusionMatrix`,
+`ClosestIsPositiveAccuracy`, and `MedianDistances` cover the tasks that
+``torchmetrics`` does not.
+
+Mark one metric with ``is_main_metric`` in the config. The trainer saves
+a checkpoint on that metric.
+
+Every detection metric reads the predictions after non-maximum
+suppression, so the ``conf_thres`` and ``iou_thres`` of the head change
+the result. Tune both for your data.
+
+"""
+
 from .base_metric import BaseMetric, DistReduceFx, MetricState
 from .confusion_matrix import ConfusionMatrix
 from .dice_coefficient import DiceCoefficient

@@ -1,3 +1,7 @@
+"""Helpers that reshape the raw output of the mean average precision
+metrics into the values the trainer logs.
+"""
+
 from collections.abc import Mapping
 
 import torch

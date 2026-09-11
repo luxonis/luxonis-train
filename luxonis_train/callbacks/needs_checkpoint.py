@@ -1,3 +1,10 @@
+"""The base class of the callbacks that run on a saved checkpoint.
+
+It picks between the best metric checkpoint and the best loss
+checkpoint, and skips the callback when neither exists.
+
+"""
+
 from typing import Literal
 
 import lightning.pytorch as pl
@@ -7,6 +14,16 @@ import luxonis_train as lxt
 
 
 class NeedsCheckpoint(pl.Callback):
+    """The base class of the callbacks that run on a saved checkpoint.
+
+    Attributes:
+        preferred_checkpoint: Which checkpoint to read, the best main metric
+            or the lowest validation loss. The callback falls back to the
+            other one when the preferred one does not exist, and skips
+            itself when neither does.
+
+    """
+
     def __init__(
         self,
         preferred_checkpoint: Literal["metric", "loss"] = "metric",

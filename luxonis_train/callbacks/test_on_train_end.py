@@ -1,3 +1,5 @@
+"""Runs a test pass when training ends."""
+
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger
@@ -14,9 +16,11 @@ class TestOnTrainEnd(NeedsCheckpoint):
     """Callback to perform a test run at the end of the training."""
 
     def __init__(self, view: View = "test") -> None:
-        """
-        @type view: Literal["train", "val", "test"]
-        @param view: The view to use for testing. Defaults to "test".
+        """Initialize the test-on-train-end callback.
+
+        Args:
+            view (``Literal["train", "val", "test"]``): The view to use for testing. Defaults to "test".
+
         """
         super().__init__()
         self.view: View = view

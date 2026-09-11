@@ -1,3 +1,13 @@
+"""Layer blocks shared by more than one node.
+
+A block that only one node uses lives beside that node instead.
+
+Some blocks subclass `Reparameterizable`. Such a block trains as a
+multi-branch module and folds into a single convolution before export,
+which keeps the accuracy of training and the speed of inference.
+
+"""
+
 from contextlib import suppress
 
 from .blocks import (

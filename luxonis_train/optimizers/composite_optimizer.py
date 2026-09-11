@@ -1,3 +1,11 @@
+"""An optimizer that owns several inner optimizers.
+
+Lightning sees one optimizer, so gradient accumulation and gradient
+clipping keep working however many groups the finetuning rules and the
+training strategy produce.
+
+"""
+
 from collections import OrderedDict
 from collections.abc import Callable, Iterator, MutableMapping, Sequence
 from typing import Any
@@ -12,10 +20,11 @@ __all__ = ["CompositeOptimizer", "unwrap_optimizers"]
 def _intersect_defaults(inners: Sequence[Optimizer]) -> dict[str, Any]:
     """Key-intersection of the inner optimizers' defaults.
 
-    C{LearningRateMonitor} indexes C{param_group["betas"][0]} for every
-    group whenever C{"betas" in optimizer.defaults}, so a key may only
-    survive when every inner optimizer (and therefore every parameter
-    group) supports it. Values are taken from the first inner.
+    ``LearningRateMonitor`` indexes ``param_group["betas"][0]`` for
+    every group whenever ``"betas" in optimizer.defaults``, so a key may
+    only survive when every inner optimizer (and therefore every
+    parameter group) supports it. Values are taken from the first inner.
+
     """
     keys = set(inners[0].defaults)
     for inner in inners[1:]:
@@ -26,10 +35,11 @@ def _intersect_defaults(inners: Sequence[Optimizer]) -> dict[str, Any]:
 class _CompositeState(MutableMapping[Tensor, Any]):
     """Live view over the inner optimizers' states.
 
-    Reads chain the inner C{state} mappings; writes are routed to the
+    Reads chain the inner ``state`` mappings; writes are routed to the
     inner optimizer owning the parameter, so code like Lightning's
-    C{_optimizer_to_device} (which reassigns C{optimizer.state[p]})
+    ``_optimizer_to_device`` (which reassigns ``optimizer.state[p]``)
     keeps working against the composite.
+
     """
 
     def __init__(self, inners: Sequence[Optimizer]):
@@ -65,25 +75,26 @@ class _CompositeState(MutableMapping[Tensor, Any]):
 
 
 class CompositeOptimizer(Optimizer):
-    """A single C{torch.optim.Optimizer} facade over several inner
+    """A single ``torch.optim.Optimizer`` facade over several inner
     optimizers.
 
-    C{param_groups} is the live concatenation of the inners'
-    C{param_groups} (the same dictionary objects), so PyTorch Lightning
+    ``param_groups`` is the live concatenation of the inners'
+    ``param_groups`` (the same dictionary objects), so PyTorch Lightning
     can drive several optimizer configurations through its automatic
-    optimization path: one C{step}, one gradient-clipping pass over the
+    optimization path: one ``step``, one gradient-clipping pass over the
     union of the groups, one GradScaler slot.
 
     The parameter partition is static: groups are never added, removed,
     or moved after construction. Freezing and unfreezing are expressed
-    through C{requires_grad} only; the inner optimizers natively skip
-    parameters whose gradient is C{None}.
+    through ``requires_grad`` only; the inner optimizers natively skip
+    parameters whose gradient is ``None``.
 
-    Deliberately does not call C{Optimizer.__init__}: the base
+    Deliberately does not call ``Optimizer.__init__``: the base
     initializer would build its own parameter groups. The narrow
-    contract Lightning relies on (the C{Optimizable} protocol,
-    C{step(closure)}, C{zero_grad}, C{state_dict}/C{load_state_dict})
+    contract Lightning relies on (the ``Optimizable`` protocol,
+    ``step(closure)``, ``zero_grad``, ``state_dict``/``load_state_dict``)
     is implemented directly instead.
+
     """
 
     STATE_DICT_FORMAT = "luxonis_composite"
@@ -227,6 +238,7 @@ def unwrap_optimizers(
 
     Identity for plain optimizers, so callers can treat the single-
     optimizer bypass and the composite path uniformly.
+
     """
     unwrapped: list[Optimizer] = []
     for optimizer in optimizers:

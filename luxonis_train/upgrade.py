@@ -1,3 +1,10 @@
+"""Migration of a configuration file to the current schema.
+
+Each release that renames or moves a field adds a step here, so
+``luxonis_train upgrade`` can rewrite an older config in place.
+
+"""
+
 import json
 import subprocess
 import sys
@@ -16,6 +23,14 @@ import luxonis_train as lxt
 
 @dataclass
 class NestedDict:
+    """A dictionary addressed by a dotted path.
+
+    ``config["trainer.optimizer.name"]`` walks the nested dictionaries
+    and returns ``None`` when any step of the path is missing, which
+    keeps the migration steps short.
+
+    """
+
     _dict: dict[str, Any]
 
     def __contains__(self, key: str) -> bool:

@@ -1,3 +1,7 @@
+"""Freezes and unfreezes the nodes a config marks, and lets the training
+strategy update its groups after each step.
+"""
+
 import lightning.pytorch as pl
 from typing_extensions import override
 
@@ -14,6 +18,7 @@ class TrainingManager(pl.Callback):
     restored epoch number, while group membership (static), group
     learning rates (optimizer state dict) and scheduler state all round
     trip through Lightning's regular checkpointing.
+
     """
 
     @override
@@ -47,10 +52,10 @@ class TrainingManager(pl.Callback):
         """PyTorch Lightning hook that is called after the backward
         pass.
 
-        @type trainer: pl.Trainer
-        @param trainer: The trainer object.
-        @type pl_module: pl.LightningModule
-        @param pl_module: The pl_module object.
+        Args:
+            trainer (``pl.Trainer``): The trainer object.
+            pl_module (``pl.LightningModule``): The pl_module object.
+
         """
         if pl_module.training_strategy is not None:
             pl_module.training_strategy.update_parameters()

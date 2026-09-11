@@ -53,6 +53,7 @@ def test_opset_bump_equivalence(
         - Successful export of the model in previous opset version and newer opset version
         - Converted models can be executed and output formats are the same
         - Outputs are the same between both models on the same input
+
     """
     if target_opset == current_opset:
         pytest.skip(

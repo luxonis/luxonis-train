@@ -1,3 +1,25 @@
+"""Heads that turn features into predictions.
+
+A head declares a task. The task decides which losses, metrics, and
+visualizers attach to it, and which parser reads the exported model.
+
+- classification: `ClassificationHead` and
+  `TransformerClassificationHead`
+- segmentation: `SegmentationHead`, `BiSeNetHead`,
+  `DDRNetSegmentationHead`, and `TransformerSegmentationHead`
+- bounding boxes: `EfficientBBoxHead` and `PrecisionBBoxHead`
+- instance keypoints: `EfficientKeypointBBoxHead` and `FOMOHead`
+- instance segmentation: `PrecisionSegmentBBoxHead`
+- anomaly detection: `DiscSubNetHead`
+- OCR: `OCRCTCHead`
+- embeddings: `GhostFaceNetHead`
+
+A detection head runs non-maximum suppression during validation and
+export, so ``conf_thres``, ``iou_thres``, and ``max_det`` change what a
+metric sees.
+
+"""
+
 from .base_head import BaseHead
 from .bisenet_head import BiSeNetHead
 from .classification_head import ClassificationHead

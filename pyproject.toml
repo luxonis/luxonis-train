@@ -103,6 +103,7 @@ indent-width = 4
 
 [tool.ruff.format]
 docstring-code-format = true
+docstring-code-line-length = "dynamic"
 
 [tool.ruff.lint]
 select = [
@@ -187,6 +188,7 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
+"scripts/*" = ["INP001", "T201"]
 "__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
 
@@ -195,9 +197,25 @@ unfixable = ["B905"]
 
 [tool.docformatter]
 black = true
-style = "epytext"
+blank = true
 wrap-summaries = 72
 wrap-descriptions = 72
+
+[tool.pydoctor]
+add-package = ["luxonis_train"]
+docformat = "google"
+project-name = "luxonis-train"
+project-url = "https://github.com/luxonis/luxonis-train"
+html-output = "apidocs"
+warnings-as-errors = true
+intersphinx = [
+  "https://docs.python.org/3/objects.inv",
+  "https://pytorch.org/docs/stable/objects.inv",
+  "https://lightning.ai/docs/pytorch/stable/objects.inv",
+]
+intersphinx-file = [
+  "docs/_intersphinx/luxonis_ml/objects.inv::https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-ml/api-reference/",
+]
 
 [tool.pyright]
 pythonVersion = "3.10"
@@ -217,6 +235,11 @@ reportMatchNotExhaustive = "error"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--disable-warnings -vv --basetemp=tests/tmp/"
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE"]
+markers = [
+  "unit: mark a test as a unit test",
+  "integration: mark a test as an integration test",
+]
 filterwarnings = [
   "ignore::DeprecationWarning",
   "ignore::PendingDeprecationWarning",

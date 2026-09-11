@@ -3,24 +3,25 @@ single optimizer configuration.
 
 The pipeline has two phases:
 
-    1. L{resolve_training_plan}: a pure function turning the config and
-       the built nodes into a L{TrainingPlan} - a total, static
+    1. `resolve_training_plan`: a pure function turning the config and
+       the built nodes into a `TrainingPlan` - a total, static
        partition of every model parameter (frozen parameters included)
        into parameter groups, each owned by exactly one inner
        optimizer/scheduler specification. Nothing torch-stateful is
        created here and the function can be called any number of times.
-    2. L{build_training_plan}: instantiates the inner optimizers and
+    2. `build_training_plan`: instantiates the inner optimizers and
        their member schedulers from the plan. With a single inner the
        raw optimizer and scheduler are returned in the exact shapes
        Lightning saw before this module existed (so plain configs keep
        byte-identical checkpoints); with several inners everything is
-       wrapped into one L{CompositeOptimizer} plus composite scheduler
+       wrapped into one `CompositeOptimizer` plus composite scheduler
        wrappers so the model stays in automatic optimization.
 
 Because the partition is total, unfreezing never changes group
 membership - it is purely a ``requires_grad`` flip (torch optimizers
 skip parameters whose gradient is ``None``), which makes
 checkpoint-resume a plain ``state_dict`` round trip.
+
 """
 
 import json
@@ -98,9 +99,9 @@ class Selector(Protocol):
 
 
 def pattern_selector(patterns: Sequence[ParameterPattern]) -> Selector:
-    """Adapt YAML ``parameters`` patterns to the L{Selector} protocol,
+    """Adapt YAML ``parameters`` patterns to the `Selector` protocol,
     preserving their documented semantics (unanchored, case-insensitive
-    C{re.search} on the dotted parameter name and the module class
+    ``re.search`` on the dotted parameter name and the module class
     name).
     """
 
@@ -162,9 +163,10 @@ def merge_config_items(
 class OptimizerSpec:
     """Canonical optimizer specification of one rule.
 
-    C{params} double as the parameter-group options of the groups the
+    ``params`` double as the parameter-group options of the groups the
     rule produces (matching the previous behavior, where per-group
     hyperparameters carried the full optimizer configuration).
+
     """
 
     name: str
@@ -217,9 +219,10 @@ class StrategyRule:
     """A parameter-group rule contributed by a training strategy.
 
     Evaluated after every node ``finetuning`` rule and before the
-    default tail. C{scheduler=None} inherits the strategy's base
-    scheduler. The C{tag} keys the group handles the strategy receives
-    back through C{attach} after the optimizers are built.
+    default tail. ``scheduler=None`` inherits the strategy's base
+    scheduler. The ``tag`` keys the group handles the strategy receives
+    back through ``attach`` after the optimizers are built.
+
     """
 
     tag: str
@@ -245,6 +248,7 @@ class GroupHandle(NamedTuple):
     Index-based on purpose: ``Optimizer.load_state_dict`` replaces the
     group dictionaries on checkpoint restore, but with a static
     partition the indices never move.
+
     """
 
     inner_index: int
@@ -330,7 +334,7 @@ class _PlanBuilder:
         module_source: nn.Module,
         group_scope: str,
     ) -> int:
-        """Claim all yet-unclaimed parameters of C{module_source}
+        """Claim all yet-unclaimed parameters of ``module_source``
         matched by the rule into the rule's group, returning how many
         parameters were claimed.
         """
@@ -439,6 +443,7 @@ def resolve_training_plan(
 
     With a strategy, the strategy's base configs are the inheritance
     base for node rules and the specification of the default tail.
+
     """
     epochs = cfg.trainer.epochs
     base_optimizer, base_scheduler = _base_configs(cfg, strategy)
@@ -474,9 +479,8 @@ def resolve_training_plan(
 
 @dataclass
 class TrainingPlanRuntime:
-    """The built optimizers and schedulers of a L{TrainingPlan},
-    together with the handle-based accessors the freezing subsystem
-    uses.
+    """The built optimizers and schedulers of a `TrainingPlan`, together
+    with the handle-based accessors the freezing subsystem uses.
     """
 
     plan: TrainingPlan
@@ -516,9 +520,10 @@ def build_training_plan(
 
     A single inner is returned raw (the exact shapes Lightning received
     before this module existed); several inners are wrapped into one
-    L{CompositeOptimizer} plus per-bucket composite schedulers so the
+    `CompositeOptimizer` plus per-bucket composite schedulers so the
     model stays in automatic optimization. Optimizers mounted by a
     legacy strategy adapter are appended as additional (opaque) inners.
+
     """
     inner_optimizers: list[Optimizer] = []
     entries: list[_MemberEntry] = []
@@ -580,7 +585,7 @@ def _spec_key(name: str, params: Params) -> str:
 
 
 def _unique_name(name: str, used: set[str]) -> str:
-    """Add C{name} to C{used}, suffixing it if necessary."""
+    """Add ``name`` to ``used``, suffixing it if necessary."""
     unique = name
     index = 2
     while unique in used:

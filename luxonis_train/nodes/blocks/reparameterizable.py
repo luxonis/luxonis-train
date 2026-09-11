@@ -1,3 +1,7 @@
+"""The interface for a block that folds its training-time branches into
+a single operation before export.
+"""
+
 from abc import ABC, abstractmethod
 
 from torch import nn
@@ -12,6 +16,7 @@ class Reparameterizable(nn.Module, ABC):
     Reparameterization is usually done to increase the performance of
     the model during inference by removing unnecessary parameters,
     fusing operations, and other methods.
+
     """
 
     @abstractmethod
@@ -19,6 +24,7 @@ class Reparameterizable(nn.Module, ABC):
         """Reparameterizes the module.
 
         This method is typically called before exporting the model.
+
         """
         ...
 

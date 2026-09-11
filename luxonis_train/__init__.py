@@ -1,3 +1,17 @@
+"""Train computer vision models for Luxonis cameras from a YAML file.
+
+One configuration file describes the whole pipeline: the loader, the
+model graph, the losses, the metrics, the visualizers, and the export
+settings. Both the ``luxonis_train`` command and `LuxonisModel
+<luxonis_train.core.core.LuxonisModel>` read that file.
+
+The config names each component by its class name. A registry resolves
+the name, so you add a component by subclassing the correct base class,
+not by editing the training loop. See `luxonis_train.registry` for the
+registries and `luxonis_train.config.config` for the schema.
+
+"""
+
 import sys
 from typing import Final
 

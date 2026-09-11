@@ -1,3 +1,10 @@
+"""The base class of the predefined models.
+
+`SimplePredefinedModel` covers the usual backbone, neck, and head chain,
+so a concrete model only declares its components and its variants.
+
+"""
+
 import re
 from abc import abstractmethod
 from typing import Any, Literal, cast
@@ -22,7 +29,7 @@ _NAMESPACE_VERSION = re.compile(r"\.v(\d+)(?=\.|$)", re.ASCII)
 
 def _namespace_version(module: str) -> int | None:
     """Version encoded in the module path, e.g.
-    C{...detection.v2.model}.
+    ``...detection.v2.model``.
     """
     versions = _NAMESPACE_VERSION.findall(module)
     return int(versions[-1]) if versions else None
@@ -31,12 +38,13 @@ def _namespace_version(module: str) -> int | None:
 class PredefinedModelMeta(VariantMeta):
     """Register versioned predefined models.
 
-    The version comes from the C{v<N>} package the class is defined in
-    (e.g. C{predefined_models/detection/v2/model.py} registers
-    C{DetectionModel:v2}), so versions of a model share the class name.
-    Classes defined outside such a namespace use their C{_VERSION}
+    The version comes from the ``v<N>`` package the class is defined in
+    (e.g. ``predefined_models/detection/v2/model.py`` registers
+    ``DetectionModel:v2``), so versions of a model share the class name.
+    Classes defined outside such a namespace use their ``_VERSION``
     attribute instead. The highest version is additionally registered
-    under the bare family name and C{<family>:latest}.
+    under the bare family name and ``<family>:latest``.
+
     """
 
     def __new__(
@@ -83,11 +91,21 @@ class PredefinedModelMeta(VariantMeta):
 class BasePredefinedModel(
     VariantBase, metaclass=PredefinedModelMeta, registry=MODELS, register=False
 ):
+    """The base class of a predefined model.
+
+    A subclass returns the node graph from ``nodes`` and declares its
+    variants. Subclass this directly when the graph is not a plain
+    backbone, neck, and head chain; otherwise subclass
+    `SimplePredefinedModel`.
+
+    """
+
     _VERSION: int = 1
     """Registry version for this predefined-model class.
 
-    Inferred from the C{v<N>} package the class is defined in; only
+    Inferred from the ``v<N>`` package the class is defined in; only
     classes defined outside such a namespace need to set it explicitly.
+
     """
 
     @property
@@ -97,16 +115,16 @@ class BasePredefinedModel(
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
-        """Get a name of the default variant and a dictionary of
-        available model variants with their parameters.
+        """Get the default variant name and available variants.
 
-        The keys are the variant names, and the values are dictionaries
-        of parameters which can be used as C{**kwargs} for the
-        predefined model constructor.
+        The keys are the variant names, and the values are dictionaries of
+        parameters that can be used as ``**kwargs`` for the predefined model
+        constructor.
 
-        @rtype: tuple[str, dict[str, Params]]
-        @return: A tuple containing the default variant name and a
-            dictionary of available variants with their parameters.
+        Returns:
+            ``tuple[str, dict[str, Params]]``: Default variant name and available
+            variants with their parameters.
+
         """
 
     def generate_nodes(
@@ -141,6 +159,16 @@ class BasePredefinedModel(
 
 
 class SimplePredefinedModel(BasePredefinedModel):
+    """A predefined model built from a backbone, an optional neck, and a
+    head.
+
+    The subclass names its components and its variants, and this class
+    wires them together, attaches the loss, the metrics, and the
+    visualizer to the head, and applies the freezing and finetuning a
+    config asks for.
+
+    """
+
     @typechecked
     def __init__(
         self,

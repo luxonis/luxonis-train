@@ -1,3 +1,10 @@
+"""`LuxonisModel`, the entry point of the package.
+
+It owns the config, the loaders, and the Lightning module, and it
+exposes one method for each command of the CLI.
+
+"""
+
 import json
 import tempfile
 import threading
@@ -113,28 +120,30 @@ class LuxonisModel:
         """Load the configuration and initialize the training
         components.
 
-        @type cfg: str | dict[str, Any] | Config | None
-        @param cfg: Path to config file or config dict used to setup
-            training. Mutually exclusive with `model`.
-        @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
-        @param opts: Configuration overrides supplied as a dotted-key
-            mapping or alternating key-value sequence.
-        @type model: str | None
-        @param model: Name of a packaged predefined model, optionally
-            suffixed with a version (for example `detection:v1`).
-        @type variant: str | None
-        @param variant: Variant of the packaged predefined model.
-            Defaults to the model's default variant.
-        @type allow_empty_dataset: bool
-        @param allow_empty_dataset: If set to True, the model will be
-            initialized even if the dataset is empty or cannot be
-            created. This is useful either for debugging or for running
-            commands that don't require a dataset (e.g. export with
-            existing weights).
-        @type weights: str | dict[str, Any] | None
-        @param weights: Path to the weights. If user specifies weights
-            in the config file, the weights provided here will take
-            precedence.
+        Loads the config and initializes loaders, dataloaders, augmentations,
+        lightning components, and tracking.
+
+        Args:
+            cfg (``PathType | Params | Config | None``): ``Path`` to the config file,
+                config dictionary, existing config object, or ``None`` when
+                restoring config from a checkpoint.
+            opts (``Params | list[str] | tuple[str, ...] | None``): Command-line
+                override values for the config.
+            model (str | None): Name of a packaged predefined model, optionally
+                suffixed with a version, for example ``"detection:v1"``.
+                Mutually exclusive with ``cfg``.
+            variant (str | None): Variant of the packaged predefined model.
+                Defaults to the model's default variant.
+            allow_empty_dataset (bool): If ``True``, initializes the model even
+                if the dataset is empty or cannot be created. This is useful
+                for debugging or commands that do not require a dataset.
+            weights (``PathType | dict[str, Any] | None``): ``Path`` to weights or an
+                in-memory checkpoint/state dictionary. Explicit weights take
+                precedence over weights specified in the config file.
+            dataset_metadata (DatasetMetadata | None): Optional dataset
+                metadata. If omitted and present in a checkpoint, metadata is
+                restored from the checkpoint.
+
         """
         if variant is not None and model is None:
             raise ValueError(
@@ -487,19 +496,19 @@ class LuxonisModel:
     ) -> Path:
         """Save a checkpoint of the model.
 
-        @type path: PathType
-        @param path: Path where checkpoint will be saved.
-        @type weights_only: bool | None
-        @param weights_only: If `True`, will only save the model
-            weights.
-        @type storage_options: Any
-        @param storage_options: parameter for how to save to storage,
-            passed to `CheckpointIO` plugin
-        @rtype: Path
-        @return: Path to the saved checkpoint.
-        @raises AttributeError: If the module is not attached to the
-            trainer yet. This can happen if you try to save a checkpoint
-            before training / evaluating the model first.
+        Args:
+            path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` where checkpoint will be saved.
+            weights_only (bool): If ``True``, saves only the model weights.
+            storage_options (``Any``): Storage options passed to the
+                ``CheckpointIO`` plugin.
+
+        Returns:
+            ``Path``: ``Path`` to the saved checkpoint.
+
+        Raises:
+            AttributeError: If the module is not attached to the trainer yet.
+                This can happen before training or evaluating the model first.
+
         """
         self.pl_trainer.save_checkpoint(
             path, weights_only=weights_only, storage_options=storage_options
@@ -509,14 +518,16 @@ class LuxonisModel:
     def get_checkpoint(self, weights_only: bool = False) -> dict[str, Any]:
         """Get the checkpoint of the model as a dictionary.
 
-        @type weights_only: bool
-        @param weights_only: If `True`, will only include the model
-            weights in the checkpoint.
-        @rtype: dict[str, Any]
-        @return: Checkpoint of the model as a dictionary.
-        @raises AttributeError: If the module is not attached to the
-            trainer yet. This can happen if you try to save a checkpoint
-            before training / evaluating the model first.
+        Args:
+            weights_only (bool): If ``True``, includes only model weights.
+
+        Returns:
+            ``dict[str, Any]``: Checkpoint of the model as a dictionary.
+
+        Raises:
+            AttributeError: If the module is not attached to the trainer yet.
+                This can happen before training or evaluating the model first.
+
         """
         with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
             checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
@@ -542,12 +553,11 @@ class LuxonisModel:
     ) -> None:
         """Run the training.
 
-        @type new_thread: bool
-        @param new_thread: Runs training in new thread if set to True.
-        @type weights: str | None
-        @param weights: Path to the weights. If user specifies weights
-            in the config file, the weights provided here will take
-            precedence.
+        Args:
+            new_thread (bool): Runs training in a new thread if ``True``.
+            weights (``PathType | None``): ``Path`` to the weights. Explicit weights
+                take precedence over weights specified in the config file.
+
         """
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
@@ -614,28 +624,20 @@ class LuxonisModel:
     ) -> Path:
         """Run the export.
 
-        @type save_path: PathType | None
-        @param save_path: Directory where to save all exported model
-            files. If not specified, files will be saved to the "export"
-            directory in the run save directory.
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load
-            weights. If not specified, the value of `model.weights` from
-            the configuration file will be used. The current weights of
-            the model will be temporarily replaced with the weights from
-            the specified checkpoint.
-        @type ignore_missing_weights: bool
-        @param ignore_missing_weights: If set to True, the warning about
-            missing weights will be suppressed.
-        @type ckpt_only: bool
-        @param ckpt_only: If True, only the `.ckpt` file will be
-            exported. This is useful for updating the metadata in the
-            checkpoint file in case they changed (e.g. new configuration
-            file, architectural changes affecting the execution order
-            etc.)
-        @rtype: Path
-        @return: Path to the exported ONNX model file or .ckpt file if
-            ckpt_only is True.
+        Args:
+            save_path (``PathType | None``): Directory where exported model files
+                are saved. If not specified, files are saved to the
+                ``"export"`` directory in the run save directory.
+            weights (``PathType | dict[str, Any] | None``): Checkpoint path or
+                in-memory checkpoint/state dictionary from which weights are
+                loaded. If omitted, ``model.weights`` from the config is used.
+            ignore_missing_weights (bool): If ``True``, suppresses the warning
+                about missing weights.
+            ckpt_only (bool): If ``True``, exports only the ``.ckpt`` file.
+
+        Returns:
+            ``Path``: ``Path`` to the exported artifact.
+
         """
         weights = self.resolve_weights(weights)
 
@@ -795,26 +797,22 @@ class LuxonisModel:
     ) -> Mapping[str, float] | Thread:
         """Runs testing.
 
-        @type new_thread: bool
-        @param new_thread: Runs testing in a new thread if set to True.
-        @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defaults to
-            "test".
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load
-            weights. If not specified, the value of `model.weights` from
-            the configuration file will be used. The current weights of
-            the model will be temporarily replaced with the weights from
-            the specified checkpoint.
-        @type finalize_tracker: bool
-        @param finalize_tracker: If True, uploads final run metadata and
-            finalizes the tracker after testing. Set to False only when
-            the current run is expected to continue with additional
-            actions such as export or archive, in which case the caller
-            is responsible for eventually calling L{finalize_run()}.
-        @rtype: Mapping[str, float] | Thread
-        @return: If new_thread is False, returns a dictionary test
-            results.
+        Args:
+            new_thread (bool): Runs testing in a new thread if ``True``.
+            view (``Literal["train", "val", "test"]``): Dataset view to test.
+            weights (``PathType | dict[str, Any] | None``): Checkpoint path or
+                in-memory checkpoint/state dictionary from which weights are
+                loaded. If omitted, ``model.weights`` from the config is used.
+            finalize_tracker (bool): If ``True``, uploads final run metadata
+                and finalizes the tracker after testing. Set to ``False`` only
+                when the current run is expected to continue with additional
+                actions such as export or archive, in which case the caller is
+                responsible for eventually calling ``finalize_run()``.
+
+        Returns:
+            ``Mapping[str, float] | Thread``: Test results when ``new_thread`` is
+            ``False``; otherwise the thread that runs the test.
+
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -846,8 +844,9 @@ class LuxonisModel:
     def finalize_run(self, status: str = "success") -> None:
         """Upload run metadata and finalize the tracker.
 
-        @type status: str
-        @param status: Final run status passed to the tracker.
+        Args:
+            status (str): Final run status passed to the tracker.
+
         """
         self._upload_run_metadata()
         self.tracker._finalize(status)
@@ -865,22 +864,17 @@ class LuxonisModel:
     ) -> None:
         """Run the inference.
 
-        @type view: str
-        @param view: Which split to run the inference on. Valid values
-            are: C{"train"}, C{"val"}, C{"test"}. Defaults to C{"val"}.
-        @type save_dir: PathType | None
-        @param save_dir: Directory where to save the visualizations. If
-            not specified, visualizations will be rendered on the
-            screen.
-        @type source_path: PathType | None
-        @param source_path: Path to the image file, video file or directory.
-            If None, defaults to using dataset images.
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-            If not specified, the value of `model.weights` from the
-            configuration file will be used. The current weights of the
-            model will be temporarily replaced with the weights from the
-            specified checkpoint.
+        Args:
+            view (``Literal["train", "val", "test"]``): Dataset view used when
+                ``source_path`` is not provided.
+            save_dir (``PathType | None``): Directory where visualizations are
+                saved. If omitted, visualizations are rendered on screen.
+            source_path (``PathType | None``): ``Path`` to an image file, video file,
+                or directory. If ``None``, dataset images are used.
+            weights (``PathType | dict[str, Any] | None``): Checkpoint path or
+                in-memory checkpoint/state dictionary from which weights are
+                loaded. If omitted, ``model.weights`` from the config is used.
+
         """
         self.lightning_module.eval()
         weights = self.resolve_weights(weights)
@@ -1215,17 +1209,18 @@ class LuxonisModel:
     ) -> Path:
         """Generate an NN Archive out of a model executable.
 
-        @type path: PathType | None
-        @param path: Path to the model executable. If not specified, the
-            model will be exported first.
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load
-            weights. If not specified, the value of `model.weights` from
-            the configuration file will be used. The current weights of
-            the model will be temporarily replaced with the weights from
-            the specified checkpoint.
-        @rtype: Path
-        @return: Path to the generated NN Archive.
+        Args:
+            path (``PathType | None``): ``Path`` to the model executable. If omitted,
+                the model is exported first.
+            weights (``PathType | dict[str, Any] | None``): Checkpoint path or
+                in-memory checkpoint/state dictionary from which weights are
+                loaded. If omitted, ``model.weights`` from the config is used.
+            save_dir (``PathType | None``): Directory where the NN Archive is
+                saved.
+
+        Returns:
+            ``Path``: ``Path`` to the generated NN Archive.
+
         """
         weights = self.resolve_weights(weights)
         with replace_weights(self.lightning_module, weights):
@@ -1336,23 +1331,24 @@ class LuxonisModel:
         weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
-        """Export the model to ONNX, creates an NN Archive, and converts
-        to target platform format (RVC2/RVC3/RVC4).
+        """Export, archive, and convert the model to target platform
+        format.
 
-        This is a unified method that combines export, archive, and
-        platform conversion steps.
+        This unified method combines export, archive, and platform conversion
+        steps for RVC2, RVC3, and RVC4 targets.
 
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load
-            weights. If not specified, the value of `model.weights` from
-            the configuration file will be used.
-        @type save_dir: PathType | None
-        @param save_dir: Directory where the outputs will be saved. If
-            not specified, the default run save directory will be used.
-        @rtype: tuple[Path, dict[str, Path]]
-        @return: A tuple of: 1) Path to the generated ONNX-based NN
-            Archive. 2) Mapping of additional conversion artifact names
-            to their paths.
+        Args:
+            weights (``PathType | dict[str, Any] | None``): Checkpoint path or
+                in-memory checkpoint/state dictionary from which weights are
+                loaded. If omitted, ``model.weights`` from the config is used.
+            save_dir (``PathType | None``): Directory where outputs are saved. If
+                omitted, the default run save directory is used.
+
+        Returns:
+            ``tuple[Path, dict[str, Path]]``: A tuple ``(archive_path,
+            conversion_artifacts)`` containing the ONNX-based NN Archive path
+            and additional conversion artifact paths.
+
         """
         self.export(weights=weights, save_path=save_dir)
 
@@ -1515,81 +1511,61 @@ class LuxonisModel:
     ) -> Path:
         """Quantize the model using AIMET.
 
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load
-            weights.
-        @type epochs: int | None
-        @param epochs: Number of epochs to run quantization-aware
-            training for.
-        @type quant_scheme: str | QuantScheme | None
-        @param quant_scheme: Quantization scheme to use. If not
-            specified, the value from the configuration file will be
-            used.
-        @type default_output_bw: int | None
-        @param default_output_bw: Default bitwidth to use for quantizing
-            outputs. If not specified, the value from the configuration
-            file will be used.
-        @type default_param_bw: int | None
-        @param default_param_bw: Default bitwidth to use for quantizing
-            parameters. If not specified, the value from the
-            configuration file will be used.
-        @type config_file: str | None
-        @param config_file: Path to the AIMET configuration file or a
-            dictionary containing the AIMET configuration. If not
-            specified, the value from the configuration file will be
-            used.
-        @type default_data_type: QuantizationDataType | None
-        @param default_data_type: Default data type to use for
-            quantization. If not specified, the value from the
-            configuration file will be used.
-        @type adaround: bool | None
-        @param adaround: Whether to use Adaround for weight
-            quantization. If not specified, the value from the
-            configuration file will be used.
-        @type adaround_iterations: int | None
-        @param adaround_iterations: Number of iterations to run Adaround
-            for. If not specified, the value from the configuration file
-            will be used.
-        @type adaround_reg_param: float | None
-        @param adaround_reg_param: Regularization parameter to use for
-            Adaround. If not specified, the value from the configuration
-            file will be used.
-        @type adaround_beta_range: tuple[int, int] | None
-        @param adaround_beta_range: Beta range to use for Adaround. If
-            not specified, the value from the configuration file will be
-            used.
-        @type adaround_warm_start: float | None = None
-        @param adaround_warm_start: Warm start value to use for
-            Adaround. If not specified, the value from the configuration
-            file will be used.
-        @type fold_batch_norms: bool | None
-        @param fold_batch_norms: Whether to fold batch norms before
-            quantization. If not specified, the value from the
-            configuration file will be used.
-        @type cross_layer_equalization: bool | None
-        @param cross_layer_equalization: Whether to perform cross-layer
-            equalization before quantization. If not specified, the
-            value from the configuration file will be used.
-        @type batch_norm_reestimation: bool | None
-        @param batch_norm_reestimation: Whether to perform batch norm
-            reestimation after folding batch norms. If not specified,
-            the value from the configuration file will be used.
-        @type optimizer: Optimizer | None
-        @param optimizer: Optimizer to use for quantization-aware
-            training. If not specified, the optimizer from the
-            configuration file will be used.
-        @type scheduler: LRScheduler | None
-        @param scheduler: Learning rate scheduler to use for
-            quantization-aware training. If not specified, the scheduler
-            from the configuration file will be used.
-        @type in_place: bool
-        @param in_place: Whether to perform quantization in-place on the
-            original model or to create a copy of the model for
-            quantization. Defaults to False, which means that a copy of
-            the model will be created for quantization. Setting this to
-            True will modify the original model in-place, which may save
-            memory but will overwrite the original model's weights and
-            structure.
+        Args:
+            weights (``PathType | None``): ``Path`` to the checkpoint from which to
+                load weights.
+            epochs (int | None): Number of epochs to run quantization-aware
+                training for.
+            quant_scheme (``Literal["min_max", "tf", "tf_enhanced"] | None``):
+                Quantization scheme to use. If not specified, the value from the
+                configuration file is used.
+            default_output_bw (int | None): Default bitwidth used for quantizing
+                outputs. If not specified, the value from the configuration file is
+                used.
+            default_param_bw (int | None): Default bitwidth used for quantizing
+                parameters. If not specified, the value from the configuration file
+                is used.
+            config_file (str | None): ``Path`` to the AIMET configuration file. If
+                not specified, the value from the configuration file is used.
+            default_data_type (``Literal["int", "float"] | None``): Default data
+                type used for quantization. If not specified, the value from the
+                configuration file is used.
+            adaround (bool | None): Whether to use Adaround for weight
+                quantization. If not specified, the value from the configuration
+                file is used.
+            adaround_iterations (int | None): Number of iterations to run Adaround
+                for. If not specified, the value from the configuration file is
+                used.
+            adaround_reg_param (float | None): Regularization parameter used for
+                Adaround. If not specified, the value from the configuration file
+                is used.
+            adaround_beta_range (``tuple[int, int] | None``): Beta range used for
+                Adaround. If not specified, the value from the configuration file
+                is used.
+            adaround_warm_start (float | None): Warm start value used for Adaround.
+                If not specified, the value from the configuration file is used.
+            fold_batch_norms (bool | None): Whether to fold batch norms before
+                quantization. If not specified, the value from the configuration
+                file is used.
+            cross_layer_equalization (bool | None): Whether to perform cross-layer
+                equalization before quantization. If not specified, the value from
+                the configuration file is used.
+            batch_norm_reestimation (bool | None): Whether to perform batch norm
+                reestimation after folding batch norms. If not specified, the value
+                from the configuration file is used.
+            sequential_mse (bool | None): Whether to run sequential MSE. If not
+                specified, the value from the configuration file is used.
+            optimizer (``Optimizer | None``): Optimizer used for quantization-aware
+                training. If not specified, the optimizer from the configuration
+                file is used.
+            scheduler (``LRScheduler | None``): Learning rate scheduler used for
+                quantization-aware training. If not specified, the scheduler from
+                the configuration file is used.
+            in_place (bool): Whether to quantize the original model in place, or to
+                quantize a copy of it. Defaults to ``False``, which quantizes a
+                copy. ``True`` modifies the original model in place, which can save
+                memory but overwrites the original model's weights and structure.
+
         """
         from .utils.aimet_utils import (
             check_aimet_available,
@@ -1897,9 +1873,10 @@ class LuxonisModel:
         """Get the best checkpoint path with respect to minimal
         validation loss.
 
-        @rtype: str
-        @return: Path to the best checkpoint with respect to minimal
-            validation loss
+        Returns:
+            str | None: ``Path`` to the best checkpoint, or ``None`` if no matching
+            checkpoint callback is found.
+
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
             if not isinstance(callback, ModelCheckpoint):
@@ -1913,9 +1890,10 @@ class LuxonisModel:
         """Get the best checkpoint path with respect to best validation
         metric.
 
-        @rtype: str
-        @return: Path to the best checkpoint with respect to best
-            validation metric
+        Returns:
+            str | None: ``Path`` to the best checkpoint, or ``None`` if no matching
+            checkpoint callback is found.
+
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
             if not isinstance(callback, ModelCheckpoint):
@@ -1925,10 +1903,12 @@ class LuxonisModel:
         return None
 
     def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
-        """
-        Return a dictionary with two lists of keys:
-        1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
+        """Return expected MLflow metric and artifact keys.
+
+        Returns:
+            dict[str, list[str]]: Dictionary with ``"metrics"`` and
+            ``"artifacts"`` keys.
+
         """
         return self.lightning_module.get_mlflow_logging_keys()
 

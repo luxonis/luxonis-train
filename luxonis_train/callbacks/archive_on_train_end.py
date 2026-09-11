@@ -1,3 +1,5 @@
+"""Creates an NN Archive when training ends."""
+
 import lightning.pytorch as pl
 from loguru import logger
 
@@ -9,13 +11,17 @@ from .needs_checkpoint import NeedsCheckpoint
 
 @CALLBACKS.register()
 class ArchiveOnTrainEnd(NeedsCheckpoint):
+    """Create an NN Archive when training ends."""
+
     def on_train_end(
         self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """Archive the model on train end.
 
-        @type pl_module: L{lxt.LuxonisLightningModule}
-        @param pl_module: Pytorch Lightning module.
+        Args:
+            _ (``pl.Trainer``): Pytorch Lightning trainer. Unused.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
+
         """
         onnx_path = pl_module.core._exported_models.get("onnx")
         if onnx_path is None:  # pragma: no cover

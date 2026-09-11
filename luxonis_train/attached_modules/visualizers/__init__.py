@@ -1,3 +1,14 @@
+"""Visualizers that draw the predictions of a node.
+
+Each visualizer returns one image for the labels and one image for the
+predictions. The trainer logs them side by side, with the labels on the
+left and the predictions on the right.
+
+Attach a visualizer in the ``visualizers`` field of a node.
+``trainer.n_log_images`` caps how many images each head contributes.
+
+"""
+
 from .base_visualizer import BaseVisualizer
 from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer

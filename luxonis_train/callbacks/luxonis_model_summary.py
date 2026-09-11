@@ -1,3 +1,7 @@
+"""Prints the layer summary of the model, as a rich table or as plain
+text.
+"""
+
 from io import StringIO
 from typing import Any
 
@@ -10,7 +14,24 @@ from typing_extensions import override
 
 
 class LuxonisModelSummary(RichModelSummary):
+    """Print the layer summary of the model.
+
+    The callback writes a rich table to the console when ``rich`` is
+    true, and a plain table otherwise. A copy goes to the log file
+    either way.
+
+    """
+
     def __init__(self, rich: bool = True, **kwargs):
+        """Set how the summary is rendered.
+
+        Args:
+            rich (bool): Render the summary as a rich table. Left false,
+                the summary is plain text.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                ``RichModelSummary``.
+
+        """
         super().__init__(**kwargs)
 
         self.rich = rich

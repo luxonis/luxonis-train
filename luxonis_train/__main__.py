@@ -1,3 +1,12 @@
+"""The ``luxonis_train`` command line interface.
+
+Every command builds a `LuxonisModel
+<luxonis_train.core.core.LuxonisModel>` from a config and calls one of
+its methods. ``--model`` and ``--variant`` select a packaged config, so
+``--config`` is optional.
+
+"""
+
 import importlib
 import importlib.util
 import json
@@ -15,10 +24,6 @@ from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
-OptsType: TypeAlias = Annotated[
-    list[str] | None, Parameter(json_list=False, json_dict=False)
-]
-
 _SECTION_BY_PACKAGE = {
     "backbones": "Backbone",
     "necks": "Neck",
@@ -33,6 +38,24 @@ if TYPE_CHECKING:
     from luxonis_train.config import NodeConfig
     from luxonis_train.config.predefined_models import BasePredefinedModel
     from luxonis_train.loaders import BaseLoaderTorch
+
+    OptsType: TypeAlias = list[str] | None
+    LauncherToken: TypeAlias = str
+    LauncherSource: TypeAlias = list[Path] | None
+else:
+    OptsType = Annotated[
+        list[str] | None, Parameter(json_list=False, json_dict=False)
+    ]
+    LauncherToken = Annotated[
+        str, Parameter(show=False, allow_leading_hyphen=True)
+    ]
+    LauncherSource = Annotated[
+        list[Path] | None,
+        Parameter(
+            help="Path to a python module with custom components. "
+            "This module will be sourced before running a command."
+        ),
+    ]
 
 
 app = App(
@@ -88,24 +111,18 @@ def train(
 ):
     """Start the training process.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Run `luxonis_train list-models` to see the
-        options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the training loop.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        weights (str | None): ``Path`` to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config,
@@ -130,21 +147,18 @@ def tune(
 ):
     """Start hyperparameter tuning.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model.
-    @type variant: str
-    @param variant: Variant of the predefined model.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the tuning.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        weights (str | None): ``Path`` to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config,
@@ -172,30 +186,22 @@ def inspect(
 ):
     """Inspect the dataset as specified in the configuration.
 
-    To close the window press 'q' or 'Esc'.
+    To close the window press ``"q"`` or ``"Esc"``.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type view: Literal["train", "val", "test"]
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type size_multiplier: float
-    @param size_multiplier: Multiplier for the image size. By default
-        the images are shown in their original size. Use this option to
-        scale them.
-    @type list_augmentations: bool
-    @param list_augmentations: Show the augmentations applied to each
-        displayed image in the footer.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        view (``Literal["train", "val", "test"]``): Dataset view to inspect.
+        size_multiplier (float): Multiplier for the image size. By default,
+            images are shown in their original size.
+        list_augmentations (bool): Whether to show applied augmentations in the
+            footer.
+
     """
     import cv2
 
@@ -236,27 +242,20 @@ def test(
 ):
     """Evaluate a trained model.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type view: str
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the evaluation loop.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file or predefined model
+            name.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        view (``Literal["train", "val", "test"]``): Dataset view to evaluate.
+        weights (str | None): ``Path`` to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config,
@@ -285,29 +284,23 @@ def infer(
 
     Supports both images and video files.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type view: str
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type save_dir: Path
-    @param save_dir: Where to save the inference results.
-    @type source_path: str
-    @param source_path: Path to an image file, a directory containing
-        images or a video file for inference. If not provided, the
-        loader from the configuration file will be used.
-    @type weights: Path
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file or predefined model
+            name.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        view (``Literal["train", "val", "test"]``): Dataset view to use when
+            ``source_path`` is not provided.
+        save_dir (``Path | None``): Directory where inference results are saved.
+        source_path (str | None): ``Path`` to an image file, image directory, or
+            video file. If not provided, the loader from the configuration file
+            is used.
+        weights (str | None): ``Path`` to the model weights.
+
     """
     create_model(
         config,
@@ -342,37 +335,28 @@ def annotate(
 ):
     """Run annotation on a custom directory of images.
 
-    @type config: str
-    @param config: Path to the configuration file used by the model to
-        annotate images. Mutually exclusive with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type dir_path: str
-    @param dir_path: Path to the directory containing images to
-        annotate.
-    @type dataset_name: str
-    @param dataset_name: Name of the dataset for the annotated images.
-    @type weights: Path | None
-    @param weights: Path to the model weights. If provided, the model
-        will use these weights instead of those in the configuration
-        file.
-    @type bucket_storage: Literal["local", "gcs"]
-    @param bucket_storage: Storage type for the new annotated dataset.
-    @type delete_local: bool
-    @param delete_local: Whether to delete local dataset or append data
-        to existing dataset.
-    @type delete_remote: bool
-    @param delete_remote: Whether to delete remote dataset or append
-        data to existing dataset.
-    @type team_id: str | None
-    @param team_id: Optional team ID for the dataset.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        dir_path (``Path``): ``Path`` to the directory containing images to annotate.
+        dataset_name (str): Name of the dataset for the annotated images.
+        config (str | None): ``Path`` to the configuration file used by the model
+            to annotate images.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        weights (str | None): ``Path`` to the model weights. If provided, the
+            model uses these weights instead of those in the configuration
+            file.
+        bucket_storage (``Literal["local", "gcs"]``): Storage type for the new
+            annotated dataset.
+        delete_local (bool): Whether to delete the local dataset before
+            writing.
+        delete_remote (bool): Whether to delete the remote dataset before
+            writing.
+        team_id (str | None): Optional team ID for the dataset.
+
     """
     lx_model = create_model(
         config,
@@ -408,29 +392,21 @@ def export(
 ):
     """Export the model to ONNX or BLOB format.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type save_path: str
-    @param save_path: Directory where to save all exported model files.
-        If not specified, files will be saved to the 'export' directory
-        in the run save directory.
-    @type ckpt_only: bool
-    @param ckpt_only: If True, only the `.ckpt` file will be exported.
-        This is useful for updating the metadata in the checkpoint file
-        in case they changed (e.g. new configuration file, architectural
-        changes affecting the execution order etc.)
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file or predefined model
+            name.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        save_path (str | None): Directory where exported model files are
+            saved. If not specified, files are saved to the ``"export"``
+            directory in the run save directory.
+        weights (str | None): ``Path`` to the model weights.
+        ckpt_only (bool): If ``True``, only the ``.ckpt`` file is exported.
+
     """
     create_model(
         config,
@@ -455,23 +431,18 @@ def archive(
 ):
     """Convert the model to an NN Archive format.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type executable: str
-    @param executable: Path to the exported model, usually an ONNX file.
-        If not provided, the model will be exported first.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        executable (str | None): ``Path`` to the exported model, usually an ONNX
+            file. If not provided, the model is exported first.
+        weights (str | None): ``Path`` to the model weights.
+
     """
     create_model(
         config,
@@ -500,23 +471,18 @@ def convert(
     platform conversion (RVC2/RVC3/RVC4) steps based on the
     configuration.
 
-    @type config: str
-    @param config: Path to the configuration file. Mutually exclusive
-        with `--model`.
-    @type model: str
-    @param model: Name of a packaged predefined model (e.g.
-        `detection`). Mutually exclusive with `--config`. Run
-        `luxonis_train list-models` to see the options.
-    @type variant: str
-    @param variant: Variant of the predefined model (e.g. `light`,
-        `heavy`). Defaults to the model's default variant.
-    @type save_dir: str
-    @param save_dir: Directory where all outputs will be saved. If not
-        specified, the default run save directory will be used.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        save_dir (str | None): Directory where outputs are saved. If not
+            specified, the default run save directory is used.
+        weights (str | None): ``Path`` to the model weights.
+
     """
     create_model(
         config,
@@ -540,16 +506,16 @@ def quantize(
 ):
     """Quantize the model using AIMET.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type model: str
-    @param model: Name of a packaged predefined model.
-    @type variant: str
-    @param variant: Variant of the predefined model.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): ``Path`` to the configuration file.
+        model (str | None): Name of a packaged predefined model, for example
+            ``"detection"``. Mutually exclusive with ``config``. Run
+            ``luxonis_train list-models`` to see the options.
+        variant (str | None): Variant of the predefined model, for example
+            ``"light"`` or ``"heavy"``. Defaults to the model's default variant.
+        weights (str | None): ``Path`` to the model weights.
+
     """
     lx_model = create_model(
         config,
@@ -566,8 +532,10 @@ def quantize(
 def list_models():
     """List packaged predefined models, their variants and versions.
 
-    Each row shows `<model>  variants  versions`. The `*` marks the
-    default variant / version picked when the option is omitted.
+    Each row shows the model name, its variants and its versions. The
+    ``*`` marks the default variant and version, which are used when the
+    option is omitted.
+
     """
     from rich import box
     from rich.console import Console
@@ -600,15 +568,13 @@ def list_models():
 def info(*, model: str, variant: str | None = None):
     """Display documentation for a packaged predefined model.
 
-    @type model: str
-    @param model: Packaged model name, optionally suffixed with a
-        version (for example `detection:v1`).
-    @type variant: str | None
-    @param variant: Model variant to describe. Defaults to the packaged
-        model's default variant.
-    """
-    import inspect
+    Args:
+        model (str): Packaged model name, optionally suffixed with a version,
+            for example ``"detection:v1"``.
+        variant (str | None): Model variant to describe. Defaults to the
+            packaged model's default variant.
 
+    """
     from rich.console import Console
     from rich.panel import Panel
     from rich.text import Text
@@ -653,7 +619,7 @@ def info(*, model: str, variant: str | None = None):
     resolved_name = resolved_class_name(class_family, version)
 
     console = Console()
-    description = inspect.cleandoc(model_class.__dict__.get("__doc__") or "")
+    description = _docstring_to_text(model_class.__dict__.get("__doc__"))
     if not description:
         description = f"Predefined {class_family} architecture."
     console.print(
@@ -685,11 +651,11 @@ def config(
 ):
     """Upgrade luxonis-train configuration file.
 
-    @type config: Path
-    @param config: Path to configuration file to be upgraded.
-    @type output: Path | None
-    @param output: Where to save the upgraded config. If left empty, the
-        old file will be overridden.
+    Args:
+        config (``Path``): ``Path`` to configuration file to be upgraded.
+        output (``Path | None``): Where to save the upgraded config. If omitted,
+            the old file is overwritten.
+
     """
     new_cfg = upgrade_config(config)
 
@@ -717,11 +683,14 @@ def checkpoint(
 ):
     """Upgrade luxonis-train checkpoint file.
 
-    @type path: Path
-    @param path: Path to the checkpoint
-    @type output: Path | None
-    @param output: Where to save the upgraded checkpoint. If left empty,
-        the old file will be overridden.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        path (``Path``): ``Path`` to the checkpoint.
+        output (``Path | None``): Where to save the upgraded checkpoint. If
+            omitted, the old file is overwritten.
+        config (``Path | None``): Optional configuration file used to construct the
+            model.
+
     """
     from luxonis_train import LuxonisModel
 
@@ -743,22 +712,17 @@ def checkpoint(
 def upgrade():
     """Upgrade luxonis-train installation and user files.
 
-    Usage without a subcommand will trigger an upgrade of `luxonis-
-    train` PyPI package.
+    Usage without a subcommand will trigger an upgrade of the
+    ``luxonis-train`` PyPI package.
+
     """
     upgrade_installation()
 
 
 @app.meta.default
 def launcher(
-    *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
-    source: Annotated[
-        list[Path] | None,
-        Parameter(
-            help="Path to a python module with custom components. "
-            "This module will be sourced before running a command."
-        ),
-    ] = None,
+    *tokens: LauncherToken,
+    source: LauncherSource = None,
 ):
     if source:
         for src in source:
@@ -922,8 +886,6 @@ def _print_node_panel(
     node_name: str,
     node_config: "NodeConfig",
 ) -> None:
-    import inspect
-
     from rich.panel import Panel
     from rich.text import Text
 
@@ -933,8 +895,7 @@ def _print_node_panel(
     node_doc = (
         node_class.__dict__.get("__doc__") or node_class.__init__.__doc__
     )
-    node_doc = inspect.cleandoc(node_doc or "")
-    body = Text(node_doc or "No documentation available.")
+    body = Text(_docstring_to_text(node_doc) or "No documentation available.")
     variant_label = node_config.variant or "default"
     console.print(
         Panel(
@@ -943,6 +904,23 @@ def _print_node_panel(
             border_style="green",
         )
     )
+
+
+def _docstring_to_text(doc: str | None) -> str:
+    """Flatten the reST markup of a docstring for terminal output."""
+    import inspect
+    import re
+
+    text = inspect.cleandoc(doc or "")
+    # reST comments and directives carry no meaning in a terminal; a
+    # `code-block` keeps its literal body, which follows it indented.
+    text = re.sub(
+        r"^[ \t]*\.\. .*(?:\n[ \t]*\n)?", "", text, flags=re.MULTILINE
+    )
+    text = re.sub(r"`([^`<]+?)(\s*)<([^>]+)>`_", r"\1\2(\3)", text)
+    text = re.sub(r":\w+:`([^`]+)`", r"\1", text)
+    text = text.replace("``", "")
+    return re.sub(r"`([^`]+)`_?", r"\1", text)
 
 
 if __name__ == "__main__":

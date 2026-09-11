@@ -1,3 +1,7 @@
+"""Translation between the ``tuner.params`` of a config and the
+suggestions an Optuna trial makes.
+"""
+
 import random
 from typing import Any, TypeGuard
 

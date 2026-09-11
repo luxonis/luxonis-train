@@ -1,3 +1,5 @@
+"""Registers every optimizer of ``torch.optim`` under its class name."""
+
 from torch import optim
 
 from luxonis_train.registry import OPTIMIZERS

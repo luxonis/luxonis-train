@@ -1,3 +1,7 @@
+"""Registers every scheduler of ``torch.optim.lr_scheduler`` under its
+class name.
+"""
+
 from torch.optim import lr_scheduler
 
 from luxonis_train.registry import SCHEDULERS

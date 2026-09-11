@@ -1,3 +1,7 @@
+"""Logs the chosen hyperparameters and the git hashes of
+``luxonis-ml`` and ``luxonis-train``.
+"""
+
 import lightning.pytorch as pl
 import yaml
 
@@ -13,12 +17,15 @@ class MetadataLogger(pl.Callback):
     Metadata include all defined hyperparameters together with git
     hashes of luxonis-ml and luxonis-train packages. Also stores this
     information locally.
+
     """
 
     def __init__(self, hyperparams: list[str]):
-        """
-        @type hyperparams: list[str]
-        @param hyperparams: List of hyperparameters to log.
+        """Initialize metadata logging for selected hyperparameters.
+
+        Args:
+            hyperparams (list[str]): List of hyperparameters to log.
+
         """
         super().__init__()
         self.hyperparams = hyperparams

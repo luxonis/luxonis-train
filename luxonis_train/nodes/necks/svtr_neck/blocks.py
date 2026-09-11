@@ -1,3 +1,5 @@
+"""The mixing and attention blocks of the SVTR neck."""
+
 import math
 from typing import Literal
 

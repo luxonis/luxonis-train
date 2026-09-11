@@ -1,3 +1,15 @@
+"""Backbones that turn an image into feature maps.
+
+Most backbones return one feature map for each stride, which a neck or a
+head then consumes. `DinoV3` also returns a single CLS embedding when
+``return_sequence`` is true. `GhostFaceNet` targets face embeddings and
+`RecSubNet` reconstructs an image without its anomalies.
+
+Set ``variant`` to pick a size. Each backbone docstring lists the
+variants it declares and the parameters each one sets.
+
+"""
+
 from luxonis_train.nodes.backbones.dinov3.dinov3 import DinoV3
 
 from .contextspatial import ContextSpatial

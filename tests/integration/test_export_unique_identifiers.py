@@ -82,6 +82,7 @@ def test_unique_initializers_no_shared_weights(
     transformation.
 
     Each initializer should be used at most once.
+
     """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets

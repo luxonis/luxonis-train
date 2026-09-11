@@ -1,3 +1,8 @@
+"""An SGD strategy with a warmup phase and optional cosine annealing,
+which splits the parameters into weights, biases, and normalization
+weights.
+"""
+
 import math
 
 import numpy as np
@@ -12,6 +17,16 @@ from .base_strategy import BaseTrainingStrategy
 
 
 class TripleLRSGDStrategy(BaseTrainingStrategy):
+    """SGD over three parameter groups, with a warmup.
+
+    The strategy splits the parameters into the normalization weights,
+    the other weights, and the biases, and applies weight decay to the
+    weights only. A linear warmup raises the learning rate over the
+    first epochs, and the bias group starts from a higher rate. Cosine
+    annealing then decays every group to ``lre``.
+
+    """
+
     BATCH_NORM_TAG = "triple_lr/batch_norm_weights"
     WEIGHT_TAG = "triple_lr/weights"
     BIAS_TAG = "triple_lr/biases"
@@ -36,26 +51,19 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         weights) with a shared per-epoch learning-rate factor and a
         per-step linear warmup.
 
-        @type pl_module: pl.LightningModule
-        @param pl_module: The pl_module to be used.
-        @type lr: float
-        @param lr: The learning rate.
-        @type momentum: float
-        @param momentum: The momentum.
-        @type weight_decay: float
-        @param weight_decay: The weight decay.
-        @type nesterov: bool
-        @param nesterov: Whether to use nesterov.
-        @type warmup_epochs: int
-        @param warmup_epochs: The number of warmup epochs.
-        @type warmup_bias_lr: float
-        @param warmup_bias_lr: The warmup bias learning rate.
-        @type warmup_momentum: float
-        @param warmup_momentum: The warmup momentum.
-        @type lre: float
-        @param lre: The learning rate for the end of the training.
-        @type cosine_annealing: bool
-        @param cosine_annealing: Whether to use cosine annealing.
+        Args:
+            pl_module (``lxt.LuxonisLightningModule``): Lightning module to
+                optimize.
+            lr (float): Learning rate.
+            momentum (float): Momentum.
+            weight_decay (float): Weight decay.
+            nesterov (bool): Whether to use Nesterov momentum.
+            warmup_epochs (int): Number of warmup epochs.
+            warmup_bias_lr (float): Warmup bias learning rate.
+            warmup_momentum (float): Warmup momentum.
+            lre (float): Learning rate at the end of training.
+            cosine_annealing (bool): Whether to use cosine annealing.
+
         """
         self.model = pl_module
         self.cfg = pl_module.cfg
