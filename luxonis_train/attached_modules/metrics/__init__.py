@@ -1,4 +1,4 @@
-from .base_metric import BaseMetric, MetricState
+from .base_metric import BaseMetric, DistReduceFx, MetricState
 from .confusion_matrix import ConfusionMatrix
 from .dice_coefficient import DiceCoefficient
 from .embedding_metrics import ClosestIsPositiveAccuracy, MedianDistances
@@ -16,6 +16,7 @@ __all__ = [
     "ClosestIsPositiveAccuracy",
     "ConfusionMatrix",
     "DiceCoefficient",
+    "DistReduceFx",
     "F1Score",
     "JaccardIndex",
     "MIoU",

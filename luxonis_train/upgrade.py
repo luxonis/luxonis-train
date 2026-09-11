@@ -97,16 +97,7 @@ class NestedDict:
 
 
 def upgrade_config(config: PathType | Params) -> Params:
-    if isinstance(config, dict):
-        cfg = NestedDict(config)
-    else:
-        config = Path(config)
-        if config.suffix == "json":
-            cfg = json.loads(config.read_text(encoding="utf-8"))
-        else:
-            cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
-
-        cfg = NestedDict(cfg)
+    cfg = _load_config(config)
 
     old_version = Version.parse(cfg.get("version", "0.3.0"))
     if "config_version" in cfg:
@@ -123,78 +114,10 @@ def upgrade_config(config: PathType | Params) -> Params:
         f"Upgrading the config from v{old_version} to v{lxt.__version__}"
     )
 
-    cfg.replace(
-        "trainer.use_rich_progress_bar",
-        "rich_logging",
-    )
-    cfg.replace(
-        "preprocessing.train_rgb",
-        "preprocessing.color_space",
-        "RGB" if cfg["preprocessing.train_rgb"] else "BGR",
-    )
-
-    cfg.replace(
-        "model.predefined_model.params.variant",
-        "model.predefined_model.variant",
-    )
-    cfg.replace(
-        "tuner.storage.storage_type",
-        "tuner.storage.backend",
-        "sqlite"
-        if cfg["tuner.storage.storage_type"] == "local"
-        else "postgresql",
-    )
-    if "tuner" in cfg and cfg["tuner"] is None:
-        cfg.pop("tuner")
-
-    nodes = cfg.get("model.nodes", [])
-    assert isinstance(nodes, list)
-
-    heads: dict[str, NestedDict] = {}
-    for node in map(NestedDict, nodes):
-        node_class = node["name"]
-        if lxt.__semver__ >= Version(0, 4):
-            node.replace("params.variant", "variant")
-            if node_class == "FOMOHead":
-                node.replace("params.num_conv_layers", "params.n_conv_layers")
-
-        node_name = node["alias"] or node["name"]
-        if "Head" in node["name"]:
-            heads[node_name] = node
-        if node.pop("params.download_weights", False):
-            node["params.weights"] = "download"
-
-    export_output_names = cfg.pop("exporter.output_names", None)
-    if export_output_names is not None:
-        if len(heads) == 1:
-            head = next(iter(heads.values()))
-            if "params" not in head:
-                head["params"] = {}
-            head["params.export_output_names"] = export_output_names
-        else:
-            logger.error(
-                "Multiple heads found in model, cannot assign "
-                "'exporter.output_names' to a specific head."
-            )
-
-    for key in ["metrics", "losses", "visualizers"]:
-        modules: list[dict] = cfg.pop(f"model.{key}", [])
-        for module in modules:
-            if "attached_to" not in module:
-                raise ValueError(
-                    f"Module in 'model.{key}' is missing 'attached_to' field."
-                )
-            attached_to = module.pop("attached_to")
-            if attached_to not in heads:
-                raise ValueError(
-                    f"Module in 'model.{key}' is attached to unknown head "
-                    f"'{attached_to}'."
-                )
-            head = heads[attached_to]
-            head._dict.setdefault(key, []).append(module)
-            logger.info(
-                f"Moved module from 'model.{key}' to head '{attached_to}'."
-            )
+    _apply_field_replacements(cfg)
+    heads = _migrate_nodes(cfg)
+    _assign_export_output_names(cfg, heads)
+    _migrate_attached_modules(cfg, heads)
 
     cfg.update("version", lxt.__version__)
 
@@ -227,10 +150,107 @@ def get_latest_version() -> Version | None:
     import requests
 
     url = "https://pypi.org/pypi/luxonis_train/json"
-    response = requests.get(url, timeout=5)
-    if response.status_code == 200:
-        data = response.json()
-        versions = list(data["releases"].keys())
-        versions.sort(key=lambda s: [int(u) for u in s.split(".")])
-        return Version.parse(versions[-1])
-    return None
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            return None
+        return Version.parse(response.json()["info"]["version"])
+    except (requests.RequestException, KeyError, TypeError, ValueError):
+        return None
+
+
+def _load_config(config: PathType | Params) -> NestedDict:
+    if isinstance(config, dict):
+        return NestedDict(config)
+    config = Path(config)
+    if config.suffix == ".json":
+        cfg = json.loads(config.read_text(encoding="utf-8"))
+    else:
+        cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
+    return NestedDict(cfg)
+
+
+def _apply_field_replacements(cfg: NestedDict) -> None:
+    cfg.replace(
+        "trainer.use_rich_progress_bar",
+        "rich_logging",
+    )
+    cfg.replace(
+        "preprocessing.train_rgb",
+        "preprocessing.color_space",
+        "RGB" if cfg["preprocessing.train_rgb"] else "BGR",
+    )
+    cfg.replace(
+        "model.predefined_model.params.variant",
+        "model.predefined_model.variant",
+    )
+    cfg.replace(
+        "tuner.storage.storage_type",
+        "tuner.storage.backend",
+        "sqlite"
+        if cfg["tuner.storage.storage_type"] == "local"
+        else "postgresql",
+    )
+    if "tuner" in cfg and cfg["tuner"] is None:
+        cfg.pop("tuner")
+
+
+def _migrate_nodes(cfg: NestedDict) -> dict[str, NestedDict]:
+    nodes = cfg.get("model.nodes", [])
+    assert isinstance(nodes, list)
+
+    heads: dict[str, NestedDict] = {}
+    for node in map(NestedDict, nodes):
+        node_class = node["name"]
+        if lxt.__semver__ >= Version(0, 4):
+            node.replace("params.variant", "variant")
+            if node_class == "FOMOHead":
+                node.replace("params.num_conv_layers", "params.n_conv_layers")
+
+        node_name = node["alias"] or node["name"]
+        if "Head" in node["name"]:
+            heads[node_name] = node
+        if node.pop("params.download_weights", False):
+            node["params.weights"] = "download"
+    return heads
+
+
+def _assign_export_output_names(
+    cfg: NestedDict, heads: dict[str, NestedDict]
+) -> None:
+    export_output_names = cfg.pop("exporter.output_names", None)
+    if export_output_names is None:
+        return
+    if len(heads) == 1:
+        head = next(iter(heads.values()))
+        if "params" not in head:
+            head["params"] = {}
+        head["params.export_output_names"] = export_output_names
+    else:
+        logger.error(
+            "Multiple heads found in model, cannot assign "
+            "'exporter.output_names' to a specific head."
+        )
+
+
+def _migrate_attached_modules(
+    cfg: NestedDict, heads: dict[str, NestedDict]
+) -> None:
+    for key in ["metrics", "losses", "visualizers"]:
+        modules: list[dict] = cfg.pop(f"model.{key}", [])
+        for module in modules:
+            if "attached_to" not in module:
+                raise ValueError(
+                    f"Module in 'model.{key}' is missing 'attached_to' field."
+                )
+            attached_to = module.pop("attached_to")
+            if attached_to not in heads:
+                raise ValueError(
+                    f"Module in 'model.{key}' is attached to unknown head "
+                    f"'{attached_to}'."
+                )
+            head = heads[attached_to]
+            head._dict.setdefault(key, []).append(module)
+            logger.info(
+                f"Moved module from 'model.{key}' to head '{attached_to}'."
+            )

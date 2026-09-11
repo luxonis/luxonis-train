@@ -1,7 +1,6 @@
 from collections.abc import Iterable
-from contextlib import suppress
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import torch
 import torch.utils.data as torch_data
@@ -9,11 +8,17 @@ from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.data.datasets import DatasetRecord
 from luxonis_ml.typing import PathType
+from pydantic import ValidationError
+from torch import Tensor
 
 import luxonis_train as lxt
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from luxonis_train.typing import Packet
 
 from .infer_utils import create_loader_from_directory
+
+if TYPE_CHECKING:
+    from luxonis_train.config.config import PreprocessingConfig
 
 
 def annotate_from_directory(
@@ -86,16 +91,38 @@ def annotated_dataset_generator(
             batch_out = lt_module.full_forward(imgs).outputs
 
         for head_name, head_output in batch_out.items():
-            img_paths = [Path(meta["path"]) for meta in sample_metadata]
-            head = lt_module.nodes[head_name].module
-            if isinstance(head, lxt.BaseHead):
-                for record in head.annotate(
-                    head_output, img_paths, model.cfg_preprocessing
-                ):
-                    if isinstance(record, DatasetRecord):  # pragma: no cover
-                        yield record
-                    else:
-                        # Skips predictions that are invalid,
-                        # e.g. bboxes outside of the clipping range
-                        with suppress(Exception):
-                            yield DatasetRecord(**record)
+            yield from _annotated_records(
+                lt_module.nodes[head_name].module,
+                head_output,
+                [Path(meta["path"]) for meta in sample_metadata],
+                model.cfg_preprocessing,
+            )
+
+
+def _annotated_records(
+    head: object,
+    head_output: Packet[Tensor],
+    paths: list[Path],
+    preprocessing: "PreprocessingConfig",
+) -> DatasetIterator:
+    if not isinstance(head, lxt.BaseHead):
+        return
+    for record in head.annotate(head_output, paths, preprocessing):
+        if isinstance(record, DatasetRecord):  # pragma: no cover
+            yield record
+            continue
+        try:
+            yield DatasetRecord(**record)
+        except ValidationError as error:
+            errors = error.errors(include_url=False)
+            if (
+                len(errors) != 1
+                or errors[0]["loc"] != ("annotation", "boundingbox")
+                or "BBox annotation has value outside of automatic clipping range"
+                not in errors[0]["msg"]
+            ):
+                raise
+            logger.debug(
+                "Skipping annotation with an out-of-range bounding box: {}",
+                error,
+            )

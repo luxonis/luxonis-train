@@ -127,19 +127,8 @@ def test_opset_bump_equivalence(
             zip(outputs_current, outputs_newer, strict=True)
         ):
             # Convert any list or dict outputs to numpy arrays (pyright)
-            def to_array(x: Any) -> np.ndarray:
-                if hasattr(x, "to_dense"):
-                    x = x.to_dense()
-                if isinstance(x, dict):
-                    x = np.concatenate(
-                        [v for _, v in sorted(x.items())], axis=None
-                    )
-                elif isinstance(x, list):
-                    x = np.concatenate([np.ravel(v) for v in x])
-                return np.asarray(x)
-
-            array_output_current = to_array(out_current)
-            array_output_newer = to_array(out_newer)
+            array_output_current = _to_array(out_current)
+            array_output_newer = _to_array(out_newer)
 
             np.testing.assert_allclose(
                 array_output_current,
@@ -148,3 +137,14 @@ def test_opset_bump_equivalence(
                 atol=1e-5,
                 err_msg=f"Output {i} differs between opset {current_opset} and {target_opset}",
             )
+
+
+def _to_array(x: Any) -> np.ndarray:
+    """Convert any list/dict/sparse ONNX output to a numpy array."""
+    if hasattr(x, "to_dense"):
+        x = x.to_dense()
+    if isinstance(x, dict):
+        x = np.concatenate([v for _, v in sorted(x.items())], axis=None)
+    elif isinstance(x, list):
+        x = np.concatenate([np.ravel(v) for v in x])
+    return np.asarray(x)

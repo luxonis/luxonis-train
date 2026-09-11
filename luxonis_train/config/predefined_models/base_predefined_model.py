@@ -188,31 +188,18 @@ class SimplePredefinedModel(BasePredefinedModel):
 
         self._loss = loss
         self._loss_params = loss_params or {}
-        self._metrics = (
-            [metrics] if isinstance(metrics, str) else metrics or []
+        self._set_metrics(
+            metrics,
+            main_metric,
+            metrics_params,
+            per_class_metrics,
+            torchmetrics_task,
         )
-        if main_metric is None and self._metrics:
-            if len(self._metrics) == 1:
-                main_metric = self._metrics[0]
-            else:
-                raise ValueError(
-                    "If `main_metric` is not provided, there should be "
-                    "exactly one metric defined."
-                )
-        self._main_metric = main_metric
-        self._metrics_params = metrics_params or {}
-        self._per_class_metrics = per_class_metrics
-
-        if torchmetrics_task is not None:
-            self._metrics_params["torchmetrics_task"] = torchmetrics_task
-
         self._visualizer = visualizer
         self._visualizer_params = visualizer_params or {}
 
         self._enable_confusion_matrix = (
-            False
-            if not confusion_matrix_available
-            else enable_confusion_matrix
+            confusion_matrix_available and enable_confusion_matrix
         )
         self._confusion_matrix_params = confusion_matrix_params or {}
 
@@ -309,3 +296,29 @@ class SimplePredefinedModel(BasePredefinedModel):
             )
 
         return metrics
+
+    def _set_metrics(
+        self,
+        metrics: str | list[str] | None,
+        main_metric: str | None,
+        metrics_params: Params | None,
+        per_class_metrics: bool | None,
+        torchmetrics_task: Literal["binary", "multiclass", "multilabel"]
+        | None,
+    ) -> None:
+        self._metrics = (
+            [metrics] if isinstance(metrics, str) else metrics or []
+        )
+        if main_metric is None and self._metrics:
+            if len(self._metrics) != 1:
+                raise ValueError(
+                    "If `main_metric` is not provided, there should be "
+                    "exactly one metric defined."
+                )
+            main_metric = self._metrics[0]
+        self._main_metric = main_metric
+        self._metrics_params = metrics_params or {}
+        self._per_class_metrics = per_class_metrics
+
+        if torchmetrics_task is not None:
+            self._metrics_params["torchmetrics_task"] = torchmetrics_task
