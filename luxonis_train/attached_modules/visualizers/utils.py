@@ -470,7 +470,6 @@ def _fit_to_aspect_ratio(
     aspect_ratio: float,
     resize_along: Literal["width", "height", "exact"],
 ) -> tuple[int, int]:
-    """Adjust one image's target size to preserve its aspect ratio."""
     if resize_along == "width" or (
         resize_along == "exact" and target_width / target_height > aspect_ratio
     ):

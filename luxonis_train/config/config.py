@@ -648,14 +648,16 @@ class ModelConfig(BaseModelExtraForbid):
                 )
 
             if module.alias in names:
-                new_alias = f"{module.alias}_{node_index}"
+                original_alias = module.alias
+                while (new_alias := f"{original_alias}_{node_index}") in names:
+                    node_index += 1
                 logger.warning(
                     f"Duplicate name: {module.alias}. Renaming to {new_alias}."
                 )
                 module.alias = new_alias
                 node_index += 1
 
-            names.add(name)
+            names.add(module.alias or module.name)
 
     @property
     def head_nodes(self) -> list[NodeConfig]:

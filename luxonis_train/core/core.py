@@ -1001,7 +1001,6 @@ class LuxonisModel:
     def _tune_objective(
         self, trial: "optuna.trial.Trial", all_augs: list[str]
     ) -> float:
-        """Objective function used to optimize Optuna study."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
 

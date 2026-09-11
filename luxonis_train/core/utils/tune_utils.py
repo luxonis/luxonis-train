@@ -93,7 +93,7 @@ def _sample_augmentation_subset(
         and isinstance(value[0], list)
         and isinstance(value[1], int)
     ):
-        raise _unsupported_combination("subset", value)
+        raise KeyError(f"Combination of subset and {value} not supported")
     indices = _augs_to_indices(all_augs, value[0])
     selected = set(random.sample(indices, value[1]))
     return {
@@ -112,14 +112,14 @@ def _suggest_trial_value(
         return trial.suggest_float(key_name, *value, log=True)
     if key_type == "uniform" and _is_pair_of_floats(value):
         return trial.suggest_float(key_name, *value)
-    raise _unsupported_combination(key_type, value)
+    raise KeyError(f"Combination of {key_type} and {value} not supported")
 
 
 def _suggest_numeric_value(
     trial: optuna.trial.Trial, key_name: str, key_type: str, value: object
 ) -> float | int:
     if not isinstance(value, list) or len(value) < 2:
-        raise _unsupported_combination(key_type, value)
+        raise KeyError(f"Combination of {key_type} and {value} not supported")
     low, high, *tail = value
     if (
         key_type == "float"
@@ -137,7 +137,7 @@ def _suggest_numeric_value(
         if not isinstance(step, int):
             raise TypeError(f"Step for int type must be int, but got {step}")
         return trial.suggest_int(key_name, low, high, step=step)
-    raise _unsupported_combination(key_type, value)
+    raise KeyError(f"Combination of {key_type} and {value} not supported")
 
 
 def _is_pair_of_floats(value: object) -> TypeGuard[list[float]]:
@@ -146,7 +146,3 @@ def _is_pair_of_floats(value: object) -> TypeGuard[list[float]]:
         and len(value) == 2
         and all(isinstance(item, float) for item in value)
     )
-
-
-def _unsupported_combination(key_type: str, value: object) -> KeyError:
-    return KeyError(f"Combination of {key_type} and {value} not supported")

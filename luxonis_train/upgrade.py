@@ -165,13 +165,13 @@ def get_latest_version() -> Version | None:
     import requests
 
     url = "https://pypi.org/pypi/luxonis_train/json"
-    response = requests.get(url, timeout=5)
-    if response.status_code == 200:
-        data = response.json()
-        versions = list(data["releases"].keys())
-        versions.sort(key=lambda s: [int(u) for u in s.split(".")])
-        return Version.parse(versions[-1])
-    return None
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            return None
+        return Version.parse(response.json()["info"]["version"])
+    except (requests.RequestException, KeyError, TypeError, ValueError):
+        return None
 
 
 def _load_config(config: PathType | Params) -> NestedDict:
