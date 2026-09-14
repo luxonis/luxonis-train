@@ -30,15 +30,15 @@ class OCRDecoder:
             char_to_int (dict): The class index of each character, as
                 `OCREncoder` builds it.
             ignored_tokens (list[int] | None): The class indices to drop.
-                ``None`` selects ``[0]``, the CTC blank. **The constructor
-                stores no other value:** a list leaves ``ignored_tokens``
-                unset, and `decode` then raises ``AttributeError``.
+                ``None`` selects ``[0]``, the CTC blank. An empty list
+                keeps every class.
             is_remove_duplicate (bool): Whether to drop a step whose class
                 equals the class of the previous step.
 
         """
-        if ignored_tokens is None:
-            self._ignored_tokens = [0]
+        self._ignored_tokens = (
+            [0] if ignored_tokens is None else ignored_tokens
+        )
 
         self._int_to_char = {v: k for k, v in char_to_int.items()}
         self._is_remove_duplicate = is_remove_duplicate

@@ -3,7 +3,6 @@
 import argparse
 import importlib.util
 import os
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -37,9 +36,9 @@ def build_inventory(output_dir: Path) -> int:
         raise RuntimeError(msg) from exc
 
     package_dir = _find_luxonis_ml_package()
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    inventory = output_dir / "objects.inv"
+    inventory.unlink(missing_ok=True)
 
     # Pydoctor reads ./pyproject.toml by default. Run from an empty directory so
     # the luxonis-train pydoctor config does not require the inventory while we
@@ -60,7 +59,6 @@ def build_inventory(output_dir: Path) -> int:
         finally:
             os.chdir(cwd)
 
-    inventory = output_dir / "objects.inv"
     if exit_code == 0 or inventory.exists():
         return 0
     return exit_code

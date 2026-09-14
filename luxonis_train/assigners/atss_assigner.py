@@ -17,7 +17,7 @@ class ATSSAssigner(nn.Module):
     to scale the assigned scores. For each ground truth box, it does
     these steps:
 
-    - On each pyramid level, it selects the ``topk`` anchors that have
+    - On each pyramid level, it selects up to ``topk`` anchors that have
       the centers closest to the center of the box. These anchors are
       the *candidates*.
     - It computes the IoU between each candidate and the box. The
@@ -51,9 +51,8 @@ class ATSSAssigner(nn.Module):
         Args:
             n_classes (int): Number of classes in the dataset. The label
                 ``n_classes`` marks a background anchor in the output.
-            topk (int): Number of candidate anchors to select on each
-                pyramid level for each ground truth box. Each pyramid
-                level must hold at least ``topk`` anchors. With fewer
+            topk (int): Maximum number of candidate anchors to select on
+                each pyramid level for each ground truth box. With fewer
                 than three candidates for a box over all levels, no
                 candidate passes the threshold.
 
@@ -239,7 +238,7 @@ class ATSSAssigner(nn.Module):
     def _select_topk_candidates(
         self, distances: Tensor, n_level_bboxes: list[int], mask_gt: Tensor
     ) -> tuple[Tensor, Tensor]:
-        """Select the ``topk`` closest anchors on each level.
+        """Select up to ``topk`` closest anchors on each level.
 
         For a padded slot, the method sets each selected index to ``0``,
         the first anchor of the level, before it builds the mask. The
@@ -264,7 +263,7 @@ class ATSSAssigner(nn.Module):
             into all ``n_anchors`` anchors, not into one level.
 
         """
-        mask_gt = mask_gt.repeat(1, 1, self._topk).bool()
+        mask_gt = mask_gt.bool()
         level_distances = distances.split(n_level_bboxes, dim=-1)
         is_in_topk_list: list[Tensor] = []
         topk_idxs: list[Tensor] = []
