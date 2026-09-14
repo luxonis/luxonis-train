@@ -1,3 +1,13 @@
+"""The base class of all metrics and the marker for metric states.
+
+`BaseMetric` combines `BaseAttachedModule` with the ``torchmetrics``
+``Metric`` class. `MetricState` marks the class attributes that
+`BaseMetric` registers as metric states. ``DistReduceFx`` is the type of
+the reduction that merges one state across processes, and
+``MetricResult`` is the type of the result of `BaseMetric.compute`.
+
+"""
+
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -36,49 +46,75 @@ DistReduceFx = (
 
 @dataclass(kw_only=True, slots=True)
 class MetricState:
-    """Marks an attribute that should be registered as a metric state.
-    Intended to be used as a type hint for class attributes using the
-    `Annotated` type.
+    """Marker for a class attribute that becomes a metric state.
 
-    Upon initialization of a metric, all attributes of the metric that
-    are marked as metric states will be registered using the
-    `add_state` method. The state will be accessible as an attribute
-    of the metric instance.
+    Put an instance into the ``Annotated`` type hint of a class
+    attribute of a `BaseMetric` subclass. `BaseMetric.__init__` finds
+    each such attribute in the class and in its base classes. It
+    registers the attribute with the ``add_state`` method of
+    ``torchmetrics``, so the state is an attribute of the metric
+    instance. The first argument of ``Annotated`` is the type of the
+    state.
 
-    Metric state variables are either C{Tensor} or an empty list, which
-    can be appended to by the metric.  Metric states behave like buffers
-    and parameters of C{nn.Module} as they are also updated when C{.to()}
-    is called. Unlike parameters and buffers, metric states are not by
-    default saved in the modules C{nn.Module.state_dict}.
+    ``torchmetrics`` treats a state like a buffer: ``.to()`` moves it.
+    ``reset`` gives a tensor state a copy of its default and empties a
+    list state.
 
-    The metric state variables are automatically reset to their default
-    values when the metric's C{reset()} method is called.
+    Attributes:
+        default (``Tensor | Number | list | None``): The value of the
+            state after initialization and after ``reset``. A number
+            becomes a zero-dimensional tensor, so ``0`` gives an
+            ``int64`` state and ``0.0`` a ``float32`` state. ``None``
+            selects ``0.0`` for a ``Tensor`` attribute and ``[]`` for a
+            ``list[...]`` attribute. For an attribute of any other type,
+            ``None`` makes `BaseMetric.__init__` raise ``ValueError``.
+            A list default must be empty, else ``add_state`` raises
+            ``ValueError``. **Each instance receives a tensor or list
+            default as it is, not a copy.** All instances of the class
+            then share one state object. An in-place change such as
+            ``+=`` or ``append`` in one metric also changes the others.
+            ``reset`` gives one metric a new tensor, so that metric no
+            longer shares a tensor state. ``reset`` empties a list state
+            in place, so the list stays shared and empties for all
+            metrics. A number or ``None`` gives each instance its own
+            state.
+        dist_reduce_fx (``DistReduceFx | EllipsisType``): The reduction
+            that merges the state of all processes. A string selects
+            ``torch.sum``, ``torch.mean``, ``torch.cat``, ``torch.min``,
+            or ``torch.max`` over dimension ``0``. A callable receives
+            the gathered state: the tensor states stacked along a new
+            first dimension, or one list with the items of all
+            processes. ``None`` keeps the gathered state as it is. The
+            default ``...`` selects ``"cat"`` for a list state and
+            ``"sum"`` for a tensor state.
+        persistent (bool): Whether the ``state_dict`` of the metric
+            holds the state.
 
-    Example usage::
+    Example:
+        A subclass with two tensor states. ``register=False`` keeps the
+        class out of the `METRICS` registry.
 
-        class MyMetric(BaseMetric):
-            true_positives: Annotated[Tensor, MetricState(default=0)]
-            false_positives: Annotated[Tensor, MetricState(default=0)]
-            total: Annotated[Tensor, MetricState(default=0)]
+        >>> from typing import Annotated
+        >>> import torch
+        >>> from torch import Tensor
+        >>> class PositiveRate(BaseMetric, register=False):
+        ...     positives: Annotated[Tensor, MetricState()]
+        ...     total: Annotated[Tensor, MetricState(default=0)]
+        ...
+        ...     def update(self, predictions: Tensor) -> None:
+        ...         self.positives += (predictions > 0).sum()
+        ...         self.total += predictions.numel()
+        ...
+        ...     def compute(self) -> Tensor:
+        ...         return self.positives / self.total
+        >>> metric = PositiveRate()
+        >>> metric.update(torch.tensor([1.0, -1.0, 2.0, 3.0]))
+        >>> metric.compute().item()
+        0.75
+        >>> metric.reset()
+        >>> metric.positives.item(), metric.total.item()
+        (0.0, 0)
 
-    @keyword name: The name of the state variable. The variable will then
-        be accessible at C{self.name}.
-    @keyword default: Default value of the state; can either be a
-        C{Tensor} or an empty list. The state will be reset to this
-        value when C{self.reset()} is called. If the default value is a
-        float, it will be converted to a C{Tensor}.
-    @keyword dist_reduce_fx: Function to reduce state across multiple
-        processes in distributed mode. If value is C{"sum"}, C{"mean"},
-        C{"cat"}, C{"min"} or C{"max"} we will use C{torch.sum},
-        C{torch.mean}, C{torch.cat}, C{torch.min} and C{torch.max}
-        respectively, each with argument C{dim=0}. Note that the
-        C{"cat"} reduction only makes sense if the state is a list, and
-        not a tensor. The user can also pass a custom function in this
-        parameter.
-        If not specified, the default is C{"sum"} if the default value
-        is a tensor, and C{"cat"} if the default value is a list.
-    @keyword persistent: Whether the state will be saved as part of the
-        modules C{state_dict}. Default is C{False}.
     """
 
     default: Tensor | Number | list | None = None
@@ -87,11 +123,29 @@ class MetricState:
 
 
 class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
-    """A base class for all metrics.
+    """Base class for all metrics.
 
-    This class defines the basic interface for all metrics. It utilizes
-    automatic registration of defined subclasses to a L{METRICS}
-    registry.
+    A metric is a `BaseAttachedModule` and a ``torchmetrics``
+    ``Metric``. Every subclass registers itself in the `METRICS`
+    registry under its class name, unless its class statement passes
+    ``register=False``. A config names a registered metric by that
+    string. A subclass implements `update` and `compute`. It declares
+    its states with `MetricState`, or with ``add_state`` in its
+    ``__init__``. The example of `MetricState` shows a complete
+    subclass.
+
+    `BaseAttachedModule.get_parameters` describes how `run_update` fills
+    the parameters of `update` from predictions and labels.
+
+    The trainer calls `run_update` on each validation and test batch. At
+    the end of the epoch, it calls `compute` and logs the images of
+    `get_artifacts`. It then calls ``reset`` and logs the values that
+    `get_loggable_values` selects.
+
+    Two metrics are equal only when they are the same object, and the
+    hash of a metric is its ``id``. In ``torchmetrics``, ``==`` builds a
+    new composed metric, and the hash reads the states.
+
     """
 
     predefined_model_params_aliases: ClassVar[dict[str, str]] = {}
@@ -100,9 +154,63 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     def get_predefined_model_params_aliases(
         cls, task: Task | None = None
     ) -> dict[str, str]:
+        """Return the constructor names of predefined model parameters.
+
+        A predefined model can add ``per_class_metrics`` to the
+        ``params`` of each of its metrics. When `Nodes` builds the
+        metric, it looks the key up in the returned dictionary and
+        passes the value under the parameter name that it finds. When
+        the dictionary has no such key, `Nodes` drops the value and logs
+        a warning. It drops a ``None`` value without a lookup.
+
+        This implementation ignores ``task`` and returns the class
+        attribute ``predefined_model_params_aliases``. The attribute is
+        empty on `BaseMetric`, and `MIoU` maps ``per_class_metrics`` to
+        ``per_class``. `MeanAveragePrecision` is not a subclass. It
+        defines its own method, because its mapping depends on the task.
+
+        Args:
+            task (Task | None): The task of the node that the metric
+                attaches to, or ``None`` when the node has no task.
+
+        Returns:
+            dict[str, str]: The predefined model parameter names, mapped
+            to the parameter names of the constructor.
+
+        Example:
+            >>> from luxonis_train.attached_modules.metrics import MIoU
+            >>> BaseMetric.get_predefined_model_params_aliases()
+            {}
+            >>> MIoU.get_predefined_model_params_aliases()
+            {'per_class_metrics': 'per_class'}
+
+        """
         return cls.predefined_model_params_aliases
 
     def __init__(self, **kwargs):
+        """Initialize the metric and register its metric states.
+
+        The method reads the type hints of the class and of its base
+        classes. It registers each attribute whose ``Annotated`` hint
+        holds a `MetricState` with the ``add_state`` method of
+        ``torchmetrics``. `MetricState` describes how the default value
+        and the reduction of a state follow from the marker.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseAttachedModule`, such as ``node``. The remaining
+                arguments reach the ``torchmetrics`` ``Metric``, which
+                accepts only its own options, such as
+                ``sync_on_compute``, and raises ``ValueError`` for any
+                other name.
+
+        Raises:
+            ValueError: When a metric state has no ``default`` and its
+                type is neither ``Tensor`` nor ``list[...]``. Also when
+                the ``default`` of a metric state is a list that is not
+                empty.
+
+        """
         super().__init__(**kwargs)
 
         hints = get_type_hints(self.__class__, include_extras=True)
@@ -159,10 +267,12 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
     @abstractmethod
     def update(self, *args: Tensor | list[Tensor]) -> None:
-        """Update the inner state of the metric.
+        """Add one batch to the metric state.
 
-        @type args: Unpack[Ts]
-        @param args: Prepared inputs from the L{prepare} method.
+        Args:
+            *args (``Tensor | list[Tensor]``): The inputs of the batch.
+                An implementation replaces them with named parameters.
+
         """
         super().update(*args)
 
@@ -170,14 +280,18 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     def compute(
         self,
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
-        """Compute the metric.
+        """Compute the value of the metric from its states.
 
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
-        @return: The computed metric. Can be one of:
-           - A single Tensor.
-           - A tuple of a Tensor and a dictionary of sub-metrics.
-           - A dictionary of sub-metrics. If this is the case, then the metric
-              cannot be used as the main metric of the model.
+        Returns:
+            ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``:
+            The result in one of three forms:
+
+            - The main value as a ``Tensor``.
+            - A tuple of the main value and a dictionary of sub-metrics.
+            - A dictionary of sub-metrics only. The trainer then logs no
+              value under the name of the metric, so the metric cannot
+              be the main metric.
+
         """
         return super().compute()
 
@@ -185,8 +299,19 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         self,
         values: MetricResult,
     ) -> MetricResult:
-        """Return the subset of computed values suitable for metric
-        logging.
+        """Select the part of a computed result to log.
+
+        Override this when `compute` returns data that belongs in
+        artifacts rather than scalar logs.
+
+        Args:
+            values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
+                The result of `compute`.
+
+        Returns:
+            ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``:
+            The values to log, in one of the forms of `compute`.
+
         """
         return values
 
@@ -194,13 +319,27 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         self,
         values: MetricResult,
     ) -> dict[str, Tensor]:
-        """Build image artifacts from an already computed metric
-        result.
+        """Render images from a computed result.
+
+        Args:
+            values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
+                The result of `compute`.
+
+        Returns:
+            ``dict[str, Tensor]``: The images of shape ``[C, H, W]``,
+            keyed by the names that `get_artifact_names` returns.
+
         """
         return {}
 
     def get_artifact_names(self) -> tuple[str, ...]:
-        """Return stable artifact names emitted by this metric."""
+        """Return the stable names emitted by `get_artifacts`.
+
+        Returns:
+            ``tuple[str, ...]``: The keys of the dictionary that
+            `get_artifacts` returns.
+
+        """
         return ()
 
     def __eq__(self, other: object) -> bool:
@@ -214,16 +353,15 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         return get_signature(self.update)
 
     def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
-        """Call the metric's update method.
+        """Resolve the inputs of `update` and add one batch.
 
-        Validates and prepares the inputs, then calls the metric's
-        update method.
+        `BaseAttachedModule.get_parameters` documents how parameter
+        names select predictions and labels.
 
-        @type inputs: Packet[Tensor]
-        @param inputs: The outputs of the model.
-        @type labels: Labels
-        @param labels: The labels of the model. @raises
-            L{IncompatibleError}: If the inputs are not compatible with
-            the module.
+        Args:
+            inputs (``Packet[Tensor]``): The output packet of the node.
+            labels (``Labels``): The labels of the batch, keyed
+                ``<task_name>/<label>``.
+
         """
         self.update(**self.get_parameters(inputs, labels))
