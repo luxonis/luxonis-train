@@ -203,9 +203,6 @@ class TaskAlignedAssigner(nn.Module):
             ValueError: When some, but not all, of ``pred_kpts``,
                 ``gt_kpts``, ``sigmas``, and ``area_factor`` are ``None``.
 
-        Notes:
-            The call stores ``bs`` and ``n_max_boxes`` on the module.
-
         Example:
             The box holds the centers of the first two anchors. Both
             predicted boxes have an IoU of ``0.5`` with it. The first one

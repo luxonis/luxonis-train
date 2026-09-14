@@ -446,7 +446,9 @@ class DYShiftMax(nn.Module):
     The activation mixes each channel with one channel of the next
     group. The shifted input :math:`\tilde{x}` takes channel ``c + 1``
     of group ``g + 1`` for channel ``c`` of group ``g``. Both indices
-    wrap around. With two branches, the output is
+    wrap around. With 8 channels in 2 groups, channel ``0`` of
+    :math:`\tilde{x}` takes channel ``5``, the second channel of the
+    second group. With two branches, the output is
 
     .. math::
 
@@ -462,15 +464,8 @@ class DYShiftMax(nn.Module):
     ``out_channels`` values for each sample.
 
     Example:
-        ``index`` holds the input channel that each channel of
-        :math:`\tilde{x}` takes. With 8 channels in 2 groups, channel
-        ``0`` takes channel ``5``, the second channel of the second
-        group.
-
         >>> import torch
         >>> act = DYShiftMax(8, 8, groups=2)
-        >>> act.index.tolist()
-        [5, 6, 7, 4, 1, 2, 3, 0]
         >>> act(torch.ones(2, 8, 4, 4)).shape
         torch.Size([2, 8, 4, 4])
 
@@ -556,10 +551,6 @@ class DYShiftMax(nn.Module):
 
         Returns:
             ``Tensor``: The activated input, of the same shape.
-
-        Raises:
-            RuntimeError: When ``exp`` is not ``2`` or ``4``. The
-                constructor sets only these two values.
 
         """
         batch_size, channels, _, _ = x.shape

@@ -85,10 +85,9 @@ class FOMOLocalizationLoss(BaseLoss):
     ):
         r"""Initialize the loss.
 
-        The method stores the input image size of the node as
-        ``self.original_img_size``. The loss therefore needs a node:
-        without ``node``, `BaseAttachedModule.node` raises
-        ``RuntimeError``. `forward` does not read the size.
+        The method reads the input image size of the node. `forward`
+        does not use the size. The loss therefore needs a node: without
+        ``node``, `BaseAttachedModule.node` raises ``RuntimeError``.
 
         Args:
             object_weight (float): The factor :math:`w` of the loss in a

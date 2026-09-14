@@ -31,8 +31,6 @@ class BaseDetectionHead(BaseHead):
     Attributes:
         parser (str): The export parser, ``"YOLO"``. A subclass can
             replace it.
-        n_heads (int): The number of scales that the head reads.
-        conf_thres (float): The confidence threshold of NMS.
         iou_thres (float): The IoU threshold of NMS.
         max_det (int): The maximum number of boxes that NMS keeps for
             each image.

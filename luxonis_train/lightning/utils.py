@@ -100,20 +100,16 @@ class LossAccumulator(defaultdict[str, float]):
     after every step and `clear` at the end of the epoch. A key that
     `update` never received reads as ``0.0``.
 
-    Attributes:
-        counts (``defaultdict[str, int]``): How many values each key
-            received since the last `clear`.
-
     Example:
         >>> import torch
         >>> losses = LossAccumulator()
         >>> losses.update({"loss": torch.tensor(2.0)})
         >>> losses.update({"loss": torch.tensor(4.0)})
-        >>> losses["loss"], losses.counts["loss"]
-        (3.0, 2)
+        >>> losses["loss"]
+        3.0
         >>> losses.clear()
-        >>> dict(losses), dict(losses.counts)
-        ({}, {})
+        >>> dict(losses)
+        {}
 
     """
 
@@ -260,11 +256,8 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     know the shapes of their inputs.
 
     Attributes:
-        cfg (Config): The config the graph comes from.
         graph (dict[str, list[str]]): Each node identifier mapped to
             the identifiers of the nodes that feed it.
-        nodes (dict[str, NodeWrapper]): The wrappers, in build order.
-            The same objects are the values of this ``ModuleDict``.
         main_metric (MainMetric | None): The metric that selects the
             best checkpoint, or ``None`` when the config has none.
         loader_input_shapes (``dict[str, dict[str, Size]]``): Each node

@@ -184,8 +184,8 @@ class GradCamCallback(pl.Callback):
         """Wrap the model for Grad-CAM.
 
         Lightning calls this hook at the start of every stage. The hook
-        stores a new `PLModuleWrapper` of ``pl_module`` and ``task`` as
-        ``self.pl_module``.
+        creates a new `PLModuleWrapper` of ``pl_module`` and ``task`` for
+        `visualize_gradients`.
 
         Args:
             trainer (``pl.Trainer``): The trainer. Unused.
@@ -243,11 +243,10 @@ class GradCamCallback(pl.Callback):
         The method creates a ``HiResCAM`` on the layer at index
         ``target_layer`` in ``named_modules()`` of the
         `PLModuleWrapper`. ``HiResCAM`` sets the wrapper and the model
-        to eval mode. The method stores the ``HiResCAM`` as
-        ``self.gradcam``, so its hooks stay on the layer until a later
-        call replaces it. Until then, the hooks keep a CPU copy of the
-        output of the layer from each forward pass, and of its gradient
-        from each backward pass.
+        to eval mode. The method keeps the ``HiResCAM``, so its hooks
+        stay on the layer until a later call replaces it. Until then,
+        the hooks keep a CPU copy of the output of the layer from each
+        forward pass, and of its gradient from each backward pass.
 
         The Grad-CAM target of each image depends on ``task``:
 

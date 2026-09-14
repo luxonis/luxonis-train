@@ -42,7 +42,6 @@ class RopePositionEmbedding(nn.Module):
     Attributes:
         periods (``Tensor``): The :math:`D / 4` periods, in a persistent
             buffer.
-        D_head (int): The head dimension :math:`D`.
 
     Example:
         >>> rope = RopePositionEmbedding(64, num_heads=4)

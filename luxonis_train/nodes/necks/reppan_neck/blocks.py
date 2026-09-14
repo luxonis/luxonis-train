@@ -99,11 +99,12 @@ class RepUpBlock(PANUpBlockBase):
     ``"RepBlock"``, as in the ``"n"`` and ``"s"`` variants.
 
     Example:
+        >>> import torch
         >>> block = RepUpBlock(
         ...     32, in_channels_next=16, out_channels=8, n_repeats=3
         ... )
-        >>> [layer.in_channels for layer in block.encode_block]
-        [24, 8, 8]
+        >>> block.encode_block(torch.zeros(1, 24, 4, 4)).shape
+        torch.Size([1, 8, 4, 4])
 
     """
 
@@ -268,11 +269,12 @@ class RepDownBlock(PANDownBlockBase):
     ``"RepBlock"``, as in the ``"n"`` and ``"s"`` variants.
 
     Example:
+        >>> import torch
         >>> block = RepDownBlock(
         ...     4, 8, in_channels_next=12, out_channels=16, n_repeats=3
         ... )
-        >>> [layer.in_channels for layer in block.encode_block]
-        [20, 16, 16]
+        >>> block.encode_block(torch.zeros(1, 20, 4, 4)).shape
+        torch.Size([1, 16, 4, 4])
 
     """
 

@@ -451,7 +451,7 @@ class KeypointVisualizer(BBoxVisualizer):
         `draw_targets` draws the target keypoints on top, in
         ``visible_color``.
 
-        When ``self.radius`` is ``None``, the radius comes from the size
+        When ``radius`` is ``None``, the radius comes from the size
         of each canvas. It is ``1`` when both sides are below ``96``
         pixels, ``5`` when a side is above ``512`` pixels, and ``2``
         otherwise.
@@ -464,12 +464,12 @@ class KeypointVisualizer(BBoxVisualizer):
             keypoints (``list[Tensor]``): One tensor per image, of shape
                 ``[M_i, K, 3]``. Each keypoint is ``(x, y, confidence)``,
                 with ``x`` and ``y`` in pixels. `draw_predictions` scales
-                the coordinates by ``self.scale``.
+                the coordinates by the ``scale`` factor.
             boundingbox (``list[Tensor]``): One tensor per image, of
                 shape ``[M_i, 6]`` with rows
                 ``[x1, y1, x2, y2, conf, class]`` in pixels.
-                `BBoxVisualizer.draw_predictions` scales them by
-                ``self.scale``.
+                `BBoxVisualizer.draw_predictions` scales them by the
+                ``scale`` factor.
             target_keypoints (``Tensor | None``): Keypoints of shape
                 ``[N, 1 + 3 * K]`` with rows
                 ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The

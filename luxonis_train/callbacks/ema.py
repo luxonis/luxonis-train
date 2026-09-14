@@ -36,10 +36,6 @@ class ModelEma(nn.Module):
         updates (int): The number of updates of the average. Each
             `update` call adds ``1``. `EMACallback.on_fit_start` sets it
             from a checkpoint that holds a count.
-        decay (float): The largest decay of the average.
-        use_dynamic_decay (bool): Whether the decay grows with
-            ``updates``.
-        decay_tau (float): The time constant of the dynamic decay.
 
     """
 
@@ -210,22 +206,6 @@ class EMACallback(pl.Callback):
     ``trainer.callbacks``, so that it runs before the other callbacks of
     the config.
 
-    Attributes:
-        decay (float): The largest decay of the average.
-        use_dynamic_decay (bool): Whether the decay grows with the
-            number of updates.
-        decay_tau (float): The time constant of the dynamic decay.
-        loaded_ema_state_dict (``Mapping[str, Tensor] | None``): The
-            average from a checkpoint, which the next `on_fit_start`
-            applies. ``None`` when there is no such average.
-        loaded_ema_updates (int | None): The update count from a
-            checkpoint, which the next `on_fit_start` applies. ``None``
-            when there is no such count.
-        collected_state_dict (``dict[str, Tensor] | None``): The copy of
-            the model weights that the last weight swap kept. During a
-            fit, these are the trained weights. ``None`` before the
-            first swap.
-
     """
 
     def __init__(
@@ -353,10 +333,9 @@ class EMACallback(pl.Callback):
 
         Lightning calls this hook at the start of each validation epoch.
         The hook keeps a deep copy of the state dictionary of
-        ``pl_module`` in ``collected_state_dict``. It then loads the
-        average into ``pl_module`` when the average exists. While
-        `replace_weights` holds explicit weights in the model, the hook
-        does nothing.
+        ``pl_module``. It then loads the average into ``pl_module`` when
+        the average exists. While `replace_weights` holds explicit
+        weights in the model, the hook does nothing.
 
         Args:
             trainer (``pl.Trainer``): The trainer. Unused.
@@ -371,10 +350,10 @@ class EMACallback(pl.Callback):
         """Load the kept weights back into the model after validation.
 
         Lightning calls this hook when the validation loop ends. The hook
-        loads ``collected_state_dict`` into ``pl_module``. During a fit,
-        these are the trained weights. The hook does nothing when no
-        copy exists, or while `replace_weights` holds explicit weights in
-        the model. The copy stays in the callback.
+        loads the kept weights into ``pl_module``. During a fit, these
+        are the trained weights. The hook does nothing when no copy
+        exists, or while `replace_weights` holds explicit weights in the
+        model. The copy stays in the callback.
 
         Args:
             trainer (``pl.Trainer``): The trainer. Unused.
@@ -407,9 +386,9 @@ class EMACallback(pl.Callback):
         """Load the kept weights back into the model after the test.
 
         Lightning calls this hook when the test loop ends. The hook loads
-        ``collected_state_dict`` into ``pl_module``, like
-        `on_validation_end`. It does nothing when no copy exists, or
-        while `replace_weights` holds explicit weights in the model.
+        the kept weights into ``pl_module``, like `on_validation_end`. It
+        does nothing when no copy exists, or while `replace_weights`
+        holds explicit weights in the model.
 
         Args:
             trainer (``pl.Trainer``): The trainer. Unused.
@@ -492,25 +471,25 @@ class EMACallback(pl.Callback):
         Lightning calls this method when it restores a checkpoint, with
         the dictionary that `state_dict` returned. The method reads the
         value under ``"ema_state_dict"``, or under ``"state_dict"`` when
-        that key is missing. It keeps that value in
-        ``loaded_ema_state_dict`` when the value is a mapping. It keeps
-        the value under ``"updates"`` in ``loaded_ema_updates`` when
-        that value is an ``int``. It ignores a value of another type and
-        an empty ``state_dict``. The current average does not change.
+        that key is missing. It keeps that value when the value is a
+        mapping. It also keeps the value under ``"updates"`` when that
+        value is an ``int``. It ignores a value of another type and an
+        empty ``state_dict``. The current average does not change.
 
         Args:
             state_dict (``dict[str, Any]``): The state of the callback.
 
         Example:
+            Before a fit, the callback has no average, so its state stays
+            empty:
+
             >>> import torch
             >>> callback = EMACallback()
             >>> callback.load_state_dict(
             ...     {"ema_state_dict": {"weight": torch.ones(1)}, "updates": 7}
             ... )
-            >>> sorted(callback.loaded_ema_state_dict)
-            ['weight']
-            >>> callback.loaded_ema_updates
-            7
+            >>> callback.state_dict()
+            {}
 
         """
         self._load_ema_state(state_dict)

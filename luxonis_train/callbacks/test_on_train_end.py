@@ -15,19 +15,15 @@ from .needs_checkpoint import NeedsCheckpoint
 class TestOnTrainEnd(NeedsCheckpoint):
     """Callback that tests the best checkpoint when training ends.
 
-    The callback passes the checkpoint of `NeedsCheckpoint.get_checkpoint`
-    to `LuxonisModel.test`. It always tries the best main metric first,
-    and then the lowest validation loss. Its constructor does not accept
-    ``preferred_checkpoint``.
+    The callback passes the checkpoint of
+    `NeedsCheckpoint.get_checkpoint` to `LuxonisModel.test`. It always
+    tries the best main metric first, and then the lowest validation
+    loss. Its constructor does not accept ``preferred_checkpoint``.
 
     When ``trainer.smart_cfg_auto_populate`` is set,
     `Config.smart_auto_populate` adds this callback to
-    ``trainer.callbacks`` if it is missing. `LuxonisModel.tune` removes it
-    from the config of each trial.
-
-    Attributes:
-        view (``Literal["train", "val", "test"]``): The dataset view to
-            test on.
+    ``trainer.callbacks`` if it is missing. `LuxonisModel.tune` removes
+    it from the config of each trial.
 
     """
 

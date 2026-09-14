@@ -215,10 +215,9 @@ class SSIM(nn.Module):
             size_average (bool): Whether `forward` averages over the
                 whole batch. When ``False``, it returns one value for each
                 image.
-            val_range (float | None): A dynamic range for `ssim`. The
-                module stores it as ``self.val_range``. `forward` does not
-                pass it to `ssim`, so `ssim` always estimates the dynamic
-                range from ``img1``.
+            val_range (float | None): A dynamic range for `ssim`.
+                `forward` does not pass it to `ssim`, so `ssim` always
+                estimates the dynamic range from ``img1``.
 
         """
         super().__init__()
@@ -255,8 +254,6 @@ class SSIM(nn.Module):
             0.0
             >>> round(loss(image, 1 - image).item(), 4)
             0.7642
-            >>> loss.channel
-            3
 
         """
         device = img1.device

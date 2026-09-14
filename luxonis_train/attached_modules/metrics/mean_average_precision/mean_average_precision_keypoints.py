@@ -247,10 +247,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         The method builds one ``COCO`` object for the targets and one
         for the predictions. It runs ``COCOeval_faster`` with
         ``iouType="keypoints"``, the sigmas of the metric, and
-        ``maxDets`` set to ``[max_dets]``. It keeps the evaluation
-        object in the attribute ``coco_eval``. A value is ``-1`` when it
-        has no data, for example ``kpt_map_large`` when no target is
-        large.
+        ``maxDets`` set to ``[max_dets]``. A value is ``-1`` when it has
+        no data, for example ``kpt_map_large`` when no target is large.
 
         With ``class_metrics``, the method also reads the precision and
         recall arrays of the evaluation, for the area range ``"all"``.

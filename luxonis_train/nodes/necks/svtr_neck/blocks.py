@@ -113,14 +113,18 @@ class Attention(nn.Module):
 
     Example:
         With a ``3x3`` window, token ``7`` in row ``1`` and column ``2``
-        sees three columns of the ``3x5`` map:
+        sees three columns of the ``3x5`` map. Only the tokens that it
+        sees get a gradient from its output:
 
+        >>> import torch
         >>> from luxonis_train.nodes.necks.svtr_neck.blocks import Attention
         >>> attention = Attention(
         ...     8, height=3, width=5, n_heads=2, mixer="local", kernel_size=3
         ... )
-        >>> visible = attention.mask[0, 0] == 0
-        >>> visible[7].view(3, 5).int().tolist()
+        >>> tokens = torch.randn(1, 15, 8, requires_grad=True)
+        >>> attention(tokens)[0, 7].sum().backward()
+        >>> seen = tokens.grad[0].abs().sum(dim=1) > 0
+        >>> seen.view(3, 5).int().tolist()
         [[0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0]]
 
     """

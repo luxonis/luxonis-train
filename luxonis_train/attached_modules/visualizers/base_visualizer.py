@@ -37,10 +37,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
             *args (``Any``): Positional arguments forwarded to
                 `BaseAttachedModule`.
             scale (float): Factor that `run` applies to both canvases
-                with `scale_canvas` before it calls `forward`. The
-                visualizer stores the value as ``self.scale``, so a
-                subclass can scale the pixel coordinates of its
-                predictions the same way. Defaults to ``1.0``.
+                with `scale_canvas` before it calls `forward`. Defaults
+                to ``1.0``.
             **kwargs (``Any``): Keyword arguments forwarded to
                 `BaseAttachedModule`, such as ``node``.
 

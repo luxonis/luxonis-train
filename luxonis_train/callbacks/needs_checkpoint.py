@@ -20,16 +20,10 @@ class NeedsCheckpoint(pl.Callback):
     """Base class of the callbacks that act on the best checkpoint.
 
     `ArchiveOnTrainEnd`, `ConvertOnTrainEnd`, `ExportOnTrainEnd`,
-    `AIMETCallback`, and `TestOnTrainEnd` inherit from it. Each one calls
-    `get_checkpoint` in its ``on_train_end`` hook. `ArchiveOnTrainEnd`
-    calls it only when no earlier ONNX export exists. This class defines
-    no hook of its own.
-
-    Attributes:
-        preferred_checkpoint (``Literal["metric", "loss"]``): The
-            checkpoint that `get_checkpoint` tries first. ``"metric"``
-            selects the best main metric, and ``"loss"`` selects the
-            lowest validation loss.
+    `AIMETCallback`, and `TestOnTrainEnd` inherit from it. Each one
+    calls `get_checkpoint` in its ``on_train_end`` hook.
+    `ArchiveOnTrainEnd` calls it only when no earlier ONNX export
+    exists. This class defines no hook of its own.
 
     """
 

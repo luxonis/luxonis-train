@@ -1041,10 +1041,6 @@ class BottleRep(nn.Module):
 
     Example:
         >>> import torch
-        >>> BottleRep(8, 8).shortcut
-        True
-        >>> BottleRep(8, 16).shortcut
-        False
         >>> BottleRep(8, 16, weight=False).alpha
         1.0
         >>> BottleRep(8, 16)(torch.zeros(1, 8, 4, 4)).shape

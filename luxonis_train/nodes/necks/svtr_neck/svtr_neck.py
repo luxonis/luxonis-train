@@ -104,9 +104,6 @@ class SVTRNeck(BaseNode):
     ):
         r"""Build the convolutions and the SVTR blocks.
 
-        The constructor stores ``dims`` in ``out_channels``, and
-        ``depth`` and ``use_guide`` in attributes of the same names.
-
         Args:
             dims (int): The number of output channels.
             depth (int): The number of `SVTRBlock` layers.

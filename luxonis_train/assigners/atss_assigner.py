@@ -114,10 +114,6 @@ class ATSSAssigner(nn.Module):
             this case, ``mask_positive`` and ``assigned_gt_idx`` are
             ``float32`` zeros.
 
-        Notes:
-            The call stores ``bs``, ``n_anchors``, and ``n_max_boxes`` on
-            the module.
-
         Example:
             The box has an IoU of ``0.64`` with the first anchor box. The
             threshold is about ``0.5``, so only the first anchor is

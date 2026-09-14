@@ -87,10 +87,10 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
 
         Args:
             labels (dict[int, str] | list[str] | None): Class names to
-                draw, stored as ``self.bbox_labels``. A dictionary maps
-                a class index to a name. A list maps by position. When
-                ``None`` or empty, the names come from the ``classes``
-                of the node, so the visualizer then needs a ``node``.
+                draw. A dictionary maps a class index to a name. A list
+                maps by position. When ``None`` or empty, the names come
+                from the ``classes`` of the node, so the visualizer then
+                needs a ``node``.
             draw_labels (bool): Whether to draw the class name next to
                 each box. Applies to the predictions and the targets.
             draw_scores (bool): Whether to write the confidence of each
@@ -102,15 +102,12 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
                 to a color. A list maps by class index. When ``None``,
                 each class gets a distinct color from `get_color`,
                 seeded with its index.
-            fill (bool): Stored as ``self.fill``. The drawing methods do
-                not read it.
+            fill (bool): The drawing methods do not read it.
             width (int | None): Line width of the boxes, in pixels. When
                 ``None`` or ``0``, the width is one percent of the
                 smaller canvas side, rounded down, and at least ``1``.
-            font (str | None): Stored as ``self.font``. The drawing
-                methods do not read it.
-            font_size (int | None): Stored as ``self.font_size``. The
-                drawing methods do not read it.
+            font (str | None): The drawing methods do not read it.
+            font_size (int | None): The drawing methods do not read it.
             alpha (float): Opacity of the masks, from ``0``
                 (transparent) to ``1`` (opaque).
             **kwargs (``Any``): Keyword arguments forwarded to
@@ -395,8 +392,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         given.
 
         `draw_predictions` draws the predictions and `draw_targets`
-        draws the targets, both with the options of the constructor and
-        ``self.scale``.
+        draws the targets. Both use the options of the constructor and
+        the ``scale`` factor.
 
         Args:
             prediction_canvas (``Tensor``): ``uint8`` images of shape
@@ -409,7 +406,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             instance_segmentation (``list[Tensor]``): One tensor per
                 image, of shape ``[M_i, H_0, W_0]``, with one binary
                 mask for each box. ``H_0`` and ``W_0`` are the image
-                size before the ``self.scale`` resize.
+                size before the ``scale`` resize.
             target_boundingbox (``Tensor | None``): Boxes of shape
                 ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
                 ``xywh`` normalized to ``[0, 1]``. ``None`` when the

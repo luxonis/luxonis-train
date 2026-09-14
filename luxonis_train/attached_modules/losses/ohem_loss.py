@@ -107,8 +107,7 @@ class OHEMLoss(BaseLoss):
                 number :math:`k` of the largest values that the loss
                 keeps when :math:`\ell_k \leq \tau`.
             ohem_threshold (float): The probability :math:`p` that sets
-                the loss threshold :math:`\tau = -\ln p`. The method
-                stores :math:`\tau` as ``self.ohem_threshold``.
+                the loss threshold :math:`\tau = -\ln p`.
             **kwargs (``Any``): Keyword arguments forwarded to
                 `BaseLoss` and to the criterion, such as
                 ``final_loss_weight`` and ``node``. Both receive the same

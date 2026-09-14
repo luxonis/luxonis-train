@@ -52,10 +52,6 @@ class TrainingProgressCallback(pl.Callback):
               params:
                 log_every_n_batches: 10
 
-    Attributes:
-        log_every_n_batches (int): The interval of the batch-end logs,
-            in batches. At least ``1``.
-
     """
 
     def __init__(self, log_every_n_batches: int = 1):
@@ -66,12 +62,6 @@ class TrainingProgressCallback(pl.Callback):
                 every this many batches of an epoch. ``1`` logs every
                 batch. A higher value reduces the logging overhead. A
                 value below ``1`` acts as ``1``.
-
-        Example:
-            >>> from luxonis_train.callbacks import TrainingProgressCallback
-            >>> callback = TrainingProgressCallback(log_every_n_batches=0)
-            >>> callback.log_every_n_batches
-            1
 
         """
         super().__init__()

@@ -128,8 +128,7 @@ class DDRNetSegmentationHead(BaseHead):
         `infer_upscale_factor` gives :math:`n` from the input size and
         the model input size. That function raises ``ValueError`` when
         the height ratio or the width ratio is not a power of two, or
-        when the two ratios differ. The constructor stores :math:`s` in
-        ``scale_factor``.
+        when the two ratios differ.
 
         Args:
             inter_channels (int): The number of output channels of the

@@ -95,15 +95,15 @@ class BBoxVisualizer(BaseVisualizer):
                 A dictionary maps a class name to a color. A list maps
                 by class index. When ``None``, each class gets a
                 distinct color from `get_color`, seeded with its index.
-            fill (bool): Stored as ``self.fill``. The drawing methods do
-                not read it. Defaults to ``False``.
+            fill (bool): The drawing methods do not read it. Defaults to
+                ``False``.
             width (int | None): Line width of the boxes, in pixels. When
                 ``None`` or ``0``, the width is one percent of the
                 smaller canvas side, rounded down, and at least ``1``.
-            font (str | None): Stored as ``self.font``. The drawing
-                methods do not read it. Defaults to ``None``.
-            font_size (int | None): Stored as ``self.font_size``. The
-                drawing methods do not read it. Defaults to ``None``.
+            font (str | None): The drawing methods do not read it.
+                Defaults to ``None``.
+            font_size (int | None): The drawing methods do not read it.
+                Defaults to ``None``.
             **kwargs (``Any``): Keyword arguments forwarded to
                 `BaseVisualizer`, such as ``scale`` and ``node``.
 
@@ -297,7 +297,7 @@ class BBoxVisualizer(BaseVisualizer):
             predictions (``list[Tensor]``): One tensor per image, of
                 shape ``[M_i, 6]`` with rows
                 ``[x1, y1, x2, y2, conf, class]`` in pixels.
-                `draw_predictions` scales them by ``self.scale``.
+                `draw_predictions` scales them by the ``scale`` factor.
             targets (``Tensor | None``): Boxes of shape ``[N, 6]`` with
                 rows ``[batch_index, class, x, y, w, h]``, ``xywh``
                 normalized to ``[0, 1]``. ``None`` when the batch has no

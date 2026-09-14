@@ -115,20 +115,11 @@ class LuxonisModel:
 
     Attributes:
         cfg (Config): The config of the run.
-        allow_empty_dataset (bool): Whether a `DummyLoader` replaces a
-            loader that fails to build.
-        weights (``PathType | dict[str, Any] | None``): The weights given
-            to the constructor, downloaded when remote, or
-            ``model.weights`` of the config. A bare state dictionary is
-            wrapped as ``{"state_dict": ...}``.
         cfg_preprocessing (PreprocessingConfig): Shortcut to
             ``cfg.trainer.preprocessing``.
         tracker (LuxonisTrackerPL): The experiment tracker of the run.
         run_save_dir (``Path``): ``<tracker.save_directory>/<run name>``.
             The checkpoints, the logs, and the exported files go there.
-        log_file (``Path``): ``luxonis_train.log`` in ``run_save_dir``.
-        config_file (``Path``): ``training_config.yaml`` in
-            ``run_save_dir``.
         error_message (str | None): The message of the exception that
             ended a training thread, or ``None``.
         pl_trainer (``pl.Trainer``): The Lightning trainer.
@@ -136,16 +127,10 @@ class LuxonisModel:
             ``"train"``, ``"val"``, and ``"test"``.
         pytorch_loaders (``dict[View, DataLoader]``): The PyTorch data
             loaders over ``loaders``, with the same keys.
-        dataset_metadata (DatasetMetadata): The classes, the keypoints,
-            and the metadata types of the dataset.
-        input_shapes (``dict[str, Size]``): The shape of each loader
-            input, without the batch dimension.
         lightning_module (LuxonisLightningModule): The module that runs
             the node graph.
         thread (``threading.Thread``): The thread of the last `train` or
             `test` call with ``new_thread=True``. Unset before that.
-        parent_tracker (LuxonisTrackerPL): The tracker of a tuning
-            study. Set by `tune`.
 
     Example:
         .. code-block:: python

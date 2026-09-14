@@ -237,8 +237,8 @@ class SegmentationVisualizer(BaseVisualizer):
         Otherwise it takes the colors of `BaseVisualizer.colormap`, and
         logs a warning on the first call. With more than one class, the
         ``background_class`` then gets the ``background_color``.
-        `draw_predictions` and `draw_targets` resize the masks by
-        ``self.scale`` and draw them.
+        `draw_predictions` and `draw_targets` resize the masks by the
+        ``scale`` factor and draw them.
 
         Args:
             prediction_canvas (``Tensor``): ``uint8`` images of shape

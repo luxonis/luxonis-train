@@ -86,13 +86,13 @@ class FOMOVisualizer(BBoxVisualizer):
         When every tensor in ``keypoints`` has three values per point,
         the method draws the points in red with
         `KeypointVisualizer.draw_predictions` and ``radius``. That call
-        ignores ``visibility_threshold`` and ``self.scale``. It draws a
-        point with a probability of at least ``0.5`` at its
+        ignores ``visibility_threshold`` and the ``scale`` factor. It
+        draws a point with a probability of at least ``0.5`` at its
         coordinates, and any other point at the top-left corner.
         Otherwise the method calls `draw_predictions_per_class`, which
         colors the points by class and applies ``visibility_threshold``
-        and ``self.scale``. `FOMOHead` always produces four values per
-        point, so its output takes the second path.
+        and the ``scale`` factor. `FOMOHead` always produces four values
+        per point, so its output takes the second path.
 
         Args:
             prediction_canvas (``Tensor``): ``uint8`` images of shape
@@ -160,12 +160,12 @@ class FOMOVisualizer(BBoxVisualizer):
     ) -> Tensor:
         """Draw the predicted points of a batch, colored by class.
 
-        For each image, the method scales the coordinates by
-        ``self.scale`` and keeps the points with a probability of at
+        For each image, the method scales the coordinates by the
+        ``scale`` factor and keeps the points with a probability of at
         least ``visibility_threshold``. Then it clamps them into the
         image and draws them with ``torchvision.utils.draw_keypoints``.
-        A class takes the color of its name in ``self.colors``, and
-        white when the name has no color.
+        A class takes the color of its name in ``colors``, and white
+        when the name has no color.
 
         Args:
             canvas (``Tensor``): ``uint8`` images of shape

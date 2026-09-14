@@ -16,14 +16,6 @@ class OCRDecoder:
     that repeat the class of the previous step. A call of the decoder
     runs `decode`.
 
-    Attributes:
-        ignored_tokens (list[int]): The class indices that `decode`
-            drops, always ``[0]``. The attribute exists only when the
-            constructor gets ``ignored_tokens=None``.
-        int_to_char (dict): The character of each class index.
-        is_remove_duplicate (bool): Whether `decode` drops a step that
-            repeats the class of the previous step.
-
     """
 
     def __init__(
@@ -133,8 +125,6 @@ class OCREncoder:
 
     Attributes:
         char_to_int (dict): The class index of each character.
-        ignore_unknown (bool): Whether `encode` drops a character that
-            is not in the alphabet.
 
     Example:
         >>> import torch

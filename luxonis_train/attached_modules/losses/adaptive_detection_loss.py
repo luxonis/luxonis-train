@@ -136,10 +136,9 @@ class AdaptiveDetectionLoss(BaseLoss):
                 ``"none"`` for the plain IoU, ``"giou"``, ``"diou"``,
                 ``"ciou"``, or ``"siou"``. `luxonis_train.utils.bbox_iou`
                 describes the variants.
-            reduction (``Literal["sum", "mean"]``): The method stores
-                it as ``self.reduction``. The loss does not read it, and
-                both terms always use the normalized sum of the class
-                formula.
+            reduction (``Literal["sum", "mean"]``): The loss does not
+                read it. Both terms always use the normalized sum of the
+                class formula.
             class_loss_weight (float): The factor :math:`\lambda_{cls}`
                 of the classification term.
             iou_loss_weight (float): The factor :math:`\lambda_{iou}` of

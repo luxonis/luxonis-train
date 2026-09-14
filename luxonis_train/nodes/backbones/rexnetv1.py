@@ -285,21 +285,17 @@ class LinearBottleneck(nn.Module):
     other output channels get no shortcut.
 
     Attributes:
-        use_shortcut (bool): Whether the block adds the shortcut.
-        in_channels (int): Number of input channels.
-        out_channels (int): Number of output channels.
         out (``nn.Sequential``): The expansion, depthwise, and
             projection layers.
 
     Example:
         >>> import torch
         >>> block = LinearBottleneck(8, 12, t=6)
-        >>> block.use_shortcut
-        True
         >>> block(torch.zeros(1, 8, 4, 4)).shape
         torch.Size([1, 12, 4, 4])
-        >>> LinearBottleneck(8, 12, t=6, stride=2).use_shortcut
-        False
+        >>> strided = LinearBottleneck(8, 12, t=6, stride=2)
+        >>> strided(torch.zeros(1, 8, 4, 4)).shape
+        torch.Size([1, 12, 2, 2])
 
     """
 

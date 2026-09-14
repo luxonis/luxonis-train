@@ -256,7 +256,6 @@ class LCNetV3Layer(nn.Sequential):
     ``forward`` of `torch.nn.Sequential` runs the blocks in order.
 
     Attributes:
-        in_channels (int): The number of input channels of the layer.
         out_channels (int): The number of output channels of the layer,
             ``scale_up(out_channels[-1], scale)``.
 

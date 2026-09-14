@@ -27,12 +27,8 @@ class UploadCheckpoint(pl.Callback):
 
     When ``trainer.smart_cfg_auto_populate`` is set,
     `Config.smart_auto_populate` adds this callback to
-    ``trainer.callbacks`` if it is missing. `LuxonisModel.tune` removes it
-    from the config of each trial.
-
-    Attributes:
-        last_best_checkpoints (set[str]): The ``best_model_path`` values
-            that the callback has uploaded.
+    ``trainer.callbacks`` if it is missing. `LuxonisModel.tune` removes
+    it from the config of each trial.
 
     """
 
@@ -60,7 +56,7 @@ class UploadCheckpoint(pl.Callback):
 
         The hook then reads the ``best_model_path`` of each
         ``ModelCheckpoint`` of ``trainer``. For each non-empty path that
-        is not in ``last_best_checkpoints``, the hook does these steps:
+        the callback did not upload before, the hook does these steps:
 
         1. It writes the copy to ``<directory>.ckpt`` in the current
            working directory. ``<directory>`` is the name of the
@@ -71,8 +67,7 @@ class UploadCheckpoint(pl.Callback):
         2. It uploads the file with ``module.logger.upload_artifact`` and
            the artifact type ``weights``. The upload runs on rank zero
            only.
-        3. It deletes the file and adds the path to
-           ``last_best_checkpoints``.
+        3. It deletes the file and records the path as uploaded.
 
         The hook logs an info message before and after each upload.
 
@@ -80,8 +75,8 @@ class UploadCheckpoint(pl.Callback):
         file at ``best_model_path``. A ``ModelCheckpoint`` sets its new
         best path just before it saves, so the two hold the same
         weights. **A resumed run breaks this.** Each ``ModelCheckpoint``
-        restores its ``best_model_path`` from the checkpoint, but
-        ``last_best_checkpoints`` starts empty. The first save after the
+        restores its ``best_model_path`` from the checkpoint, but the
+        record of uploaded paths starts empty. The first save after the
         resume uploads the current state for every restored path. That
         state can differ from the best weights.
 
