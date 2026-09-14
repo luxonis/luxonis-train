@@ -116,6 +116,7 @@ def test_metric_equivalence_callback_an_eval(
 
     This is because EMACallback can potentially replace the best val
     weights by the latest moving average weights.
+
     """
     config_name = "detection_light_model"
     opts |= {
