@@ -108,12 +108,12 @@ class KeypointVisualizer(BBoxVisualizer):
 
         """
         super().__init__(**kwargs)
-        self.visibility_threshold = visibility_threshold
-        self.connectivity = connectivity
-        self.visible_color = visible_color
-        self.nonvisible_color = nonvisible_color
-        self.radius = radius
-        self.draw_indices = draw_indices
+        self._visibility_threshold = visibility_threshold
+        self._connectivity = connectivity
+        self._visible_color = visible_color
+        self._nonvisible_color = nonvisible_color
+        self._radius = radius
+        self._draw_indices = draw_indices
 
     @staticmethod
     def _get_radius(canvas: Tensor) -> int:
@@ -510,30 +510,30 @@ class KeypointVisualizer(BBoxVisualizer):
 
         """
         pred_viz = super().draw_predictions(
-            prediction_canvas, boundingbox, self.scale
+            prediction_canvas, boundingbox, self._scale
         )
 
         prediction_radius = (
             KeypointVisualizer._get_radius(prediction_canvas)
-            if self.radius is None
-            else self.radius
+            if self._radius is None
+            else self._radius
         )
         target_radius = (
             KeypointVisualizer._get_radius(target_canvas)
-            if self.radius is None
-            else self.radius
+            if self._radius is None
+            else self._radius
         )
 
         pred_viz = self.draw_predictions(
             pred_viz,
             keypoints,
-            self.draw_indices,
-            connectivity=self.connectivity,
-            nonvisible_color=self.nonvisible_color,
-            visible_color=self.visible_color,
-            visibility_threshold=self.visibility_threshold,
+            self._draw_indices,
+            connectivity=self._connectivity,
+            nonvisible_color=self._nonvisible_color,
+            visible_color=self._visible_color,
+            visibility_threshold=self._visibility_threshold,
             radius=prediction_radius,
-            scale=self.scale,
+            scale=self._scale,
             **kwargs,
         )
 
@@ -551,10 +551,10 @@ class KeypointVisualizer(BBoxVisualizer):
             target_viz = self.draw_targets(
                 target_viz,
                 target_keypoints,
-                self.draw_indices,
+                self._draw_indices,
                 radius=target_radius,
-                colors=self.visible_color,
-                connectivity=self.connectivity,
+                colors=self._visible_color,
+                connectivity=self._connectivity,
                 **kwargs,
             )
 

@@ -52,9 +52,9 @@ class ConvMixer(nn.Module):
 
         """
         super().__init__()
-        self.height = height
-        self.width = width
-        self.dim = dim
+        self._height = height
+        self._width = width
+        self._dim = dim
         self.local_mixer = nn.Conv2d(
             dim,
             dim,
@@ -79,7 +79,7 @@ class ConvMixer(nn.Module):
 
         """
         x = x.permute(0, 2, 1).reshape(
-            [x.size(0), self.dim, self.height, self.width]
+            [x.size(0), self._dim, self._height, self._width]
         )
         x = self.local_mixer(x)
         return x.flatten(2).permute(0, 2, 1)
@@ -177,16 +177,16 @@ class Attention(nn.Module):
         if isinstance(kernel_size, int):
             kernel_size = (kernel_size, kernel_size)
 
-        self.n_heads = n_heads
-        self.dim = dim
-        self.head_dim = dim // n_heads
-        self.scale = qk_scale or 1 / math.sqrt(self.head_dim)
+        self._n_heads = n_heads
+        self._dim = dim
+        self._head_dim = dim // n_heads
+        self._scale = qk_scale or 1 / math.sqrt(self._head_dim)
 
         self.qkv = nn.Linear(dim, dim * 3)
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
-        self.mask = None
+        self._mask = None
         if mixer == "local":
             if height is None or width is None:
                 raise ValueError(
@@ -220,7 +220,7 @@ class Attention(nn.Module):
                 dtype=torch.float32,
             )
             mask = torch.where(mask_paddle < 1, mask_paddle, mask_inf)
-            self.mask = mask.unsqueeze(0).unsqueeze(0)
+            self._mask = mask.unsqueeze(0).unsqueeze(0)
 
     def forward(self, x: Tensor) -> Tensor:
         """Apply the self-attention to a sequence of tokens.
@@ -238,18 +238,18 @@ class Attention(nn.Module):
         batch_size = x.shape[0]
         qkv = (
             self.qkv(x)
-            .reshape((batch_size, -1, 3, self.n_heads, self.head_dim))  # 0
+            .reshape((batch_size, -1, 3, self._n_heads, self._head_dim))  # 0
             .permute(2, 0, 3, 1, 4)
         )
-        q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
+        q, k, v = qkv[0] * self._scale, qkv[1], qkv[2]
 
         attn = q @ k.permute(0, 1, 3, 2)
-        if self.mask is not None:
-            attn += self.mask
+        if self._mask is not None:
+            attn += self._mask
         attn = F.log_softmax(attn, dim=-1).exp()
         attn: Tensor = self.attn_drop(attn)
 
-        x = (attn @ v).permute(0, 2, 1, 3).reshape((batch_size, -1, self.dim))
+        x = (attn @ v).permute(0, 2, 1, 3).reshape((batch_size, -1, self._dim))
         x = self.proj(x)
         return self.proj_drop(x)
 
@@ -391,7 +391,7 @@ class SVTRBlock(nn.Module):
             activation_layer=act_layer,
             dropout=dropout,
         )
-        self.prenorm = prenorm
+        self._prenorm = prenorm
 
     def forward(self, x: Tensor) -> Tensor:
         """Run the mixer branch and then the MLP branch.
@@ -406,7 +406,7 @@ class SVTRBlock(nn.Module):
             ``[B, N, dim]``.
 
         """
-        if self.prenorm:
+        if self._prenorm:
             x = self.norm1(x + self.drop_path(self.mixer(x)))
             x = self.norm2(x + self.drop_path(self.mlp(x)))
         else:

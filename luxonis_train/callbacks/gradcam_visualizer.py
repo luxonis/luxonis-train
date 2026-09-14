@@ -50,8 +50,8 @@ class PLModuleWrapper(pl.LightningModule):
 
         """
         super().__init__()
-        self.pl_module = pl_module
-        self.task = task
+        self._pl_module = pl_module
+        self._task = task
 
     def forward(self, inputs: Tensor, *args, **kwargs) -> Tensor:
         """Run the model on images and return the scores for ``task``.
@@ -89,28 +89,28 @@ class PLModuleWrapper(pl.LightningModule):
 
         """
         input_dict = {"image": inputs}
-        output = self.pl_module.full_forward(input_dict, *args, **kwargs)
+        output = self._pl_module.full_forward(input_dict, *args, **kwargs)
         if len(output.outputs) > 1:
             logger.warning(
                 "Model has multiple heads. Using the first head for Grad-CAM."
             )
         first_head_dict = next(iter(output.outputs.values()))
 
-        if self.task == "segmentation":
+        if self._task == "segmentation":
             assert isinstance(first_head_dict["segmentation"], Tensor)
             return first_head_dict["segmentation"]
-        if self.task == "detection":
+        if self._task == "detection":
             scores = first_head_dict["class_scores"]
             assert isinstance(scores, Tensor)
             return scores.sum(dim=1)
-        if self.task == "classification":
+        if self._task == "classification":
             assert isinstance(first_head_dict["classification"], Tensor)
             return first_head_dict["classification"]
-        if self.task == "keypoints":
+        if self._task == "keypoints":
             scores = first_head_dict["class_scores"]
             assert isinstance(scores, Tensor)
             return scores.sum(dim=1)
-        raise ValueError(f"Unknown task: {self.task}")
+        raise ValueError(f"Unknown task: {self._task}")
 
 
 class GradCamCallback(pl.Callback):
@@ -170,10 +170,10 @@ class GradCamCallback(pl.Callback):
 
         """
         super().__init__()
-        self.target_layer = target_layer
-        self.class_idx = class_idx
-        self.log_n_batches = log_n_batches
-        self.task = task
+        self._target_layer = target_layer
+        self._class_idx = class_idx
+        self._log_n_batches = log_n_batches
+        self._task = task
 
     def setup(
         self,
@@ -193,7 +193,7 @@ class GradCamCallback(pl.Callback):
             stage (str): The stage that starts. Unused.
 
         """
-        self.pl_module = PLModuleWrapper(pl_module, self.task)
+        self._pl_module = PLModuleWrapper(pl_module, self._task)
 
     def on_validation_batch_end(
         self,
@@ -225,7 +225,7 @@ class GradCamCallback(pl.Callback):
                 epoch.
 
         """
-        if batch_idx < self.log_n_batches:
+        if batch_idx < self._log_n_batches:
             images = batch[0]
             if isinstance(images, dict):
                 images = images[pl_module.image_source]
@@ -280,29 +280,29 @@ class GradCamCallback(pl.Callback):
                 image names.
 
         """
-        target_layers = [m[1] for m in self.pl_module.named_modules()][
-            self.target_layer : self.target_layer + 1
+        target_layers = [m[1] for m in self._pl_module.named_modules()][
+            self._target_layer : self._target_layer + 1
         ]
-        self.gradcam = HiResCAM(self.pl_module, target_layers)
+        self._gradcam = HiResCAM(self._pl_module, target_layers)
 
         model_input = images.clone()
 
-        if self.task == "segmentation":
-            output = self.pl_module(model_input)
+        if self._task == "segmentation":
+            output = self._pl_module(model_input)
             normalized_masks = F.softmax(output, dim=1).cpu()
             mask = normalized_masks.argmax(dim=1).detach().cpu().numpy()
-            mask_float = (mask == self.class_idx).astype(np.float32)
+            mask_float = (mask == self._class_idx).astype(np.float32)
             targets = [
-                SemanticSegmentationTarget(self.class_idx, mask_float[i])
+                SemanticSegmentationTarget(self._class_idx, mask_float[i])
                 for i in range(mask_float.shape[0])
             ]
         else:
             targets = [
-                ClassifierOutputTarget(self.class_idx)
+                ClassifierOutputTarget(self._class_idx)
             ] * model_input.size(0)
 
         with torch.enable_grad():
-            grayscale_cams = self.gradcam(
+            grayscale_cams = self._gradcam(
                 input_tensor=model_input,
                 targets=targets,  # type: ignore
             )

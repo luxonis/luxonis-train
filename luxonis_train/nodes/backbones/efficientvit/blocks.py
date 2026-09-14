@@ -77,7 +77,7 @@ class DepthWiseSeparableConv(nn.Module):
         """
         super().__init__()
 
-        self.use_residual = use_residual
+        self._use_residual = use_residual
 
         self.depthwise_conv = ConvBlock(
             in_channels,
@@ -115,7 +115,7 @@ class DepthWiseSeparableConv(nn.Module):
         """
         identity = x
         x = self.pointwise_conv(self.depthwise_conv(x))
-        if self.use_residual:
+        if self._use_residual:
             x = x + identity
         return x
 
@@ -193,7 +193,7 @@ class MobileBottleneckBlock(nn.Module):
         if activation is None:
             activation = [nn.ReLU6(), nn.ReLU6(), nn.Identity()]
 
-        self.use_residual = use_residual
+        self._use_residual = use_residual
         mid_channels = round(in_channels * expand_ratio)
 
         self.expand_conv = ConvBlock(
@@ -243,7 +243,7 @@ class MobileBottleneckBlock(nn.Module):
         x = self.expand_conv(x)
         x = self.depthwise_conv(x)
         x = self.project_conv(x)
-        if self.use_residual:
+        if self._use_residual:
             x = x + identity
         return x
 
@@ -444,13 +444,13 @@ class LightweightMLABlock(nn.Module):
         if kernel_activation is None:
             kernel_activation = nn.ReLU()
 
-        self.epsilon = epsilon
-        self.use_residual = use_residual
+        self._epsilon = epsilon
+        self._use_residual = use_residual
         n_heads = n_heads or int(input_channels // dimension * head_ratio)
 
         total_dim = n_heads * dimension
 
-        self.dimension = dimension
+        self._dimension = dimension
         self.qkv_layer = ConvBlock(
             input_channels,
             3 * total_dim,
@@ -543,12 +543,12 @@ class LightweightMLABlock(nn.Module):
             qkv_tensor = qkv_tensor.float()
 
         qkv_tensor = qkv_tensor.reshape(
-            batch, -1, 3 * self.dimension, height * width
+            batch, -1, 3 * self._dimension, height * width
         )
         query, key, value = (
-            qkv_tensor[:, :, : self.dimension],
-            qkv_tensor[:, :, self.dimension : 2 * self.dimension],
-            qkv_tensor[:, :, 2 * self.dimension :],
+            qkv_tensor[:, :, : self._dimension],
+            qkv_tensor[:, :, self._dimension : 2 * self._dimension],
+            qkv_tensor[:, :, 2 * self._dimension :],
         )
 
         query = self.kernel_activation(query)
@@ -562,7 +562,7 @@ class LightweightMLABlock(nn.Module):
         if output.dtype == torch.bfloat16:
             output = output.float()
 
-        output = output[:, :, :-1] / (output[:, :, -1:] + self.epsilon)
+        output = output[:, :, :-1] / (output[:, :, -1:] + self._epsilon)
         return output.reshape(batch, -1, height, width)
 
     @torch.autocast(device_type="cuda", enabled=False)
@@ -595,12 +595,12 @@ class LightweightMLABlock(nn.Module):
         batch, _, height, width = qkv_tensor.size()
 
         qkv_tensor = qkv_tensor.reshape(
-            batch, -1, 3 * self.dimension, height * width
+            batch, -1, 3 * self._dimension, height * width
         )
         query, key, value = (
-            qkv_tensor[:, :, : self.dimension],
-            qkv_tensor[:, :, self.dimension : 2 * self.dimension],
-            qkv_tensor[:, :, 2 * self.dimension :],
+            qkv_tensor[:, :, : self._dimension],
+            qkv_tensor[:, :, self._dimension : 2 * self._dimension],
+            qkv_tensor[:, :, 2 * self._dimension :],
         )
 
         query = self.kernel_activation(query)
@@ -613,7 +613,7 @@ class LightweightMLABlock(nn.Module):
             attention_map = attention_map.float()
 
         attention_map = attention_map / (
-            torch.sum(attention_map, dim=2, keepdim=True) + self.epsilon
+            torch.sum(attention_map, dim=2, keepdim=True) + self._epsilon
         )
         attention_map = attention_map.to(original_dtype)
 
@@ -651,7 +651,7 @@ class LightweightMLABlock(nn.Module):
         qkv_output = torch.cat(multi_scale_outputs, dim=1)
 
         height, width = qkv_output.size()[-2:]
-        if height * width > self.dimension:
+        if height * width > self._dimension:
             attention_output = self.linear_attention(qkv_output).to(
                 qkv_output.dtype
             )
@@ -660,7 +660,7 @@ class LightweightMLABlock(nn.Module):
 
         final_output = self.projection_layer(attention_output)
 
-        if self.use_residual:
+        if self._use_residual:
             final_output += identity
 
         return final_output

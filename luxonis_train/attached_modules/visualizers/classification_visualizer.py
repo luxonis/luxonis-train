@@ -107,11 +107,11 @@ class ClassificationVisualizer(BaseVisualizer):
 
         """
         super().__init__(**kwargs)
-        self.include_plot = include_plot
-        self.font_scale = font_scale
-        self.color = color
-        self.thickness = thickness
-        self.multilabel = multilabel
+        self._include_plot = include_plot
+        self._font_scale = font_scale
+        self._color = color
+        self._thickness = thickness
+        self._multilabel = multilabel
 
     def _get_class_name(self, pred: Tensor) -> str:
         """Return the class name, or names, that ``pred`` selects.
@@ -127,7 +127,7 @@ class ClassificationVisualizer(BaseVisualizer):
             str: The selected class names.
 
         """
-        if self.multilabel:
+        if self._multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
             return ", ".join([self.classes.inverse[idx] for idx in idxs])
         return self.classes.inverse[int(pred.argmax().item())]
@@ -150,7 +150,7 @@ class ClassificationVisualizer(BaseVisualizer):
 
         """
         prediction = prediction.to(torch.float32)
-        if self.multilabel:
+        if self._multilabel:
             pred = prediction.sigmoid().detach().cpu().numpy()
         else:
             pred = prediction.softmax(-1).detach().cpu().numpy()
@@ -206,16 +206,16 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = torch_img_to_numpy(target_canvas[i].clone())
             height, width = arr.shape[:2]
 
-            if not self.font_scale:
+            if not self._font_scale:
                 font_scale, thickness = dynamically_determine_font_scale(
-                    height, width, self.thickness, self.font_scale
+                    height, width, self._thickness, self._font_scale
                 )
                 base_y: int = int(height * 0.15)
                 line_spacing: int = int(height * 0.1)
 
                 y_gt, y_pred = base_y, base_y + line_spacing
             else:
-                font_scale, thickness = self.font_scale, self.thickness
+                font_scale, thickness = self._font_scale, self._thickness
                 y_gt, y_pred = 50, 75
 
             curr_class = self._get_class_name(prediction)
@@ -227,7 +227,7 @@ class ClassificationVisualizer(BaseVisualizer):
                     (5, y_gt),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale,
-                    self.color,
+                    self._color,
                     thickness,
                 )
             arr = cv2.putText(
@@ -236,19 +236,19 @@ class ClassificationVisualizer(BaseVisualizer):
                 (5, y_pred),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 font_scale,
-                self.color,
+                self._color,
                 thickness,
             )
 
             overlay[i] = numpy_to_torch_img(arr)
 
-            if self.include_plot:
+            if self._include_plot:
                 plots[i] = self._generate_plot(
                     prediction,
                     prediction_canvas.shape[3],
                     prediction_canvas.shape[2],
                 )
 
-        if self.include_plot:
+        if self._include_plot:
             return overlay, plots
         return overlay

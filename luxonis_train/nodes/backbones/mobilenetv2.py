@@ -96,7 +96,7 @@ class MobileNetV2(BaseNode):
         self.backbone = torchvision.models.mobilenet_v2(
             weights="DEFAULT" if weights == "download" else None
         )
-        self.out_indices = out_indices or [3, 6, 13, 18]
+        self._out_indices = out_indices or [3, 6, 13, 18]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         """Run the ``features`` modules in order.
@@ -127,7 +127,7 @@ class MobileNetV2(BaseNode):
         outs: list[Tensor] = []
         for i, layer in enumerate(self.backbone.features):
             inputs = layer(inputs)
-            if i in self.out_indices:
+            if i in self._out_indices:
                 outs.append(inputs)
 
         return outs

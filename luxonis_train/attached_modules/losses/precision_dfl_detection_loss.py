@@ -159,25 +159,25 @@ class PrecisionDFLDetectionLoss(BaseLoss):
 
         """
         super().__init__(**kwargs)
-        self.stride = self.node.stride
-        self.grid_cell_size = self.node.grid_cell_size
-        self.grid_cell_offset = self.node.grid_cell_offset
-        self.original_img_size = self.original_in_shape[1:]
+        self._stride = self.node.stride
+        self._grid_cell_size = self.node.grid_cell_size
+        self._grid_cell_offset = self.node.grid_cell_offset
+        self._original_img_size = self.original_in_shape[1:]
 
-        self.class_loss_weight = class_loss_weight
-        self.bbox_loss_weight = bbox_loss_weight
-        self.dfl_loss_weight = dfl_loss_weight
+        self._class_loss_weight = class_loss_weight
+        self._bbox_loss_weight = bbox_loss_weight
+        self._dfl_loss_weight = dfl_loss_weight
 
         self.assigner = TaskAlignedAssigner(
             n_classes=self.n_classes,
             topk=tal_topk,
             alpha=0.5,
             beta=6.0,
-            strides=self.stride,
+            strides=self._stride,
             skip_stal=skip_stal,
         )
         self.bbox_loss = BBoxLoss(self.node.reg_max)
-        self.proj = torch.arange(self.node.reg_max, dtype=torch.float)
+        self._proj = torch.arange(self.node.reg_max, dtype=torch.float)
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
     def forward(
@@ -223,7 +223,9 @@ class PrecisionDFLDetectionLoss(BaseLoss):
 
         target = self._preprocess_bbox_target(target, batch_size)
 
-        pred_bboxes = self.decode_bbox(self.anchor_points_strided, pred_distri)
+        pred_bboxes = self.decode_bbox(
+            self._anchor_points_strided, pred_distri
+        )
 
         gt_labels = target[:, :, :1]
         gt_xyxy = target[:, :, 1:]
@@ -231,13 +233,13 @@ class PrecisionDFLDetectionLoss(BaseLoss):
 
         _, assigned_bboxes, assigned_scores, mask_positive, _ = self.assigner(
             pred_scores.detach().sigmoid(),
-            (pred_bboxes.detach() * self.stride_tensor).type(gt_xyxy.dtype),
-            self.anchor_points,
+            (pred_bboxes.detach() * self._stride_tensor).type(gt_xyxy.dtype),
+            self._anchor_points,
             gt_labels,
             gt_xyxy,
             mask_gt,
         )
-        assigned_bboxes /= self.stride_tensor
+        assigned_bboxes /= self._stride_tensor
 
         max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
         loss_cls = (
@@ -247,7 +249,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             loss_iou, loss_dfl = self.bbox_loss(
                 pred_distri,
                 pred_bboxes,
-                self.anchor_points_strided,
+                self._anchor_points_strided,
                 assigned_bboxes,
                 assigned_scores,
                 max_assigned_scores_sum,
@@ -258,9 +260,9 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             loss_dfl = torch.tensor(0.0).to(pred_distri.device)
 
         loss = (
-            self.class_loss_weight * loss_cls
-            + self.bbox_loss_weight * loss_iou
-            + self.dfl_loss_weight * loss_dfl
+            self._class_loss_weight * loss_cls
+            + self._bbox_loss_weight * loss_iou
+            + self._dfl_loss_weight * loss_dfl
         )
         sub_losses = {
             "class": loss_cls.detach(),
@@ -316,33 +318,33 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             dist_probs = pred_dist.view(
                 batch_size, n_anchors, 4, n_channels // 4
             ).softmax(dim=3)
-            dist_transformed = dist_probs @ self.proj.to(
+            dist_transformed = dist_probs @ self._proj.to(
                 anchor_points.device, dtype=pred_dist.dtype
             )
         return dist2bbox(dist_transformed, anchor_points, out_format="xyxy")
 
     def _init_parameters(self, features: list[Tensor]) -> None:
         if not hasattr(self, "gt_bboxes_scale"):
-            _, self.anchor_points, _, self.stride_tensor = (
+            _, self._anchor_points, _, self._stride_tensor = (
                 anchors_for_fpn_features(
                     features,
-                    self.stride,
-                    self.grid_cell_size,
-                    self.grid_cell_offset,
+                    self._stride,
+                    self._grid_cell_size,
+                    self._grid_cell_offset,
                     multiply_with_stride=True,
                 )
             )
             self.gt_bboxes_scale = torch.tensor(
                 [
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                    self.original_img_size[1],
-                    self.original_img_size[0],
+                    self._original_img_size[1],
+                    self._original_img_size[0],
+                    self._original_img_size[1],
+                    self._original_img_size[0],
                 ],
                 device=features[0].device,
             )
-            self.anchor_points_strided = (
-                self.anchor_points / self.stride_tensor
+            self._anchor_points_strided = (
+                self._anchor_points / self._stride_tensor
             )
 
 

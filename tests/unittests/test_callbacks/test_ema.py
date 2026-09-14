@@ -53,8 +53,10 @@ def test_ema_initialization(model: LightningModule, ema_callback: EMACallback):
     ema_callback.on_fit_start(trainer, model)
 
     assert isinstance(ema_callback.ema, ModelEma)
-    assert ema_callback.ema.decay == ema_callback.decay
-    assert ema_callback.ema.use_dynamic_decay == ema_callback.use_dynamic_decay
+    assert ema_callback.ema._decay == ema_callback._decay
+    assert (
+        ema_callback.ema._use_dynamic_decay == ema_callback._use_dynamic_decay
+    )
 
 
 def test_ema_before_fit_start(ema_callback: EMACallback):
@@ -135,7 +137,7 @@ def test_validation_epoch_start_and_end(
         )
 
     ema_callback.on_validation_epoch_start(trainer, model)
-    assert ema_callback.collected_state_dict is not None
+    assert ema_callback._collected_state_dict is not None
 
     collected_state = model.state_dict()
     ema_callback.on_validation_end(trainer, model)

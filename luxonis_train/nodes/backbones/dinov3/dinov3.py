@@ -226,10 +226,10 @@ class DinoV3(BaseNode):
         """
         super().__init__(**kwargs)
 
-        self.return_sequence = return_sequence
-        self.depth = depth
+        self._return_sequence = return_sequence
+        self._depth = depth
 
-        self.backbone, self.patch_size = self._get_backbone(
+        self.backbone, self._patch_size = self._get_backbone(
             weights=weights_link,
             variant=variant,
             repo_or_dir=repo_or_dir,
@@ -247,14 +247,14 @@ class DinoV3(BaseNode):
             "target platform, please pick a different backbone."
         )
         if (
-            self.original_in_shape[-1] % self.patch_size != 0
-            or self.original_in_shape[-2] % self.patch_size != 0
+            self.original_in_shape[-1] % self._patch_size != 0
+            or self.original_in_shape[-2] % self._patch_size != 0
         ):
             logger.warning(
-                f"Image dimensions should be divisible by {self.patch_size},"
+                f"Image dimensions should be divisible by {self._patch_size},"
                 f"but got {self.original_in_shape}. "
                 "This will cause inconsistent image sizes"
-                f"as DINOv3 natively reshapes to multiples of {self.patch_size}."
+                f"as DINOv3 natively reshapes to multiples of {self._patch_size}."
             )
 
     def _replace_rope_embedding(self) -> None:
@@ -309,7 +309,7 @@ class DinoV3(BaseNode):
         """
         outs: list[Tensor] = []
 
-        if self.return_sequence:
+        if self._return_sequence:
             features_with_cls = cast(
                 list[tuple[Tensor, Tensor]],
                 self.backbone.get_intermediate_layers(
@@ -322,13 +322,13 @@ class DinoV3(BaseNode):
             seq_features = cast(
                 list[Tensor],
                 self.backbone.get_intermediate_layers(
-                    inputs, norm=True, n=self.depth, return_class_token=False
+                    inputs, norm=True, n=self._depth, return_class_token=False
                 ),
             )
             for x in seq_features:
                 B, N, C = x.shape
                 h, w = self.original_in_shape[1:]
-                gh, gw = h // self.patch_size, w // self.patch_size
+                gh, gw = h // self._patch_size, w // self._patch_size
                 assert gh * gw == N, f"Expected {gh * gw} tokens, got {N}"
                 outs.append(x.permute(0, 2, 1).reshape(B, C, gh, gw))
 

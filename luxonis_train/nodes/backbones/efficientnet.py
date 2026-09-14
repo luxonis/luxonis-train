@@ -97,7 +97,7 @@ class EfficientNet(BaseNode):
                 trust_repo=True,  # type: ignore
             ),
         )
-        self.out_indices = out_indices or [0, 1, 2, 4, 6]
+        self._out_indices = out_indices or [0, 1, 2, 4, 6]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         """Run the stem and the block stages.
@@ -123,7 +123,7 @@ class EfficientNet(BaseNode):
 
         for i, layer in enumerate(self.backbone.blocks):
             x = layer(x)
-            if i in self.out_indices:
+            if i in self._out_indices:
                 outs.append(x)
 
         return outs

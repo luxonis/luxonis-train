@@ -88,7 +88,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
         if isinstance(anomaly_source_path, str):
             try:
-                self.anomaly_source_path = LuxonisFileSystem.download(
+                self._anomaly_source_path = LuxonisFileSystem.download(
                     anomaly_source_path, dest="./data"
                 )
             except Exception as e:
@@ -97,29 +97,29 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
                     "could not be found or downloaded."
                 ) from e
         else:
-            self.anomaly_source_path = anomaly_source_path
+            self._anomaly_source_path = anomaly_source_path
 
         from luxonis_train.core.utils.infer_utils import IMAGE_FORMATS
 
-        self.anomaly_files = [
+        self._anomaly_files = [
             f
-            for f in self.anomaly_source_path.rglob("*")
+            for f in self._anomaly_source_path.rglob("*")
             if f.suffix.lower() in IMAGE_FORMATS
         ]
-        if not self.anomaly_files:
+        if not self._anomaly_files:
             raise FileNotFoundError(
                 "No image files found at the specified path."
             )
 
-        self.noise_prob = noise_prob
+        self._noise_prob = noise_prob
         if len(self.loader.dataset.get_tasks()) > 1:
             # TODO: Can be extended to multiple tasks
             raise ValueError(
                 "This loader only supports datasets with a single task."
             )
-        self.beta = beta
-        self.task_name = next(iter(self.loader.dataset.get_tasks()))
-        self.augmentations = self.loader._augmentations
+        self._beta = beta
+        self._task_name = next(iter(self.loader.dataset.get_tasks()))
+        self._augmentations = self.loader._augmentations
 
     @override
     def __getitem__(self, idx: int) -> tuple[Tensor, Labels]:
@@ -172,18 +172,18 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         tensor_labels = self.dict_numpy_to_torch(labels)
 
         if self.view[0] == "train":
-            if random.random() < self.noise_prob:
-                anomaly_path = random.choice(self.anomaly_files)
+            if random.random() < self._noise_prob:
+                anomaly_path = random.choice(self._anomaly_files)
                 anomaly_img = self.read_image(str(anomaly_path))
 
-                if self.augmentations is not None:
-                    anomaly_img = self.augmentations.apply(
+                if self._augmentations is not None:
+                    anomaly_img = self._augmentations.apply(
                         [({self.image_source: anomaly_img}, {})]
                     )[0][self.image_source]
 
                 anomaly_img = self.img_numpy_to_torch(anomaly_img)
                 aug_tensor_img, an_mask = apply_anomaly_to_img(
-                    img, anomaly_img, self.beta
+                    img, anomaly_img, self._beta
                 )
             else:
                 aug_tensor_img = img
@@ -191,14 +191,14 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         else:
             aug_tensor_img = img
             an_mask = torch.tensor(
-                labels.pop(f"{self.task_name}/segmentation")
+                labels.pop(f"{self._task_name}/segmentation")
             )[-1, ...]
 
         an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 
         tensor_labels = {
-            f"{self.task_name}/original_segmentation": img,
-            f"{self.task_name}/segmentation": an_mask,
+            f"{self._task_name}/original_segmentation": img,
+            f"{self._task_name}/segmentation": an_mask,
         }
 
         return aug_tensor_img, tensor_labels
@@ -215,7 +215,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
-        return {self.task_name: idx_map}
+        return {self._task_name: idx_map}
 
 
 @contextmanager

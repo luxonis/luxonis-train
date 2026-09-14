@@ -46,10 +46,10 @@ class OCRDecoder:
 
         """
         if ignored_tokens is None:
-            self.ignored_tokens = [0]
+            self._ignored_tokens = [0]
 
-        self.int_to_char = {v: k for k, v in char_to_int.items()}
-        self.is_remove_duplicate = is_remove_duplicate
+        self._int_to_char = {v: k for k, v in char_to_int.items()}
+        self._is_remove_duplicate = is_remove_duplicate
 
     def decode(self, preds: Tensor) -> list[tuple[str, float]]:
         """Decode the class scores of each sequence into text.
@@ -90,16 +90,16 @@ class OCRDecoder:
             char_list = []
             conf_list = []
             for idx in range(len(pred_ids[batch_idx])):
-                if pred_ids[batch_idx][idx] in self.ignored_tokens:
+                if pred_ids[batch_idx][idx] in self._ignored_tokens:
                     continue
-                if self.is_remove_duplicate and (
+                if self._is_remove_duplicate and (
                     idx > 0
                     and pred_ids[batch_idx][idx - 1]
                     == pred_ids[batch_idx][idx]
                 ):
                     continue
                 char_list.append(
-                    self.int_to_char[int(pred_ids[batch_idx][idx])]
+                    self._int_to_char[int(pred_ids[batch_idx][idx])]
                 )
                 if pred_probs is not None:
                     conf_list.append(pred_probs[batch_idx][idx])
@@ -165,8 +165,8 @@ class OCREncoder:
         self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
 
-        self.ignore_unknown = ignore_unknown
-        if not self.ignore_unknown:
+        self._ignore_unknown = ignore_unknown
+        if not self._ignore_unknown:
             self._alphabet.append("<UNK>")
             self.char_to_int["<UNK>"] = len(self.char_to_int)
 
@@ -198,7 +198,7 @@ class OCREncoder:
                 char = chr(int(char_code.item()))
                 if char in self.char_to_int:
                     encoded_target.append(self.char_to_int[char])
-                elif not self.ignore_unknown:
+                elif not self._ignore_unknown:
                     encoded_target.append(self.char_to_int["<UNK>"])
 
             if len(encoded_target) != len(target):

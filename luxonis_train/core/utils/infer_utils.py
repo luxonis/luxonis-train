@@ -345,9 +345,9 @@ class _VisualizationPredictionWriter(BasePredictionWriter):
         img_paths: list[PathType] | None = None,
     ) -> None:
         super().__init__(write_interval="batch")
-        self.save_dir = save_dir
-        self.img_paths = img_paths
-        self.counter = Counter()
+        self._save_dir = save_dir
+        self._img_paths = img_paths
+        self._counter = Counter()
 
     def write_on_batch_end(
         self,
@@ -365,9 +365,9 @@ class _VisualizationPredictionWriter(BasePredictionWriter):
         renders = process_visualizations(prediction.visualizations)
         _save_renders_batch(
             renders,
-            self.save_dir,
-            self.counter,
-            self.img_paths,
+            self._save_dir,
+            self._counter,
+            self._img_paths,
         )
 
 

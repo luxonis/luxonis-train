@@ -74,7 +74,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
 
         """
         super().__init__(**kwargs)
-        self.z_score_threshold = z_score_threshold
+        self._z_score_threshold = z_score_threshold
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
         """Return the color of a label from `BaseVisualizer.colormap`,
@@ -175,7 +175,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         std_dev = np.std(points, axis=0)
         z_scores = (points - mean) / std_dev
 
-        mask = (np.abs(z_scores) < self.z_score_threshold).all(axis=1)
+        mask = (np.abs(z_scores) < self._z_score_threshold).all(axis=1)
         logger.info(f"Filtered out {len(points) - mask.sum()} outliers")
         return points[mask], ids[mask]
 

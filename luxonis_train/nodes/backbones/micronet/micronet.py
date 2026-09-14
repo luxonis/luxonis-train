@@ -408,7 +408,7 @@ class MicroNet(BaseNode):
             layer_params or self.get_variants()[1]["M1"]["layer_params"]
         )
 
-        self.out_indices = out_indices
+        self._out_indices = out_indices
         self.layers = nn.ModuleList([Stem(3, 2, stem_groups)])
 
         in_channels = stem_channels
@@ -467,7 +467,7 @@ class MicroNet(BaseNode):
         outs: list[Tensor] = []
         for i, layer in enumerate(self.layers):
             inputs = layer(inputs)
-            if i in self.out_indices:
+            if i in self._out_indices:
                 outs.append(inputs)
         return outs
 

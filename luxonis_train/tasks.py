@@ -27,10 +27,10 @@ class staticproperty:
     """
 
     def __init__(self, func: Callable) -> None:
-        self.func = func
+        self._func = func
 
     def __get__(self, *_) -> Any:
-        return self.func()
+        return self._func()
 
 
 @dataclass

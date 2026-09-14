@@ -222,13 +222,13 @@ class SSIM(nn.Module):
 
         """
         super().__init__()
-        self.window_size = window_size
-        self.size_average = size_average
-        self.val_range = val_range
+        self._window_size = window_size
+        self._size_average = size_average
+        self._val_range = val_range
 
         # Assume 1 channel for SSIM
-        self.channel = 1
-        self.window = create_window(window_size)
+        self._channel = 1
+        self._window = create_window(window_size)
 
     def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
         r"""Return one minus the SSIM of two image batches.
@@ -265,23 +265,23 @@ class SSIM(nn.Module):
             img2 = img2.float()
 
             (_, channel, _, _) = img1.size()
-            if channel == self.channel and self.window.dtype == img1.dtype:
-                window = self.window.to(device).clone()
+            if channel == self._channel and self._window.dtype == img1.dtype:
+                window = self._window.to(device).clone()
             else:
                 window = (
-                    create_window(self.window_size, channel)
+                    create_window(self._window_size, channel)
                     .to(device)
                     .type(img1.dtype)
                 )
-                self.window = window
-                self.channel = channel
+                self._window = window
+                self._channel = channel
 
             s_score = ssim(
                 img1,
                 img2,
                 window=window,
-                window_size=self.window_size,
-                size_average=self.size_average,
+                window_size=self._window_size,
+                size_average=self._size_average,
             )
             return 1.0 - s_score
 

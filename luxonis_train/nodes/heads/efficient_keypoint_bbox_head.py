@@ -153,9 +153,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             **kwargs,
         )
 
-        self.n_keypoints_flat = self.n_keypoints * 3
+        self._n_keypoints_flat = self.n_keypoints * 3
 
-        mid_channels = max(self.in_channels[0] // 4, self.n_keypoints_flat)
+        mid_channels = max(self.in_channels[0] // 4, self._n_keypoints_flat)
         self.keypoint_heads = nn.ModuleList(
             nn.Sequential(
                 ConvBlock(
@@ -176,7 +176,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 ),
                 nn.Conv2d(
                     in_channels=mid_channels,
-                    out_channels=self.n_keypoints_flat,
+                    out_channels=self._n_keypoints_flat,
                     kernel_size=1,
                     stride=1,
                 ),
@@ -270,7 +270,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             for i, keypoint in enumerate(keypoints_list):
                 keypoints.append(
                     self._distributions_to_keypoints(
-                        keypoint.view(bs, self.n_keypoints_flat, -1),
+                        keypoint.view(bs, self._n_keypoints_flat, -1),
                         features_list,
                         bs,
                         i,
@@ -282,7 +282,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         class_scores = self._postprocess(classes_list)
         distributions = self._postprocess(regressions_list)
         keypoints_raw = self._postprocess(
-            out.view(bs, self.n_keypoints_flat, -1) for out in keypoints_list
+            out.view(bs, self._n_keypoints_flat, -1) for out in keypoints_list
         )
 
         if self.training:
@@ -296,7 +296,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         pred_keypoints = torch.cat(
             [
                 self._distributions_to_keypoints(
-                    keypoint.view(bs, self.n_keypoints_flat, -1),
+                    keypoint.view(bs, self._n_keypoints_flat, -1),
                     features_list,
                     bs,
                     i,
@@ -352,8 +352,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         """
         return self.get_output_names(
-            [f"output{i + 1}_yolov6" for i in range(self.n_heads)]
-            + [f"kpt_output{i + 1}" for i in range(self.n_heads)]
+            [f"output{i + 1}_yolov6" for i in range(self._n_heads)]
+            + [f"kpt_output{i + 1}" for i in range(self._n_heads)]
         )
 
     @override
@@ -408,7 +408,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             conf_scores = conf_scores.sigmoid()
 
         return torch.cat((grid_coords, conf_scores), dim=2).view(
-            batch_size, self.n_keypoints_flat, -1
+            batch_size, self._n_keypoints_flat, -1
         )
 
     def _split_keypoint_detections(

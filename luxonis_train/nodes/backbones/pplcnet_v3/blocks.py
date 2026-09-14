@@ -303,7 +303,7 @@ class LCNetV3Layer(nn.Sequential):
             ValueError: When the four lists do not have the same length.
 
         """
-        self.in_channels = in_channels
+        self._in_channels = in_channels
         self.out_channels = scale_up(out_channels[-1], scale)
         layer = []
         for out_channel, kernel_size, stride, se in zip(

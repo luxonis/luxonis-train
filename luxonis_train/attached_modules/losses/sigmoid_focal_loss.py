@@ -112,9 +112,9 @@ class SigmoidFocalLoss(BaseLoss):
         """
         super().__init__(**kwargs)
 
-        self.alpha = alpha
-        self.gamma = gamma
-        self.reduction = reduction
+        self._alpha = alpha
+        self._gamma = gamma
+        self._reduction = reduction
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the sigmoid focal loss between logits and targets.
@@ -153,7 +153,7 @@ class SigmoidFocalLoss(BaseLoss):
         return sigmoid_focal_loss(
             predictions,
             target,
-            alpha=self.alpha,
-            gamma=self.gamma,
-            reduction=self.reduction,
+            alpha=self._alpha,
+            gamma=self._gamma,
+            reduction=self._reduction,
         )

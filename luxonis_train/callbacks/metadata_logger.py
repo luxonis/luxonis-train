@@ -43,7 +43,7 @@ class MetadataLogger(pl.Callback):
 
         """
         super().__init__()
-        self.hyperparams = hyperparams
+        self._hyperparams = hyperparams
 
     def on_fit_start(
         self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
@@ -70,7 +70,7 @@ class MetadataLogger(pl.Callback):
         """
         cfg: Config = pl_module.cfg
 
-        hparams = {key: cfg.get(key) for key in self.hyperparams}
+        hparams = {key: cfg.get(key) for key in self._hyperparams}
 
         pl_module.logger.log_hyperparams(hparams)
         with open(pl_module.save_dir / "metadata.yaml", "w") as f:

@@ -81,9 +81,9 @@ class OCRVisualizer(BaseVisualizer):
 
         """
         super().__init__(**kwargs)
-        self.font_scale = font_scale
-        self.color = color
-        self.thickness = thickness
+        self._font_scale = font_scale
+        self._color = color
+        self._thickness = thickness
 
     def forward(
         self,
@@ -160,9 +160,9 @@ class OCRVisualizer(BaseVisualizer):
                     f"GT: {gt_text}",
                     (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale,
-                    self.color,
-                    self.thickness,
+                    self._font_scale,
+                    self._color,
+                    self._thickness,
                 )
 
             pred_img = cv2.putText(
@@ -170,9 +170,9 @@ class OCRVisualizer(BaseVisualizer):
                 f"Pred: {pred_text} {probability:.2f}",
                 (5, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                self.font_scale,
-                self.color,
-                self.thickness,
+                self._font_scale,
+                self._color,
+                self._thickness,
             )
 
             overlay[i] = numpy_to_torch_img(arr)

@@ -117,28 +117,28 @@ class FOMOHead(BaseHead):
 
         """
         super().__init__(**kwargs)
-        self.n_conv_layers = n_conv_layers
-        self.conv_channels = conv_channels
-        self.use_nms = use_nms
+        self._n_conv_layers = n_conv_layers
+        self._conv_channels = conv_channels
+        self._use_nms = use_nms
 
         current_channels = self.in_channels
 
         layers = []
-        for _ in range(self.n_conv_layers - 1):
+        for _ in range(self._n_conv_layers - 1):
             layers.append(
                 ConvBlock(
                     current_channels,
-                    self.conv_channels,
+                    self._conv_channels,
                     kernel_size=1,
                     stride=1,
                     use_norm=False,
                     bias=True,
                 )
             )
-            current_channels = self.conv_channels
+            current_channels = self._conv_channels
         layers.append(
             nn.Conv2d(
-                self.conv_channels, self.n_classes, kernel_size=1, stride=1
+                self._conv_channels, self.n_classes, kernel_size=1, stride=1
             )
         )
         self.conv_layers = nn.Sequential(*layers)
@@ -214,7 +214,7 @@ class FOMOHead(BaseHead):
             return {self.task.main_output: heatmap}
 
         if self.export:
-            if self.use_nms:
+            if self._use_nms:
                 heatmap = F.max_pool2d(
                     heatmap, kernel_size=3, stride=1, padding=1
                 )
@@ -291,7 +291,7 @@ class FOMOHead(BaseHead):
             of its ``3x3`` neighborhood.
 
         """
-        if self.use_nms:
+        if self._use_nms:
             pooled_map = (
                 F.max_pool2d(
                     # Shape: `[1, 1, H, W]`

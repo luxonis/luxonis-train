@@ -107,22 +107,22 @@ class BaseDetectionHead(BaseHead):
         """
         super().__init__(**kwargs)
 
-        self.n_heads = n_heads
-        self.conf_thres = conf_thres
+        self._n_heads = n_heads
+        self._conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
         self._keep_detections_pre_nms = False
 
-        if len(self.in_channels) < self.n_heads:
+        if len(self.in_channels) < self._n_heads:
             logger.warning(
-                f"Head '{self.name}' was set to use {self.n_heads} heads, "
+                f"Head '{self.name}' was set to use {self._n_heads} heads, "
                 f"but received only {len(self.in_channels)} inputs. "
                 f"Changing number of heads to {len(self.in_channels)}."
             )
-            self.n_heads = len(self.in_channels)
+            self._n_heads = len(self.in_channels)
 
         if "attach_index" not in kwargs:
-            self.attach_index = (-self.n_heads - 1, -1)
+            self.attach_index = (-self._n_heads - 1, -1)
 
         self.stride = self.fit_stride_to_heads()
 
@@ -201,7 +201,7 @@ class BaseDetectionHead(BaseHead):
         """
         return {
             "iou_threshold": self.iou_thres,
-            "conf_threshold": self.conf_thres,
+            "conf_threshold": self._conf_thres,
             "max_det": self.max_det,
             "strides": self.stride.tolist(),
         }
@@ -259,12 +259,12 @@ class BaseDetectionHead(BaseHead):
         """
         export_names = super().export_output_names
         if export_names is not None:
-            if len(export_names) == self.n_heads:
+            if len(export_names) == self._n_heads:
                 return export_names
 
             logger.warning(
                 f"Number of provided output names ({len(export_names)}) "
-                f"does not match number of heads ({self.n_heads}). "
+                f"does not match number of heads ({self._n_heads}). "
                 f"Using default names."
             )
         else:
@@ -293,7 +293,7 @@ class BaseDetectionHead(BaseHead):
         return torch.tensor(
             [
                 round(self.original_in_shape[1] / x[2])
-                for x in self.in_sizes[: self.n_heads]
+                for x in self.in_sizes[: self._n_heads]
             ],
             dtype=torch.int,
         )

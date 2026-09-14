@@ -42,7 +42,7 @@ class LuxonisModelSummary(RichModelSummary):
         """
         super().__init__(**kwargs)
 
-        self.rich = rich
+        self._rich = rich
         self._log_buffer = StringIO()
         self._log_console = Console(
             file=self._log_buffer, force_terminal=False
@@ -103,7 +103,7 @@ class LuxonisModelSummary(RichModelSummary):
                 ignores all other keywords, such as ``total_flops``.
 
         """
-        if self.rich:
+        if self._rich:
             self._rich_summarize(*args, **kwargs)
         else:
             self._regular_summarize(*args, **kwargs)

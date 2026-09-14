@@ -46,7 +46,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
         """
         super().__init__(*args, **kwargs)
-        self.scale = scale
+        self._scale = scale
 
     @override
     def __getstate__(self) -> dict:
@@ -182,8 +182,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
             What `forward` returns.
 
         """
-        prediction_canvas = self.scale_canvas(prediction_canvas, self.scale)
-        target_canvas = self.scale_canvas(target_canvas, self.scale)
+        prediction_canvas = self.scale_canvas(prediction_canvas, self._scale)
+        target_canvas = self.scale_canvas(target_canvas, self._scale)
 
         return self(
             target_canvas,

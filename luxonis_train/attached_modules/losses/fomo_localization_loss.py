@@ -104,10 +104,10 @@ class FOMOLocalizationLoss(BaseLoss):
 
         """
         super().__init__(**kwargs)
-        self.original_img_size = self.original_in_shape[1:]
-        self.object_weight = object_weight
-        self.alpha = alpha
-        self.gamma = gamma
+        self._original_img_size = self.original_in_shape[1:]
+        self._object_weight = object_weight
+        self._alpha = alpha
+        self._gamma = gamma
 
     def forward(self, heatmap: Tensor, target: Tensor) -> Tensor:
         r"""Build the target heatmap and compute the weighted focal loss.
@@ -165,12 +165,12 @@ class FOMOLocalizationLoss(BaseLoss):
             target_heatmap[batch_index, class_id, y_c, x_c] = 1.0
 
         weight_matrix = torch.ones_like(target_heatmap)
-        weight_matrix[target_heatmap == 1] = self.object_weight
+        weight_matrix[target_heatmap == 1] = self._object_weight
         bce = F.binary_cross_entropy_with_logits(
             heatmap, target_heatmap, reduction="none"
         )
         pt = torch.exp(-bce)
-        focal = self.alpha * (1 - pt) ** self.gamma
+        focal = self._alpha * (1 - pt) ** self._gamma
 
         weighted_loss = focal * bce * weight_matrix
         return weighted_loss.mean()

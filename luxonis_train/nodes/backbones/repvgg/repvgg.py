@@ -125,7 +125,7 @@ class RepVGG(BaseNode):
         super().__init__(**kwargs)
 
         override_groups_map = defaultdict(lambda: 1, override_groups_map or {})
-        self.use_se = use_se
+        self._use_se = use_se
 
         out_channels = min(64, int(64 * width_multiplier[0]))
         self.stage0 = GeneralReparameterizableBlock(
@@ -239,7 +239,7 @@ class RepVGG(BaseNode):
                     stride=stride,
                     padding=1,
                     groups=groups,
-                    refine_block="se" if self.use_se else None,
+                    refine_block="se" if self._use_se else None,
                 )
             )
             in_channels = out_channels

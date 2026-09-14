@@ -83,7 +83,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cross_batch_memory_size = self.node.cross_batch_memory_size
+        self._cross_batch_memory_size = self.node.cross_batch_memory_size
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
@@ -110,17 +110,17 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         """
         embeddings, labels = predictions, target
 
-        if self.cross_batch_memory_size is not None:
+        if self._cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(
                 list(zip(embeddings, labels, strict=True))
             )
 
-            if len(self.cross_batch_memory) > self.cross_batch_memory_size:
+            if len(self.cross_batch_memory) > self._cross_batch_memory_size:
                 self.cross_batch_memory = self.cross_batch_memory[
-                    -self.cross_batch_memory_size :
+                    -self._cross_batch_memory_size :
                 ]
 
-            if len(self.cross_batch_memory) < self.cross_batch_memory_size:
+            if len(self.cross_batch_memory) < self._cross_batch_memory_size:
                 return
 
             embeddings, labels = zip(*self.cross_batch_memory, strict=True)
@@ -236,7 +236,7 @@ class MedianDistances(BaseMetric):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cross_batch_memory_size = self.node.cross_batch_memory_size
+        self._cross_batch_memory_size = self.node.cross_batch_memory_size
 
     @override
     def update(self, embeddings: Tensor, target: Tensor) -> None:
@@ -262,17 +262,17 @@ class MedianDistances(BaseMetric):
                 embedding, of shape ``[B]``.
 
         """
-        if self.cross_batch_memory_size is not None:
+        if self._cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(
                 list(zip(embeddings, target, strict=True))
             )
 
-            if len(self.cross_batch_memory) > self.cross_batch_memory_size:
+            if len(self.cross_batch_memory) > self._cross_batch_memory_size:
                 self.cross_batch_memory = self.cross_batch_memory[
-                    -self.cross_batch_memory_size :
+                    -self._cross_batch_memory_size :
                 ]
 
-            if len(self.cross_batch_memory) < self.cross_batch_memory_size:
+            if len(self.cross_batch_memory) < self._cross_batch_memory_size:
                 return
 
             embeddings_list, target_list = zip(

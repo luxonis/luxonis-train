@@ -156,13 +156,13 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         """
         super().__init__(**kwargs)
 
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
-        self.area_factor = get_with_default(
+        self._sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
+        self._area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53
         )
-        self.max_dets = max_dets
-        self.box_format = box_format
-        self.class_metrics = class_metrics
+        self._max_dets = max_dets
+        self._box_format = box_format
+        self._class_metrics = class_metrics
 
     @override
     def update(
@@ -295,16 +295,16 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             self.pred_scores,
         )
 
-        self.coco_eval = COCOeval_faster(
+        self._coco_eval = COCOeval_faster(
             coco_target, coco_preds, iouType="keypoints"
         )
-        self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
-        self.coco_eval.params.maxDets = [self.max_dets]
+        self._coco_eval.params.kpt_oks_sigmas = self._sigmas.cpu().numpy()
+        self._coco_eval.params.maxDets = [self._max_dets]
 
-        self.coco_eval.run()
+        self._coco_eval.run()
 
         stats = torch.tensor(
-            self.coco_eval.stats, dtype=torch.float32, device=self.device
+            self._coco_eval.stats, dtype=torch.float32, device=self.device
         )
 
         metrics = {
@@ -320,7 +320,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             "kpt_mar_large": stats[9],
         }
 
-        if self.class_metrics:
+        if self._class_metrics:
             metrics.update(self._compute_class_metrics())
             return postprocess_metrics(
                 metrics,
@@ -337,7 +337,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         )
 
     def _compute_class_metrics(self) -> dict[str, Tensor]:
-        eval_metrics = self.coco_eval.eval
+        eval_metrics = self._coco_eval.eval
         precision = torch.as_tensor(
             eval_metrics["precision"], dtype=torch.float32, device=self.device
         )
@@ -345,7 +345,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             eval_metrics["recall"], dtype=torch.float32, device=self.device
         )
         classes = torch.as_tensor(
-            self.coco_eval.params.catIds,
+            self._coco_eval.params.catIds,
             dtype=torch.int64,
             device=self.device,
         )
@@ -421,7 +421,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                     "id": len(annotations) + 1,
                     "image_id": i,
                     "bbox": bbox.cpu().tolist(),
-                    "area": (bbox[2] * bbox[3] * self.area_factor).item(),
+                    "area": (bbox[2] * bbox[3] * self._area_factor).item(),
                     "category_id": class_id.item(),
                     "keypoints": kpts.cpu().tolist(),
                     "num_keypoints": kpts[2::3].ne(0).sum().item(),
@@ -462,6 +462,6 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         bboxes = fix_empty_tensor(bboxes)
         if bboxes.numel() > 0:
             bboxes = box_convert(
-                bboxes, in_fmt=self.box_format, out_fmt="xywh"
+                bboxes, in_fmt=self._box_format, out_fmt="xywh"
             )
         return bboxes

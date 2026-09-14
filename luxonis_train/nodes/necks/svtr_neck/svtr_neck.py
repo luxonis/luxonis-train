@@ -155,8 +155,8 @@ class SVTRNeck(BaseNode):
 
         """
         super().__init__(**kwargs)
-        self.depth = depth
-        self.use_guide = use_guide
+        self._depth = depth
+        self._use_guide = use_guide
         self.conv1 = ConvBlock(
             self.in_channels,
             self.in_channels // 8,
@@ -218,7 +218,7 @@ class SVTRNeck(BaseNode):
             bias=True,
             activation=nn.ReLU(),
         )
-        self.out_channels = dims
+        self._out_channels = dims
 
     def forward(self, x: Tensor) -> Tensor:
         """Refine a feature map with the SVTR blocks.
@@ -245,7 +245,7 @@ class SVTRNeck(BaseNode):
             torch.Size([2, 32, 1, 16])
 
         """
-        z = x.clone().detach() if self.use_guide else x
+        z = x.clone().detach() if self._use_guide else x
         h = z
 
         z = self.conv1(z)

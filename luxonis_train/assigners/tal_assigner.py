@@ -103,14 +103,14 @@ class TaskAlignedAssigner(nn.Module):
         """
         super().__init__()
 
-        self.n_classes = n_classes
-        self.topk = topk
-        self.alpha = alpha
-        self.beta = beta
-        self.eps = eps
+        self._n_classes = n_classes
+        self._topk = topk
+        self._alpha = alpha
+        self._beta = beta
+        self._eps = eps
         normalized_strides = self._normalize_strides(strides)
-        self.strides = normalized_strides or None
-        if not skip_stal and self.strides is None:
+        self._strides = normalized_strides or None
+        if not skip_stal and self._strides is None:
             logger.warning(
                 "STAL was requested for TaskAlignedAssigner, but no valid "
                 "`strides` were provided. `strides` should be the detection "
@@ -118,12 +118,14 @@ class TaskAlignedAssigner(nn.Module):
                 "nodes inheriting from `BaseDetectionHead` provide this "
                 "attribute. "
             )
-        self.skip_stal = bool(skip_stal or not self.strides)
-        self.min_stride = self.strides[0] if self.strides is not None else None
-        self.stal_target_size = (
-            self.strides[1]
-            if self.strides is not None and len(self.strides) > 1
-            else self.min_stride
+        self._skip_stal = bool(skip_stal or not self._strides)
+        self._min_stride = (
+            self._strides[0] if self._strides is not None else None
+        )
+        self._stal_target_size = (
+            self._strides[1]
+            if self._strides is not None and len(self._strides) > 1
+            else self._min_stride
         )
 
     @torch.no_grad()
@@ -250,14 +252,14 @@ class TaskAlignedAssigner(nn.Module):
                 "but only some of them have been provided."
             )
 
-        self.bs = pred_scores.size(0)
-        self.n_max_boxes = gt_bboxes.size(1)
+        self._bs = pred_scores.size(0)
+        self._n_max_boxes = gt_bboxes.size(1)
 
-        if self.n_max_boxes == 0:
+        if self._n_max_boxes == 0:
             device = gt_bboxes.device
             return (
                 torch.full_like(
-                    pred_scores[..., 0], self.n_classes, dtype=torch.int64
+                    pred_scores[..., 0], self._n_classes, dtype=torch.int64
                 ).to(device),
                 torch.zeros_like(pred_bboxes, dtype=gt_bboxes.dtype).to(
                     device
@@ -291,7 +293,7 @@ class TaskAlignedAssigner(nn.Module):
         )
         is_in_topk = self._select_topk_candidates(
             align_metric * is_in_gts,
-            topk_mask=mask_gt.repeat(1, 1, self.topk).bool(),
+            topk_mask=mask_gt.repeat(1, 1, self._topk).bool(),
         )
 
         # Final positive candidates
@@ -299,7 +301,7 @@ class TaskAlignedAssigner(nn.Module):
 
         # If an anchor box is assigned to multiple gts, the one with the highest IoU is selected
         assigned_gt_idx, mask_pos_sum, mask_pos = fix_collisions(
-            mask_pos, overlaps, self.n_max_boxes
+            mask_pos, overlaps, self._n_max_boxes
         )
 
         # Generate final targets based on masks
@@ -314,7 +316,7 @@ class TaskAlignedAssigner(nn.Module):
         pos_align_metrics = align_metric.max(dim=-1, keepdim=True)[0]
         pos_overlaps = (overlaps * mask_pos).max(dim=-1, keepdim=True)[0]
         norm_align_metric = (
-            (align_metric * pos_overlaps / (pos_align_metrics + self.eps))
+            (align_metric * pos_overlaps / (pos_align_metrics + self._eps))
             .max(-2)[0]
             .unsqueeze(-1)
         )
@@ -398,9 +400,9 @@ class TaskAlignedAssigner(nn.Module):
         """
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
-        ind = torch.zeros([2, self.bs, self.n_max_boxes], dtype=torch.long)
+        ind = torch.zeros([2, self._bs, self._n_max_boxes], dtype=torch.long)
         ind[0] = (
-            torch.arange(end=self.bs).view(-1, 1).repeat(1, self.n_max_boxes)
+            torch.arange(end=self._bs).view(-1, 1).repeat(1, self._n_max_boxes)
         )
         ind[1] = gt_labels.squeeze(-1)
         bbox_scores = pred_scores[ind[0], ind[1]]
@@ -413,13 +415,13 @@ class TaskAlignedAssigner(nn.Module):
                 sigmas=sigmas,  # type: ignore
                 gt_bboxes=gt_bboxes,
                 pose_area=None,
-                eps=self.eps,
+                eps=self._eps,
                 area_factor=area_factor,  # type: ignore
                 use_cocoeval_oks=True,
             )
             overlaps = overlaps * pose_oks
 
-        align_metric = bbox_scores.pow(self.alpha) * overlaps.pow(self.beta)
+        align_metric = bbox_scores.pow(self._alpha) * overlaps.pow(self._beta)
 
         return align_metric, overlaps
 
@@ -444,10 +446,10 @@ class TaskAlignedAssigner(nn.Module):
             ``1`` marks an anchor with a center inside the box.
 
         """
-        if not self.skip_stal:
+        if not self._skip_stal:
             gt_bboxes = self._expand_small_gt_bboxes(gt_bboxes, mask_gt)
         is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
-        return is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
+        return is_in_gts.reshape(self._bs, self._n_max_boxes, -1)
 
     def _expand_small_gt_bboxes(
         self, gt_bboxes: Tensor, mask_gt: Tensor
@@ -470,15 +472,15 @@ class TaskAlignedAssigner(nn.Module):
             ``stal_target_size`` is ``None``.
 
         """
-        if self.min_stride is None or self.stal_target_size is None:
+        if self._min_stride is None or self._stal_target_size is None:
             return gt_bboxes
 
         gt_centers = (gt_bboxes[..., :2] + gt_bboxes[..., 2:]) / 2
         gt_wh = (gt_bboxes[..., 2:] - gt_bboxes[..., :2]).clamp_min(0)
-        small_mask = (gt_wh < self.min_stride) & mask_gt.bool()
+        small_mask = (gt_wh < self._min_stride) & mask_gt.bool()
         expanded_wh = torch.where(
             small_mask,
-            torch.full_like(gt_wh, float(self.stal_target_size)),
+            torch.full_like(gt_wh, float(self._stal_target_size)),
             gt_wh,
         )
         half_wh = expanded_wh / 2
@@ -514,12 +516,12 @@ class TaskAlignedAssigner(nn.Module):
         """
         n_anchors = metrics.shape[-1]
         topk_metrics, topk_idxs = torch.topk(
-            metrics, self.topk, dim=-1, largest=largest
+            metrics, self._topk, dim=-1, largest=largest
         )
         if topk_mask is None:
             topk_mask = (
-                topk_metrics.max(dim=-1, keepdim=True)[0] > self.eps
-            ).tile([1, 1, self.topk])
+                topk_metrics.max(dim=-1, keepdim=True)[0] > self._eps
+            ).tile([1, 1, self._topk])
         topk_idxs = torch.where(
             topk_mask, topk_idxs, torch.zeros_like(topk_idxs)
         )
@@ -564,9 +566,9 @@ class TaskAlignedAssigner(nn.Module):
         """
         # assigned target labels
         batch_ind = torch.arange(
-            end=self.bs, dtype=torch.int64, device=gt_labels.device
+            end=self._bs, dtype=torch.int64, device=gt_labels.device
         )[..., None]
-        assigned_gt_idx = assigned_gt_idx + batch_ind * self.n_max_boxes
+        assigned_gt_idx = assigned_gt_idx + batch_ind * self._n_max_boxes
         assigned_labels = gt_labels.long().flatten()[assigned_gt_idx]
 
         # assigned target boxes
@@ -574,8 +576,10 @@ class TaskAlignedAssigner(nn.Module):
 
         # assigned target scores
         assigned_labels[assigned_labels < 0] = 0
-        assigned_scores = F.one_hot(assigned_labels, self.n_classes)
-        mask_pos_scores = mask_pos_sum[:, :, None].repeat(1, 1, self.n_classes)
+        assigned_scores = F.one_hot(assigned_labels, self._n_classes)
+        mask_pos_scores = mask_pos_sum[:, :, None].repeat(
+            1, 1, self._n_classes
+        )
         assigned_scores = torch.where(
             mask_pos_scores > 0,
             assigned_scores,
@@ -585,6 +589,6 @@ class TaskAlignedAssigner(nn.Module):
         assigned_labels = torch.where(
             mask_pos_sum.bool(),
             assigned_labels,
-            torch.full_like(assigned_labels, self.n_classes),
+            torch.full_like(assigned_labels, self._n_classes),
         )
         return assigned_labels, assigned_bboxes, assigned_scores

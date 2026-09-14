@@ -322,7 +322,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
         boxes = non_max_suppression(
             detections_pre_nms,
             n_classes=self.n_classes,
-            conf_thres=self.conf_thres,
+            conf_thres=self._conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="xyxy",
             max_det=self.max_det,
@@ -413,7 +413,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         """
         return self.get_output_names(
-            [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
+            [f"output{i + 1}_yolov8" for i in range(self._n_heads)]
         )
 
     @override
@@ -440,7 +440,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         """
         bboxes = []
-        for i in range(self.n_heads):
+        for i in range(self._n_heads):
             bbox = self.dfl(regressions_list[i])
             classes = classes_list[i].sigmoid()
             confidence = classes.max(1, keepdim=True)[0]

@@ -171,13 +171,13 @@ def test_instance_segmentation_visualizer_draw_scores(
         canvas,
         predictions_bbox,
         predictions_masks,
-        visualizer.width,
-        visualizer.bbox_labels,
-        visualizer.colors,
-        visualizer.draw_labels,
-        visualizer.draw_scores,
-        visualizer.alpha,
-        visualizer.scale,
+        visualizer._width,
+        visualizer._bbox_labels,
+        visualizer._colors,
+        visualizer._draw_labels,
+        visualizer._draw_scores,
+        visualizer._alpha,
+        visualizer._scale,
     )
 
     assert captured_labels == [["class1 0.90", "class2 0.80"]]
@@ -196,13 +196,13 @@ def test_instance_segmentation_visualizer_draw_scores(
         canvas,
         predictions_bbox,
         predictions_masks,
-        visualizer_scores_only.width,
-        visualizer_scores_only.bbox_labels,
-        visualizer_scores_only.colors,
-        visualizer_scores_only.draw_labels,
-        visualizer_scores_only.draw_scores,
-        visualizer_scores_only.alpha,
-        visualizer_scores_only.scale,
+        visualizer_scores_only._width,
+        visualizer_scores_only._bbox_labels,
+        visualizer_scores_only._colors,
+        visualizer_scores_only._draw_labels,
+        visualizer_scores_only._draw_scores,
+        visualizer_scores_only._alpha,
+        visualizer_scores_only._scale,
     )
 
     assert captured_labels[-1] == ["0.90", "0.80"]

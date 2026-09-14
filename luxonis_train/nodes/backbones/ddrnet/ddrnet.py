@@ -195,23 +195,23 @@ class DDRNet(BaseNode):
 
         self._use_aux_heads = use_aux_heads
         self.upscale = upscale_module
-        self.ssp_interpolation_mode = ssp_interpolation_mode
-        self.segmentation_interpolation_mode = segmentation_interpolation_mode
+        self._ssp_interpolation_mode = ssp_interpolation_mode
+        self._segmentation_interpolation_mode = segmentation_interpolation_mode
         self.relu = nn.ReLU(inplace=False)
-        self.layer3_repeats = layer3_repeats
-        self.channels = channels
-        self.layers = layers
-        self.backbone_layers, self.additional_layers = (
-            self.layers[:4],
-            self.layers[4:],
+        self._layer3_repeats = layer3_repeats
+        self._channels = channels
+        self._layers = layers
+        self._backbone_layers, self._additional_layers = (
+            self._layers[:4],
+            self._layers[4:],
         )
 
         self.backbone = BasicDDRBackbone(
             block=block,
-            stem_channels=self.channels,
-            layers=self.backbone_layers,
+            stem_channels=self._channels,
+            layers=self._backbone_layers,
             in_channels=self.in_channels,
-            layer3_repeats=self.layer3_repeats,
+            layer3_repeats=self._layer3_repeats,
         )
         out_chan_backbone = (
             self.backbone.get_backbone_output_number_of_channels()
@@ -251,7 +251,7 @@ class DDRNet(BaseNode):
                     ),
                     channels=high_resolution_channels,
                     block=skip_block,
-                    n_blocks=self.additional_layers[1],
+                    n_blocks=self._additional_layers[1],
                 )
             )
 
@@ -288,13 +288,13 @@ class DDRNet(BaseNode):
             block=skip_block,
             in_channels=high_resolution_channels,
             channels=high_resolution_channels,
-            n_blocks=self.additional_layers[2],
+            n_blocks=self._additional_layers[2],
         )
         self.layer5_skip = make_layer(
             block=layer5_block,
             in_channels=high_resolution_channels,
             channels=high_resolution_channels,
-            n_blocks=self.additional_layers[3],
+            n_blocks=self._additional_layers[3],
             expansion=layer5_bottleneck_expansion,
         )
 
@@ -302,7 +302,7 @@ class DDRNet(BaseNode):
             block=layer5_block,
             in_channels=out_chan_backbone["layer4"],
             channels=out_chan_backbone["layer4"],
-            n_blocks=self.additional_layers[0],
+            n_blocks=self._additional_layers[0],
             stride=2,
             expansion=layer5_bottleneck_expansion,
         )
@@ -313,7 +313,7 @@ class DDRNet(BaseNode):
             branch_channels=spp_width,
             out_channels=high_resolution_channels
             * layer5_bottleneck_expansion,
-            interpolation_mode=self.ssp_interpolation_mode,
+            interpolation_mode=self._ssp_interpolation_mode,
             kernel_sizes=spp_kernel_sizes,
             strides=spp_strides,
         )
@@ -380,7 +380,7 @@ class DDRNet(BaseNode):
 
         # Repeat layer 3
         x_skip = x
-        for i in range(self.layer3_repeats):
+        for i in range(self._layer3_repeats):
             out_layer3 = self.backbone.layer3[i](self.relu(x))
             out_layer3_skip = self.layer3_skip[i](self.relu(x_skip))
 
