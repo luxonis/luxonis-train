@@ -277,30 +277,34 @@ jobs:
           --deselect "luxonis_train/nodes/base_node.py::luxonis_train.nodes.base_node.BaseNode.in_sizes"
           --deselect "luxonis_train/nodes/blocks/blocks.py::luxonis_train.nodes.blocks.blocks.DropPath"
           --cov=luxonis_train
-          --cov-report=xml
-          --junitxml=junit.xml
+          --cov-report=xml:coverage-doctest.xml
+          --junitxml=junit-doctest.xml
           -o junit_family=legacy
 
       - name: Upload doctest results to Codecov
-        uses: codecov/test-results-action@v1
+        if: ${{ always() }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
           fail_ci_if_error: false
+          files: junit-doctest.xml
           flags: doctest
+          disable_search: true
+          handle_no_reports_found: true
 
-      - name: Upload doctest coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          flags: doctest
-
+      # The coverage job uploads this report together with the reports of
+      # the test suites. An upload from this job alone makes Codecov score
+      # the doctest coverage as the total.
       - name: Upload doctest coverage as artifact
-        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-doctest
-          path: coverage.xml
+          path: coverage-doctest.xml
+          if-no-files-found: ignore
           overwrite: true
+
   tests:
     needs:
       - config-test
