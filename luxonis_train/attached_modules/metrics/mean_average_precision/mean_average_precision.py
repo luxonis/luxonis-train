@@ -1,3 +1,7 @@
+"""The factory that returns the mean average precision metric for the
+task of a node.
+"""
+
 from luxonis_train.nodes import BaseNode
 from luxonis_train.registry import METRICS
 from luxonis_train.tasks import Task, Tasks
@@ -11,15 +15,101 @@ from .mean_average_precision_segmentation import (
 
 @METRICS.register()  # type: ignore
 class MeanAveragePrecision:
-    """Factory class for Mean Average Precision (mAP) metrics.
+    """Factory for the mean average precision (mAP) metric of a node.
 
-    Creates the appropriate mAP metric based on the task of the node.
+    The class is in the `METRICS` registry, so a config can name it. A
+    call does not return an instance of this class. It returns a new
+    metric of the class that the task of the node selects:
+
+    - ``Tasks.BOUNDINGBOX``: `MeanAveragePrecisionBBox`, with the
+      ``"faster_coco_eval"`` backend.
+    - ``Tasks.INSTANCE_SEGMENTATION``: `MeanAveragePrecisionSegmentation`,
+      with the ``"faster_coco_eval"`` backend.
+    - ``Tasks.INSTANCE_KEYPOINTS`` and
+      ``Tasks.INSTANCE_SEGMENTATION_KEYPOINTS``:
+      `MeanAveragePrecisionKeypoints`.
+
+    Inputs:
+        - The inputs of the selected metric, see its class.
+
+    Outputs:
+        - The outputs of the selected metric. The main value is ``map``
+          for boxes, ``segm_map`` for masks, and ``kpt_map`` for
+          keypoints.
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        A node with the ``Tasks.INSTANCE_SEGMENTATION_KEYPOINTS`` task
+        gets the keypoint metric, not the mask metric. The predefined
+        model parameter ``per_class_metrics`` sets ``class_metrics`` of
+        the selected metric, see `get_predefined_model_params_aliases`.
+
+    Example:
+        Attached to a ``EfficientBBoxHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: EfficientBBoxHead
+              inputs: [RepPANNeck]
+              metrics:
+                - name: MeanAveragePrecision
+
+    Compatible with:
+        - Used by:
+
+          - `DetectionModel`
+          - `InstanceSegmentationModel`
+          - `KeypointDetectionModel`
+
+        - Nodes:
+
+          - `EfficientBBoxHead`
+          - `EfficientKeypointBBoxHead`
+          - `PrecisionBBoxHead`
+          - `PrecisionSegmentBBoxHead`
+
     """
 
     @classmethod
     def get_predefined_model_params_aliases(
         cls, task: Task | None = None
     ) -> dict[str, str]:
+        """Return the constructor names of predefined model parameters.
+
+        `BaseMetric.get_predefined_model_params_aliases` describes how
+        `Nodes` uses the returned dictionary. For the four tasks of the
+        factory, the method maps ``per_class_metrics`` to
+        ``class_metrics``. For any other task, and for ``None``, it
+        returns an empty dictionary. `Nodes` then drops the
+        ``per_class_metrics`` value, and it logs a warning when the value
+        is not ``None``.
+
+        Args:
+            task (Task | None): The task of the node that the metric
+                attaches to, or ``None`` when the node has no task.
+
+        Returns:
+            dict[str, str]: ``{"per_class_metrics": "class_metrics"}``
+            for ``Tasks.BOUNDINGBOX``, ``Tasks.INSTANCE_KEYPOINTS``,
+            ``Tasks.INSTANCE_SEGMENTATION``, and
+            ``Tasks.INSTANCE_SEGMENTATION_KEYPOINTS``. An empty
+            dictionary for any other task.
+
+        Example:
+            >>> from luxonis_train.tasks import Tasks
+            >>> MeanAveragePrecision.get_predefined_model_params_aliases(
+            ...     Tasks.BOUNDINGBOX
+            ... )
+            {'per_class_metrics': 'class_metrics'}
+            >>> MeanAveragePrecision.get_predefined_model_params_aliases(
+            ...     Tasks.SEGMENTATION
+            ... )
+            {}
+
+        """
         if task in {
             Tasks.BOUNDINGBOX,
             Tasks.INSTANCE_KEYPOINTS,
@@ -36,6 +126,43 @@ class MeanAveragePrecision:
         | MeanAveragePrecisionSegmentation
         | MeanAveragePrecisionKeypoints
     ):
+        """Build the mean average precision metric for a node.
+
+        Args:
+            node (BaseNode): The node that the metric attaches to. Its
+                ``task`` selects the metric class, see the class
+                docstring.
+            **kwargs (``Any``): Keyword arguments forwarded to the
+                constructor of the selected metric. For boxes and
+                masks, a ``backend`` argument raises ``TypeError``,
+                because the method sets it already.
+
+        Returns:
+            MeanAveragePrecisionBBox | MeanAveragePrecisionSegmentation | MeanAveragePrecisionKeypoints:
+            A new metric, attached to ``node``.
+
+        Raises:
+            ValueError: When the task of ``node`` is ``None``, or when
+                the factory does not support the task.
+
+        Example:
+            The result is a metric of the selected class, not an
+            instance of the factory.
+
+            >>> from luxonis_train.nodes import BaseNode
+            >>> from luxonis_train.tasks import Tasks
+            >>> class Head(BaseNode, register=False):
+            ...     task = Tasks.BOUNDINGBOX
+            ...     attach_index = -1
+            ...
+            ...     def forward(self, x): ...
+            >>> metric = MeanAveragePrecision(Head())
+            >>> type(metric).__name__
+            'MeanAveragePrecisionBBox'
+            >>> isinstance(metric, MeanAveragePrecision)
+            False
+
+        """
         match node.task:
             case None:  # pragma: no cover
                 raise ValueError(

@@ -1,3 +1,19 @@
+"""Visualizers that draw the predictions of a node.
+
+A visualizer returns one batch of images, or a pair of batches.
+`combine_visualizations` puts a pair side by side, with the first batch
+on the left, before the trainer logs it. In a pair, the first batch
+shows the labels and the second the predictions.
+`ClassificationVisualizer` returns the text images and the probability
+plots instead, and `EmbeddingsVisualizer` returns a KDE plot and a
+scatter plot.
+
+Attach a visualizer in the ``visualizers`` field of a node.
+``trainer.n_log_images`` caps how many images each node logs on a
+validation or test epoch.
+
+"""
+
 from .base_visualizer import BaseVisualizer
 from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
