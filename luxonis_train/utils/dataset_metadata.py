@@ -1,5 +1,8 @@
-"""The class counts, class names, and keypoint counts a node reads from
-the loader.
+"""The dataset metadata that the nodes read.
+
+The metadata holds the class names, the keypoint counts, and the
+metadata label types that come from the loader.
+
 """
 
 from collections.abc import Iterator
@@ -11,10 +14,25 @@ from luxonis_ml.data import Category
 
 
 class DatasetMetadata:
-    """Dataset metadata used to configure model outputs.
+    """The class names, keypoint counts, and metadata types of a dataset.
 
-    The metadata includes class definitions, keypoint counts, and
-    additional label metadata types.
+    A node reads its class count, class names, and keypoint count from
+    this object, so the config does not have to set them. `from_loader`
+    creates the object from a loader. `dump` returns a dictionary that
+    a checkpoint stores and that the constructor accepts back as
+    keyword arguments.
+
+    Example:
+        >>> metadata = DatasetMetadata(
+        ...     classes={"detection": {"car": 0, "person": 1}},
+        ...     n_keypoints={"detection": 17},
+        ... )
+        >>> metadata.n_classes("detection")
+        2
+        >>> metadata.classes().inverse[0]
+        'car'
+        >>> metadata.n_keypoints("segmentation")
+        0
 
     """
 
@@ -29,17 +47,31 @@ class DatasetMetadata:
         | None = None,
         loader: Any = None,
     ):
-        """Create dataset metadata.
+        """Initialize the metadata from plain dictionaries.
+
+        A value in ``metadata_types`` can also be a type name: one of
+        ``"int"``, ``"float"``, ``"str"``, or ``"Category"``. The
+        constructor converts the name to the type. This is the form
+        `dump` writes and a checkpoint stores.
 
         Args:
-            classes (dict[str, dict[str, int]] | None): Dictionary mapping
-                task names to class-name-to-index mappings.
-            n_keypoints (dict[str, int] | None): Dictionary mapping task names
-                to the number of keypoints.
+            classes (dict[str, dict[str, int]] | None): Task names mapped to
+                the class names of the task and their indices. ``None``
+                means no tasks.
+            n_keypoints (dict[str, int] | None): Task names mapped to the
+                number of keypoints of the task. ``None`` means no
+                keypoints.
             metadata_types (``dict[str, type[int] | type[Category] | type[float] | type[str]] | None``):
-                Dictionary mapping metadata names to metadata value types.
-            loader (``BaseLoaderTorch | None``): Dataset loader associated with
-                this metadata.
+                Metadata label names, such as
+                ``"<task>/metadata/<name>"``, mapped to the type of their
+                values. ``None`` means no metadata labels.
+            loader (``Any``): The loader that gave the metadata, normally
+                a `BaseLoaderTorch`. The object keeps a reference to it
+                and does not use it.
+
+        Raises:
+            ValueError: When a type name in ``metadata_types`` is not one
+                of the four supported names.
 
         """
         self._classes = classes or {}
@@ -61,10 +93,27 @@ class DatasetMetadata:
         yield from self.dump().items()
 
     def dump(self) -> dict[str, Any]:
-        """Dump the metadata to a dictionary.
+        """Dump the metadata to a dictionary of plain values.
+
+        The constructor accepts the result back as keyword arguments.
+        This is how a checkpoint stores and restores the metadata.
 
         Returns:
-            ``dict[str, Any]``: Dictionary containing the metadata.
+            ``dict[str, Any]``: A dictionary with the keys ``"classes"``,
+            ``"n_keypoints"``, and ``"metadata_types"``. The metadata
+            types appear as type names, for example ``"str"``.
+
+        Example:
+            >>> metadata = DatasetMetadata(
+            ...     classes={"detection": {"car": 0}},
+            ...     metadata_types={"color": str},
+            ... )
+            >>> metadata.dump()
+            {'classes': {'detection': {'car': 0}},
+             'n_keypoints': {},
+             'metadata_types': {'color': 'str'}}
+            >>> DatasetMetadata(**metadata.dump()).metadata_types
+            {'color': <class 'str'>}
 
         """
         return {
@@ -89,23 +138,29 @@ class DatasetMetadata:
 
     @property
     def task_names(self) -> set[str]:
-        """Set[str]: Names of the tasks present in the dataset."""
+        """The names of all tasks in the class mapping.
+
+        A task with an empty class mapping is also in the set.
+
+        """
         return set(self._classes.keys())
 
     def n_classes(self, task_name: str | None = None) -> int:
-        """Get the number of classes for the specified task.
+        """Get the number of classes of a task.
 
         Args:
-            task_name (str | None): Task to get the number of classes for.
-                Defaults to ``None``.
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same number of classes.
 
         Returns:
-            int: Number of classes for the specified task.
+            int: The number of classes of the task.
 
         Raises:
-            ValueError: If ``task_name`` is not present in the dataset.
-            RuntimeError: If ``task_name`` was not provided and the dataset
-                contains different numbers of classes for different tasks.
+            ValueError: When ``task_name`` is not a task of the dataset.
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different numbers of classes.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no tasks.
 
         """
         if task_name is not None:
@@ -125,19 +180,22 @@ class DatasetMetadata:
         return n_classes
 
     def n_keypoints(self, task_name: str | None = None) -> int:
-        """Get the number of keypoints for the specified task.
+        """Get the number of keypoints of a task.
 
         Args:
-            task_name (str | None): Task to get the number of keypoints for.
-                Defaults to ``None``.
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same number of keypoints.
 
         Returns:
-            int: Number of keypoints for the specified task, or ``0`` if the task
-                does not involve keypoints.
+            int: The number of keypoints of the task. ``0`` when
+            ``task_name`` has no keypoint count, for example a task that
+            is not in the dataset.
 
         Raises:
-            RuntimeError: If ``task_name`` was not provided and the dataset
-                contains different numbers of keypoints for different tasks.
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different numbers of keypoints.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no keypoint counts.
 
         """
         if task_name is not None:
@@ -152,20 +210,23 @@ class DatasetMetadata:
         return n_keypoints
 
     def classes(self, task_name: str | None = None) -> bidict[str, int]:
-        """Get the class names for the specified task.
+        """Get the class names and indices of a task.
 
         Args:
-            task_name (str | None): Task to get the class names for. Defaults
-                to ``None``.
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same classes.
 
         Returns:
-            ``bidict[str, int]``: Bidirectional dictionary mapping class names to
-            their indices for the specified task.
+            ``bidict[str, int]``: A new bidirectional dictionary that maps
+            the class names to the class indices. Its ``inverse`` maps
+            the indices back to the names.
 
         Raises:
-            ValueError: If ``task_name`` is not present in the dataset.
-            RuntimeError: If ``task_name`` was not provided and the dataset
-                contains different class names for different tasks.
+            ValueError: When ``task_name`` is not a task of the dataset.
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different classes.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no tasks.
 
         """
         if task_name is not None:
@@ -188,12 +249,9 @@ class DatasetMetadata:
     def metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
-        """Dict[str, type[int] | type[`Category
-        <luxonis_ml.ldf.annotation.Category>`] | type[float] |
-        type[str]]: Metadata names mapped to their types.
+        """The metadata label names mapped to the type of their values.
 
-        Raises:
-            RuntimeError: If the dataset does not define metadata types.
+        The dictionary is empty when the dataset has no metadata labels.
 
         """
         if self._metadata_types is None:
@@ -202,13 +260,18 @@ class DatasetMetadata:
 
     @classmethod
     def from_loader(cls, loader: Any) -> "DatasetMetadata":
-        """Create a `DatasetMetadata` object from a dataset loader.
+        """Create the metadata from a loader.
+
+        The method reads ``loader.get_classes()``,
+        ``loader.get_n_keypoints()``, and ``loader.get_metadata_types()``.
+        The new object keeps a reference to ``loader``.
 
         Args:
-            loader (``BaseLoaderTorch``): Loader to read the metadata from.
+            loader (``Any``): The loader to read, normally a
+                `BaseLoaderTorch`.
 
         Returns:
-            DatasetMetadata: Instance created from the provided loader.
+            DatasetMetadata: The metadata of the dataset of the loader.
 
         """
         return cls(

@@ -49,26 +49,69 @@ def default_annotate(
     image_paths: list[Path],
     config_preprocessing: PreprocessingConfig,
 ) -> DatasetIterator:
-    """Convert head output to `LuxonisDataset
-    <luxonis_ml.data.datasets.LuxonisDataset>` annotations.
+    """Convert the head outputs of one batch into dataset records.
+
+    `BaseHead.annotate` returns this generator. It supports the labels
+    ``"boundingbox"``, ``"keypoints"``, ``"instance_segmentation"``,
+    ``"segmentation"``, ``"classification"``, and ``"text"``. It reads
+    the entry of each label that ``head.task`` requires.
+
+    For each image, the generator reads the image file to get the
+    original size. `transform_boxes`, `transform_keypoints`, and
+    `transform_masks` map the predictions to the original image. Each
+    record has the keys ``"file"``, ``"task_name"``, and
+    ``"annotation"``. The ``"annotation"`` entry depends on the label:
+
+    - ``"boundingbox"``: one record for each box, with
+      ``"instance_id"``, the class name, and the normalized ``x``,
+      ``y``, ``w``, and ``h``. Columns ``0`` to ``3`` of the prediction
+      hold the ``xyxy`` box, and column ``5`` holds the class index.
+    - ``"keypoints"``: one record for each instance, with
+      ``"instance_id"`` and ``(x, y, visibility)`` tuples. The
+      visibility is the third value of the prediction, rounded.
+    - ``"instance_segmentation"``: one record for each instance, with
+      ``"instance_id"`` and a mask of the original size. The mask is
+      ``True`` where the resized prediction is not zero.
+    - ``"segmentation"``: one record for each class, with the class
+      name and a mask from `seg_output_to_bool`.
+    - ``"classification"``: one record with the class of the highest
+      score.
+    - ``"text"``: one record with a ``"metadata"`` entry. Its ``"text"``
+      key holds the text that ``head.decoder`` reads from the ``"ocr"``
+      entry.
+
+    When each required label other than ``"text"`` has no predictions
+    for an image, the generator yields one record with only the
+    ``"file"`` key. A task that requires only ``"text"`` never gives
+    such a record. The generator raises its errors during the iteration,
+    not at the call.
+
+    **Warning:** Without ``keep_aspect_ratio``, the generator does not
+    scale the box and keypoint coordinates from ``train_image_size``.
+    The coordinates are wrong when the original size differs from it.
 
     Args:
-        head (`luxonis_train.nodes.BaseHead`): Head from which to extract annotations.
-        head_output (``Packet[Tensor]``): Output from the head containing
-            predictions.
-        image_paths (``list[Path]``): Paths to the images corresponding to the
-            head output.
-        config_preprocessing (PreprocessingConfig): Preprocessing configuration
-            containing image size and aspect ratio settings.
+        head (BaseHead): The head that made the predictions. The
+            generator reads its ``task``, ``task_name``, ``classes``,
+            and ``name``. For the ``"text"`` label, it also reads
+            ``decoder``.
+        head_output (``Packet[Tensor]``): The output packet of the head.
+            The entry of each label holds one element for each image.
+            The ``"text"`` label reads the ``"ocr"`` entry.
+        image_paths (``list[Path]``): The paths of the original images,
+            in the order of the batch.
+        config_preprocessing (PreprocessingConfig): The preprocessing
+            config. The generator reads ``train_image_size`` and
+            ``keep_aspect_ratio``.
 
     Yields:
-        `DatasetIterator <luxonis_ml.data.datasets.DatasetIterator>`: Annotation records in a format suitable for
-        `LuxonisDataset <luxonis_ml.data.datasets.LuxonisDataset>`.
+        dict: One record in the ``luxonis_ml`` record format.
 
     Raises:
-        ValueError: If the task is unsupported or OCR output is missing a
-            decoder.
-        FileNotFoundError: If an input image cannot be read.
+        ValueError: When ``head.task`` requires a label that the
+            generator does not support, or when a head without
+            ``decoder`` requires the ``"text"`` label.
+        FileNotFoundError: When OpenCV cannot read an image.
 
     """
     train_size = config_preprocessing.train_image_size

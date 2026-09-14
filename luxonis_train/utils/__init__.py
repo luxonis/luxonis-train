@@ -1,9 +1,11 @@
 """Helpers shared across the package.
 
-The modules here hold the bounding box maths, the keypoint maths, the
-segmentation helpers, the OCR encoder and decoder, the checkpoint
-filters, the dataset metadata, the spatial transforms, and the
-experiment tracker.
+The package re-exports the main helpers of its modules. They cover the
+bounding box and keypoint maths, the conversion of head outputs to
+dataset records, the OCR encoder and decoder, the segmentation masks,
+the spatial transforms, the checkpoint filter, the dataset metadata, the
+experiment tracker, the logging setup, `IncompatibleError`, and general
+helpers for batches, signatures, and downloads.
 
 """
 

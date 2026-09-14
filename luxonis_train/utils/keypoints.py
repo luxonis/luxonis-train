@@ -1,5 +1,8 @@
-"""Keypoint maths: the COCO sigmas, object keypoint similarity, and the
-conversions between keypoints and boxes.
+"""Math helpers for keypoints.
+
+The module holds the keypoint sigmas, the object keypoint similarity,
+and the conversions between keypoints and bounding boxes.
+
 """
 
 import torch
@@ -12,20 +15,40 @@ def get_sigmas(
     n_keypoints: int,
     caller_name: str | None = None,
 ) -> Tensor:
-    """Validate or create sigma values for each keypoint.
+    """Validate the given keypoint sigmas or create the default ones.
+
+    The sigmas are the per-keypoint scales of the object keypoint
+    similarity in `compute_pose_oks`. When ``sigmas`` is ``None``, the
+    function selects the defaults:
+
+    - For ``17`` keypoints, it returns the COCO person sigmas and logs a
+      warning.
+    - For any other count, it returns ``0.04`` for each keypoint and
+      logs an info message.
 
     Args:
-        sigmas (list[float] | None): Sigma values for each keypoint. If
-            ``None``, default sigmas are used.
-        n_keypoints (int): Number of keypoints.
-        caller_name (str | None): Name of the caller function, used for
-            logging. Defaults to ``None``.
+        sigmas (list[float] | None): One sigma per keypoint. ``None``
+            selects the defaults.
+        n_keypoints (int): The number of keypoints.
+        caller_name (str | None): The name of the caller, used as a
+            prefix of the log and error messages. ``None`` adds no
+            prefix.
 
     Returns:
-        ``Tensor``: Sigma tensor.
+        ``Tensor``: The sigmas as a ``float32`` tensor of shape
+        ``[n_keypoints]``.
 
     Raises:
-        ValueError: If ``sigmas`` length differs from `n_keypoints`.
+        ValueError: When ``sigmas`` is given and its length differs from
+            ``n_keypoints``.
+
+    Examples:
+        >>> get_sigmas([0.1, 0.2], 2).shape
+        torch.Size([2])
+
+        >>> get_sigmas([0.1], 2)
+        Traceback (most recent call last):
+        ValueError: The length of the sigmas list must be the same ...
 
     """
     if sigmas is not None:
@@ -72,17 +95,37 @@ def get_sigmas(
 def get_center_keypoints(
     bboxes: Tensor, *, height: int = 1, width: int = 1
 ) -> Tensor:
-    """Get center keypoints from bounding boxes.
+    """Make one center keypoint per bounding box.
+
+    The FOMO loss and the object keypoint similarity metric use the box
+    centers as the keypoint targets of the FOMO task. That task has no
+    annotated keypoints.
 
     Args:
-        bboxes (``Tensor``): Bounding box tensor.
-        height (int): Image height. Defaults to ``1`` for normalized
-            coordinates.
-        width (int): Image width. Defaults to ``1`` for normalized
-            coordinates.
+        bboxes (``Tensor``): The bounding boxes of shape ``[N, 6]``, with
+            the columns ``(batch_index, class, x, y, w, h)``. ``x`` and
+            ``y`` are the normalized top-left corner, and ``w`` and
+            ``h`` are the normalized size.
+        height (int): The height that scales ``y``, for example the
+            height of an image or of a heatmap. ``1`` keeps the
+            coordinates normalized.
+        width (int): The width that scales ``x``, for example the width
+            of an image or of a heatmap. ``1`` keeps the coordinates
+            normalized.
 
     Returns:
-        ``Tensor``: Center keypoint tensor.
+        ``Tensor``: The keypoints of shape ``[N, 4]``, with the columns
+        ``(batch_index, x, y, visibility)``, on the device and of the
+        dtype of ``bboxes``. ``x`` and ``y`` are the box center scaled
+        by ``width`` and ``height``. The visibility is always ``2``.
+
+    Example:
+        >>> import torch
+        >>> bboxes = torch.tensor([[0.0, 1.0, 0.25, 0.5, 0.5, 0.25]])
+        >>> get_center_keypoints(bboxes).tolist()
+        [[0.0, 0.5, 0.625, 2.0]]
+        >>> get_center_keypoints(bboxes, height=200, width=100).tolist()
+        [[0.0, 50.0, 125.0, 2.0]]
 
     """
     keypoints = torch.full(
@@ -95,14 +138,27 @@ def get_center_keypoints(
 
 
 def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
-    """Insert class index into keypoints tensor.
+    """Insert the class index of each bounding box into its keypoints.
 
     Args:
-        keypoints (``Tensor``): Keypoint tensor.
-        bboxes (``Tensor``): Bounding box tensor with class index.
+        keypoints (``Tensor``): The keypoints of shape ``[N, 1 + 3K]``,
+            where ``K`` is the number of keypoints. The batch index is
+            in the first column, followed by ``(x, y, visibility)``
+            triples.
+        bboxes (``Tensor``): The bounding boxes of shape ``[N, 6]``, in
+            the same instance order, with the class index in the
+            second column.
 
     Returns:
-        ``Tensor``: Keypoint tensor with class index inserted.
+        ``Tensor``: The keypoints of shape ``[N, 2 + 3K]``, with the
+        class index inserted as the second column.
+
+    Example:
+        >>> import torch
+        >>> keypoints = torch.tensor([[0.0, 0.5, 0.5, 2.0]])
+        >>> bboxes = torch.tensor([[0.0, 3.0, 0.1, 0.1, 0.2, 0.2]])
+        >>> insert_class(keypoints, bboxes).tolist()
+        [[0.0, 3.0, 0.5, 0.5, 2.0]]
 
     """
     classes = bboxes[:, 1]
@@ -126,32 +182,75 @@ def compute_pose_oks(
     area_factor: float = 0.53,
     use_cocoeval_oks: bool = True,
 ) -> Tensor:
-    """Compute batched Object Keypoint Similarity between keypoints.
+    r"""Compute the object keypoint similarity of each target-prediction pair.
+
+    For one image, the similarity of target :math:`t` and prediction
+    :math:`p` is the mean of this term over the visible keypoints of
+    :math:`t`:
+
+    .. math::
+
+        \exp\left(-\frac{d_i^2}{2 \, (2 \sigma_i)^2 \, A}\right)
+
+    In the term, :math:`d_i` is the distance between the two keypoints
+    :math:`i`, and :math:`\sigma_i` is the sigma of keypoint :math:`i`.
+    :math:`A` is the pose area of :math:`t`. A target keypoint is
+    visible when its third value is greater than ``0``. A target
+    without visible keypoints gets a similarity of ``0``. With
+    ``use_cocoeval_oks`` set to ``False``, the exponent is
+    :math:`-d_i^2 / (2 (A \sigma_i)^2)` instead.
 
     Args:
-        predictions (``Tensor``): Predicted keypoints with shape
-            ``[N, M2, n_keypoints, 3]``.
-        targets (``Tensor``): Ground-truth keypoints with shape
-            ``[N, M1, n_keypoints, 3]``.
-        sigmas (``Tensor``): Sigma values for each keypoint, with shape
+        predictions (``Tensor``): The predicted keypoints of shape
+            ``[N, M2, n_keypoints, 3]``. The function reads only ``x``
+            and ``y``, the first two values of each keypoint.
+        targets (``Tensor``): The target keypoints of shape
+            ``[N, M1, n_keypoints, 3]``, as ``(x, y, visibility)``.
+        sigmas (``Tensor``): One sigma per keypoint, of shape
             ``[n_keypoints]``.
-        gt_bboxes (``Tensor | None``): Ground-truth bounding boxes in ``xyxy``
-            format with shape ``[N, M1, 4]``. Required when ``pose_area`` is
-            ``None``. Defaults to ``None``.
-        pose_area (``Tensor | None``): Pose area with shape ``[N, M1, 1, 1]``.
-            Defaults to ``None``.
-        eps (float): Small constant for numerical stability. Defaults to
-            ``1e-9``.
-        area_factor (float): Factor used to scale pose area. Defaults to
-            ``0.53``.
-        use_cocoeval_oks (bool): Whether to use the COCOEval OKS formula
-            instead of the original definition. Defaults to ``True``.
+        gt_bboxes (``Tensor | None``): The target boxes of shape
+            ``[N, M1, 4]`` in ``xyxy`` format. Their area times
+            ``area_factor`` is the pose area. The function reads them
+            only when ``pose_area`` is ``None``.
+        pose_area (``Tensor | None``): The pose area of each target, of
+            shape ``[N, M1, 1, 1]``. ``None`` computes it from
+            ``gt_bboxes``.
+        eps (float): A small constant that the function adds to the
+            area and to the visible count. It prevents a division by
+            zero.
+        area_factor (float): The factor that scales the box area to the
+            pose area.
+        use_cocoeval_oks (bool): When ``True``, use the formula of the
+            COCO evaluation code. When ``False``, use the other formula
+            above.
 
     Returns:
-        ``Tensor``: OKS values with shape ``[N, M1, M2]``.
+        ``Tensor``: The similarities of shape ``[N, M1, M2]``, in
+        ``[0, 1]``.
 
     Raises:
-        ValueError: If neither ``pose_area`` nor ``gt_bboxes`` is provided.
+        ValueError: When both ``pose_area`` and ``gt_bboxes`` are
+            ``None``.
+
+    References:
+        - COCO keypoint evaluation: https://cocodataset.org/#keypoints-eval
+        - ``computeOks`` in ``pycocotools/cocoeval.py``:
+          https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
+
+    Examples:
+        >>> import torch
+        >>> targets = torch.tensor([[[[0.5, 0.5, 2.0]]]])
+        >>> sigmas = torch.tensor([0.05])
+        >>> gt_bboxes = torch.tensor([[[0.0, 0.0, 1.0, 1.0]]])
+        >>> exact = torch.tensor([[[[0.5, 0.5, 1.0]]]])
+        >>> oks = compute_pose_oks(exact, targets, sigmas, gt_bboxes=gt_bboxes)
+        >>> oks.round(decimals=3).tolist()
+        [[[1.0]]]
+
+        >>> far = torch.tensor([[[[5.0, 5.0, 1.0]]]])
+        >>> oks = compute_pose_oks(far, targets, sigmas, gt_bboxes=gt_bboxes)
+        >>> oks.round(decimals=3).tolist()
+        [[[0.0]]]
 
     """
     if pose_area is None:
@@ -191,7 +290,7 @@ def compute_pose_oks(
     vis_mask = (
         targets[:, :, :, 2].gt(0).float().unsqueeze(2)
     )  # shape: [N, M1, 1, n_keypoints]
-    vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, M2]
+    vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, 1]
 
     return (oks_vals * vis_mask).sum(dim=-1) / (
         vis_count + eps

@@ -1,7 +1,11 @@
-"""Migration of a configuration file to the current schema.
+"""Upgrade of an old config and of the installed package.
 
-Each release that renames or moves a field adds a step here, so
-``luxonis_train upgrade`` can rewrite an older config in place.
+`upgrade_config` migrates a config from an older release to the schema
+of the installed release. `Config.get_config
+<luxonis_train.config.Config.get_config>` calls it for each config file
+or dictionary that it loads. The ``luxonis_train upgrade config``
+command writes the result to a file. `upgrade_installation` upgrades the
+package with ``pip``.
 
 """
 
@@ -23,17 +27,44 @@ import luxonis_train as lxt
 
 @dataclass
 class NestedDict:
-    """A dictionary addressed by a dotted path.
+    """A wrapper that addresses a nested dictionary with dotted keys.
 
-    ``config["trainer.optimizer.name"]`` walks the nested dictionaries
-    and returns ``None`` when any step of the path is missing, which
-    keeps the migration steps short.
+    The key ``"trainer.optimizer.name"`` stands for
+    ``config["trainer"]["optimizer"]["name"]``. A read of a missing key
+    returns ``None``, and a write creates the missing dictionaries.
+    The wrapper does not copy the dictionary, so each change goes into
+    the wrapped dictionary.
+
+    Attributes:
+        _dict (``dict[str, Any]``): The wrapped dictionary. The
+            constructor takes it as its only argument.
+
+    Example:
+        >>> from luxonis_train.upgrade import NestedDict
+        >>> config = {"trainer": {"epochs": 10}}
+        >>> cfg = NestedDict(config)
+        >>> cfg["trainer.epochs"], cfg["trainer.batch_size"]
+        (10, None)
+        >>> cfg["model.name"] = "detector"
+        >>> config
+        {'trainer': {'epochs': 10}, 'model': {'name': 'detector'}}
 
     """
 
     _dict: dict[str, Any]
 
     def __contains__(self, key: str) -> bool:
+        """Check if a dotted key exists.
+
+        Args:
+            key (str): A dotted key, for example ``"trainer.epochs"``.
+
+        Returns:
+            bool: ``True`` when each part of ``key`` exists and each
+            value before the last part is a dictionary. A stored
+            ``None`` counts as present.
+
+        """
         keys = key.split(".")
         current = self._dict
         for k in keys:
@@ -45,6 +76,15 @@ class NestedDict:
         return True
 
     def __getitem__(self, key: str) -> Any:
+        """Return the value under a dotted key.
+
+        Args:
+            key (str): A dotted key, for example ``"trainer.epochs"``.
+
+        Returns:
+            ``Any``: The value, or ``None`` when ``key`` does not exist.
+
+        """
         if key not in self:
             return None
         keys = key.split(".")
@@ -54,6 +94,17 @@ class NestedDict:
         return current
 
     def __setitem__(self, key: str, value: Any) -> None:
+        """Set the value under a dotted key.
+
+        The method creates each missing dictionary on the path. It
+        replaces a value on the path that is not a dictionary with an
+        empty dictionary.
+
+        Args:
+            key (str): A dotted key, for example ``"trainer.epochs"``.
+            value (``Any``): The new value.
+
+        """
         keys = key.split(".")
         current = self._dict
         for k in keys[:-1]:
@@ -63,11 +114,55 @@ class NestedDict:
         current[keys[-1]] = value
 
     def get(self, key: str, default: Any = None) -> Any:
+        """Return the value under a dotted key, or a default value.
+
+        Args:
+            key (str): A dotted key, for example ``"model.nodes"``.
+            default (``Any``): The value to return when ``key`` does
+                not exist.
+
+        Returns:
+            ``Any``: The value under ``key``, or ``default`` when ``key``
+            does not exist. A stored ``None`` gives ``None``.
+
+        """
         if key not in self:
             return default
         return self[key]
 
     def pop(self, key: str, default: Any = ...) -> Any:
+        """Remove a dotted key and return its value.
+
+        The method removes only the last part of ``key``. The parent
+        dictionaries stay, also when they become empty.
+
+        Args:
+            key (str): A dotted key, for example
+                ``"exporter.output_names"``.
+            default (``Any``): The value to return when ``key`` does
+                not exist. The default ``...`` means that there is no
+                default value.
+
+        Returns:
+            ``Any``: The removed value, or ``default`` when ``key`` does
+            not exist.
+
+        Raises:
+            KeyError: When ``key`` does not exist and ``default`` is
+                ``...``.
+
+        Example:
+            >>> from luxonis_train.upgrade import NestedDict
+            >>> config = {"exporter": {"output_names": ["boxes"]}}
+            >>> cfg = NestedDict(config)
+            >>> cfg.pop("exporter.output_names")
+            ['boxes']
+            >>> config
+            {'exporter': {}}
+            >>> cfg.pop("exporter.output_names", None) is None
+            True
+
+        """
         if key not in self:
             if default is not ...:
                 return default
@@ -79,6 +174,18 @@ class NestedDict:
         return current.pop(keys[-1], default)
 
     def update(self, key: str, value: Any) -> None:
+        """Set the value under a dotted key and log the change.
+
+        The method logs a message at the ``INFO`` level. For a missing
+        ``key``, the message says that the field is new. Otherwise, it
+        shows the old value and the new value. Then the method sets the
+        value as ``self[key] = value`` does.
+
+        Args:
+            key (str): A dotted key, for example ``"version"``.
+            value (``Any``): The new value.
+
+        """
         old_value = self[key]
 
         if key not in self:
@@ -94,6 +201,21 @@ class NestedDict:
         new_key: str,
         value: ParamValue | EllipsisType | None = ...,
     ) -> None:
+        """Move a value to a new dotted key and log the move.
+
+        The method does nothing when ``old_key`` does not exist.
+        Otherwise, it removes ``old_key`` as `pop` does and sets
+        ``new_key`` as ``self[new_key] = value`` does. Then it calls
+        `log_change`.
+
+        Args:
+            old_key (str): The dotted key to remove.
+            new_key (str): The dotted key to set.
+            value (``ParamValue | EllipsisType | None``): The value for
+                ``new_key``. The default ``...`` keeps the old value.
+                Any other value, ``None`` included, replaces it.
+
+        """
         if old_key not in self:
             return
         old_value = self.pop(old_key)
@@ -108,10 +230,83 @@ class NestedDict:
 
     @staticmethod
     def log_change(old_field: str, new_field: str) -> None:
+        """Log at the ``INFO`` level that a config field has a new key.
+
+        Args:
+            old_field (str): The old dotted key.
+            new_field (str): The new dotted key.
+
+        """
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
 def upgrade_config(config: PathType | Params) -> Params:
+    """Migrate a config to the schema of the installed release.
+
+    The function reads a file as JSON when its suffix is ``.json``, and
+    as YAML otherwise. It does not write the file back. It does not copy
+    a dictionary: it changes the dictionary in place and returns it.
+
+    A config without ``version`` counts as version ``0.3.0``. The
+    function always removes the deprecated ``config_version`` field.
+    When ``version`` is the installed version or newer, the function
+    makes no other change. Otherwise, it does these steps:
+
+    - It renames these fields:
+
+      - ``trainer.use_rich_progress_bar`` to ``rich_logging``.
+      - ``preprocessing.train_rgb`` to ``preprocessing.color_space``.
+        A true value gives ``"RGB"``, and a false value gives
+        ``"BGR"``.
+      - ``model.predefined_model.params.variant`` to
+        ``model.predefined_model.variant``.
+      - ``tuner.storage.storage_type`` to ``tuner.storage.backend``.
+        ``"local"`` gives ``"sqlite"``, and any other value gives
+        ``"postgresql"``.
+
+    - It removes a ``tuner`` field with the value ``None``.
+    - In each node of ``model.nodes``, it moves ``params.variant`` to
+      ``variant``. For a ``FOMOHead``, it renames
+      ``params.num_conv_layers`` to ``params.n_conv_layers``. It removes
+      ``params.download_weights``, and when that value is true, it sets
+      ``params.weights`` to ``"download"``.
+    - It moves ``exporter.output_names`` to the
+      ``params.export_output_names`` of the head, when the model has
+      exactly one head. Otherwise, it logs an error and drops the
+      names.
+    - It moves each module of ``model.losses``, ``model.metrics``, and
+      ``model.visualizers`` to the head that the ``attached_to`` field
+      of the module names. The module goes into the ``losses``,
+      ``metrics``, or ``visualizers`` list of the head, without
+      ``attached_to``.
+    - It sets ``version`` to the installed version.
+
+    A node is a head when its ``name`` contains ``"Head"``. The
+    function finds a head by its ``alias``, or by its ``name`` when the
+    head has no alias.
+
+    The function logs a message at the ``INFO`` level when it finds
+    ``config_version``. It also logs one when the config is already
+    current, and one when the upgrade starts. At the same level, it logs
+    each renamed field, each moved ``params.variant``, each moved
+    module, and the new ``version``. The removal of ``tuner``, the
+    change of ``params.download_weights``, and the move of
+    ``exporter.output_names`` have no ``INFO`` message.
+
+    Args:
+        config (``PathType | Params``): The path of a local YAML or JSON
+            config file, or the config as a dictionary.
+
+    Returns:
+        ``Params``: The migrated config.
+
+    Raises:
+        ValueError: When a module in ``model.losses``,
+            ``model.metrics``, or ``model.visualizers`` has no
+            ``attached_to`` field, or when ``attached_to`` does not name
+            a head.
+
+    """
     cfg = _load_config(config)
 
     old_version = Version.parse(cfg.get("version", "0.3.0"))
@@ -140,6 +335,28 @@ def upgrade_config(config: PathType | Params) -> Params:
 
 
 def upgrade_installation() -> None:
+    """Upgrade the installed ``luxonis-train`` package from PyPI.
+
+    The function gets the latest release with `get_latest_version`. When
+    that check fails, it logs a message and returns. When the latest
+    release is equal to ``luxonis_train.__version__``, it logs that the
+    package is up to date. Otherwise, it runs
+    ``<python> -m pip install -U`` with ``sys.executable`` as
+    ``<python>``. It runs the command for these packages, in this order:
+
+    - ``pip``
+    - ``luxonis_train``
+    - ``luxonis_ml[data]``
+
+    Then it logs ``luxonis_train.__version__`` as the old version and
+    the latest release as the new version. The new version comes from
+    the check, not from the result of ``pip``. The function also runs
+    these commands when ``luxonis_train.__version__`` is newer than the
+    latest release. A failed ``pip`` command raises
+    ``subprocess.CalledProcessError``. Each log message has the ``INFO``
+    level.
+
+    """
     latest_version = get_latest_version()
     if latest_version is None:
         logger.info("Failed to check for updates. Try again later.")
@@ -162,6 +379,18 @@ def upgrade_installation() -> None:
 
 
 def get_latest_version() -> Version | None:
+    """Get the version of the latest ``luxonis-train`` release on PyPI.
+
+    The function reads ``info.version`` from the PyPI JSON API. The
+    request has a timeout of 5 seconds.
+
+    Returns:
+        ``semver.Version | None``: The latest version. It is ``None``
+        when the request fails or when the response status is not
+        ``200``. It is also ``None`` when the response body is not JSON
+        with a valid ``info.version``.
+
+    """
     import requests
 
     url = "https://pypi.org/pypi/luxonis_train/json"
