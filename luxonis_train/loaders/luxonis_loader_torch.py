@@ -97,7 +97,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             C{(image, labels)} output used during training.
         """
         super().__init__(**kwargs)
-        self.return_sample_metadata = return_sample_metadata
+        self._return_sample_metadata = return_sample_metadata
         self.dataset = self._load_dataset(
             dataset_dir,
             dataset_name,
@@ -215,7 +215,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             img = next(iter(img.values()))
 
         tensor_labels = self.dict_numpy_to_torch(labels)
-        if self.return_sample_metadata:
+        if self._return_sample_metadata:
             return img, tensor_labels, output.metadata
         return img, tensor_labels
 

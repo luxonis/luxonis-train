@@ -54,13 +54,13 @@ class ObjectKeypointSimilarity(BaseMetric):
         """
         super().__init__(**kwargs)
 
-        self.sigmas = get_sigmas(
+        self._sigmas = get_sigmas(
             sigmas, self.n_keypoints, caller_name=self.name
         )
-        self.area_factor = get_with_default(
+        self._area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53
         )
-        self.use_cocoeval_oks = use_cocoeval_oks
+        self._use_cocoeval_oks = use_cocoeval_oks
 
     @override
     def update(
@@ -94,11 +94,11 @@ class ObjectKeypointSimilarity(BaseMetric):
 
             self.pred_keypoints.append(fix_empty_tensor(keypoints[i]))
             self.target_keypoints.append(fix_empty_tensor(kpts))
-            self.scales.append(bbox_w * bbox_h * self.area_factor)
+            self.scales.append(bbox_w * bbox_h * self._area_factor)
 
     @override
     def compute(self) -> Tensor:
-        self.sigmas = self.sigmas.to(self.device)
+        self._sigmas = self._sigmas.to(self.device)
         mean_oks = torch.zeros(len(self.target_keypoints), device=self.device)
         for i, (pred_kpts, target_kpts, scales) in enumerate(
             zip(
@@ -111,8 +111,8 @@ class ObjectKeypointSimilarity(BaseMetric):
             image_ious = compute_pose_oks(
                 pred_kpts.unsqueeze(0),
                 target_kpts.reshape(-1, self.n_keypoints, 3).unsqueeze(0),
-                sigmas=self.sigmas,
-                use_cocoeval_oks=self.use_cocoeval_oks,
+                sigmas=self._sigmas,
+                use_cocoeval_oks=self._use_cocoeval_oks,
                 pose_area=scales[None, :, None, None],
             ).squeeze(0)
 

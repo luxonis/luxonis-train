@@ -21,7 +21,7 @@ class DetectionConfusionMatrix(BaseMetric):
 
     def __init__(self, iou_threshold: float = 0.45, **kwargs):
         super().__init__(**kwargs)
-        self.iou_threshold = iou_threshold
+        self._iou_threshold = iou_threshold
 
         self.add_state(
             "confusion_matrix",
@@ -74,10 +74,11 @@ class DetectionConfusionMatrix(BaseMetric):
                 self.confusion_matrix[target_classes, self.n_classes] += 1
 
             elif (
-                iou := box_iou(target[:, 1:], pred[:, :4]) > self.iou_threshold
+                iou := box_iou(target[:, 1:], pred[:, :4])
+                > self._iou_threshold
             ).any():
                 iou_max, pred_max_idx = torch.max(iou, dim=1)
-                iou_target_mask = iou_max > self.iou_threshold
+                iou_target_mask = iou_max > self._iou_threshold
                 targets_kept = torch.arange(len(target), device=self.device)[
                     iou_target_mask
                 ]

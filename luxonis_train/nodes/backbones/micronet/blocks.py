@@ -61,8 +61,8 @@ class MicroBlock(nn.Module):
         """
         super().__init__()
 
-        self.use_residual = stride == 1 and in_channels == out_channels
-        self.expand_ratio = expand_ratio
+        self._use_residual = stride == 1 and in_channels == out_channels
+        self._expand_ratio = expand_ratio
         use_dy1, use_dy2, use_dy3 = dy_shift
         group1, group2 = groups_2
         reduction = 8 * reduction_factor
@@ -113,7 +113,7 @@ class MicroBlock(nn.Module):
 
     def forward(self, inputs: Tensor) -> Tensor:
         out = self.layers(inputs)
-        if self.use_residual:
+        if self._use_residual:
             out += inputs
         return out
 
@@ -135,7 +135,7 @@ class MicroBlock(nn.Module):
     ) -> nn.Sequential:
         return nn.Sequential(
             DepthSpatialSepConv(
-                in_channels, self.expand_ratio, kernel_size, stride
+                in_channels, self._expand_ratio, kernel_size, stride
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -302,12 +302,12 @@ class ChannelShuffle(nn.Module):
             before shuffling.
         """
         super().__init__()
-        self.groups = groups
+        self._groups = groups
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size, channels, height, width = x.size()
-        channels_per_group = channels // self.groups
-        x = x.view(batch_size, self.groups, channels_per_group, height, width)
+        channels_per_group = channels // self._groups
+        x = x.view(batch_size, self._groups, channels_per_group, height, width)
         x = torch.transpose(x, 1, 2).contiguous()
         return x.view(batch_size, -1, height, width)
 
@@ -354,10 +354,10 @@ class DYShiftMax(nn.Module):
             to False.
         """
         super().__init__()
-        self.exp: Literal[2, 4] = 4 if use_relu else 2
-        self.init_a = init_a
-        self.init_b = init_b
-        self.out_channels = out_channels
+        self._exp: Literal[2, 4] = 4 if use_relu else 2
+        self._init_a = init_a
+        self._init_b = init_b
+        self._out_channels = out_channels
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
@@ -366,7 +366,7 @@ class DYShiftMax(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(in_channels, squeeze_channels),
             nn.ReLU(),
-            nn.Linear(squeeze_channels, out_channels * self.exp),
+            nn.Linear(squeeze_channels, out_channels * self._exp),
             nn.Hardsigmoid(),
         )
 
@@ -382,7 +382,7 @@ class DYShiftMax(nn.Module):
             index_groups, [1, channels_per_group - 1], dim=2
         )
         index_splits = torch.cat([index_splits[1], index_splits[0]], dim=2)
-        self.index = index_splits.view(in_channels).long()
+        self._index = index_splits.view(in_channels).long()
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size, channels, _, _ = x.shape
@@ -392,25 +392,25 @@ class DYShiftMax(nn.Module):
         y: Tensor = self.fc(y).view(batch_size, -1, 1, 1)
         y = (y - 0.5) * 4.0
 
-        x2 = x_out[:, self.index, :, :]
+        x2 = x_out[:, self._index, :, :]
 
-        if self.exp == 4:
-            a1, b1, a2, b2 = torch.split(y, self.out_channels, dim=1)
+        if self._exp == 4:
+            a1, b1, a2, b2 = torch.split(y, self._out_channels, dim=1)
 
-            a1 = a1 + self.init_a[0]
-            a2 = a2 + self.init_b[1]
-            b1 = b1 + self.init_b[0]
-            b2 = b2 + self.init_b[1]
+            a1 = a1 + self._init_a[0]
+            a2 = a2 + self._init_b[1]
+            b1 = b1 + self._init_b[0]
+            b2 = b2 + self._init_b[1]
 
             z1 = x_out * a1 + x2 * b1
             z2 = x_out * a2 + x2 * b2
 
             out = torch.max(z1, z2)
 
-        elif self.exp == 2:
-            a1, b1 = y.split(self.out_channels, dim=1)
-            a1 = a1 + self.init_a[0]
-            b1 = b1 + self.init_b[0]
+        elif self._exp == 2:
+            a1, b1 = y.split(self._out_channels, dim=1)
+            a1 = a1 + self._init_a[0]
+            b1 = b1 + self._init_b[0]
             out = x_out * a1 + x2 * b1
         else:
             raise RuntimeError("Expansion should be 2 or 4.")

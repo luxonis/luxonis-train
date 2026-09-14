@@ -169,10 +169,10 @@ class LuxonisModel:
         else:
             self.cfg = Config.get_config(cfg, opts)
 
-        self.allow_empty_dataset = allow_empty_dataset
+        self._allow_empty_dataset = allow_empty_dataset
         self._weights_provided_during_init = weights is not None
         self._weights_provided_in_config = self.cfg.model.weights is not None
-        self.weights = weights or self.cfg.model.weights
+        self._weights = weights or self.cfg.model.weights
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
@@ -180,20 +180,20 @@ class LuxonisModel:
         self._build_loaders()
         self._build_pytorch_loaders()
 
-        self.dataset_metadata = self._resolve_dataset_metadata(
+        self._dataset_metadata = self._resolve_dataset_metadata(
             dataset_metadata
         )
-        logger.info(f"Dataset metadata: {self.dataset_metadata}")
-        self.config_file = self.run_save_dir / "training_config.yaml"
-        self.cfg.save_data(self.config_file)
+        logger.info(f"Dataset metadata: {self._dataset_metadata}")
+        self._config_file = self.run_save_dir / "training_config.yaml"
+        self.cfg.save_data(self._config_file)
 
-        self.input_shapes = self.loaders["train"].input_shapes
+        self._input_shapes = self.loaders["train"].input_shapes
 
         self.lightning_module = LuxonisLightningModule(
             cfg=self.cfg,
-            dataset_metadata=self.dataset_metadata,
+            dataset_metadata=self._dataset_metadata,
             save_dir=self.run_save_dir,
-            input_shapes=self.input_shapes,
+            input_shapes=self._input_shapes,
             _core=self,
         )
         self.lightning_module._ckpt_predefined_model = (
@@ -272,10 +272,10 @@ class LuxonisModel:
         self.run_save_dir = (
             self.cfg.tracker.save_directory / self.tracker.run_name
         )
-        self.log_file = self.run_save_dir / "luxonis_train.log"
+        self._log_file = self.run_save_dir / "luxonis_train.log"
         self.error_message = None
 
-        setup_logging(file=self.log_file, use_rich=self.cfg.rich_logging)
+        setup_logging(file=self._log_file, use_rich=self.cfg.rich_logging)
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
@@ -347,7 +347,7 @@ class LuxonisModel:
                 **self.cfg.loader.params,  # type: ignore
             )
         except Exception:
-            if not self.allow_empty_dataset:
+            if not self._allow_empty_dataset:
                 logger.error(
                     "Unable to initialize loader. If you want to run "
                     "the model without an existing dataset, "
@@ -677,7 +677,7 @@ class LuxonisModel:
         for path in self._exported_models.values():
             self._upload_export_artifact(path)
 
-        if len(self.input_shapes) > 1:
+        if len(self._input_shapes) > 1:
             logger.error(
                 "Generating modelconverter config for a model "
                 "with multiple inputs is not implemented yet."
@@ -853,8 +853,8 @@ class LuxonisModel:
         self.tracker._finalize(status)
 
     def _upload_run_metadata(self) -> None:
-        self.tracker.upload_artifact(self.log_file, typ="logs")
-        self.tracker.upload_artifact(self.config_file, typ="config")
+        self.tracker.upload_artifact(self._log_file, typ="logs")
+        self.tracker.upload_artifact(self._config_file, typ="config")
 
     def infer(
         self,
@@ -1000,7 +1000,7 @@ class LuxonisModel:
             f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
         )
 
-        self.parent_tracker.log_hyperparams(study.best_params)
+        self._parent_tracker.log_hyperparams(study.best_params)
 
         self._finalize_wandb_tuning(study)
 
@@ -1040,7 +1040,7 @@ class LuxonisModel:
         cfg.trainer.n_sanity_val_steps = 0
         lightning_module = LuxonisLightningModule(
             cfg=cfg,
-            dataset_metadata=self.dataset_metadata,
+            dataset_metadata=self._dataset_metadata,
             save_dir=run_save_dir,
             input_shapes=self.loaders["train"].input_shapes,
             _core=self,
@@ -1165,15 +1165,15 @@ class LuxonisModel:
         tracker_params["run_name"] = (
             tracker_params["run_name"] or self.tracker.run_name
         )
-        self.parent_tracker = LuxonisTrackerPL(
+        self._parent_tracker = LuxonisTrackerPL(
             rank=rank,
             mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
-        if self.parent_tracker.is_mlflow:  # pragma: no cover
+        if self._parent_tracker.is_mlflow:  # pragma: no cover
             # Experiment needs to be interacted with to create actual MLFlow run
-            self.parent_tracker.experiment["mlflow"].active_run()
+            self._parent_tracker.experiment["mlflow"].active_run()
 
     @staticmethod
     def _build_optuna_storage(cfg_tuner: TunerConfig) -> "URL | None":
@@ -1202,7 +1202,7 @@ class LuxonisModel:
                 _auto_finalize=True,
                 **(
                     get_tracker_init_params(self.cfg.tracker)
-                    | {"run_name": self.parent_tracker.run_name}
+                    | {"run_name": self._parent_tracker.run_name}
                 ),
             )
             wandb_parent_tracker.log_hyperparams(study.best_params)
@@ -1941,9 +1941,9 @@ class LuxonisModel:
             return weights
 
         if weights is None:
-            if isinstance(self.weights, dict):
-                return self.weights
-            return safe_download(self.weights)
+            if isinstance(self._weights, dict):
+                return self._weights
+            return safe_download(self._weights)
 
         if (
             self._weights_provided_in_config

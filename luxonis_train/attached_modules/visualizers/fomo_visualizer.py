@@ -15,8 +15,8 @@ class FOMOVisualizer(BBoxVisualizer):
         self, visibility_threshold: float = 0.5, radius: int = 5, **kwargs
     ):
         super().__init__(**kwargs)
-        self.visibility_threshold = visibility_threshold
-        self.radius = radius
+        self._visibility_threshold = visibility_threshold
+        self._radius = radius
 
     def forward(
         self,
@@ -28,7 +28,7 @@ class FOMOVisualizer(BBoxVisualizer):
         single_class = self._determine_single_class(keypoints)
         if single_class:
             pred_viz = KeypointVisualizer.draw_predictions(
-                prediction_canvas, keypoints, colors="red", radius=self.radius
+                prediction_canvas, keypoints, colors="red", radius=self._radius
             )
         else:
             pred_viz = self.draw_predictions_per_class(
@@ -55,9 +55,9 @@ class FOMOVisualizer(BBoxVisualizer):
         self, image: Tensor, prediction: Tensor
     ) -> Tensor:
         xy = prediction[..., :2].clone()
-        if self.scale and self.scale != 1.0:
-            xy *= self.scale
-        visible = prediction[..., 2] >= self.visibility_threshold
+        if self._scale and self._scale != 1.0:
+            xy *= self._scale
+        visible = prediction[..., 2] >= self._visibility_threshold
         xy, classes = xy[visible], prediction[..., 3].long()[visible]
         if xy.numel() == 0:
             return image
@@ -73,18 +73,18 @@ class FOMOVisualizer(BBoxVisualizer):
         self, image: Tensor, points: Tensor, class_id: int
     ) -> Tensor:
         label = (
-            self.label_dict.get(class_id, str(class_id))
-            if self.label_dict
+            self._label_dict.get(class_id, str(class_id))
+            if self._label_dict
             else str(class_id)
         )
         color = (
-            self.colors[label]
-            if self.colors and label in self.colors
+            self._colors[label]
+            if self._colors and label in self._colors
             else (255, 255, 255)
         )
         return draw_keypoints(
             image=image,
             keypoints=points.int().unsqueeze(1),
-            radius=self.radius,
+            radius=self._radius,
             colors=color,
         )

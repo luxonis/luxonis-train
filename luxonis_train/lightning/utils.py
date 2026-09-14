@@ -73,18 +73,18 @@ class MainMetric(NamedTuple):
 class LossAccumulator(defaultdict[str, float]):
     def __init__(self, *args, **kwargs):
         super().__init__(float)
-        self.counts = defaultdict(int)
+        self._counts = defaultdict(int)
 
     def update(self, losses: dict[str, Tensor]) -> None:
         for key, value in losses.items():
-            self[key] = (self[key] * self.counts[key] + value.item()) / (
-                self.counts[key] + 1
+            self[key] = (self[key] * self._counts[key] + value.item()) / (
+                self._counts[key] + 1
             )
-            self.counts[key] += 1
+            self._counts[key] += 1
 
     def clear(self) -> None:
         super().clear()
-        self.counts.clear()
+        self._counts.clear()
 
 
 class NodeWrapper(nn.Module):
@@ -140,9 +140,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         dataset_metadata: DatasetMetadata,
         input_shapes: dict[str, Size],
     ):
-        self.cfg = cfg
+        self._cfg = cfg
         self.graph: dict[str, list[str]] = {}
-        self.nodes: dict[str, NodeWrapper] = {}
+        self._nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
 
         self.loader_input_shapes = self._get_loader_input_shapes(
@@ -223,9 +223,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             node_outputs = node.module.run(node_dummy_inputs)
 
             dummy_inputs[node_name] = node_outputs
-            self.nodes[node_name] = node
+            self._nodes[node_name] = node
 
-        super().__init__(self.nodes)
+        super().__init__(self._nodes)
 
         # Snapshots the original trainability state, so it must be
         # built before any freeze is applied.
@@ -364,22 +364,22 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
     def build_callbacks(self, save_dir: Path) -> list[pl.Callback]:
         """Configure Pytorch Lightning callbacks."""
-        model_name = self.cfg.model.name
+        model_name = self._cfg.model.name
 
         callbacks: list[pl.Callback] = [
             TrainingManager(),
-            LuxonisModelSummary(max_depth=2, rich=self.cfg.rich_logging),
+            LuxonisModelSummary(max_depth=2, rich=self._cfg.rich_logging),
             ModelCheckpoint(
                 dirpath=save_dir / "min_val_loss",
                 filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
                 monitor="val/loss",
                 auto_insert_metric_name=False,
-                save_top_k=self.cfg.trainer.save_top_k,
+                save_top_k=self._cfg.trainer.save_top_k,
                 mode="min",
             ),
         ]
 
-        if self.cfg.exporter.aimet.active:
+        if self._cfg.exporter.aimet.active:
             callbacks.append(AIMETCallback())
 
         if self.main_metric is not None:
@@ -395,12 +395,12 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
                     monitor=f"val/metric/{metric_path}",
                     auto_insert_metric_name=False,
-                    save_top_k=self.cfg.trainer.save_top_k,
+                    save_top_k=self._cfg.trainer.save_top_k,
                     mode="max",
                 )
             )
 
-        for callback in self.cfg.trainer.callbacks:
+        for callback in self._cfg.trainer.callbacks:
             if callback.active:
                 callbacks.append(
                     from_registry(CALLBACKS, callback.name, **callback.params)
@@ -408,13 +408,13 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             else:
                 logger.info(f"Callback '{callback.name}' is inactive.")
 
-        if self.cfg.trainer.accumulate_grad_batches is not None:
+        if self._cfg.trainer.accumulate_grad_batches is not None:
             if not any(
                 isinstance(cb, GradientAccumulationScheduler)
                 for cb in callbacks
             ):
                 gas = GradientAccumulationScheduler(
-                    scheduling={0: self.cfg.trainer.accumulate_grad_batches}
+                    scheduling={0: self._cfg.trainer.accumulate_grad_batches}
                 )
                 callbacks.append(gas)
             else:

@@ -20,7 +20,7 @@ class CTCLoss(BaseLoss):
         """
         super().__init__(**kwargs)
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
-        self.use_focal_loss = use_focal_loss
+        self._use_focal_loss = use_focal_loss
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the CTC loss, optionally applying focal loss.
@@ -49,7 +49,7 @@ class CTCLoss(BaseLoss):
             predictions, target, preds_lengths, target_lengths
         )
 
-        if self.use_focal_loss:
+        if self._use_focal_loss:
             weight = (1.0 - torch.exp(-loss)) ** 2
             loss = loss * weight
 

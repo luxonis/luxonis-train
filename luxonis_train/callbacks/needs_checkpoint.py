@@ -13,7 +13,7 @@ class NeedsCheckpoint(pl.Callback):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.preferred_checkpoint = preferred_checkpoint
+        self._preferred_checkpoint = preferred_checkpoint
 
     @staticmethod
     def _get_checkpoint(
@@ -49,9 +49,9 @@ class NeedsCheckpoint(pl.Callback):
     def get_checkpoint(
         self, pl_module: "lxt.LuxonisLightningModule"
     ) -> str | None:
-        path = self._get_checkpoint(self.preferred_checkpoint, pl_module)
+        path = self._get_checkpoint(self._preferred_checkpoint, pl_module)
         if path is not None:
             return path
-        other_checkpoint = self._get_other_type(self.preferred_checkpoint)
+        other_checkpoint = self._get_other_type(self._preferred_checkpoint)
         logger.info(f"Attempting to use {other_checkpoint} checkpoint.")
         return self._get_checkpoint(other_checkpoint, pl_module)

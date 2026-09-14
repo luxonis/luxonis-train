@@ -42,8 +42,8 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
             override C{reduction}. Defaults to C{'mean'}.
         """
         super().__init__(**kwargs)
-        self.positive_smooth_const = 1.0 - label_smoothing
-        self.negative_smooth_const = label_smoothing
+        self._positive_smooth_const = 1.0 - label_smoothing
+        self._negative_smooth_const = label_smoothing
         self.criterion = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_pow]),
             weight=weight,
@@ -66,10 +66,10 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
                 f"dimension ({predictions.shape}) should be the same."
             )
 
-        if self.negative_smooth_const != 0.0:
+        if self._negative_smooth_const != 0.0:
             target = (
-                target * self.positive_smooth_const
-                + (1 - target) * self.negative_smooth_const
+                target * self._positive_smooth_const
+                + (1 - target) * self._negative_smooth_const
             )
 
         loss = self.criterion(predictions, target)

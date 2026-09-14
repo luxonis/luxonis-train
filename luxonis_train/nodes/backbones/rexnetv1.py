@@ -62,8 +62,8 @@ class ReXNetV1_lite(BaseNode):
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
 
-        self.n_convblocks = sum(layers)
-        self.out_indices = out_indices or [1, 4, 10, 17]
+        self._n_convblocks = sum(layers)
+        self._out_indices = out_indices or [1, 4, 10, 17]
 
         strides, ts, kernel_sizes = self._expand_layer_configs(
             layers, strides, kernel_sizes
@@ -73,7 +73,7 @@ class ReXNetV1_lite(BaseNode):
             input_ch, multiplier, fix_head_stem, divisible_value
         )
         in_channels_group, channels_group = self._compute_channel_groups(
-            self.n_convblocks,
+            self._n_convblocks,
             first_channel,
             inplanes,
             multiplier,
@@ -189,7 +189,7 @@ class ReXNetV1_lite(BaseNode):
         outs: list[Tensor] = []
         for i, module in enumerate(self.features):
             inputs = module(inputs)
-            if i in self.out_indices:
+            if i in self._out_indices:
                 outs.append(inputs)
         return outs
 
@@ -204,9 +204,9 @@ class LinearBottleneck(nn.Module):
         stride: int = 1,
     ):
         super().__init__()
-        self.use_shortcut = stride == 1 and in_channels <= channels
-        self.in_channels = in_channels
-        self.out_channels = channels
+        self._use_shortcut = stride == 1 and in_channels <= channels
+        self._in_channels = in_channels
+        self._out_channels = channels
         out: list[nn.Module] = []
         if t != 1:
             dw_channels = in_channels * t
@@ -245,12 +245,12 @@ class LinearBottleneck(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         out = self.out(x)
 
-        if self.use_shortcut:
+        if self._use_shortcut:
             # NOTE: this results in a ScatterND node which isn't supported yet in myriad
-            a = out[:, : self.in_channels]
+            a = out[:, : self._in_channels]
             b = x
             a = a + b
-            c = out[:, self.in_channels :]
+            c = out[:, self._in_channels :]
             return torch.concat([a, c], dim=1)
 
         return out

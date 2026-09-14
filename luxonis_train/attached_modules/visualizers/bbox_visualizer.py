@@ -68,23 +68,23 @@ class BBoxVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = dict(enumerate(labels))
 
-        self.label_dict = labels or self.classes.inverse
+        self._label_dict = labels or self.classes.inverse
 
         if colors is None:
             colors = {
-                label: get_color(i) for i, label in self.label_dict.items()
+                label: get_color(i) for i, label in self._label_dict.items()
             }
         if isinstance(colors, list):
             colors = {
-                self.label_dict[i]: color for i, color in enumerate(colors)
+                self._label_dict[i]: color for i, color in enumerate(colors)
             }
-        self.colors = colors
-        self.fill = fill
-        self.width = width
-        self.font = font
-        self.font_size = font_size
-        self.draw_labels = draw_labels
-        self.draw_scores = draw_scores
+        self._colors = colors
+        self._fill = fill
+        self._width = width
+        self._font = font
+        self._font_size = font_size
+        self._draw_labels = draw_labels
+        self._draw_scores = draw_scores
 
     def draw_targets(self, canvas: Tensor, targets: Tensor) -> Tensor:
         viz = torch.zeros_like(canvas)
@@ -93,18 +93,21 @@ class BBoxVisualizer(BaseVisualizer):
             target = targets[targets[:, 0] == i]
             target_classes = target[:, 1].int()
             cls_labels = (
-                [self.label_dict[int(c)] for c in target_classes]
-                if self.draw_labels and self.label_dict is not None
+                [self._label_dict[int(c)] for c in target_classes]
+                if self._draw_labels and self._label_dict is not None
                 else None
             )
             cls_colors = (
-                [self.colors[self.label_dict[int(c)]] for c in target_classes]
-                if self.colors is not None and self.label_dict is not None
+                [
+                    self._colors[self._label_dict[int(c)]]
+                    for c in target_classes
+                ]
+                if self._colors is not None and self._label_dict is not None
                 else None
             )
 
             *_, H, W = canvas.shape
-            width = self.width or max(1, int(min(H, W) / 100))
+            width = self._width or max(1, int(min(H, W) / 100))
             viz[i] = draw_bounding_box_labels(
                 canvas[i].clone(),
                 target[:, 2:],
@@ -130,21 +133,21 @@ class BBoxVisualizer(BaseVisualizer):
             prediction_classes = prediction[..., 5].int()
             cls_labels = get_prediction_labels(
                 prediction,
-                self.label_dict,
-                self.draw_labels,
-                self.draw_scores,
+                self._label_dict,
+                self._draw_labels,
+                self._draw_scores,
             )
             cls_colors = (
                 [
-                    self.colors[self.label_dict[int(c)]]
+                    self._colors[self._label_dict[int(c)]]
                     for c in prediction_classes
                 ]
-                if self.colors is not None and self.label_dict is not None
+                if self._colors is not None and self._label_dict is not None
                 else None
             )
 
             *_, H, W = canvas.shape
-            width = self.width or max(1, int(min(H, W) / 100))
+            width = self._width or max(1, int(min(H, W) / 100))
             try:
                 viz[i] = draw_bounding_boxes(
                     canvas[i].clone(),
@@ -183,7 +186,7 @@ class BBoxVisualizer(BaseVisualizer):
         @param targets: The target bounding boxes.
         """
         predictions_viz = self.draw_predictions(
-            prediction_canvas, predictions, scale=self.scale
+            prediction_canvas, predictions, scale=self._scale
         )
         if targets is None:
             return predictions_viz

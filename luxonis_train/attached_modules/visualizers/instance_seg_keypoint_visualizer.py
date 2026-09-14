@@ -73,32 +73,32 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = dict(enumerate(labels))
 
-        self.bbox_labels = labels or self.classes.inverse
+        self._bbox_labels = labels or self.classes.inverse
 
         if colors is None:
             colors = {
-                label: get_color(i) for i, label in self.bbox_labels.items()
+                label: get_color(i) for i, label in self._bbox_labels.items()
             }
         if isinstance(colors, list):
             colors = {
-                self.bbox_labels[i]: color for i, color in enumerate(colors)
+                self._bbox_labels[i]: color for i, color in enumerate(colors)
             }
 
-        self.colors = colors
-        self.fill = fill
-        self.width = width
-        self.font = font
-        self.font_size = font_size
-        self.draw_labels = draw_labels
-        self.draw_scores = draw_scores
-        self.alpha = alpha
+        self._colors = colors
+        self._fill = fill
+        self._width = width
+        self._font = font
+        self._font_size = font_size
+        self._draw_labels = draw_labels
+        self._draw_scores = draw_scores
+        self._alpha = alpha
 
-        self.visibility_threshold = visibility_threshold
-        self.connectivity = connectivity
-        self.visible_color = visible_color
-        self.nonvisible_color = nonvisible_color
-        self.radius = radius
-        self.draw_indices = draw_indices
+        self._visibility_threshold = visibility_threshold
+        self._connectivity = connectivity
+        self._visible_color = visible_color
+        self._nonvisible_color = nonvisible_color
+        self._radius = radius
+        self._draw_indices = draw_indices
 
     def forward(
         self,
@@ -116,31 +116,31 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
             prediction_canvas,
             boundingbox,
             instance_segmentation,
-            self.width,
-            self.bbox_labels,
-            self.colors,
-            self.draw_labels,
-            self.draw_scores,
-            self.alpha,
-            self.scale,
+            self._width,
+            self._bbox_labels,
+            self._colors,
+            self._draw_labels,
+            self._draw_scores,
+            self._alpha,
+            self._scale,
         )
 
         prediction_radius = (
             KeypointVisualizer._get_radius(prediction_canvas)
-            if self.radius is None
-            else self.radius
+            if self._radius is None
+            else self._radius
         )
 
         pred_viz = KeypointVisualizer.draw_predictions(
             pred_viz,
             keypoints,
-            self.draw_indices,
-            connectivity=self.connectivity,
-            nonvisible_color=self.nonvisible_color,
-            visible_color=self.visible_color,
-            visibility_threshold=self.visibility_threshold,
+            self._draw_indices,
+            connectivity=self._connectivity,
+            nonvisible_color=self._nonvisible_color,
+            visible_color=self._visible_color,
+            visibility_threshold=self._visibility_threshold,
             radius=prediction_radius,
-            scale=self.scale,
+            scale=self._scale,
         )
 
         has_targets = (
@@ -161,27 +161,27 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
                 target_viz,
                 target_boundingbox,
                 target_instance_segmentation,
-                self.width,
-                self.bbox_labels,
-                self.colors,
-                self.draw_labels,
-                self.alpha,
-                self.scale,
+                self._width,
+                self._bbox_labels,
+                self._colors,
+                self._draw_labels,
+                self._alpha,
+                self._scale,
             )
 
         if target_keypoints is not None:
             target_radius = (
                 KeypointVisualizer._get_radius(target_canvas)
-                if self.radius is None
-                else self.radius
+                if self._radius is None
+                else self._radius
             )
             target_viz = KeypointVisualizer.draw_targets(
                 target_viz,
                 target_keypoints,
-                self.draw_indices,
+                self._draw_indices,
                 radius=target_radius,
-                colors=self.visible_color,
-                connectivity=self.connectivity,
+                colors=self._visible_color,
+                connectivity=self._connectivity,
             )
 
         return target_viz, pred_viz

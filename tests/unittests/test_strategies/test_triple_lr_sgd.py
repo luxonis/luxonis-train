@@ -83,13 +83,13 @@ def test_triple_lr_sgd():
                     {"params": groups[TripleLRSGDStrategy.BATCH_NORM_TAG]},
                     {
                         "params": groups[TripleLRSGDStrategy.WEIGHT_TAG],
-                        "weight_decay": self.strategy.weight_decay,
+                        "weight_decay": self.strategy._weight_decay,
                     },
                     {"params": groups[TripleLRSGDStrategy.BIAS_TAG]},
                 ],
-                lr=self.strategy.lr,
-                momentum=self.strategy.momentum,
-                nesterov=self.strategy.nesterov,
+                lr=self.strategy._lr,
+                momentum=self.strategy._momentum,
+                nesterov=self.strategy._nesterov,
             )
             runtime = SimpleNamespace(
                 group=lambda handle: optimizer.param_groups[handle.group_index]
@@ -103,7 +103,7 @@ def test_triple_lr_sgd():
                 },
             )
             return [optimizer], [
-                LambdaLR(optimizer, lr_lambda=self.strategy.lf)
+                LambdaLR(optimizer, lr_lambda=self.strategy._lf)
             ]
 
         def on_before_optimizer_step(self, optimizer: Optimizer) -> None:
