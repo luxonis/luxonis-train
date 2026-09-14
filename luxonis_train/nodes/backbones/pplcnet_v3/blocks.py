@@ -120,7 +120,7 @@ class LCNetV3Layer(nn.Sequential):
         n_branches: int = 4,
         scale: float = 1.0,
     ):
-        self.in_channels = in_channels
+        self._in_channels = in_channels
         self.out_channels = scale_up(out_channels[-1], scale)
         layer = []
         for out_channel, kernel_size, stride, se in zip(

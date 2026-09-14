@@ -1107,7 +1107,7 @@ def test_real_bbox_head_to_precision_recall_curve_e2e(
     replay = non_max_suppression(
         detections_pre_nms,
         n_classes=head.n_classes,
-        conf_thres=head.conf_thres,
+        conf_thres=head._conf_thres,
         iou_thres=head.iou_thres,
         bbox_format="xyxy",
         max_det=head.max_det,

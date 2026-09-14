@@ -241,7 +241,7 @@ class BasicDDRBackbone(nn.Module):
             1.
         """
         super().__init__()
-        self.input_channels = in_channels
+        self._input_channels = in_channels
 
         self.stem = nn.Sequential(
             ConvBlock(
@@ -317,7 +317,7 @@ class BasicDDRBackbone(nn.Module):
         @return: Dictionary of output channel counts for each layer.
         """
         output_shapes = {}
-        x = torch.randn(1, self.input_channels, 320, 320)
+        x = torch.randn(1, self._input_channels, 320, 320)
         x = self.stem(x)
         x = self.layer1(x)
         x = self.layer2(x)

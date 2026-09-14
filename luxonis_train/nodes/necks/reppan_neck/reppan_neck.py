@@ -96,7 +96,7 @@ class RepPANNeck(BaseNode):
                     "divisible by 32 to avoid 'RepPANNeck' crashing."
                 )
 
-        self.n_heads = n_heads
+        self._n_heads = n_heads
 
         channels_list = channels_list or [256, 128, 128, 256, 256, 512]
         n_repeats = n_repeats or [12, 12, 12, 12]
@@ -246,12 +246,12 @@ class RepPANNeck(BaseNode):
 
         Also scales the numbers based on offset
         """
-        if self.n_heads == 2:
+        if self._n_heads == 2:
             channels_list = [channels_list[i] for i in [0, 4, 5]]
             n_repeats = [n_repeats[0], n_repeats[3]]
-        elif self.n_heads == 3:
+        elif self._n_heads == 3:
             return channels_list, n_repeats
-        elif self.n_heads == 4:
+        elif self._n_heads == 4:
             channels_list = [
                 channels_list[0],
                 channels_list[1],
@@ -266,7 +266,7 @@ class RepPANNeck(BaseNode):
             n_repeats = [n_repeats[i] for i in [0, 1, 1, 2, 2, 3]]
         else:
             raise ValueError(
-                f"Specified number of heads ({self.n_heads}) not supported."
+                f"Specified number of heads ({self._n_heads}) not supported."
                 "The number of heads should be 2, 3 or 4."
             )
 

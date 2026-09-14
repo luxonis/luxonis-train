@@ -84,7 +84,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         )
 
         self.proto = SegProto(self.in_channels[0], n_proto, n_masks)
-        self.n_masks = n_masks
+        self._n_masks = n_masks
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
         prototypes = self.proto(inputs[0])
@@ -109,7 +109,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         mask_coefficients = torch.cat(
             [
-                coefficient.view(coefficient.size(0), self.n_masks, -1)
+                coefficient.view(coefficient.size(0), self._n_masks, -1)
                 for coefficient in mask_coefficients
             ],
             dim=2,
@@ -131,7 +131,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         preds = non_max_suppression(
             preds_combined,
             n_classes=self.n_classes,
-            conf_thres=self.conf_thres,
+            conf_thres=self._conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="xyxy",
             max_det=self.max_det,
@@ -168,8 +168,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
     @override
     def export_output_names(self) -> list[str] | None:
         return self.get_output_names(
-            [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
-            + [f"output{i + 1}_masks" for i in range(self.n_heads)]
+            [f"output{i + 1}_yolov8" for i in range(self._n_heads)]
+            + [f"output{i + 1}_masks" for i in range(self._n_heads)]
             + ["protos_output"]
         )  # export names are applied on sorted output names
 

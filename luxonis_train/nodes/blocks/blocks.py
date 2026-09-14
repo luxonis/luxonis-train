@@ -258,7 +258,7 @@ class ConvBlock(nn.Module):
         self.padding = padding
         self.dilation = dilation
         self.groups = groups
-        self.bias = bias
+        self._bias = bias
 
         self.conv = nn.Conv2d(
             in_channels,
@@ -390,10 +390,10 @@ class GeneralReparameterizableBlock(Reparameterizable):
         """
         super().__init__()
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.groups = groups
+        self._in_channels = in_channels
+        self._out_channels = out_channels
+        self._kernel_size = kernel_size
+        self._groups = groups
 
         self.skip_layer: nn.BatchNorm2d | None = None
         if out_channels == in_channels and stride in (1, (1, 1)):
@@ -404,23 +404,23 @@ class GeneralReparameterizableBlock(Reparameterizable):
         if use_scale_layer:
             padding_scale = scale_layer_padding or padding - kernel_size // 2
             self.scale_layer = ConvBlock(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
+                in_channels=self._in_channels,
+                out_channels=self._out_channels,
                 kernel_size=1,
                 stride=stride,
                 padding=padding_scale,
-                groups=self.groups,
+                groups=self._groups,
                 activation=False,
             )
 
         branches = [
             ConvBlock(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
+                in_channels=self._in_channels,
+                out_channels=self._out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=self.groups,
+                groups=self._groups,
                 activation=False,
             )
             for _ in range(n_branches)
@@ -510,7 +510,7 @@ class GeneralReparameterizableBlock(Reparameterizable):
 
         if self.scale_layer is not None:
             kernel_scale, bias_scale = self._fuse_conv(self.scale_layer)
-            pad = self.kernel_size // 2
+            pad = self._kernel_size // 2
             kernel += F.pad(kernel_scale, [pad, pad, pad, pad])
             bias += bias_scale
 
@@ -538,15 +538,23 @@ class GeneralReparameterizableBlock(Reparameterizable):
     def _fuse_batch_norm(
         self, module: nn.BatchNorm2d
     ) -> tuple[Tensor, Tensor]:
-        input_dim = self.in_channels // self.groups
+        input_dim = self._in_channels // self._groups
         kernel = torch.zeros(
-            (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
+            (
+                self._in_channels,
+                input_dim,
+                self._kernel_size,
+                self._kernel_size,
+            ),
             dtype=module.weight.dtype,
             device=module.weight.device,
         )
-        for i in range(self.in_channels):
+        for i in range(self._in_channels):
             kernel[
-                i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
+                i,
+                i % input_dim,
+                self._kernel_size // 2,
+                self._kernel_size // 2,
             ] = 1
 
         running_mean = module.running_mean
@@ -700,13 +708,13 @@ class BottleRep(nn.Module):
         self.conv_2 = module(
             in_channels=out_channels, out_channels=out_channels, **kwargs
         )
-        self.shortcut = in_channels == out_channels
+        self._shortcut = in_channels == out_channels
         self.alpha = nn.Parameter(torch.ones(1)) if weight else 1.0
 
     def forward(self, x: Tensor) -> Tensor:
         out = self.conv_1(x)
         out = self.conv_2(out)
-        return out + self.alpha * x if self.shortcut else out
+        return out + self.alpha * x if self._shortcut else out
 
 
 class SpatialPyramidPoolingBlock(nn.Module):
@@ -835,7 +843,7 @@ class UpscaleOnline(nn.Module):
     @typechecked
     def __init__(self, mode: str = "bilinear"):
         super().__init__()
-        self.mode = mode
+        self._mode = mode
 
     def forward(
         self, x: Tensor, output_height: int, output_width: int
@@ -851,7 +859,7 @@ class UpscaleOnline(nn.Module):
         @return: Upscaled tensor.
         """
         return F.interpolate(
-            x, size=[output_height, output_width], mode=self.mode
+            x, size=[output_height, output_width], mode=self._mode
         )
 
 
@@ -883,8 +891,8 @@ class DropPath(nn.Module):
     @typechecked
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
         super().__init__()
-        self.drop_prob = drop_prob
-        self.scale_by_keep = scale_by_keep
+        self._drop_prob = drop_prob
+        self._scale_by_keep = scale_by_keep
 
     def drop_path(self, x: Tensor) -> Tensor:
         """Drop paths (Stochastic Depth) per sample when applied in the
@@ -895,15 +903,15 @@ class DropPath(nn.Module):
         @return: Tensor with dropped paths based on the provided drop
             probability.
         """
-        keep_prob = 1 - self.drop_prob
+        keep_prob = 1 - self._drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
         random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
-        if keep_prob > 0.0 and self.scale_by_keep:
+        if keep_prob > 0.0 and self._scale_by_keep:
             random_tensor.div_(keep_prob)
         return x * random_tensor
 
     def forward(self, x: Tensor) -> Tensor:
-        if self.drop_prob == 0.0 or not self.training:
+        if self._drop_prob == 0.0 or not self.training:
             return x
         return self.drop_path(x)
 
