@@ -47,8 +47,8 @@ class OHEMLoss(BaseLoss):
             criterion = LOSSES.get(criterion)
 
         self.criterion = criterion(**kwargs, reduction="none")
-        self.ohem_ratio = ohem_ratio
-        self.ohem_threshold = -torch.log(torch.tensor(ohem_threshold))
+        self._ohem_ratio = ohem_ratio
+        self._ohem_threshold = -torch.log(torch.tensor(ohem_threshold))
 
         self._was_logged = False
 
@@ -62,12 +62,12 @@ class OHEMLoss(BaseLoss):
         if n_pixels == 0:
             return loss
 
-        ohem_num = int(n_pixels * self.ohem_ratio)
+        ohem_num = int(n_pixels * self._ohem_ratio)
         ohem_num = min(ohem_num, n_pixels - 1)
 
         loss, _ = loss.sort(descending=True)
-        if loss[ohem_num] > self.ohem_threshold:
-            loss = loss[loss > self.ohem_threshold]
+        if loss[ohem_num] > self._ohem_threshold:
+            loss = loss[loss > self._ohem_threshold]
         else:
             loss = loss[:ohem_num]
 

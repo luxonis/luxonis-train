@@ -110,8 +110,8 @@ def test_precision_recall_curve_uses_node_nms_defaults() -> None:
         confidence_thresholds=[0.0, 0.5, 1.0],
     )
 
-    assert metric.nms_iou_threshold == 0.45
-    assert metric.max_detections == 300
+    assert metric._nms_iou_threshold == 0.45
+    assert metric._max_detections == 300
 
 
 def test_precision_recall_curve_rejects_non_detection_head() -> None:
@@ -366,8 +366,8 @@ def test_nms_confidence_floor_is_positive_by_default(
     calls = _record_nms(monkeypatch)
 
     metric = PrecisionRecallCurve(node=make_node(), num_thresholds=11)
-    assert metric.lowest_threshold == 0.0
-    assert metric.nms_conf_threshold == pytest.approx(1e-3)
+    assert metric._lowest_threshold == 0.0
+    assert metric._nms_conf_threshold == pytest.approx(1e-3)
 
     metric.update(
         make_pre_nms([(10, 10, 30, 30, 0.9, 0)]),
@@ -384,7 +384,7 @@ def test_nms_confidence_floor_is_positive_by_default(
 def test_nms_confidence_floor_follows_lowest_threshold() -> None:
     metric = make_metric(thresholds=[0.4, 0.6, 0.8])
 
-    assert metric.nms_conf_threshold == pytest.approx(0.4)
+    assert metric._nms_conf_threshold == pytest.approx(0.4)
 
 
 def test_prediction_at_lowest_threshold_is_counted() -> None:
@@ -397,7 +397,7 @@ def test_prediction_at_lowest_threshold_is_counted() -> None:
     could be counted.
     """
     metric = make_metric(thresholds=[0.5, 0.75, 0.9], nms_conf_threshold=0.5)
-    assert metric.nms_conf_threshold == 0.5
+    assert metric._nms_conf_threshold == 0.5
 
     metric.update(
         make_pre_nms([(10, 10, 30, 30, 0.5, 0)]),

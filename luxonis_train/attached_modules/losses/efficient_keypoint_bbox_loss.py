@@ -72,19 +72,19 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             **kwargs,
         )
 
-        self.pos_weight = torch.tensor([viz_pw])
-        self.sigmas = get_sigmas(
+        self._pos_weight = torch.tensor([viz_pw])
+        self._sigmas = get_sigmas(
             sigmas=sigmas, n_keypoints=self.n_keypoints, caller_name=self.name
         )
-        self.area_factor = get_with_default(
+        self._area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53
         )
-        self.regr_kpts_loss_weight = regr_kpts_loss_weight
-        self.vis_kpts_loss_weight = vis_kpts_loss_weight
+        self._regr_kpts_loss_weight = regr_kpts_loss_weight
+        self._vis_kpts_loss_weight = vis_kpts_loss_weight
         self.register_buffer(
             "gt_kpts_scale",
             torch.tensor(
-                [self.original_img_size[1], self.original_img_size[0]],
+                [self._original_img_size[1], self._original_img_size[0]],
             ),
             persistent=False,
         )
@@ -129,7 +129,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             ..., :2
         ] * self.stride_tensor.clone().view(1, -1, 1, 1)
 
-        sigmas = self.sigmas.to(device)
+        sigmas = self._sigmas.to(device)
 
         (
             assigned_labels,
@@ -146,7 +146,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             scaled_raw_keypoints,
             batched_kpts,
             sigmas,
-            self.area_factor,
+            self._area_factor,
         )
 
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
@@ -182,7 +182,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
                 assigned_bboxes[mask_positive][:, 1]
                 - assigned_bboxes[mask_positive][:, 3]
             )
-            * self.area_factor
+            * self._area_factor
         )
 
         d = (gt_kpts[..., 0] - keypoints_raw[..., 0]).pow(2) + (
@@ -197,7 +197,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         visibility_loss = F.binary_cross_entropy_with_logits(
             keypoints_raw[..., 2],
             mask,
-            pos_weight=self.pos_weight.clone().to(device),
+            pos_weight=self._pos_weight.clone().to(device),
         )
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
@@ -216,15 +216,15 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             assigned_scores,
             mask_positive,
             reduction="sum",
-            iou_type=self.iou_type,
+            iou_type=self._iou_type,
             bbox_format="xyxy",
         )[0]
 
         loss = (
-            self.class_loss_weight * loss_cls
-            + self.iou_loss_weight * loss_iou
-            + regression_loss * self.regr_kpts_loss_weight
-            + visibility_loss * self.vis_kpts_loss_weight
+            self._class_loss_weight * loss_cls
+            + self._iou_loss_weight * loss_iou
+            + regression_loss * self._regr_kpts_loss_weight
+            + visibility_loss * self._vis_kpts_loss_weight
         )
 
         sub_losses = {

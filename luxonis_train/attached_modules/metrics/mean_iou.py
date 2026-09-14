@@ -35,9 +35,9 @@ class MIoU(BaseMetric):
         @param input_format: Format of the input.
         """
         super().__init__(**kwargs)
-        self.input_format = input_format
-        self.include_background = include_background
-        self.per_class = per_class
+        self._input_format = input_format
+        self._include_background = include_background
+        self._per_class = per_class
         self.metric = MeanIoU(
             num_classes=num_classes,
             include_background=include_background,
@@ -48,9 +48,9 @@ class MIoU(BaseMetric):
     def convert_format(
         self, tensor: Tensor, is_target: bool = False
     ) -> Tensor:
-        if self.input_format == "index":
+        if self._input_format == "index":
             return torch.argmax(tensor, dim=1)
-        if self.input_format == "one-hot" and not is_target:
+        if self._input_format == "one-hot" and not is_target:
             classes = torch.argmax(tensor, dim=1, keepdim=True)
             one_hot = torch.zeros_like(tensor)
             one_hot.scatter_(1, classes, 1)
@@ -60,9 +60,9 @@ class MIoU(BaseMetric):
     def update(self, predictions: Tensor, target: Tensor) -> None:
         converted_preds = self.convert_format(predictions, is_target=False)
 
-        if self.input_format == "index":
+        if self._input_format == "index":
             converted_target = self.convert_format(target, is_target=True)
-        elif self.input_format == "one-hot":
+        elif self._input_format == "one-hot":
             converted_preds = converted_preds.bool()
             converted_target = target.bool()
 
@@ -70,7 +70,7 @@ class MIoU(BaseMetric):
 
     def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         x = self.metric.compute()
-        if not self.per_class or x.ndim == 0 or x.numel() == 1:
+        if not self._per_class or x.ndim == 0 or x.numel() == 1:
             return x
 
         class_names = [
@@ -79,7 +79,7 @@ class MIoU(BaseMetric):
                 self.classes.items(), key=lambda item: item[1]
             )
         ]
-        if not self.include_background:
+        if not self._include_background:
             class_names = class_names[1:]
 
         return x.mean(), {

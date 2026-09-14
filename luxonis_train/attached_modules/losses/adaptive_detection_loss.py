@@ -66,51 +66,51 @@ class AdaptiveDetectionLoss(BaseLoss):
         """
         super().__init__(**kwargs)
 
-        self.iou_type: IoUType = iou_type
-        self.reduction = reduction
-        self.stride = self.node.stride
-        self.grid_cell_size = self.node.grid_cell_size
-        self.grid_cell_offset = self.node.grid_cell_offset
-        self.original_img_size = self.original_in_shape[1:]
+        self._iou_type: IoUType = iou_type
+        self._reduction = reduction
+        self._stride = self.node.stride
+        self._grid_cell_size = self.node.grid_cell_size
+        self._grid_cell_offset = self.node.grid_cell_offset
+        self._original_img_size = self.original_in_shape[1:]
 
-        self.n_warmup_epochs = n_warmup_epochs
+        self._n_warmup_epochs = n_warmup_epochs
         self.atss_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
         self.tal_assigner = TaskAlignedAssigner(
             topk=13,
             n_classes=self.n_classes,
             alpha=1.0,
             beta=6.0,
-            strides=self.stride,
+            strides=self._stride,
             skip_stal=skip_stal,
         )
 
         if per_class_weights is not None:
             if len(per_class_weights) == self.n_classes:
-                self.per_class_weights = torch.tensor(per_class_weights)
+                self._per_class_weights = torch.tensor(per_class_weights)
             else:
                 logger.warning(
                     f"Incorrect per_class_weights length. "
                     f"Expected {self.n_classes} but got "
                     f"{len(per_class_weights)}. Setting to None."
                 )
-                self.per_class_weights = None
+                self._per_class_weights = None
         else:
-            self.per_class_weights = None
+            self._per_class_weights = None
 
         self.varifocal_loss = VarifocalLoss(
-            per_class_weights=self.per_class_weights
+            per_class_weights=self._per_class_weights
         )
-        self.class_loss_weight = class_loss_weight
-        self.iou_loss_weight = iou_loss_weight
+        self._class_loss_weight = class_loss_weight
+        self._iou_loss_weight = iou_loss_weight
 
         self.register_buffer(
             "gt_bboxes_scale",
             torch.tensor(
                 [
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                    self.original_img_size[1],
-                    self.original_img_size[0],
+                    self._original_img_size[1],
+                    self._original_img_size[0],
+                    self._original_img_size[1],
+                    self._original_img_size[0],
                 ],
             ),
             persistent=False,
@@ -164,12 +164,13 @@ class AdaptiveDetectionLoss(BaseLoss):
             assigned_scores,
             mask_positive,
             reduction="sum",
-            iou_type=self.iou_type,
+            iou_type=self._iou_type,
             bbox_format="xyxy",
         )[0]
 
         loss = (
-            self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+            self._class_loss_weight * loss_cls
+            + self._iou_loss_weight * loss_iou
         )
 
         sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach()}
@@ -185,9 +186,9 @@ class AdaptiveDetectionLoss(BaseLoss):
                 stride_tensor,
             ) = anchors_for_fpn_features(
                 features,
-                self.stride,
-                self.grid_cell_size,
-                self.grid_cell_offset,
+                self._stride,
+                self._grid_cell_size,
+                self._grid_cell_offset,
                 multiply_with_stride=True,
             )
             self.register_buffer("anchors", anchors, persistent=False)
@@ -220,7 +221,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        if self.current_epoch < self.n_warmup_epochs:
+        if self.current_epoch < self._n_warmup_epochs:
             return self.atss_assigner(
                 self.anchors,
                 self.n_anchors_list,
@@ -268,7 +269,7 @@ class AdaptiveDetectionLoss(BaseLoss):
             return
 
         logger.info(
-            f"Switching to Task Aligned Assigner after {self.n_warmup_epochs} warmup epochs.",
+            f"Switching to Task Aligned Assigner after {self._n_warmup_epochs} warmup epochs.",
             stacklevel=2,
         )
         self._logged_assigner_change = True
@@ -294,27 +295,27 @@ class VarifocalLoss(nn.Module):
         """
         super().__init__()
 
-        self.alpha = alpha
-        self.gamma = gamma
-        self.per_class_weights = per_class_weights
+        self._alpha = alpha
+        self._gamma = gamma
+        self._per_class_weights = per_class_weights
 
     def forward(
         self, pred_score: Tensor, target_score: Tensor, label: Tensor
     ) -> Tensor:
         weight = (
-            self.alpha * pred_score.pow(self.gamma) * (1 - label)
+            self._alpha * pred_score.pow(self._gamma) * (1 - label)
             + target_score * label
         )
 
-        if self.per_class_weights is not None:
+        if self._per_class_weights is not None:
             if (
-                self.per_class_weights.device != pred_score.device
+                self._per_class_weights.device != pred_score.device
             ):  # pragma: no cover
-                self.per_class_weights = self.per_class_weights.to(
+                self._per_class_weights = self._per_class_weights.to(
                     pred_score.device
                 )
             # ensure correct broadcasting (batches, anchors, classes)
-            weight = weight * self.per_class_weights.view(1, 1, -1)
+            weight = weight * self._per_class_weights.view(1, 1, -1)
 
         with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(

@@ -86,7 +86,9 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             target_boundingbox, batch_size
         )
 
-        pred_bboxes = self.decode_bbox(self.anchor_points_strided, pred_distri)
+        pred_bboxes = self.decode_bbox(
+            self._anchor_points_strided, pred_distri
+        )
 
         gt_labels = target_boundingbox[:, :, :1]
         gt_xyxy = target_boundingbox[:, :, 1:]
@@ -95,10 +97,10 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         _, assigned_bboxes, assigned_scores, mask_positive, assigned_gt_idx = (
             self.assigner(
                 pred_scores.detach().sigmoid(),
-                (pred_bboxes.detach() * self.stride_tensor).type(
+                (pred_bboxes.detach() * self._stride_tensor).type(
                     gt_xyxy.dtype
                 ),
-                self.anchor_points,
+                self._anchor_points,
                 gt_labels,
                 gt_xyxy,
                 mask_gt,
@@ -113,8 +115,8 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             loss_iou, loss_dfl = self.bbox_loss(
                 pred_distri,
                 pred_bboxes,
-                self.anchor_points_strided,
-                assigned_bboxes / self.stride_tensor,
+                self._anchor_points_strided,
+                assigned_bboxes / self._stride_tensor,
                 assigned_scores,
                 max_assigned_scores_sum,
                 mask_positive,
@@ -134,10 +136,10 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         )
 
         loss = (
-            self.class_loss_weight * loss_cls
-            + self.bbox_loss_weight * loss_iou
-            + self.dfl_loss_weight * loss_dfl
-            + self.bbox_loss_weight * loss_seg
+            self._class_loss_weight * loss_cls
+            + self._bbox_loss_weight * loss_iou
+            + self._dfl_loss_weight * loss_dfl
+            + self._bbox_loss_weight * loss_seg
         )
         sub_losses = {
             "class": loss_cls.detach(),
