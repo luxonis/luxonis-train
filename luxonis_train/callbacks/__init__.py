@@ -1,4 +1,28 @@
-__docformat__ = "epytext"
+"""Callbacks that run at points in the training loop.
+
+An entry of ``trainer.callbacks`` in the config names a callback of the
+`CALLBACKS` registry. Its ``params`` go to the constructor. The run
+does not build an entry whose ``active`` is false.
+
+A run gets these callbacks without an entry in the config:
+
+- `GracefulInterruptCallback` and `FailOnNoTrainBatches`.
+- `LuxonisRichProgressBar` when ``rich_logging`` is true, and
+  `LuxonisTQDMProgressBar` when it is false.
+- `TrainingManager` and `LuxonisModelSummary`.
+- A ``ModelCheckpoint`` on the lowest validation loss, and a second one
+  on the main metric when the config has one.
+- `AIMETCallback` when ``exporter.aimet.active`` is true.
+- A ``GradientAccumulationScheduler`` when
+  ``trainer.accumulate_grad_batches`` is set and no such callback is in
+  the list.
+
+With ``trainer.smart_cfg_auto_populate``, the config also adds the
+checkpoint upload, testing, and conversion callbacks when they are
+missing. `ConvertOnTrainEnd` replaces separate export and archive
+callbacks when it is configured explicitly.
+
+"""
 
 from lightning.pytorch.callbacks import (
     DeviceStatsMonitor,
