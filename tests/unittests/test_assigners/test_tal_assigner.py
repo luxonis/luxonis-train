@@ -7,12 +7,12 @@ def test_init():
     assigner = TaskAlignedAssigner(
         n_classes=80, topk=13, alpha=1.0, beta=6.0, eps=1e-9
     )
-    assert assigner.n_classes == 80
-    assert assigner.topk == 13
-    assert assigner.alpha == 1.0
-    assert assigner.beta == 6.0
-    assert assigner.eps == 1e-9
-    assert assigner.skip_stal is True
+    assert assigner._n_classes == 80
+    assert assigner._topk == 13
+    assert assigner._alpha == 1.0
+    assert assigner._beta == 6.0
+    assert assigner._eps == 1e-9
+    assert assigner._skip_stal is True
 
 
 def test_select_candidates_in_gts_stal_expands_small_boxes():
@@ -23,8 +23,8 @@ def test_select_candidates_in_gts_stal_expands_small_boxes():
     mask_gt = torch.tensor([[[1.0]]])
 
     assigner = TaskAlignedAssigner(n_classes=1, topk=1)
-    assigner.bs = 1
-    assigner.n_max_boxes = 1
+    assigner._bs = 1
+    assigner._n_max_boxes = 1
     baseline = assigner._select_candidates_in_gts(
         anchor_points, gt_bboxes, mask_gt
     )
@@ -32,8 +32,8 @@ def test_select_candidates_in_gts_stal_expands_small_boxes():
     stal_assigner = TaskAlignedAssigner(
         n_classes=1, topk=1, strides=[8, 16, 32], skip_stal=False
     )
-    stal_assigner.bs = 1
-    stal_assigner.n_max_boxes = 1
+    stal_assigner._bs = 1
+    stal_assigner._n_max_boxes = 1
     expanded = stal_assigner._select_candidates_in_gts(
         anchor_points, gt_bboxes, mask_gt
     )
@@ -92,8 +92,8 @@ def test_get_alignment_metric():
     assigner = TaskAlignedAssigner(
         n_classes=n_classes, topk=13, alpha=1.0, beta=6.0, eps=1e-9
     )
-    assigner.bs = pred_scores.size(0)
-    assigner.n_max_boxes = gt_bboxes.size(1)
+    assigner._bs = pred_scores.size(0)
+    assigner._n_max_boxes = gt_bboxes.size(1)
 
     align_metric, overlaps = assigner._get_alignment_metric(
         pred_scores, pred_bboxes, gt_labels, gt_bboxes
@@ -144,8 +144,8 @@ def test_get_final_assignments():
     mask_pos_sum = torch.randint(0, 2, (batch_size, n_anchors))
 
     assigner = TaskAlignedAssigner(n_classes=n_classes, topk=13)
-    assigner.bs = batch_size  # Set batch size
-    assigner.n_max_boxes = gt_bboxes.size(1)
+    assigner._bs = batch_size  # Set batch size
+    assigner._n_max_boxes = gt_bboxes.size(1)
 
     (assigned_labels, assigned_bboxes, assigned_scores) = (
         assigner._get_final_assignments(

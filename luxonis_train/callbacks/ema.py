@@ -44,9 +44,9 @@ class ModelEma(nn.Module):
         for p in self.state_dict_ema.values():
             p.requires_grad = False
         self.updates = 0
-        self.decay = decay
-        self.use_dynamic_decay = use_dynamic_decay
-        self.decay_tau = decay_tau
+        self._decay = decay
+        self._use_dynamic_decay = use_dynamic_decay
+        self._decay_tau = decay_tau
 
     def update(self, model: pl.LightningModule) -> None:
         """Update the stored parameters using a moving average.
@@ -61,12 +61,12 @@ class ModelEma(nn.Module):
         with torch.no_grad():
             self.updates += 1
 
-            if self.use_dynamic_decay:
-                decay = self.decay * (
-                    1 - math.exp(-self.updates / self.decay_tau)
+            if self._use_dynamic_decay:
+                decay = self._decay * (
+                    1 - math.exp(-self.updates / self._decay_tau)
                 )
             else:
-                decay = self.decay
+                decay = self._decay
 
             model_state_dict = model.state_dict()
             ema_lerp_values = []
@@ -112,14 +112,14 @@ class EMACallback(pl.Callback):
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
         """
-        self.decay = decay
-        self.use_dynamic_decay = use_dynamic_decay
-        self.decay_tau = decay_tau
+        self._decay = decay
+        self._use_dynamic_decay = use_dynamic_decay
+        self._decay_tau = decay_tau
 
         self._ema = None
-        self.loaded_ema_state_dict = None
-        self.loaded_ema_updates = None
-        self.collected_state_dict = None
+        self._loaded_ema_state_dict = None
+        self._loaded_ema_updates = None
+        self._collected_state_dict = None
 
     @staticmethod
     def _format_key_list(keys: set[str]) -> str:
@@ -144,11 +144,11 @@ class EMACallback(pl.Callback):
         """
         self._ema = ModelEma(
             pl_module,
-            decay=self.decay,
-            use_dynamic_decay=self.use_dynamic_decay,
-            decay_tau=self.decay_tau,
+            decay=self._decay,
+            use_dynamic_decay=self._use_dynamic_decay,
+            decay_tau=self._decay_tau,
         )
-        if self.loaded_ema_state_dict is not None:
+        if self._loaded_ema_state_dict is not None:
             target_device = next(
                 iter(self._ema.state_dict_ema.values())
             ).device
@@ -157,7 +157,7 @@ class EMACallback(pl.Callback):
                 current_state_dict
             )
             comparable_loaded_state_dict = filter_checkpoint_state_dict(
-                self.loaded_ema_state_dict
+                self._loaded_ema_state_dict
             )
             current_keys = set(comparable_current_state_dict)
             loaded_keys = set(comparable_loaded_state_dict)
@@ -196,10 +196,10 @@ class EMACallback(pl.Callback):
                 ):
                     current_state_dict[key] = value.to(target_device)
             self._ema.state_dict_ema = current_state_dict
-            if self.loaded_ema_updates is not None:
-                self._ema.updates = self.loaded_ema_updates
-            self.loaded_ema_state_dict = None
-            self.loaded_ema_updates = None
+            if self._loaded_ema_updates is not None:
+                self._ema.updates = self._loaded_ema_updates
+            self._loaded_ema_state_dict = None
+            self._loaded_ema_updates = None
 
     def on_train_batch_end(
         self,
@@ -343,10 +343,10 @@ class EMACallback(pl.Callback):
                 "ema_state_dict", state_dict.get("state_dict")
             )
             if isinstance(loaded_state_dict, Mapping):
-                self.loaded_ema_state_dict = loaded_state_dict
+                self._loaded_ema_state_dict = loaded_state_dict
             updates = state_dict.get("updates")
             if isinstance(updates, int):
-                self.loaded_ema_updates = updates
+                self._loaded_ema_updates = updates
 
     def _swap_to_ema_weights(self, pl_module: pl.LightningModule) -> None:
         """Swap the current model weights with the EMA weights.
@@ -355,7 +355,7 @@ class EMACallback(pl.Callback):
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):
             return
-        self.collected_state_dict = deepcopy(pl_module.state_dict())
+        self._collected_state_dict = deepcopy(pl_module.state_dict())
         if self._ema is not None:
             pl_module.load_state_dict(self._ema.state_dict_ema)
 
@@ -367,5 +367,5 @@ class EMACallback(pl.Callback):
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):
             return
-        if self.collected_state_dict is not None:
-            pl_module.load_state_dict(self.collected_state_dict)
+        if self._collected_state_dict is not None:
+            pl_module.load_state_dict(self._collected_state_dict)

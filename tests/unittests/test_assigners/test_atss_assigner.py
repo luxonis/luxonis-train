@@ -5,8 +5,8 @@ from luxonis_train.assigners import ATSSAssigner
 
 def test_init():
     assigner = ATSSAssigner(n_classes=80, topk=9)
-    assert assigner.n_classes == 80
-    assert assigner.topk == 9
+    assert assigner._n_classes == 80
+    assert assigner._topk == 9
 
 
 def test_forward():
@@ -78,9 +78,9 @@ def test_get_positive_samples():
     topk = 2
 
     assigner = ATSSAssigner(n_classes=80, topk=topk)
-    assigner.bs = batch_size
-    assigner.n_max_boxes = n_max_boxes
-    assigner.n_anchors = n_anchors
+    assigner._bs = batch_size
+    assigner._n_max_boxes = n_max_boxes
+    assigner._n_anchors = n_anchors
     is_in_topk = torch.rand(batch_size, n_max_boxes, n_anchors)
     topk_idxs = torch.randint(0, n_anchors, (batch_size, n_max_boxes, topk))
     overlaps = torch.rand(batch_size, n_max_boxes, n_anchors)
@@ -97,9 +97,9 @@ def test_get_final_assignments():
     n_classes = 80
 
     assigner = ATSSAssigner(n_classes=n_classes, topk=9)
-    assigner.bs = batch_size
-    assigner.n_anchors = n_anchors
-    assigner.n_max_boxes = n_max_boxes
+    assigner._bs = batch_size
+    assigner._n_anchors = n_anchors
+    assigner._n_max_boxes = n_max_boxes
 
     gt_labels = torch.randint(0, n_classes, (batch_size, n_max_boxes, 1))
     gt_bboxes = torch.rand(batch_size, n_max_boxes, 4)

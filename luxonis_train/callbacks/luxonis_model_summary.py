@@ -13,7 +13,7 @@ class LuxonisModelSummary(RichModelSummary):
     def __init__(self, rich: bool = True, **kwargs):
         super().__init__(**kwargs)
 
-        self.rich = rich
+        self._rich = rich
         self._log_buffer = StringIO()
         self._log_console = Console(
             file=self._log_buffer, force_terminal=False
@@ -25,7 +25,7 @@ class LuxonisModelSummary(RichModelSummary):
         *args,
         **kwargs,
     ) -> None:
-        if self.rich:
+        if self._rich:
             self._rich_summarize(*args, **kwargs)
         else:
             self._regular_summarize(*args, **kwargs)

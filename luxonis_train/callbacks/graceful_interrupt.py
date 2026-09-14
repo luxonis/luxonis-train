@@ -24,8 +24,8 @@ class GracefulInterruptCallback(pl.Callback):
         self, save_dir: Path, tracker: LuxonisTrackerPL | None = None
     ):
         super().__init__()
-        self.save_dir = Path(save_dir)
-        self.tracker = tracker
+        self._save_dir = Path(save_dir)
+        self._tracker = tracker
         self._interrupted_once = False
         self._interrupted = False
         self._trainer: pl.Trainer | None = None
@@ -81,7 +81,7 @@ class GracefulInterruptCallback(pl.Callback):
             self._trainer.should_stop = True
 
     def _save_interrupt_checkpoint(self) -> None:
-        ckpt_path = self.save_dir / "resume.ckpt"
+        ckpt_path = self._save_dir / "resume.ckpt"
         logger.warning(f"Saving interrupt checkpoint to: {ckpt_path}")
 
         if self._trainer is None:
@@ -96,11 +96,11 @@ class GracefulInterruptCallback(pl.Callback):
             logger.exception("Failed to save interrupt checkpoint.")
 
         try:
-            if self.tracker:
-                self.tracker.upload_artifact(
+            if self._tracker:
+                self._tracker.upload_artifact(
                     ckpt_path, typ="checkpoints", name="resume.ckpt"
                 )
-                self.tracker._finalize(status="failed")
+                self._tracker._finalize(status="failed")
         except Exception:
             logger.exception(
                 "Failed to upload checkpoint or finalize tracker."
