@@ -1,3 +1,7 @@
+"""The connectionist temporal classification (CTC) loss, which trains a
+sequence model without an alignment between the input and the text.
+"""
+
 import torch
 from torch import Tensor, nn
 
@@ -7,32 +11,130 @@ from .base_loss import BaseLoss
 
 
 class CTCLoss(BaseLoss):
-    """CTC loss with optional focal loss weighting."""
+    r"""CTC loss for OCR, with an optional focal factor.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): :math:`\left[B, T, C\right]`
+          logits, class ``0`` is blank
+        - ``target`` (``Tensor``): :math:`\left[B, L\right]` Unicode
+          code points of the text, ``0``-padded
+
+    Outputs:
+        - ``Tensor``: scalar
+
+    Formula:
+        The encoder of the node maps each character of ``target`` to its
+        class index. For image :math:`i`, :math:`\ell_i` is the negative
+        log-likelihood of its encoded text. ``nn.CTCLoss`` sums the
+        likelihood over all alignments of the :math:`T` log-softmax
+        predictions, with class ``0`` as blank. With ``use_focal_loss``,
+        the loss is
+
+        .. math::
+
+            L = \frac{1}{B} \sum_{i=1}^{B}
+            \ell_i \left( 1 - e^{-\ell_i} \right)^2
+
+        Without ``use_focal_loss``, :math:`L` is the mean of the
+        :math:`\ell_i`.
+
+    References:
+        - Source: Wraps `torch.nn.CTCLoss
+          <https://docs.pytorch.org/docs/stable/generated/torch.nn.CTCLoss.html>`_
+          (BSD-3-Clause).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The loss declares no ``supported_tasks`` and takes its task from
+        the node. Its ``node`` annotation limits it to `OCRCTCHead`, and
+        `BaseAttachedModule` raises `IncompatibleError` for another
+        node. The loss does not detach the focal factor, so the gradient
+        also flows through it. ``nn.CTCLoss`` keeps ``zero_infinity``
+        off, so a text that no alignment of length :math:`T` can produce
+        gives an infinite loss.
+
+    Example:
+        Attached to a ``OCRCTCHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: OCRCTCHead
+              inputs: [SVTRNeck]
+              losses:
+                - name: CTCLoss
+
+    Compatible with:
+        - Used by: `OCRRecognitionModel`
+        - Nodes: `OCRCTCHead`
+
+    """
 
     node: OCRCTCHead
 
     def __init__(self, use_focal_loss: bool = True, **kwargs):
-        """Initialize the CTC loss with optional focal loss support.
+        r"""Initialize the loss and the wrapped ``nn.CTCLoss``.
 
-        @type use_focal_loss: bool
-        @param use_focal_loss: Whether to apply focal loss weighting to
-            the CTC loss. Defaults to True.
+        The wrapped loss uses class ``0`` as blank and returns the loss
+        of each image. `forward` takes the mean over the batch.
+
+        Args:
+            use_focal_loss (bool): Whether to multiply the loss
+                :math:`\ell_i` of each image by
+                :math:`(1 - e^{-\ell_i})^2`, as the class formula
+                describes.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+
         """
         super().__init__(**kwargs)
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
         self._use_focal_loss = use_focal_loss
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Compute the CTC loss, optionally applying focal loss.
+        r"""Compute the CTC loss of a batch of text predictions.
 
-        @type predictions: Tensor
-        @param predictions: Network predictions of shape (B, T, C),
-            where T is the sequence length, B is the batch size, and C
-            is the number of classes.
-        @type target: Tensor
-        @param target: Encoded target sequences.
-        @rtype: Tensor
-        @return: The computed loss as a scalar tensor.
+        The method encodes ``target`` with the encoder of the node and
+        moves the result to the device of ``predictions``. The encoder
+        drops a character that is not in the alphabet. When
+        ``ignore_unknown`` of the node is ``False``, it maps the
+        character to ``<UNK>`` instead. The length of each text is its
+        number of non-zero class indices. Every prediction sequence has
+        the full length ``T``.
+
+        Args:
+            predictions (``Tensor``): Logits of shape ``[B, T, C]``, the
+                main output of the node. ``T`` is the sequence length,
+                and ``C`` is the number of classes, with class ``0`` as
+                blank.
+            target (``Tensor``): The ``metadata/text`` label of shape
+                ``[B, L]``. Each value is the Unicode code point of one
+                character, and ``0`` pads the shorter texts.
+
+        Returns:
+            ``Tensor``: The mean loss over the batch, as a scalar.
+
+        Example:
+            The example has one time step with equal logits for the
+            blank and the classes of ``"a"`` and ``"b"``. The text
+            ``"a"`` has one alignment with the probability :math:`1/3`,
+            so :math:`\ell = \ln 3`. The focal factor is
+            :math:`(1 - 1/3)^2 = 4/9`:
+
+            >>> import torch
+            >>> from luxonis_train.nodes import OCRCTCHead
+            >>> head = OCRCTCHead(
+            ...     alphabet=["a", "b"],
+            ...     input_shapes=[{"features": [torch.Size([1, 8, 1, 4])]}],
+            ... )
+            >>> predictions = torch.zeros(1, 1, 3)
+            >>> target = torch.tensor([[ord("a")]])
+            >>> loss = CTCLoss(use_focal_loss=False, node=head)
+            >>> round(loss(predictions, target).item(), 4)
+            1.0986
+            >>> focal_loss = CTCLoss(node=head)
+            >>> round(focal_loss(predictions, target).item(), 4)
+            0.4883
+
         """
         target = self.node.encoder(target).to(predictions.device)
         target_lengths = torch.sum(target != 0, dim=1)

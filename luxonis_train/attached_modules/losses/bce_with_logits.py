@@ -1,3 +1,5 @@
+"""Binary cross entropy over raw logits."""
+
 from typing import Literal
 
 import torch
@@ -9,13 +11,67 @@ from .base_loss import BaseLoss
 
 
 class BCEWithLogitsLoss(BaseLoss):
-    """Combines a L{nn.Sigmoid} layer and the L{nn.BCELoss} in one
-    single class.
+    r"""Binary cross entropy on logits, with the sigmoid inside the loss.
 
-    This version is more numerically stable than using a plain
-    C{Sigmoid} followed by a {BCELoss} as, by combining the operations
-    into one layer, we take advantage of the log-sum-exp trick for
-    numerical stability.
+    The loss combines the sigmoid and the binary cross entropy in one
+    step. This is more numerically stable than a ``Sigmoid`` layer
+    followed by ``BCELoss``, because the combined step uses the
+    log-sum-exp trick.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): ``[B, C, ...]`` logits
+        - ``target`` (``Tensor``): same shape, float values in
+          ``[0, 1]``
+
+    Outputs:
+        - ``Tensor``: scalar, or ``[B, C, ...]`` when ``reduction`` is
+          ``"none"``
+
+    Formula:
+        For a logit :math:`x`, its target :math:`y`, and the sigmoid
+        :math:`\sigma`, the loss of one element is
+
+        .. math::
+
+            \ell = -w \left[ p \, y \log \sigma(x)
+            + (1 - y) \log \left( 1 - \sigma(x) \right) \right]
+
+        Here :math:`w` comes from ``weight`` and :math:`p` from
+        ``pos_weight``. Both are ``1`` when they are not set.
+        ``reduction`` then takes the mean or the sum over all elements,
+        or keeps the loss of each element.
+
+    References:
+        - Source: Wraps `torch.nn.BCEWithLogitsLoss
+          <https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html>`_
+          (BSD-3-Clause).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The class wraps ``nn.BCEWithLogitsLoss``. `forward` compares the
+        shapes of the two tensors first and raises ``RuntimeError`` when
+        they differ.
+
+    Example:
+        Attached to a ``DDRNetSegmentationHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: DDRNetSegmentationHead
+              inputs: [DDRNet]
+              losses:
+                - name: BCEWithLogitsLoss
+
+    Compatible with:
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
+
     """
 
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
@@ -27,33 +83,33 @@ class BCEWithLogitsLoss(BaseLoss):
         pos_weight: Tensor | None = None,
         **kwargs,
     ):
-        """
+        """Initialize the loss and the wrapped ``nn.BCEWithLogitsLoss``.
 
-        @type weight: list[float] | None
-        @param weight: a manual rescaling weight given to the loss of
-            each batch element. If given, has to be a list of length
-            C{nbatch}. Defaults to C{None}.
-        @type reduction: Literal["none", "mean", "sum"]
-        @param reduction: Specifies the reduction to apply to the
-            output: C{"none"} | C{"mean"} | C{"sum"}. C{"none"}: no
-            reduction will be applied, C{"mean"}: the sum of the output
-            will be divided by the number of elements in the output,
-            C{"sum"}: the output will be summed. Note: C{size_average}
-            and C{reduce} are in the process of being deprecated, and in
-            the meantime, specifying either of those two args will
-            override C{reduction}. Defaults to C{"mean"}.
-        @type pos_weight: Tensor | None
-        @param pos_weight: a weight of positive examples to be
-            broadcasted with target. Must be a tensor with equal size
-            along the class dimension to the number of classes. Pay
-            close attention to PyTorch's broadcasting semantics in order
-            to achieve the desired operations. For a target of size [B,
-            C, H, W] (where B is batch size) pos_weight of size [B, C,
-            H, W] will apply different pos_weights to each element of
-            the batch or [C, H, W] the same pos_weights across the
-            batch. To apply the same positive weight along all spacial
-            dimensions for a 2D multi-class target [C, H, W] use: [C, 1,
-            1]. Defaults to C{None}.
+        Args:
+            weight (list[float] | None): Factors for the loss of the
+                elements. The list becomes a tensor that broadcasts
+                against the loss of shape ``[B, C, ...]``, aligned at
+                the last dimension. For a target of shape ``[B, C]``, a
+                list of ``C`` values gives one factor to each class. For
+                a target of shape ``[B, C, H, W]``, the list aligns with
+                ``W``, not with the classes. ``None`` gives every
+                element the factor ``1``.
+            reduction (``Literal["none", "mean", "sum"]``): How to
+                reduce the loss of the elements:
+
+                - ``"none"``: return the loss of each element.
+                - ``"mean"``: return the mean over all elements.
+                - ``"sum"``: return the sum over all elements.
+
+            pos_weight (``Tensor | None``): Factors for the positive
+                term of the loss. The tensor broadcasts against the
+                target, aligned at the last dimension. For a target of
+                shape ``[B, C, H, W]``, a tensor of shape ``[C, 1, 1]``
+                gives one factor to each class. ``None`` gives the
+                factor ``1``. A list raises ``TypeError``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+
         """
         super().__init__(**kwargs)
         self.criterion = nn.BCEWithLogitsLoss(
@@ -63,14 +119,44 @@ class BCEWithLogitsLoss(BaseLoss):
         )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Compute the BCE loss from logits.
+        """Compute the binary cross entropy between logits and targets.
 
-        @type predictions: Tensor
-        @param predictions: Network predictions of shape (N, C, ...)
-        @type target: Tensor
-        @param target: A tensor of the same shape as predictions.
-        @rtype: Tensor
-        @return: A scalar tensor.
+        Args:
+            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
+                the main output of the node.
+            target (``Tensor``): Float targets in ``[0, 1]``, of the
+                same shape as ``predictions``. The ``classification``
+                label has the shape ``[B, C]``, and the ``segmentation``
+                label has the shape ``[B, C, H, W]``.
+
+        Returns:
+            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
+            reductions. For ``"none"``, the loss of each element, of
+            shape ``[B, C, ...]``.
+
+        Raises:
+            RuntimeError: When ``predictions`` and ``target`` have
+                different shapes.
+
+        Examples:
+            A confident correct logit gives a small loss, and a
+            confident wrong logit gives a large loss:
+
+            >>> import torch
+            >>> loss = BCEWithLogitsLoss(reduction="none")
+            >>> logits = torch.tensor([[2.0, -2.0]])
+            >>> target = torch.tensor([[1.0, 1.0]])
+            >>> values = loss(logits, target)[0].tolist()
+            >>> [round(value, 4) for value in values]
+            [0.1269, 2.1269]
+
+            The target must have the shape of the logits:
+
+            >>> BCEWithLogitsLoss()(logits, torch.tensor([1.0, 1.0]))
+            Traceback (most recent call last):
+                ...
+            RuntimeError: Target tensor dimension (torch.Size([2])) and preds tensor dimension (torch.Size([1, 2])) should be the same.
+
         """
         if predictions.shape != target.shape:
             raise RuntimeError(

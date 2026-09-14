@@ -1,3 +1,5 @@
+"""Draws the points a FOMO head predicts, and the target boxes."""
+
 import torch
 from torch import Tensor
 from torchvision.utils import draw_keypoints
@@ -9,11 +11,72 @@ from .keypoint_visualizer import KeypointVisualizer
 
 
 class FOMOVisualizer(BBoxVisualizer):
+    r"""Visualize FOMO heatmap detections as points and optional boxes.
+
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/fomo_parking_lot.png
+       :width: 507px
+       :height: 284px
+       :loading: embed
+
+       The predicted points in a parking lot. Each class has its own
+       color.
+
+    Inputs:
+        - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
+          :math:`\left[B, 3, H, W\right]`
+        - ``keypoints`` (``list[Tensor]``): :math:`\left[K_i, 1,
+          4\right]` per image, ``(x, y, prob, class)``, pixels
+        - ``target_boundingbox`` (``Tensor | None``): :math:`\left[N,
+          6\right]`, ``[batch, class, x, y, w, h]``, ``xywh`` normalized
+
+    Outputs:
+        - ``Tensor | tuple[Tensor, Tensor]``: :math:`\left[B, 3, H,
+          W\right]`, a pair when targets are given
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        Reuses bounding box target drawing and keypoint rendering for
+        decoded FOMO predictions.
+
+    Example:
+        Attached to a ``FOMOHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: FOMOHead
+              inputs: [EfficientRep]
+              visualizers:
+                - name: FOMOVisualizer
+
+    Compatible with:
+        - Used by: `FOMOModel`
+        - Nodes: `FOMOHead`
+
+    """
+
     supported_tasks = [Tasks.FOMO]
 
     def __init__(
         self, visibility_threshold: float = 0.5, radius: int = 5, **kwargs
     ):
+        """Initialize the visualizer and store the point options.
+
+        Args:
+            visibility_threshold (float): Minimum probability of a
+                point. `draw_predictions_per_class` skips a point below
+                it. `forward` ignores it for points with three values.
+                Defaults to ``0.5``.
+            radius (int): Radius of a drawn point, in pixels. Defaults
+                to ``5``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BBoxVisualizer`, such as ``labels``, ``colors``,
+                ``scale``, and ``node``.
+
+        """
         super().__init__(**kwargs)
         self._visibility_threshold = visibility_threshold
         self._radius = radius
@@ -25,6 +88,50 @@ class FOMOVisualizer(BBoxVisualizer):
         keypoints: list[Tensor],
         target_boundingbox: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
+        """Draw the predicted points, and the target boxes when given.
+
+        When every tensor in ``keypoints`` has three values per point,
+        the method draws the points in red with
+        `KeypointVisualizer.draw_predictions` and ``radius``. That call
+        ignores ``visibility_threshold`` and the ``scale`` factor. It
+        draws a point with a probability of at least ``0.5`` at its
+        coordinates, and any other point at the top-left corner.
+        Otherwise the method calls `draw_predictions_per_class`, which
+        colors the points by class and applies ``visibility_threshold``
+        and the ``scale`` factor. `FOMOHead` always produces four values
+        per point, so its output takes the second path.
+
+        Args:
+            prediction_canvas (``Tensor``): ``uint8`` images of shape
+                ``[B, 3, H, W]`` to draw the points on.
+            target_canvas (``Tensor``): ``uint8`` images of shape
+                ``[B, 3, H, W]`` to draw the target boxes on.
+            keypoints (``list[Tensor]``): One tensor per image, of shape
+                ``[K_i, 1, 4]`` with rows ``(x, y, prob, class)`` in
+                pixels, or of shape ``[K_i, 1, 3]`` without the class.
+            target_boundingbox (``Tensor | None``): Boxes of shape
+                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
+                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
+                batch has no ``boundingbox`` labels.
+
+        Returns:
+            ``tuple[Tensor, Tensor] | Tensor``: The pair
+            ``(targets, predictions)`` of drawn images when
+            ``target_boundingbox`` is not ``None``; otherwise only the
+            predictions image.
+
+        Example:
+            >>> import torch
+            >>> visualizer = FOMOVisualizer(labels=["cat"], colors=["red"])
+            >>> canvas = torch.zeros(1, 3, 8, 8, dtype=torch.uint8)
+            >>> points = [torch.tensor([[[4.0, 4.0, 0.9, 0.0]]])]
+            >>> visualizer(canvas, canvas, points, None).shape
+            torch.Size([1, 3, 8, 8])
+            >>> boxes = torch.tensor([[0, 0, 0.25, 0.25, 0.5, 0.5]])
+            >>> len(visualizer(canvas, canvas, points, boxes))
+            2
+
+        """
         single_class = self._determine_single_class(keypoints)
         if single_class:
             pred_viz = KeypointVisualizer.draw_predictions(
@@ -41,11 +148,57 @@ class FOMOVisualizer(BBoxVisualizer):
         return target_viz, pred_viz
 
     def _determine_single_class(self, predictions: list[Tensor]) -> bool:
+        """Return whether every prediction tensor has three values per
+        point.
+
+        Args:
+            predictions (``list[Tensor]``): One tensor per image, of
+                shape ``[K_i, 1, 3]`` or ``[K_i, 1, 4]``.
+
+        Returns:
+            bool: ``True`` when the last dimension of every tensor has
+            size ``3``, and for an empty list.
+
+        """
         return all(x.shape[2] == 3 for x in predictions)
 
     def draw_predictions_per_class(
         self, canvas: Tensor, predictions: list[Tensor]
     ) -> Tensor:
+        """Draw the predicted points of a batch, colored by class.
+
+        For each image, the method scales the coordinates by the
+        ``scale`` factor and keeps the points with a probability of at
+        least ``visibility_threshold``. Then it clamps them into the
+        image and draws them with ``torchvision.utils.draw_keypoints``.
+        A class takes the color of its name in ``colors``, and white
+        when the name has no color.
+
+        Args:
+            canvas (``Tensor``): ``uint8`` images of shape
+                ``[B, 3, H, W]``. The method does not modify it.
+            predictions (``list[Tensor]``): One tensor per image, of
+                shape ``[K_i, 1, 4]`` with rows ``(x, y, prob, class)``
+                in pixels.
+
+        Returns:
+            ``Tensor``: A copy of ``canvas`` with the points drawn.
+
+        Example:
+            >>> import torch
+            >>> visualizer = FOMOVisualizer(labels=["cat"], colors=["red"])
+            >>> canvas = torch.zeros(1, 3, 8, 8, dtype=torch.uint8)
+            >>> points = [torch.tensor([[[4.0, 4.0, 0.9, 0.0]]])]
+            >>> viz = visualizer.draw_predictions_per_class(canvas, points)
+            >>> bool((viz[0, 0] == 255).any()), bool((viz[0, 1] == 255).any())
+            (True, False)
+            >>> faint = [torch.tensor([[[4.0, 4.0, 0.1, 0.0]]])]
+            >>> bool(
+            ...     visualizer.draw_predictions_per_class(canvas, faint).any()
+            ... )
+            False
+
+        """
         viz = canvas.clone()
         for i in range(len(canvas)):
             viz[i] = self._draw_image_predictions(viz[i], predictions[i])
@@ -54,6 +207,19 @@ class FOMOVisualizer(BBoxVisualizer):
     def _draw_image_predictions(
         self, image: Tensor, prediction: Tensor
     ) -> Tensor:
+        """Draw the visible points of one image, class by class.
+
+        Args:
+            image (``Tensor``): One ``uint8`` image of shape
+                ``[3, H, W]``.
+            prediction (``Tensor``): Points of shape ``[K, 1, 4]`` with
+                rows ``(x, y, prob, class)`` in pixels.
+
+        Returns:
+            ``Tensor``: The image with the points drawn. The input image
+            itself when no point is visible.
+
+        """
         xy = prediction[..., :2].clone()
         if self._scale and self._scale != 1.0:
             xy *= self._scale
@@ -72,6 +238,20 @@ class FOMOVisualizer(BBoxVisualizer):
     def _draw_class_keypoints(
         self, image: Tensor, points: Tensor, class_id: int
     ) -> Tensor:
+        """Draw the points of one class in the color of that class.
+
+        Args:
+            image (``Tensor``): One ``uint8`` image of shape
+                ``[3, H, W]``.
+            points (``Tensor``): Pixel coordinates of shape ``[K, 2]``.
+            class_id (int): Class index. Its name comes from
+                ``label_dict``, and its color from ``colors``; white
+                when the name has no color.
+
+        Returns:
+            ``Tensor``: A new image with the points drawn.
+
+        """
         label = (
             self._label_dict.get(class_id, str(class_id))
             if self._label_dict

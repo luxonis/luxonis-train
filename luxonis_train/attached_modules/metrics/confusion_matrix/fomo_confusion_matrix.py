@@ -1,3 +1,7 @@
+"""The confusion matrix for FOMO, which matches a small box around each
+predicted point to the target boxes.
+"""
+
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override
@@ -9,9 +13,66 @@ from .detection_confusion_matrix import DetectionConfusionMatrix
 
 
 class FomoConfusionMatrix(DetectionConfusionMatrix):
+    r"""Confusion matrix for FOMO keypoint predictions.
+
+    Inputs:
+        - ``keypoints`` (``list[Tensor]``): :math:`\left[K_i, 1,
+          4\right]` per image, ``(x, y, prob, class)``, pixels
+        - ``target_boundingbox`` (``Tensor``): :math:`\left[N,
+          6\right]`, ``[batch, class, x, y, w, h]``, ``xywh`` normalized
+
+    Outputs:
+        - ``mcc`` (``Tensor``): scalar MCC of the whole matrix, see
+          `compute_mcc`
+        - ``confusion_matrix`` (``Tensor``): :math:`\left[n_{classes} +
+          1, n_{classes} + 1\right]` counts, rows are targets, last row
+          and column are background
+
+    Formula:
+        `update` drops each keypoint with a probability below ``0.5``.
+        It turns each other keypoint into a box of ``5`` by ``5`` pixels
+        around the point, clipped to the image.
+        `DetectionConfusionMatrix` then counts these boxes with the IoU
+        threshold ``0``. So a target box and a keypoint match when the
+        box of the keypoint and the target box share an area above
+        ``0``. The other rules of `DetectionConfusionMatrix` stay the
+        same.
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The metric always uses the IoU threshold ``0``. An
+        ``iou_threshold`` other than ``None`` and ``0`` logs a warning.
+
+    Example:
+        Attached to a ``FOMOHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: FOMOHead
+              inputs: [EfficientRep]
+              metrics:
+                - name: FomoConfusionMatrix
+
+    Compatible with:
+        - Nodes: `FOMOHead`
+
+    """
+
     supported_tasks = [Tasks.FOMO]
 
     def __init__(self, iou_threshold: float | None = None, **kwargs):
+        """Initialize the metric with the IoU threshold ``0``.
+
+        Args:
+            iou_threshold (float | None): Ignored. A value other than
+                ``None`` and ``0.0`` logs a warning.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `DetectionConfusionMatrix`, such as ``node``.
+
+        """
         if iou_threshold is not None and iou_threshold != 0.0:
             logger.warning(
                 "The `iou_threshold` parameter is ignored for FomoConfusionMatrix and is hardcoded to 0. "
@@ -25,8 +86,46 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
         keypoints: list[Tensor],
         target_boundingbox: Tensor,
     ) -> None:
-        """Override update to convert FOMO keypoints into bounding boxes
-        before calling the parent update method.
+        """Turn the keypoints of one batch into boxes and count them.
+
+        `keypoints_to_bboxes` drops each keypoint with a probability
+        below ``0.5``. It turns each other keypoint into a box of ``5``
+        by ``5`` pixels around the point. It clips the box to the height
+        and width of `BaseAttachedModule.original_in_shape`.
+        `DetectionConfusionMatrix.update` then counts the boxes.
+
+        Args:
+            keypoints (``list[Tensor]``): The keypoints of each image, of
+                shape ``[K_i, 1, 4]``, as ``[x, y, probability, class]``
+                in pixels. The length of the list is the batch size.
+            target_boundingbox (``Tensor``): The ``boundingbox`` label of
+                the batch, of shape ``[N, 6]``, as
+                ``[batch_index, class, x, y, w, h]``. The values are
+                normalized, and ``x`` and ``y`` are the top-left corner.
+                The method writes ``xyxy`` pixels into it.
+
+        Example:
+            One target box of class ``0`` covers the pixels from ``0``
+            to ``5``. The first keypoint lies in it. The second keypoint
+            has a probability below ``0.5``, so the metric drops it. A
+            ``SimpleNamespace`` stands in for the node.
+
+            >>> import torch
+            >>> from types import SimpleNamespace
+            >>> node = SimpleNamespace(
+            ...     task=None,
+            ...     n_classes=1,
+            ...     original_in_shape=torch.Size([3, 10, 10]),
+            ... )
+            >>> metric = FomoConfusionMatrix(node=node)
+            >>> target = torch.tensor([[0, 0, 0.0, 0.0, 0.5, 0.5]])
+            >>> points = [
+            ...     torch.tensor([[[2.0, 2.0, 0.9, 0]], [[8.0, 8.0, 0.3, 0]]])
+            ... ]
+            >>> metric.update(points, target)
+            >>> metric.confusion_matrix.tolist()
+            [[1, 0], [0, 0]]
+
         """
         pred_bboxes = keypoints_to_bboxes(
             keypoints,
