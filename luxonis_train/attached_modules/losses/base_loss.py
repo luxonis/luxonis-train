@@ -1,3 +1,5 @@
+"""The base class every loss inherits."""
+
 from abc import abstractmethod
 from functools import cached_property
 from inspect import Parameter
@@ -12,19 +14,55 @@ from luxonis_train.utils import get_signature
 
 
 class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
-    """A base class for all loss functions.
+    """Base class for all losses.
 
-    This class defines the basic interface for all loss functions. It
-    utilizes automatic registration of defined subclasses to a L{LOSSES}
-    registry.
+    Every subclass registers itself in the `LOSSES` registry under its
+    class name, unless its class statement passes ``register=False``. A
+    ``register_name`` in the class statement replaces the class name. A
+    config names a registered loss in the ``losses`` list of a node. A
+    subclass implements `forward`.
+
+    `BaseAttachedModule.get_parameters` describes how `run` fills the
+    parameters of `forward` from predictions and labels.
+
+    The trainer calls `run` on each training, validation, and test
+    batch. It sums the main values of all losses into the total loss.
+    The training step backpropagates only this total.
+
+    Example:
+        The example loss reads the ``features`` key of the node output.
+        The main value is the mean, and the sub-loss ``"max"`` is the
+        maximum. `run` multiplies only the main value by
+        ``final_loss_weight``. ``register=False`` keeps the class out of
+        the `LOSSES` registry.
+
+        >>> import torch
+        >>> from torch import Tensor
+        >>> class MeanLoss(BaseLoss, register=False):
+        ...     def forward(
+        ...         self, features: Tensor
+        ...     ) -> tuple[Tensor, dict[str, Tensor]]:
+        ...         return features.mean(), {"max": features.max()}
+        >>> loss = MeanLoss(final_loss_weight=2.0)
+        >>> packet = {"features": torch.tensor([1.0, 3.0])}
+        >>> main, sub_losses = loss.run(packet, {})
+        >>> main.item(), sub_losses["max"].item()
+        (4.0, 3.0)
+
     """
 
     @typechecked
     def __init__(self, final_loss_weight: float = 1.0, **kwargs):
-        """
-        @type final_loss_weight: float
-        @param final_loss_weight: Optional weight by which the final
-            loss is multiplied.
+        """Initialize the loss and store the factor of its main value.
+
+        Args:
+            final_loss_weight (float): The factor by which `run`
+                multiplies the main value of the loss. The sub-losses
+                stay unscaled. The trainer passes the ``weight`` of the
+                loss config here.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseAttachedModule`, such as ``node``.
+
         """
         super().__init__(**kwargs)
         self.__final_loss_weight = final_loss_weight
@@ -33,14 +71,25 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     def forward(
         self, *args: Tensor | list[Tensor]
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
-        """Forward pass of the loss function.
+        """Compute the loss for one batch.
 
-        @type *args: Tensor | list[Tensor] @param *args: Inputs to the
-        loss function.
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sub-losses
-            (for logging). Only the main loss is used for
-            backpropagation.
+        An implementation declares one named parameter for each input.
+        `run` fills the parameters by name, as the class docstring
+        describes, and passes them as keyword arguments. The tensors
+        are copies, so a change in place does not reach the node output
+        or the labels.
+
+        Args:
+            *args (``Tensor | list[Tensor]``): The inputs of the batch.
+                An implementation replaces them with named parameters.
+
+        Returns:
+            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The main value
+            of the loss, or a tuple of the main value and a dictionary
+            of sub-losses. The trainer logs the sub-losses only when
+            ``trainer.log_sub_losses`` is ``True``. The total loss does
+            not include them, so they do not reach the gradient.
+
         """
         ...
 
@@ -51,19 +100,21 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     def run(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
-        """Call the loss function after validating and preparing the
-        inputs.
+        """Resolve the inputs of `forward` and apply the loss weight.
 
-        @type inputs: Packet[Tensor]
-        @param inputs: Outputs from the node.
-        @type labels: L{Labels}
-        @param labels: Labels from the dataset.
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sub-losses
-            (for logging). Only the main loss is used for
-            backpropagation.
-        @raises IncompatibleError: If the inputs are not compatible with
-            the module.
+        `BaseAttachedModule.get_parameters` documents how parameter
+        names select predictions and labels.
+
+        Args:
+            inputs (``Packet[Tensor]``): The output packet of the node.
+            labels (``Labels``): The labels of the batch, keyed
+                ``<task_name>/<label>``.
+
+        Returns:
+            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The result of
+            `forward`, with ``final_loss_weight`` applied to the main
+            value. Sub-losses remain unscaled.
+
         """
         loss = self(**self.get_parameters(inputs, labels))
         if isinstance(loss, Tensor):
