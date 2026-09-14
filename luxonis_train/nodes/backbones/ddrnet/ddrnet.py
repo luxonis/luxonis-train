@@ -1,5 +1,9 @@
-"""The DDRNet backbone, which carries a full-resolution branch beside
-the downsampled one and fuses the two repeatedly.
+"""The DDRNet backbone.
+
+DDRNet keeps a high-resolution branch at 1/8 of the input size beside a
+low-resolution branch. The two branches exchange features between the
+stages.
+
 """
 
 from luxonis_ml.typing import Kwargs
@@ -20,29 +24,42 @@ from .blocks import DAPPM, BasicDDRBackbone, make_layer
 class DDRNet(BaseNode):
     r"""DDRNet backbone for semantic segmentation.
 
-    DDRNet maintains dual-resolution branches to combine low-resolution
-    semantic context with high-resolution spatial detail.
+    DDRNet (Deep Dual-resolution Network) runs two branches. The stem,
+    ``layer1``, and ``layer2`` of a `BasicDDRBackbone` bring the input to
+    1/8 of its size. From there, a high-resolution branch keeps 1/8 of
+    the input size. A low-resolution branch continues through ``layer3``,
+    ``layer4``, and ``layer5`` down to 1/64. The two branches exchange
+    features after each ``layer3`` stage and after ``layer4``. A `DAPPM`
+    block pools the ``layer5`` features at several scales. The node
+    upscales the result to 1/8 of the input size and adds it to the
+    high-resolution branch.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
-        - ``features`` (``list[Tensor]``): :math:`\left[B, 2 * hrc, H/8,
-          W/8\right]`, preceded by :math:`\left[B, hrc, H/8, W/8\right]`
-          when ``use_aux_heads``
+        - ``features`` (``list[Tensor]``): :math:`\left[B, e \cdot hrc,
+          H/8, W/8\right]`, preceded by :math:`\left[B, hrc, H/8,
+          W/8\right]` when ``use_aux_heads`` is ``True``. :math:`hrc` is
+          ``high_resolution_channels`` and :math:`e` is
+          ``layer5_bottleneck_expansion``.
 
     References:
         - Source: Adapted from `Deci-AI/super-gradients
-          <https://github.com/Deci-AI/super-gradients>`_ (Apache-2.0)
-          and `ydhongHIT/DDRNet <https://github.com/ydhongHIT/DDRNet>`_
-          (MIT). Paper: `Deep Dual-resolution Networks for Real-time and
-          Accurate Semantic Segmentation of Road Scenes
-          <https://arxiv.org/abs/2101.06085>`_.
+          <https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py>`_
+          (Apache-2.0) and `ydhongHIT/DDRNet
+          <https://github.com/ydhongHIT/DDRNet>`_ (MIT). Paper: `Deep
+          Dual-resolution Networks for Real-time and Accurate Semantic
+          Segmentation of Road Scenes <https://arxiv.org/abs/2101.06085>`_.
         - License: Apache-2.0
 
     Notes:
-        Local DDRNet implementation with optional auxiliary output and
-        configurable dual-resolution stages.
+        ``H`` and ``W`` must be multiples of ``8``. Otherwise the
+        tensors of the two branches differ in size, and the fusion fails.
+        `SegmentationModel` attaches a `DDRNetSegmentationHead` to the
+        last output. By default, it also attaches a second
+        `DDRNetSegmentationHead` with its own weights to the first
+        output, as an auxiliary head.
 
     Variants:
         - ``"23-slim"``:
@@ -97,33 +114,76 @@ class DDRNet(BaseNode):
         layers: list[int] | None = None,
         **kwargs,
     ):
-        """DDRNet backbone.
+        """Build the branches, the fusion layers, and the DAPPM block.
+
+        The constructor reads `BaseNode.in_channels`, so the call must
+        give ``input_shapes`` or ``in_sizes``. The class annotation
+        ``in_channels: int`` makes `BaseNode` raise `IncompatibleError`
+        when the attached input is a list of sizes, for example with
+        ``attach_index="all"``. The constructor calls
+        `BasicDDRBackbone.get_backbone_output_number_of_channels` to read
+        the channel counts of ``layer2``, ``layer3``, and ``layer4``. That
+        call draws random numbers and updates the running statistics of
+        the backbone batch norms. `initialize_weights` does not reset
+        these statistics.
 
         Args:
-            channels (int): Base number of channels. If provided, overrides the variant values.
-            high_resolution_channels (int): Number of channels in the high resolution net. If provided, overrides the variant values.
-            use_aux_heads (bool): Whether to use auxiliary heads. Defaults to True.
-            upscale_module (``nn.Module | None``): Module for upscaling (e.g., bilinear interpolation). Defaults to UpscaleOnline().
-            spp_width (int): Width of the branches in the SPP block. Defaults to 128.
-            ssp_interpolation_mode (str): Interpolation mode for the SPP block. Defaults to "bilinear".
-            segmentation_interpolation_mode (str): Interpolation mode for the segmentation head. Defaults to "bilinear".
-            block (``type[nn.Module]``): type of block to use in the backbone. Defaults to ResNetBlock.
-            skip_block (``type[nn.Module]``): type of block for skip connections. Defaults to ResNetBlock.
-            layer5_block (``type[nn.Module]``): type of block for layer5 and layer5_skip. Defaults to Bottleneck.
-            layer5_bottleneck_expansion (int): Expansion factor for Bottleneck block in layer5. Defaults to 2.
-            spp_kernel_sizes (list[int] | None): Kernel sizes for the SPP module pooling. Defaults to [1, 5, 9, 17, 0].
-            spp_strides (list[int] | None): Strides for the SPP module pooling. Defaults to [1, 2, 4, 8, 0].
-            layer3_repeats (int): Number of times to repeat the 3rd stage. Defaults to 1.
-            layers (list[int] | None): Number of blocks in each layer of the backbone. Defaults to [2, 2, 2, 2, 1, 2, 2, 1].
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
-
-        Notes:
-            License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_
-
-        See Also:
-            `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src /super_gradients/training/models/segmentation_models/ddrnet.py>`_
-            `Original code <https://github.com/ydhongHIT/DDRNet>`_
-            `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
+            channels (int): Number of stem channels of the backbone.
+                ``layer2``, ``layer3``, and ``layer4`` have 2, 4, and 8
+                times as many channels. A selected variant sets it,
+                unless the call gives it explicitly.
+            high_resolution_channels (int): Number of channels of the
+                high-resolution branch. A selected variant sets it,
+                unless the call gives it explicitly.
+            use_aux_heads (bool): Whether `forward` also returns the
+                high-resolution features after the last ``layer3``
+                fusion, for an auxiliary head. Defaults to ``True``.
+            upscale_module (``nn.Module | None``): Module that resizes
+                the low-resolution features to 1/8 of the input size. The
+                node calls it as ``upscale_module(x, height, width)``.
+                ``None`` selects `UpscaleOnline` in the ``"bilinear"``
+                mode.
+            spp_width (int): Number of output channels of each `DAPPM`
+                branch. Defaults to ``128``.
+            ssp_interpolation_mode (str): Interpolation mode of the
+                `DAPPM` branches. Defaults to ``"bilinear"``.
+            segmentation_interpolation_mode (str): Value of the attribute
+                ``segmentation_interpolation_mode``. The node does not
+                use it. Defaults to ``"bilinear"``.
+            block (``type[nn.Module]``): Block class of ``layer1`` to
+                ``layer4`` in the `BasicDDRBackbone`. Defaults to
+                `ResNetBlock`.
+            skip_block (``type[nn.Module]``): Block class of the
+                high-resolution stages ``layer3_skip`` and
+                ``layer4_skip``. Defaults to `ResNetBlock`.
+            layer5_block (``type[nn.Module]``): Block class of
+                ``layer5`` and ``layer5_skip``. Defaults to
+                `ResNetBottleneck`.
+            layer5_bottleneck_expansion (int): Expansion factor of the
+                ``layer5`` and ``layer5_skip`` blocks. The final output
+                has ``high_resolution_channels * layer5_bottleneck_expansion``
+                channels. Defaults to ``2``.
+            spp_kernel_sizes (list[int] | None): Kernel size of each
+                `DAPPM` branch. It must have the length of
+                ``spp_strides``. Otherwise, `DAPPM` raises ``ValueError``.
+                ``None`` or an empty list selects ``[1, 5, 9, 17, 0]``.
+            spp_strides (list[int] | None): Stride of each `DAPPM`
+                branch. ``None`` or an empty list selects
+                ``[1, 2, 4, 8, 0]``.
+            layer3_repeats (int): Number of ``layer3`` stages. A fusion
+                of the two branches follows each stage. With a value
+                below ``1``, `forward` skips ``layer3``. ``layer4`` then
+                gets the wrong number of channels, and `forward` fails.
+                Defaults to ``1``.
+            layers (list[int] | None): Number of blocks in each stage, as
+                eight entries: ``layer1``, ``layer2``, ``layer3``,
+                ``layer4``, ``layer5``, ``layer3_skip``, ``layer4_skip``,
+                and ``layer5_skip``. The ``layer3`` and ``layer3_skip``
+                entries apply to each of the ``layer3_repeats`` stages.
+                ``None`` or an empty list selects
+                ``[2, 2, 2, 2, 1, 2, 2, 1]``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -259,6 +319,58 @@ class DDRNet(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run both branches and return the high-resolution features.
+
+        The stem, ``layer1``, and ``layer2`` bring the input to 1/8 of
+        its size. The high-resolution branch starts there. It runs
+        ``layer3_skip``, ``layer4_skip``, and ``layer5_skip`` beside
+        ``layer3``, ``layer4``, and ``layer5`` of the low-resolution
+        branch. The branches fuse after each ``layer3`` stage and after
+        ``layer4``:
+
+        - Strided ``3x3`` convolutions reduce the high-resolution
+          features to the size of the low-resolution branch and add
+          them to that branch. One convolution runs after each
+          ``layer3`` stage, and two run after ``layer4``.
+        - A ``1x1`` convolution and ``upscale_module`` resize the
+          low-resolution features to 1/8 of the input size and add them
+          to the high-resolution branch.
+
+        Last, `DAPPM` runs on the ``layer5`` output. The node upscales
+        the result and adds it to the ``layer5_skip`` output. A ReLU runs
+        before every stage after ``layer1`` and before every fusion
+        convolution.
+
+        Args:
+            inputs (``Tensor``): Image batch of shape ``[B, C, H, W]``.
+                ``H`` and ``W`` must be multiples of ``8``. Other sizes
+                make the fusion fail.
+
+        Returns:
+            ``list[Tensor]``: ``[features]``. ``features`` has the shape
+            ``[B, C_out, H / 8, W / 8]``, where ``C_out`` is
+            ``high_resolution_channels * layer5_bottleneck_expansion``.
+            When ``use_aux_heads`` is ``True``, the list is
+            ``[aux_features, features]``. ``aux_features`` holds the
+            high-resolution features after the last ``layer3`` fusion, of
+            shape ``[B, high_resolution_channels, H / 8, W / 8]``.
+
+        Example:
+            The batch has two images. In the training state, a batch
+            norm at the ``1x1`` size of ``layer5`` needs more than one
+            value per channel.
+
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import DDRNet
+            >>> node = DDRNet(
+            ...     variant="23-slim",
+            ...     input_shapes=[{"features": [Size([2, 3, 64, 64])]}],
+            ... )
+            >>> [tuple(t.shape) for t in node(torch.zeros(2, 3, 64, 64))]
+            [(2, 64, 8, 8), (2, 128, 8, 8)]
+
+        """
         width_output = inputs.shape[-1] // 8
         height_output = inputs.shape[-2] // 8
 
@@ -307,6 +419,26 @@ class DDRNet(BaseNode):
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
+        """Initialize the convolutions and the batch norms of the node.
+
+        Every `torch.nn.Conv2d` gets Kaiming normal weights with
+        ``mode="fan_out"`` and ``nonlinearity="relu"``, and a zero bias
+        when it has a bias. Every `torch.nn.BatchNorm2d` gets the weight
+        ``1`` and the bias ``0``. The method does not change the running
+        statistics of the batch norms.
+
+        After construction, `BaseNode` calls the method with ``weights``
+        as ``method``. It skips the call only when ``weights`` is
+        ``"download"`` or contains ``"://"``. Thus the method also gets
+        a local checkpoint path, and it does not load that checkpoint.
+
+        Args:
+            method (str | None): Not used. Every value gives the same
+                initialization. The method does not call
+                `BaseNode.initialize_weights`, so ``"yolo"`` has no
+                effect.
+
+        """
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(
@@ -320,6 +452,32 @@ class DDRNet(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
+        """Return the URL template of the checkpoint of the variant.
+
+        The file name holds the variant name without hyphens:
+        ``{github}/ddrnet_23slim_coco.ckpt`` for ``"23-slim"`` and
+        ``{github}/ddrnet_23_coco.ckpt`` for ``"23"``.
+        `BaseNode.load_checkpoint` replaces the ``{github}`` placeholder
+        with the URL of the release. The URL depends only on the variant
+        name. The checkpoint does not fit a node whose explicit arguments
+        change the layer shapes, for example ``channels`` or ``layers``.
+
+        Returns:
+            str: The URL template of the checkpoint.
+
+        Raises:
+            AttributeError: When no variant built the node.
+            ValueError: When the variant name is ``None``.
+
+        Example:
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import DDRNet
+            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
+            >>> node = DDRNet(variant="23-slim", input_shapes=shapes)
+            >>> node.get_weights_url()
+            '{github}/ddrnet_23slim_coco.ckpt'
+
+        """
         if self._variant is None:
             raise ValueError(
                 f"Online weights are available for '{self.name}' "
@@ -331,6 +489,24 @@ class DDRNet(BaseNode):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the variants of DDRNet.
+
+        ``"23-slim"`` is the default. It sets ``channels`` to ``32`` and
+        ``high_resolution_channels`` to ``64``. ``"23"`` doubles both
+        values, to ``64`` and ``128``.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name ``"23-slim"``, and
+            a dictionary that maps each variant name to its constructor
+            keyword arguments.
+
+        Example:
+            >>> from luxonis_train.nodes import DDRNet
+            >>> default, variants = DDRNet.get_variants()
+            >>> default, variants["23"]
+            ('23-slim', {'channels': 64, 'high_resolution_channels': 128})
+
+        """
         return "23-slim", {
             "23-slim": {
                 "channels": 32,

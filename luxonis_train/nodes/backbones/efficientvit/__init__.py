@@ -1,4 +1,6 @@
-"""The EfficientViT backbone and its attention blocks."""
+"""The EfficientViT backbone and its convolution and attention
+blocks.
+"""
 
 from .efficientvit import EfficientViT
 

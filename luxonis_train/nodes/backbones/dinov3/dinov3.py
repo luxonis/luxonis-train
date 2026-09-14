@@ -1,5 +1,5 @@
-"""The DINOv3 backbone, a self-supervised vision transformer used with
-frozen weights.
+"""The DINOv3 backbone, a pretrained self-supervised model loaded
+through ``torch.hub``.
 """
 
 from typing import Literal, TypeAlias, cast
@@ -18,11 +18,28 @@ from luxonis_train.utils import get_signature
 
 
 class TransformerBackboneReturnsIntermediateLayers(nn.Module):
-    """Minimal interface for DINOv3 models.
+    """Minimal interface of the DINOv3 model that `DinoV3` uses.
 
-    To properly declare the
-    dinov3.models.vision_transformer.DinoVisionTransformer
-    type, the DINOv3 repository needs to be cloned locally.
+    The class only gives a type to the model that ``torch.hub.load``
+    returns. The real type is
+    ``dinov3.models.vision_transformer.DinoVisionTransformer``. A
+    declaration of that type needs a local clone of the DINOv3
+    repository.
+
+    `DinoV3.forward` calls ``get_intermediate_layers`` with
+    ``norm=True`` and expects this contract. The method takes an image
+    batch ``x`` of shape ``[B, C, H, W]``. It returns one entry for each
+    of the last ``n`` blocks. ``norm`` selects whether the final norm
+    applies to each output. Without ``return_class_token``, an entry is
+    the patch tokens of the block, of shape ``[B, N, C]``. With it, an
+    entry is a pair of the patch tokens and the CLS token, of shape
+    ``[B, C]``.
+
+    Attributes:
+        embed_dim (int): The embedding dimension of the model.
+        num_heads (int): The number of attention heads.
+        rope_embed (``nn.Module``): The rotary position embedding.
+            `DinoV3` replaces it with `RopePositionEmbedding`.
 
     """
 
@@ -56,9 +73,10 @@ DINOv3Variant: TypeAlias = Literal[
 class DinoV3(BaseNode):
     r"""DINOv3 self-supervised vision transformer backbone.
 
-    DINOv3 learns strong, dense feature representations useful for various
-    downstream tasks and can return either dense feature maps or CLS token
-    embeddings.
+    The node loads a pretrained DINOv3 model through ``torch.hub``. It
+    returns the patch tokens of the last ``depth`` blocks as feature
+    maps for a dense head. With ``return_sequence``, it returns the CLS
+    token for a classification head instead.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
@@ -79,7 +97,9 @@ class DinoV3(BaseNode):
 
     Notes:
         Loads DINOv3 through ``torch.hub`` and replaces RoPE with an
-        ONNX-friendly local module.
+        ONNX-friendly local module. **The hub runs the code of the
+        repository without a prompt.** The node needs
+        ``original_in_shape``. It does not convert for RVC2.
 
     Variants:
         - ``"vits16"``:
@@ -163,16 +183,45 @@ class DinoV3(BaseNode):
         depth: int = 4,
         **kwargs,
     ):
-        """Initialize the DINOv3 backbone.
+        """Load the DINOv3 model and replace its RoPE module.
+
+        The constructor loads the hub model ``dinov3_<variant>`` from
+        GitHub with ``torch.hub.load`` and ``trust_repo=True``. The patch
+        size comes from the ``patch_size`` attribute of the model, or is
+        ``16`` when the model has no such attribute. The constructor then
+        replaces ``rope_embed`` of the model with a
+        `RopePositionEmbedding`, which exports to ONNX.
+
+        The constructor always logs a warning that the node does not
+        convert for RVC2. It logs a second warning when the height or the
+        width of `BaseNode.original_in_shape` is not a multiple of the
+        patch size.
 
         Args:
-            weights_link (str): Weights value passed to ``torch.hub.load``.
-            return_sequence (bool): If True, return the CLS embedding [B, C] for downstream classification heads. Otherwise, turn patch embeddings into [B, C, H, W] feature maps to be passed to dense prediction heads.
-            variant (DINOv3Variant): Architecture variant of the DINOv3 backbone.
-            repo_or_dir (str): GitHub repository or local directory passed to ``torch.hub.load``. Defaults to ``facebookresearch/dinov3``.
-            freeze_backbone (bool): If True, freeze the backbone so only downstream heads contain trainable parameters.
-            depth (int): Number of last layers taken from the transformer output and converted to feature maps.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class and ``torch.hub.load``.
+            weights_link (str): The path or URL of the pretrained
+                weights. The constructor passes it as ``weights`` to
+                ``torch.hub.load``.
+            return_sequence (bool): Whether `forward` returns the CLS
+                token, of shape ``[B, C]``, for a classification head.
+                When ``False``, `forward` returns ``depth`` feature maps
+                for a dense head.
+            variant (``DINOv3Variant``): The DINOv3 model to load.
+            repo_or_dir (str): The GitHub repository that holds the hub
+                entry points, as ``"owner/name"`` or
+                ``"owner/name:ref"``. The constructor always loads with
+                ``source="github"``.
+            freeze_backbone (bool): Whether to set ``requires_grad`` to
+                ``False`` for all parameters of the loaded model. Then
+                only the nodes after the backbone train.
+            depth (int): The number of last blocks whose outputs become
+                feature maps. `forward` ignores it with
+                ``return_sequence``.
+            **kwargs (``Any``): Keyword arguments forwarded to both
+                `BaseNode` and ``torch.hub.load``.
+
+        Raises:
+            ValueError: When ``variant`` is not a ``DINOv3Variant``
+                value.
 
         """
         super().__init__(**kwargs)
@@ -209,10 +258,15 @@ class DinoV3(BaseNode):
             )
 
     def _replace_rope_embedding(self) -> None:
-        """Replace the default RoPE embedding in the DINOv3 backbone.
+        """Replace the RoPE module with `RopePositionEmbedding`.
 
-        angles.tile(2) is not ONNX-convertible and was replaced by
-        angles.repeat(1, 2)
+        The method reads each constructor argument of
+        `RopePositionEmbedding` from the model first and from the old
+        RoPE module second. An argument that neither of them has keeps
+        its default. The new module computes its ``periods`` again from
+        these arguments. It does not copy the buffer of the old module.
+        The new module uses ``repeat(1, 2)`` instead of ``tile(2)``,
+        because ``tile`` does not export to ONNX.
 
         """
         old_rope = self.backbone.rope_embed
@@ -230,21 +284,27 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """Run the DINOv3 backbone.
+        """Return the CLS token or the feature maps of the last blocks.
 
-        If self.return_sequence is True, a list containing the CLS token
-        embedding [B, C] is returned and this can be used for downstream
-        classification tasks.
-
-        Otherwise, the last ``self.depth`` layers of the network are
-        returned as [B, C, H, W] feature maps, which can be used for
-        downstream segmentation and other dense feature tasks.
+        With ``return_sequence``, the method takes the normed output of
+        the last block and returns its CLS token. Otherwise, it takes the
+        normed outputs of the last ``depth`` blocks. It reshapes the
+        patch tokens of each block into a feature map. The grid size
+        comes from the height and width of `BaseNode.original_in_shape`,
+        not from ``inputs``.
 
         Args:
-            inputs (``Tensor``): Input image tensor with shape [B, C, H, W].
+            inputs (``Tensor``): Image batch of shape ``[B, C, H, W]``.
 
         Returns:
-            ``list[Tensor]``: CLS token embeddings or dense feature maps.
+            ``list[Tensor]``: With ``return_sequence``, one CLS token of
+            shape ``[B, C]``. Otherwise, ``depth`` feature maps of shape
+            ``[B, C, H // p, W // p]``, where ``p`` is the patch size and
+            ``C`` is the embedding dimension.
+
+        Raises:
+            AssertionError: When the number of patch tokens of a block is
+                not ``(H // p) * (W // p)``.
 
         """
         outs: list[Tensor] = []
@@ -301,6 +361,25 @@ class DinoV3(BaseNode):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the DINOv3 models.
+
+        Each variant sets only ``variant``, to its own name. The
+        constructor then loads the hub model ``dinov3_<variant>``.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name ``"vits16"``, and
+            a dictionary that maps each of the ten ``DINOv3Variant``
+            values to ``{"variant": name}``.
+
+        Example:
+            >>> from luxonis_train.nodes import DinoV3
+            >>> default, variants = DinoV3.get_variants()
+            >>> default, len(variants)
+            ('vits16', 10)
+            >>> variants["convnext_tiny"]
+            {'variant': 'convnext_tiny'}
+
+        """
         return "vits16", {
             "vits16": {"variant": "vits16"},
             "vits16plus": {"variant": "vits16plus"},

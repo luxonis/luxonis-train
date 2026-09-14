@@ -1,4 +1,4 @@
-"""The ResNet backbone."""
+"""The ResNet backbone from ``torchvision``."""
 
 from typing import Literal
 
@@ -12,18 +12,20 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class ResNet(BaseNode):
-    r"""ResNet backbone.
+    r"""ResNet backbone that returns the four residual stage outputs.
 
-    ResNet uses residual connections to train deep convolutional networks
-    and returns the four main residual stage outputs.
+    ResNet adds a shortcut connection around each residual block. The
+    node wraps the ``torchvision`` ResNet of the depth that ``variant``
+    selects. It runs the stem and returns the outputs of the residual
+    stages ``layer1`` to ``layer4``.
 
     Inputs:
-        - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
+        - ``inputs`` (``Tensor``): :math:`\left[B, 3, H, W\right]`
 
     Outputs:
         - ``features`` (``list[Tensor]``): ``layer1`` to ``layer4``,
-          strides 4, 8, 16, 32; 64, 128, 256, 512 channels for ``18``
-          and ``34``, 4x for the rest
+          strides 4, 8, 16, 32; 64, 128, 256, 512 channels for ``"18"``
+          and ``"34"``, four times as many for the other depths
 
     References:
         - Source: Wraps `torchvision.models.resnet
@@ -33,8 +35,11 @@ class ResNet(BaseNode):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Wraps torchvision ResNet variants and exposes residual stages
-        ``layer1`` through ``layer4``.
+        The input must have 3 channels. ``groups``,
+        ``width_per_group``, and ``replace_stride_with_dilation`` accept
+        values other than their defaults only for the depths ``"50"``,
+        ``"101"``, and ``"152"``. The node keeps the unused ``avgpool``
+        and ``fc`` layers of the ``torchvision`` model.
 
     Variants:
         - ``"18"``:
@@ -93,36 +98,52 @@ class ResNet(BaseNode):
         weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
-        """ResNet backbone.
-
-        Implements the backbone of a ResNet (Residual Network) architecture.
-
-        ResNet is designed to address the vanishing gradient problem in deep neural networks
-        by introducing skip connections. These connections allow the network to learn
-        residual functions with reference to the layer inputs, enabling training of much
-        deeper networks.
-
-        This backbone can be used as a feature extractor for various computer vision tasks
-        such as image classification, object detection, and semantic segmentation. It
-        provides a robust set of features that can be fine-tuned for specific applications.
-
-        The architecture consists of stacked residual blocks, each containing convolutional
-        layers, batch normalization, and ReLU activations. The skip connections can be
-        either identity mappings or projections, depending on the block type.
-
-        Source: `https://docs.pytorch.org/vision/main/models/resnet.html <https://docs.pytorch.org/vision/main/models/resnet.html>`_
+        """Build the ``torchvision`` ResNet of the selected depth.
 
         Args:
-            variant (``Literal["18", "34", "50", "101", "152"]``): ResNet variant, determining the depth and structure of the network. Defaults to ``"18"``.
-            zero_init_residual (bool): Zero-initialize the last BN in each residual branch, so that the residual branch starts with zeros, and each residual block behaves like an identity. This improves the model by 0.2~0.3% according to `Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour <https://arxiv.org/abs/1706.02677>`_. Defaults to ``False``.
-            groups (int): Number of groups for each block. Defaults to 1. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
-            width_per_group (int): Number of channels per group. Defaults to 64. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
-            replace_stride_with_dilation (tuple[bool, bool, bool]): Tuple of booleans where each indicates if the 2x2 strides should be replaced with a dilated convolution instead. Defaults to (False, False, False). Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152.
-            weights (``Literal["download", "none"] | None``): Whether to download pretrained weights. Defaults to None.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            variant (``Literal["18", "34", "50", "101", "152"]``): Depth
+                of the network. ``"18"`` and ``"34"`` use basic blocks.
+                The other depths use bottleneck blocks, with four times
+                as many output channels. Each variant of `get_variants`
+                sets it to the name of the variant. Defaults to
+                ``"18"``.
+            zero_init_residual (bool): Whether to set the weight of the
+                last batch norm in each residual block to zero. The
+                residual branch of each block then starts with zero
+                output, so only the shortcut reaches the final ReLU of
+                the block. Pretrained weights replace this
+                initialization. See `Accurate,
+                Large Minibatch SGD <https://arxiv.org/abs/1706.02677>`_.
+                Defaults to ``False``.
+            groups (int): Number of groups of the ``3x3`` convolution in
+                each bottleneck block. The depths ``"18"`` and ``"34"``
+                accept only ``1``. For other values, ``torchvision``
+                raises ``ValueError``. Defaults to ``1``.
+            width_per_group (int): Number of channels per group in each
+                bottleneck block. The ``3x3`` convolution of a block has
+                ``int(planes * width_per_group / 64) * groups``
+                channels. ``planes`` is 64, 128, 256, or 512 for
+                ``layer1`` to ``layer4``. The depths ``"18"`` and
+                ``"34"`` accept only ``64``. For other values,
+                ``torchvision`` raises ``ValueError``. Defaults to
+                ``64``.
+            replace_stride_with_dilation (tuple[bool, bool, bool]): For
+                ``layer2``, ``layer3``, and ``layer4``, whether to
+                replace the stride ``2`` with a dilation. A stage with a
+                dilation keeps the resolution of the stage before it.
+                The depths ``"18"`` and ``"34"`` accept only ``False``.
+                For ``True``, ``torchvision`` raises
+                ``NotImplementedError``.
+            weights (``Literal["download", "none"] | None``): The value
+                ``"download"`` loads the ``DEFAULT`` ImageNet weights of
+                ``torchvision``. Any other value keeps the random
+                initialization. The value does not reach `BaseNode`, so
+                a checkpoint URL or ``"yolo"`` has no effect.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
-        Notes:
-            License: `PyTorch <https://github.com/pytorch/pytorch/blob/master/LICENSE>`_
+        Raises:
+            ValueError: When ``variant`` is not one of the five depths.
 
         """
         super().__init__(**kwargs)
@@ -136,6 +157,30 @@ class ResNet(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run the stem and the four residual stages.
+
+        The stem is ``conv1``, ``bn1``, ``relu``, and ``maxpool`` of the
+        ``torchvision`` model, with a total stride of ``4``. The node
+        skips ``avgpool`` and ``fc``.
+
+        Args:
+            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: The outputs of ``layer1`` to ``layer4``,
+            at the strides 4, 8, 16, and 32. They have 64, 128, 256,
+            and 512 channels for the depths ``"18"`` and ``"34"``, and
+            four times as many for the other depths. A stage with a
+            dilation keeps the stride of the stage before it.
+
+        Example:
+            >>> import torch
+            >>> from luxonis_train.nodes import ResNet
+            >>> node = ResNet(variant="18")
+            >>> [tuple(t.shape) for t in node(torch.zeros(1, 3, 64, 64))]
+            [(1, 64, 16, 16), (1, 128, 8, 8), (1, 256, 4, 4), (1, 512, 2, 2)]
+
+        """
         outs: list[Tensor] = []
         x = self.backbone.conv1(inputs)
         x = self.backbone.bn1(x)
@@ -156,6 +201,25 @@ class ResNet(BaseNode):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the ResNet depths.
+
+        Each variant sets only ``variant``, to its own name. ``"18"`` is
+        the default.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name ``"18"``, and a
+            dictionary that maps each of ``"18"``, ``"34"``, ``"50"``,
+            ``"101"``, and ``"152"`` to ``{"variant": name}``.
+
+        Example:
+            >>> from luxonis_train.nodes import ResNet
+            >>> default, variants = ResNet.get_variants()
+            >>> default, list(variants)
+            ('18', ['18', '34', '50', '101', '152'])
+            >>> variants["50"]
+            {'variant': '50'}
+
+        """
         return "18", {
             "18": {"variant": "18"},
             "34": {"variant": "34"},

@@ -1,4 +1,4 @@
-"""The FOMO head, which predicts a heatmap of object centres instead of
+"""The FOMO head, which predicts a heatmap of object centers instead of
 boxes.
 """
 
@@ -42,8 +42,13 @@ class FOMOHead(BaseHead):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Predicts class heatmaps with pointwise convolutions and
-        optionally applies local-max NMS for inference and export.
+        The head runs a stack of ``1x1`` convolutions, so each heatmap
+        cell sees only its own feature vector. In evaluation mode, the
+        head keeps the cells with a probability above ``0.5`` as
+        keypoints. When ``use_nms`` is ``True``, the head also applies a
+        ``3x3`` max pooling. In evaluation mode, only the local maxima
+        then become keypoints. In export mode, the pooled heatmap
+        replaces the heatmap.
 
     Variants:
         None. Configure the node through ``params``.
@@ -86,13 +91,29 @@ class FOMOHead(BaseHead):
         use_nms: bool = True,
         **kwargs,
     ):
-        """FOMO Head for object detection using heatmaps.
+        """Initialize the stack of ``1x1`` convolutions.
+
+        The stack has ``n_conv_layers - 1`` hidden `ConvBlock` layers
+        with ``conv_channels`` output channels, a bias, ReLU, and no
+        batch norm. The first hidden layer reads ``in_channels``
+        channels. A last ``1x1`` convolution maps ``conv_channels``
+        channels to ``n_classes`` channels. This last layer always
+        expects ``conv_channels`` input channels. Thus, an
+        ``n_conv_layers`` below ``2`` works only when the input has
+        ``conv_channels`` channels.
 
         Args:
-            n_conv_layers (int): Number of convolutional layers to use. Defaults to ``3``.
-            conv_channels (int): Number of channels to use in the convolutional layers. Defaults to ``16``.
-            use_nms (bool): Whether to apply local-max NMS to the heatmap during export and inference. Defaults to ``True``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            n_conv_layers (int): Number of convolutions, the last one
+                included. Defaults to ``3``.
+            conv_channels (int): Number of channels of the hidden layers.
+                Defaults to ``16``.
+            use_nms (bool): Whether to apply a ``3x3`` max pooling with
+                stride ``1``. In evaluation mode, only the local maxima
+                of the heatmap then become keypoints. In export mode, the
+                pooled heatmap replaces the heatmap. Defaults to
+                ``True``.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`, such as
+                ``n_classes`` and ``input_shapes``.
 
         """
         super().__init__(**kwargs)
@@ -125,9 +146,68 @@ class FOMOHead(BaseHead):
     @property
     @override
     def n_keypoints(self) -> int:
+        """The number of keypoints of each object, always ``1``.
+
+        The head predicts one point for each object. It ignores the
+        ``n_keypoints`` param and the dataset metadata.
+
+        """
         return 1
 
     def forward(self, inputs: Tensor) -> Packet[Tensor]:
+        """Predict the class heatmap and build the packet of the mode.
+
+        Training mode has priority over export mode. The packet depends
+        on the mode:
+
+        - Training mode: ``"heatmap"`` holds the logits, of shape
+          ``[B, n_classes, H, W]``.
+        - Export mode: ``"outputs"`` holds a list with one tensor, the
+          heatmap logits of shape ``[B, n_classes, H, W]``. When
+          ``use_nms`` is ``True``, a ``3x3`` max pooling with stride
+          ``1`` first replaces each cell with the maximum of its
+          neighborhood.
+        - Evaluation mode: ``"heatmap"``, and ``"keypoints"`` with a
+          tensor of shape ``[K_i, 1, 4]`` for each image. The head
+          applies a sigmoid and keeps the cells with a probability above
+          ``0.5``. When ``use_nms`` is ``True``, a cell must also equal
+          the maximum of its ``3x3`` neighborhood. Each of the ``K_i``
+          keypoints holds ``[x, y, probability, class]``. ``x`` and ``y``
+          are the top-left corner of the cell, in the pixels of the
+          original input.
+
+        Args:
+            inputs (``Tensor``): Feature map of shape ``[B, C, H, W]``.
+                By default, it is output ``1`` of the input node.
+
+        Returns:
+            ``Packet[Tensor]``: The packet of the current mode.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import FOMOHead
+            >>> sizes = [Size([1, 8, 64, 64]), Size([1, 16, 32, 32])]
+            >>> head = FOMOHead(
+            ...     n_classes=2,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 128, 128]),
+            ... )
+            >>> head.in_channels
+            16
+            >>> head(torch.zeros(1, 16, 32, 32))["heatmap"].shape
+            torch.Size([1, 2, 32, 32])
+
+            In evaluation mode, the packet also holds one keypoint
+            tensor for each image:
+
+            >>> out = head.eval()(torch.zeros(1, 16, 32, 32))
+            >>> sorted(out)
+            ['heatmap', 'keypoints']
+            >>> len(out["keypoints"]), out["keypoints"][0].shape[1:]
+            (1, torch.Size([1, 4]))
+
+        """
         heatmap = self.conv_layers(inputs)
 
         if self.training:
@@ -147,12 +227,20 @@ class FOMOHead(BaseHead):
         }
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
-        """Convert heatmap to keypoint pairs with local-max NMS.
+        """Convert the heatmap logits into the keypoints of each image.
 
-        Only the strongest local peak in a neighborhood is retained.
+        The method applies a sigmoid to each class map and keeps the
+        cells that ``_get_keypoint_mask`` selects.
 
         Args:
-            heatmap (``Tensor``): Heatmap to convert to keypoints.
+            heatmap (``Tensor``): Logits of shape ``[B, n_classes, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: One ``float32`` tensor of shape
+            ``[K_i, 1, 4]`` for each image. Each of the ``K_i`` keypoints
+            holds ``[x, y, probability, class]``. ``x`` and ``y`` are
+            the top-left corner of the cell, in the pixels of the
+            original input. The keypoints are in class order.
 
         """
         device = heatmap.device
@@ -190,13 +278,17 @@ class FOMOHead(BaseHead):
         return batch_kpts
 
     def _get_keypoint_mask(self, prob_map: Tensor) -> Tensor:
-        """Generate a mask for keypoints using NMS if enabled.
+        """Select the keypoint cells of one class.
 
         Args:
-            prob_map (``Tensor``): Probability map for a specific class.
+            prob_map (``Tensor``): Probabilities of one class, of shape
+                ``[H, W]``.
 
         Returns:
-            ``Tensor``: Binary mask indicating keypoint positions.
+            ``Tensor``: Boolean mask of shape ``[H, W]``. A cell is
+            ``True`` when its probability is above ``0.5``. When
+            ``use_nms`` is ``True``, the cell must also equal the maximum
+            of its ``3x3`` neighborhood.
 
         """
         if self.use_nms:

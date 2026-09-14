@@ -1,5 +1,5 @@
-"""Rotary position embedding for the DINOv3 attention, which encodes a
-position by rotating the query and key pairs.
+"""The rotary position embedding of DINOv3, changed to export to
+ONNX.
 """
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -14,10 +14,54 @@ import torch
 from torch import Tensor, nn
 
 
-# RoPE positional embedding with no mixing of coordinates (axial) and no learnable weights
-# Supports two parametrizations of the rope parameters: either using `base` or `min_period` and `max_period`.
-# Slight changes to the forward() method to make it ONNX-convertible
 class RopePositionEmbedding(nn.Module):
+    r"""Axial rotary position embedding of DINOv3, without learnable weights.
+
+    The module computes the sine and the cosine tables that the DINOv3
+    attention uses to rotate the query and the key vectors. Each patch
+    of an ``H x W`` grid gets the coordinates of its center. `forward`
+    divides them as ``normalize_coords`` selects and maps each
+    coordinate :math:`c` to :math:`2c - 1`. With ``"separate"`` or
+    ``"max"``, the result is in ``[-1, 1]``. With ``"min"``, the
+    coordinates of the longer axis can be above ``1``. Each angle
+    depends on one axis only, so the axes do not mix. For the coordinate
+    :math:`c` and the period :math:`p`, the angle is
+    :math:`2 \pi c / p`.
+
+    The periods come from one of two settings. :math:`D` is the head
+    dimension, ``embed_dim // num_heads``.
+
+    - ``base``: :math:`p_i = \text{base}^{2i / (D / 2)}` for
+      :math:`i = 0, \dots, D / 4 - 1`.
+    - ``min_period`` and ``max_period``: :math:`D / 4` periods in a
+      geometric sequence from ``min_period`` to ``max_period``.
+
+    The code comes from DINOv3. `forward` uses ``repeat`` instead of
+    ``tile``, because ``tile`` does not export to ONNX.
+
+    Attributes:
+        periods (``Tensor``): The :math:`D / 4` periods, in a persistent
+            buffer.
+        D_head (int): The head dimension :math:`D`.
+
+    Example:
+        >>> rope = RopePositionEmbedding(64, num_heads=4)
+        >>> [round(p, 2) for p in rope.periods.tolist()]
+        [1.0, 3.16, 10.0, 31.62]
+        >>> sin, cos = rope(H=2, W=3)
+        >>> sin.shape, cos.shape
+        (torch.Size([6, 16]), torch.Size([6, 16]))
+
+        The second setting of the periods:
+
+        >>> rope = RopePositionEmbedding(
+        ...     64, num_heads=4, base=None, min_period=0.5, max_period=10.0
+        ... )
+        >>> [round(p, 2) for p in rope.periods.tolist()]
+        [0.5, 1.36, 3.68, 10.0]
+
+    """
+
     periods: Tensor
 
     def __init__(
@@ -35,6 +79,49 @@ class RopePositionEmbedding(nn.Module):
         dtype: torch.dtype | None = None,
         device: torch.device | None = None,
     ):
+        """Store the settings and compute the periods.
+
+        Give either ``base``, or both ``min_period`` and ``max_period``.
+
+        Args:
+            embed_dim (int): The embedding dimension of the transformer.
+                It must be a multiple of ``4 * num_heads``.
+            num_heads (int): The number of attention heads.
+            base (float | None): The base of the periods. ``None``
+                selects the ``min_period`` and ``max_period`` setting.
+            min_period (float | None): The smallest period. The module
+                uses it only when ``base`` is ``None``.
+            max_period (float | None): The largest period. The module
+                uses it only when ``base`` is ``None``.
+            normalize_coords (``Literal["min", "max", "separate"]``): The
+                divisor of the patch coordinates. ``"separate"`` divides
+                the rows by ``H`` and the columns by ``W``. ``"max"``
+                divides both by ``max(H, W)``, and ``"min"`` divides both
+                by ``min(H, W)``.
+            shift_coords (float | None): In training mode, `forward` adds
+                a random shift to each axis. Each axis gets its own
+                shift, uniform in ``[-shift_coords, shift_coords]``.
+                ``None`` adds no shift.
+            jitter_coords (float | None): In training mode, `forward`
+                multiplies each axis by its own random factor. The factor
+                is log-uniform in ``[1 / jitter_coords, jitter_coords]``.
+                ``None`` applies no jitter.
+            rescale_coords (float | None): In training mode, `forward`
+                multiplies both axes by one random factor. The factor is
+                log-uniform in ``[1 / rescale_coords, rescale_coords]``.
+                ``None`` applies no rescale.
+            dtype (torch.dtype | None): The data type of the periods and
+                the coordinates. ``None`` selects the default data type.
+            device (torch.device | None): The device of the periods
+                buffer. `forward` computes on the device of that buffer.
+
+        Raises:
+            AssertionError: When ``embed_dim`` is not a multiple of
+                ``4 * num_heads``.
+            ValueError: When ``base`` is ``None`` and one of the periods
+                is ``None``, or when ``base`` and both periods are set.
+
+        """
         super().__init__()
         assert embed_dim % (4 * num_heads) == 0
         both_periods = min_period is not None and max_period is not None
@@ -65,6 +152,29 @@ class RopePositionEmbedding(nn.Module):
         self._init_weights()
 
     def forward(self, *, H: int, W: int) -> tuple[Tensor, Tensor]:
+        """Compute the sine and the cosine tables for an ``H x W`` grid.
+
+        The patches follow row-major order. For each patch, the method
+        computes :math:`D / 4` angles from the row coordinate and then
+        :math:`D / 4` angles from the column coordinate. It appends a
+        copy of these :math:`D / 2` angles, which gives :math:`D` angles.
+        In training mode, the method first shifts, jitters, and rescales
+        the coordinates, as the constructor arguments enable.
+
+        Args:
+            H (int): The number of patch rows.
+            W (int): The number of patch columns.
+
+        Returns:
+            ``tuple[Tensor, Tensor]``: The sine and the cosine of the
+            angles, each of shape ``[H * W, D]``, where ``D`` is the head
+            dimension.
+
+        Raises:
+            ValueError: When ``normalize_coords`` is not ``"min"``,
+                ``"max"``, or ``"separate"``.
+
+        """
         device = self.periods.device
         dtype = self.dtype
         dd = {"device": device, "dtype": dtype}

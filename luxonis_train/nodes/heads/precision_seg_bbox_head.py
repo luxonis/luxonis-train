@@ -23,44 +23,48 @@ from .precision_bbox_head import PrecisionBBoxHead
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
     r"""Precision instance segmentation and detection head.
 
+    The head adds masks to the boxes of `PrecisionBBoxHead`. Each
+    detection gets a mask from a shared set of prototype masks.
+
     Inputs:
         - ``inputs`` (``list[Tensor]``): :math:`\left[B, C_i, H_i,
-          W_i\right]` per scale
+          W_i\right]` per scale, the last ``n_heads`` outputs of the
+          input node
 
     Outputs:
         - train:
 
-          - ``features`` (``list[Tensor]``): :math:`\left[B, 4 * reg_max
-            + n_{classes}, H_i, W_i\right]` per scale
-          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2 *
-            H_0, 2 * W_0\right]`
+          - ``features`` (``list[Tensor]``): :math:`\left[B, 4 \cdot
+            reg_{max} + n_{classes}, H_i, W_i\right]` per scale, logits
+          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2
+            H_0, 2 W_0\right]`
           - ``mask_coefficients`` (``Tensor``): :math:`\left[B,
-            n_{masks}, N\right]`
+            n_{masks}, N\right]`, :math:`N = \sum_i H_i W_i`
 
         - eval:
 
-          - ``features`` (``list[Tensor]``): :math:`\left[B, 4 * reg_max
-            + n_{classes}, H_i, W_i\right]` per scale
-          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2 *
-            H_0, 2 * W_0\right]`
+          - ``features`` (``list[Tensor]``): :math:`\left[B, 4 \cdot
+            reg_{max} + n_{classes}, H_i, W_i\right]` per scale, logits
+          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2
+            H_0, 2 W_0\right]`
           - ``mask_coefficients`` (``Tensor``): :math:`\left[B,
             n_{masks}, N\right]`
           - ``boundingbox`` (``list[Tensor]``): :math:`\left[M_i,
-            6\right]` per image, ``[x1, y1, x2, y2, conf, class]``,
+            6\right]` per image, ``[x1, y1, x2, y2, score, class]``,
             pixels
           - ``instance_segmentation`` (``list[Tensor]``):
             :math:`\left[M_i, H, W\right]` per image, binary
           - ``detections_pre_nms`` (``Tensor``): :math:`\left[B, N, 5 +
-            n_{classes}\right]`, only when requested
+            n_{classes} + n_{masks}\right]`, only when requested
 
         - export:
 
           - ``boundingbox`` (``list[Tensor]``): :math:`\left[B, 5 +
-            n_{classes}, H_i, W_i\right]` per scale
+            n_{classes}, H_i, W_i\right]` per scale, DFL-decoded
           - ``masks`` (``list[Tensor]``): :math:`\left[B, n_{masks},
-            H_i, W_i\right]` per scale
-          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2 *
-            H_0, 2 * W_0\right]`
+            H_i, W_i\right]` per scale, mask coefficients
+          - ``prototypes`` (``Tensor``): :math:`\left[B, n_{masks}, 2
+            H_0, 2 W_0\right]`
 
     References:
         - Source: Reimplemented from `Real-Time Flying Object Detection
@@ -70,8 +74,17 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Extends ``PrecisionBBoxHead`` with mask coefficient heads and
-        segmentation prototypes for instance masks.
+        Each scale gets a mask branch next to its `PreciseDecoupledBlock`.
+        The branch predicts ``n_masks`` mask coefficients for each
+        anchor point. `SegProto` builds ``n_masks`` prototypes from the
+        first input feature map, at twice its resolution. In evaluation
+        mode, NMS keeps the coefficients with each box.
+        `refine_and_apply_masks` then combines the prototypes with the
+        coefficients and crops the mask to the box. It also resizes the
+        mask to the size of the model input image. A pixel is in the
+        mask when its value is above ``0``. Training mode and export
+        mode skip NMS and `refine_and_apply_masks`. The ``masks``
+        output of export mode holds the mask coefficients.
 
     Variants:
         None. Configure the node through ``params``.
@@ -118,19 +131,44 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         max_det: int = 300,
         **kwargs,
     ):
-        """Head for instance segmentation and object detection.
+        """Initialize the mask branches and the prototype generator.
 
-        Adapted from `Real-Time Flying Object Detection with YOLOv8 <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        The parent class builds the box branches. The mask branch of
+        each scale has two ``3x3`` `ConvBlock` layers with batch norm
+        and SiLU. A ``1x1`` convolution with ``n_masks`` output channels
+        follows them. The hidden width of every mask branch is the
+        larger of ``n_masks`` and ``in_channels[0] // 4``.
+        ``in_channels[0]`` is the channel count of the first scale.
+        `SegProto` reads the feature map of the first scale too.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of output heads. Defaults to 3.
-            n_masks (int): Number of masks.
-            n_proto (int): Number of prototypes for segmentation.
-            conf_thres (float): Confidence threshold for NMS.
-            iou_thres (float): IoU threshold for NMS.
-            max_det (int): Maximum number of detections retained after NMS.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            n_heads (``Literal[2, 3, 4]``): Number of scales. The head
+                reads the last ``n_heads`` outputs of the input node. An
+                ``attach_index`` param replaces this selection. It must
+                select a range or ``"all"``. An integer index makes the
+                constructor raise ``TypeError``. When the head gets fewer
+                outputs, it logs a warning and uses that number. When an
+                ``attach_index`` selects more outputs, the constructor
+                raises ``ValueError``. Defaults to ``3``.
+            n_masks (int): Number of prototype masks. It is also the
+                number of mask coefficients of each anchor point.
+                Defaults to ``32``.
+            n_proto (int): Number of hidden channels of the `SegProto`
+                prototype generator. Defaults to ``64``.
+            conf_thres (float): NMS keeps only the boxes whose maximum
+                class score is above this value. The value must be in
+                ``[0, 1]``. Defaults to ``0.25``.
+            iou_thres (float): NMS removes a box when its IoU with a box
+                of the same class and a higher score is above this
+                value. The value must be in ``[0, 1]``. Defaults to
+                ``0.45``.
+            max_det (int): Maximum number of boxes that NMS keeps for
+                each image. Defaults to ``300``.
+            **kwargs (``Any``): Keyword arguments for `PrecisionBBoxHead`,
+                such as ``reg_max``, and for `BaseNode`. They must hold
+                ``original_in_shape``, the input sizes through
+                ``input_shapes`` or ``in_sizes``, and the class count
+                through ``n_classes`` or ``dataset_metadata``.
 
         """
         super().__init__(
@@ -170,6 +208,81 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self.n_masks = n_masks
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        r"""Run the branches and return the packet of the current mode.
+
+        Each `PreciseDecoupledBlock` returns the features, the class
+        logits, and the distance bin logits of one scale. `SegProto`
+        builds the prototypes from the first feature map. The mask
+        branch of each scale predicts the mask coefficients of its
+        anchor points. Export mode has priority over training mode. The
+        packet depends on the mode:
+
+        - Export mode: ``"boundingbox"`` holds one map of shape
+          ``[B, 5 + n_classes, H_i, W_i]`` for each scale. Its channels
+          are the distances ``(l, t, r, b)`` in stride units, the
+          maximum class score, and the class scores. `DFL` decodes the
+          distances when ``reg_max`` is above ``1``. The scores are
+          sigmoid probabilities. ``"masks"`` holds the mask coefficients
+          of shape ``[B, n_masks, H_i, W_i]`` for each scale.
+          ``"prototypes"`` holds the prototypes of shape
+          ``[B, n_masks, 2 * H_0, 2 * W_0]``.
+        - Training mode: ``"features"`` holds the regression and class
+          logits of shape ``[B, 4 * reg_max + n_classes, H_i, W_i]`` for
+          each scale. ``"prototypes"`` is as in export mode.
+          ``"mask_coefficients"`` holds the coefficients of all ``N``
+          anchor points, of shape ``[B, n_masks, N]``, where
+          :math:`N = \sum_i H_i W_i`.
+        - Evaluation mode: the keys of training mode and the NMS
+          results. ``"boundingbox"`` holds a tensor of shape ``[M_i, 6]``
+          for each image. Each row is ``[x1, y1, x2, y2, score, class]``,
+          with the corners in the pixels of the model input image.
+          ``"instance_segmentation"`` holds the masks of these boxes, of
+          shape ``[M_i, H, W]``, with the values ``0`` and ``1``. ``H``
+          and ``W`` come from ``original_in_shape``. For an
+          image without boxes, ``M_i`` is ``0`` and the mask tensor has
+          the dtype ``uint8``. After a call to
+          `BaseDetectionHead.request_detections_pre_nms`, the packet
+          also holds the NMS input ``"detections_pre_nms"``, of shape
+          ``[B, N, 5 + n_classes + n_masks]``.
+
+        Args:
+            inputs (``list[Tensor]``): One feature map for each scale, of
+                shape ``[B, C_i, H_i, W_i]``. ``H_0`` and ``W_0`` are the
+                height and the width of the first map.
+
+        Returns:
+            ``Packet[Tensor]``: The packet of the current mode, with the
+            keys that the description gives.
+
+        Example:
+            A new head is in training mode:
+
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import PrecisionSegmentBBoxHead
+            >>> sizes = [Size([1, 8, 16, 16]), Size([1, 16, 8, 8])]
+            >>> head = PrecisionSegmentBBoxHead(
+            ...     n_heads=2,
+            ...     n_masks=4,
+            ...     n_proto=8,
+            ...     n_classes=2,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 64, 64]),
+            ... )
+            >>> out = head([torch.zeros(size) for size in sizes])
+            >>> out["prototypes"].shape, out["mask_coefficients"].shape
+            (torch.Size([1, 4, 32, 32]), torch.Size([1, 4, 320]))
+
+            For zero inputs, a new head gives each class a score below
+            ``conf_thres``. In evaluation mode, NMS thus keeps no box and
+            no mask:
+
+            >>> out = head.eval()([torch.zeros(size) for size in sizes])
+            >>> boxes, masks = out["boundingbox"], out["instance_segmentation"]
+            >>> boxes[0].shape, masks[0].shape
+            (torch.Size([0, 6]), torch.Size([0, 64, 64]))
+
+        """
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
             head(x)
@@ -250,6 +363,49 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
     @property
     @override
     def export_output_names(self) -> list[str] | None:
+        """The names of the outputs of the exported model.
+
+        The head has ``2 * n_heads + 1`` outputs in the exported model.
+        The ONNX export sorts them by the output key. The default names
+        follow this order:
+
+        - ``output1_yolov8`` to ``output{n_heads}_yolov8`` for the
+          ``"boundingbox"`` maps.
+        - ``output1_masks`` to ``output{n_heads}_masks`` for the
+          ``"masks"`` coefficients.
+        - ``protos_output`` for the ``"prototypes"``.
+
+        The ``export_output_names`` param replaces the default names only
+        when it holds exactly ``n_heads`` names. The head logs a warning
+        each time it gives the default names. The value is never
+        ``None``.
+
+        **Warning:** A param with ``n_heads`` names has fewer names than
+        the exported model has outputs. The ONNX export thus logs a
+        warning and ignores the names. The NN Archive still lists these
+        ``n_heads`` names as the outputs of the head.
+
+        Example:
+            A head with two scales gives five default names. The
+            example turns the logger off, so the warning does not show:
+
+            >>> from loguru import logger
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import PrecisionSegmentBBoxHead
+            >>> sizes = [Size([1, 8, 16, 16]), Size([1, 16, 8, 8])]
+            >>> head = PrecisionSegmentBBoxHead(
+            ...     n_heads=2,
+            ...     n_classes=2,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 64, 64]),
+            ... )
+            >>> logger.disable("luxonis_train")
+            >>> head.export_output_names
+            ['output1_yolov8', 'output2_yolov8', 'output1_masks',
+             'output2_masks', 'protos_output']
+            >>> logger.enable("luxonis_train")
+
+        """
         return self.get_output_names(
             [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
             + [f"output{i + 1}_masks" for i in range(self.n_heads)]
@@ -265,21 +421,55 @@ def refine_and_apply_masks(
     width: int,
     upsample: bool = False,
 ) -> Tensor:
-    """Refine and apply masks to bounding boxes from the mask head.
+    r"""Build the mask of each detection and crop it to its box.
+
+    The mask of a detection is :math:`\sum_k c_k P_k`, where :math:`P_k`
+    is prototype :math:`k` and :math:`c_k` is mask coefficient :math:`k`
+    of the detection. The function scales the boxes from the image size
+    to the prototype size. It sets the mask pixels outside of each box
+    to zero. With ``upsample``, it resizes the masks to ``height`` by
+    ``width`` with bilinear interpolation. A pixel with the value
+    :math:`x` is in the mask when :math:`x > 0`. This condition is equal
+    to :math:`\sigma(x) > 0.5`, where :math:`\sigma` is the sigmoid.
+    The interpolation can extend a mask a little past its box.
 
     Args:
-        mask_prototypes (``Tensor``): Prototype masks with shape
-            ``[mask_dim, mask_height, mask_width]``.
-        predicted_masks (``Tensor``): Predicted mask coefficients with shape
-            ``[n_masks, mask_dim]``.
-        bounding_boxes (``Tensor``): Bounding boxes with shape ``[n_masks, 4]``.
-        height (int): Target image height.
-        width (int): Target image width.
-        upsample (bool): Whether to upsample masks to ``height`` and ``width``.
-            Defaults to ``False``.
+        mask_prototypes (``Tensor``): The prototype masks, of shape
+            ``[n_masks, h, w]``.
+        predicted_masks (``Tensor``): The mask coefficients of each
+            detection, of shape ``[N, n_masks]``.
+        bounding_boxes (``Tensor``): The ``xyxy`` box of each detection,
+            in the pixels of the ``height`` by ``width`` image, of shape
+            ``[N, 4]``.
+        height (int): The image height, in pixels.
+        width (int): The image width, in pixels.
+        upsample (bool): Whether to resize the masks to ``height`` by
+            ``width``. Defaults to ``False``.
 
     Returns:
-        ``Tensor``: Binary mask tensor with shape ``[n_masks, height, width]``.
+        ``Tensor``: A float tensor of masks with the values ``0`` and
+        ``1``. Its shape is ``[N, height, width]`` with ``upsample``, and
+        ``[N, h, w]`` without it. When ``predicted_masks`` or
+        ``bounding_boxes`` has no rows, the function returns a ``uint8``
+        tensor of shape ``[0, height, width]``.
+
+    Example:
+        The box covers the top-left quarter of the ``8x8`` image, so the
+        mask keeps the top-left quarter of the ``4x4`` prototype:
+
+        >>> import torch
+        >>> prototypes = torch.ones(1, 4, 4)
+        >>> coefficients = torch.tensor([[1.0]])
+        >>> boxes = torch.tensor([[0.0, 0.0, 4.0, 4.0]])
+        >>> masks = refine_and_apply_masks(
+        ...     prototypes, coefficients, boxes, height=8, width=8
+        ... )
+        >>> masks[0].int().tolist()
+        [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        >>> refine_and_apply_masks(
+        ...     prototypes, coefficients, boxes, 8, 8, upsample=True
+        ... ).shape
+        torch.Size([1, 8, 8])
 
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:

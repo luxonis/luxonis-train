@@ -1,4 +1,4 @@
-"""A classification head over the CLS embedding of a transformer
+"""A classification head over the CLS token of a transformer
 backbone.
 """
 
@@ -11,9 +11,10 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerClassificationHead(BaseHead):
-    r"""Classification decoder head for CLS token output from DINOv3.
+    r"""Classification head for the CLS token of a transformer backbone.
 
-    Converts [B, C] (CLS token embedding) to [B, n_classes].
+    `DinoV3` gives the CLS token when its ``return_sequence`` param is
+    ``True``.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C\right]` CLS token
@@ -27,8 +28,11 @@ class TransformerClassificationHead(BaseHead):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Applies dropout and a linear classifier to transformer CLS token
-        embeddings.
+        The head applies dropout and one linear layer to the CLS token.
+        It has no pooling, because the CLS token has no spatial
+        dimensions. The dropout acts only in training mode. The mode
+        does not change the output key or shape. This includes export
+        mode.
 
     Variants:
         None. Configure the node through ``params``.
@@ -74,11 +78,21 @@ class TransformerClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
-        """Classification head for transformer CLS tokens.
+        """Build the dropout and the linear layer.
+
+        The linear layer maps `in_channels` values to ``n_classes``
+        logits.
 
         Args:
-            dropout_rate (float): Dropout rate before last layer. Defaults to ``0.2``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            dropout_rate (float): The probability that the dropout layer
+                sets a value of the CLS token to zero in training mode,
+                in ``[0, 1]``. The layer scales the other values by
+                :math:`1 / (1 - p)`, where :math:`p` is
+                ``dropout_rate``. Defaults to ``0.2``.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold the input sizes through ``input_shapes`` or
+                ``in_sizes``, and the class count through ``n_classes``
+                or ``dataset_metadata``.
 
         """
         super().__init__(**kwargs)
@@ -88,22 +102,50 @@ class TransformerClassificationHead(BaseHead):
 
     @property
     def in_channels(self) -> int:
+        """The embedding size of the CLS token.
+
+        It is the last dimension of `BaseNode.in_sizes`, the ``C`` of
+        the input shape ``[B, C]``. It replaces `BaseNode.in_channels`,
+        which reads the third dimension from the end.
+
+        Raises:
+            TypeError: When `BaseNode.in_sizes` is a list of sizes. This
+                occurs for an ``attach_index`` of ``"all"`` or a range.
+                The constructor reads the property, so it raises the
+                error too.
+
+        """
         result = self._get_nth_size(-1)
         if isinstance(result, list):
             raise TypeError("Expected a single [B, C], got multiple.")
         return result
 
     def forward(self, x: Tensor) -> Tensor:
-        """Classify transformer CLS token embeddings.
+        """Compute the class logits from the CLS token.
+
+        The method applies the dropout and then the linear layer. The
+        dropout acts only in training mode.
 
         Args:
-            x (``Tensor``): CLS tensor in the form [B, C], where C is the embedding dim.
+            x (``Tensor``): The CLS token of shape ``[B, C]``, where ``C``
+                is the embedding size.
 
         Returns:
-            ``Tensor``: Class logits with shape ``[B, n_classes]``.
+            ``Tensor``: The logits of shape ``[B, n_classes]``.
+            `BaseNode.run` puts them under the ``"classification"`` key.
 
-        Notes:
-            Steps performed: 1) Apply dropout to the CLS token. 2) Apply a linear layer to produce class logits.
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import TransformerClassificationHead
+            >>> head = TransformerClassificationHead(
+            ...     n_classes=5,
+            ...     input_shapes=[{"features": [Size([2, 384])]}],
+            ... )
+            >>> head.in_channels
+            384
+            >>> head(torch.zeros(2, 384)).shape
+            torch.Size([2, 5])
 
         """
         x = self.dropout(x)
@@ -111,4 +153,12 @@ class TransformerClassificationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
+        """Return the NN Archive metadata of the head.
+
+        Returns:
+            ``Params``: The dictionary ``{"is_softmax": False}``. The
+            value tells the parser that the outputs are logits, not
+            softmax probabilities.
+
+        """
         return {"is_softmax": False}

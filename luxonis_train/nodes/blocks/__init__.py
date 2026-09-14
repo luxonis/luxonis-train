@@ -1,10 +1,16 @@
-"""Layer blocks shared by more than one node.
+"""Layer blocks that the nodes build on.
 
-A block that only one node uses lives beside that node instead.
+The package holds convolution blocks and stacks, RepVGG-style blocks,
+attention and pooling blocks, and parts of the detection and
+segmentation heads. It also holds the ResNet blocks and the U-Net
+encoder and decoder blocks.
 
-Some blocks subclass `Reparameterizable`. Such a block trains as a
-multi-branch module and folds into a single convolution before export,
-which keeps the accuracy of training and the speed of inference.
+`GeneralReparameterizableBlock` subclasses `Reparameterizable`. It
+trains with parallel branches and fuses them into a single convolution
+when its node enters export mode.
+
+When ``aimet_torch`` is installed, the import of the package tells its
+quantization to ignore `DropPath` and `UpscaleOnline`.
 
 """
 

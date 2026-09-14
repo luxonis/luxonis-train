@@ -1,4 +1,4 @@
-"""The MobileNetV2 backbone."""
+"""The MobileNetV2 backbone from ``torchvision``."""
 
 from typing import Literal
 
@@ -11,12 +11,14 @@ from luxonis_train.nodes.base_node import BaseNode
 class MobileNetV2(BaseNode):
     r"""MobileNetV2 backbone that returns intermediate feature maps.
 
-    MobileNetV2 uses inverted residual blocks and linear bottlenecks for
-    efficient convolutional feature extraction on resource-constrained
-    devices.
+    MobileNetV2 stacks inverted residual blocks with linear bottlenecks
+    and depthwise convolutions. The node wraps the ``torchvision`` model
+    with the width multiplier ``1.0``. It runs the 19 modules of
+    ``features``. It returns the output of each module that
+    ``out_indices`` selects.
 
     Inputs:
-        - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
+        - ``inputs`` (``Tensor``): :math:`\left[B, 3, H, W\right]`
 
     Outputs:
         - ``features`` (``list[Tensor]``): one per ``out_indices``; by
@@ -30,8 +32,8 @@ class MobileNetV2(BaseNode):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Uses the torchvision implementation and returns configured
-        feature-layer outputs.
+        The input must have 3 channels. The node keeps the unused
+        ``classifier`` of the ``torchvision`` model.
 
     Variants:
         None. Configure the node through ``params``.
@@ -56,25 +58,37 @@ class MobileNetV2(BaseNode):
         weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
-        """MobileNetV2 backbone.
+        """Build the ``torchvision`` model and store ``out_indices``.
 
-        This class implements the MobileNetV2 model as described in:
-        `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381v4>`_ by Sandler *et al.*
+        The modules of ``features`` have these output channels and
+        strides:
 
-        The network consists of an initial fully convolutional layer, followed by
-        19 bottleneck residual blocks, and a final 1x1 convolution. It can be used
-        as a feature extractor for tasks like image classification, object detection,
-        and semantic segmentation.
+        - Module ``0``, the stem convolution: 32 channels, stride 2.
+        - Module ``1``: 16 channels, stride 2.
+        - Modules ``2`` and ``3``: 24 channels, stride 4.
+        - Modules ``4`` to ``6``: 32 channels, stride 8.
+        - Modules ``7`` to ``10``: 64 channels, stride 16.
+        - Modules ``11`` to ``13``: 96 channels, stride 16.
+        - Modules ``14`` to ``16``: 160 channels, stride 32.
+        - Module ``17``: 320 channels, stride 32.
+        - Module ``18``, the final ``1x1`` convolution: 1280 channels,
+          stride 32.
 
-        Key features:
-            - Inverted residual structure with linear bottlenecks
-            - Depth-wise separable convolutions for efficiency
-            - Configurable width multiplier and input resolution
+        The modules ``1`` to ``17`` are the inverted residual blocks.
 
         Args:
-            out_indices (list[int] | None): Indices of the output layers. Defaults to [3, 6, 13, 18].
-            weights (``Literal["download", "none"] | None``): Whether to download pretrained weights. Defaults to None.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            out_indices (list[int] | None): Indices of the ``features``
+                modules that `forward` returns, from ``0`` to ``18``. An
+                index outside that range adds no output. ``None`` or an
+                empty list selects ``[3, 6, 13, 18]``.
+            weights (``Literal["download", "none"] | None``): The value
+                ``"download"`` loads the ``DEFAULT`` ``torchvision``
+                weights, ``IMAGENET1K_V2``. Any other value keeps the
+                random initialization. The value does not reach
+                `BaseNode`, so a checkpoint URL or ``"yolo"`` has no
+                effect.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -85,6 +99,31 @@ class MobileNetV2(BaseNode):
         self.out_indices = out_indices or [3, 6, 13, 18]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run the ``features`` modules in order.
+
+        Args:
+            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: The output of each module whose index is
+            in ``out_indices``, in module order. The default indices
+            give 24, 32, 96, and 1280 channels at the strides 4, 8, 16,
+            and 32.
+
+        Example:
+            >>> import torch
+            >>> from luxonis_train.nodes import MobileNetV2
+            >>> node = MobileNetV2()
+            >>> [tuple(t.shape) for t in node(torch.zeros(1, 3, 64, 64))]
+            [(1, 24, 16, 16), (1, 32, 8, 8), (1, 96, 4, 4), (1, 1280, 2, 2)]
+
+            The outputs keep the module order:
+
+            >>> node = MobileNetV2(out_indices=[18, 1])
+            >>> [tuple(t.shape) for t in node(torch.zeros(1, 3, 64, 64))]
+            [(1, 16, 32, 32), (1, 1280, 2, 2)]
+
+        """
         outs: list[Tensor] = []
         for i, layer in enumerate(self.backbone.features):
             inputs = layer(inputs)

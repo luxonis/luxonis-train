@@ -1,4 +1,4 @@
-"""A classification head over pooled features."""
+"""A classification head with pooling, dropout, and a linear layer."""
 
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
@@ -9,10 +9,7 @@ from luxonis_train.tasks import Tasks
 
 
 class ClassificationHead(BaseHead):
-    r"""Simple classification head.
-
-    Consists of a global average pooling layer followed by a dropout
-    layer and a single linear layer.
+    r"""Classification head with one linear layer.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, h, w\right]`
@@ -26,8 +23,10 @@ class ClassificationHead(BaseHead):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Applies global average pooling, dropout, and a linear
-        classifier.
+        The head applies global average pooling, dropout, and one linear
+        layer. The feature map can have any height :math:`h` and width
+        :math:`w`. ``forward`` does not check the mode, so export mode
+        also gives the logits. The dropout acts only in training mode.
 
     Variants:
         None. Configure the node through ``params``.
@@ -74,11 +73,15 @@ class ClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
-        """Initialize the classification head.
+        """Build the pooling, the dropout, and the linear layer.
 
         Args:
-            dropout_rate (float): Dropout rate before last layer, range ``[0, 1]``. Defaults to ``0.2``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            dropout_rate (float): The probability that the dropout layer
+                sets a pooled feature to zero in training mode, in
+                ``[0, 1]``.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold ``input_shapes`` or ``in_sizes``, and the class
+                count through ``n_classes`` or ``dataset_metadata``.
 
         """
         super().__init__(**kwargs)
@@ -91,8 +94,38 @@ class ClassificationHead(BaseHead):
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
+        """Compute the class logits.
+
+        Args:
+            inputs (``Tensor``): The feature map of shape
+                ``[B, C, h, w]``.
+
+        Returns:
+            ``Tensor``: The logits of shape ``[B, n_classes]``.
+            `BaseNode.run` puts them under the ``"classification"`` key.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import ClassificationHead
+            >>> head = ClassificationHead(
+            ...     n_classes=4,
+            ...     input_shapes=[{"features": [Size([2, 16, 7, 7])]}],
+            ... )
+            >>> head(torch.zeros(2, 16, 7, 7)).shape
+            torch.Size([2, 4])
+
+        """
         return self.head(inputs)
 
     @override
     def get_custom_head_config(self) -> Params:
+        """Return the NN Archive metadata of the head.
+
+        Returns:
+            ``Params``: The dictionary ``{"is_softmax": False}``. The
+            value tells the parser that the outputs are logits, not
+            softmax probabilities.
+
+        """
         return {"is_softmax": False}

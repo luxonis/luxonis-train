@@ -23,14 +23,19 @@ class EfficientRep(BaseNode):
     r"""EfficientRep backbone for object detection.
 
     EfficientRep is a YOLOv6-style convolutional feature extractor with
-    scalable depth, width, and block type presets.
+    scalable depth, width, and block type presets. A stride-2 stem feeds
+    four stages. Each stage starts with a stride-2
+    `GeneralReparameterizableBlock`, and the blocks that ``block``
+    selects follow it. The last stage ends with a
+    `SpatialPyramidPoolingBlock`.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
         - ``features`` (``list[Tensor]``): strides 4, 8, 16, 32;
-          channels ``channels_list[1:] * width_multiplier``
+          channels ``channels_list[1:] * width_multiplier``, rounded up
+          to multiples of 8
 
     References:
         - Source: Reimplemented from `YOLOv6: A Single-Stage Object
@@ -112,17 +117,39 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """Initialize the EfficientRep backbone.
+        """Build the stem, the four stages, and the pooling block.
+
+        The constructor multiplies each entry of ``channels_list`` by
+        ``width_multiplier`` and rounds it up to a multiple of 8. It
+        multiplies each entry of ``n_repeats`` above ``1`` by
+        ``depth_multiplier`` and rounds it to the nearest integer, with a
+        minimum of ``1``. Entries of ``1`` or less stay unchanged. An
+        explicit argument replaces the value that a variant sets.
 
         Args:
-            channels_list (list[int] | None): List of number of channels for each block. If unspecified, defaults to [64, 128, 256, 512, 1024].
-            n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. If unspecified, defaults to [1, 6, 12, 18, 6].
-            depth_multiplier (float): Depth multiplier. If provided, overrides the variant value.
-            width_multiplier (float): Width multiplier. If provided, overrides the variant value.
-            block (``Literal["RepBlock", "CSPStackRepBlock"]``): Base block used when building the backbone. If provided, overrides the variant value.
-            csp_e (float): Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided, overrides the variant value.
-            weights (str): Weights identifier forwarded to the parent class. Defaults to ``"yolo"``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            channels_list (list[int] | None): The output channels of the
+                stem and the four stages, before ``width_multiplier``.
+                ``None`` or an empty list selects
+                ``[64, 128, 256, 512, 1024]``.
+            n_repeats (list[int] | None): The block counts of the stem
+                and the four stages, before ``depth_multiplier``. The
+                stem does not use its entry. ``None`` or an empty list
+                selects ``[1, 6, 12, 18, 6]``.
+            depth_multiplier (float): The scale of the block counts.
+            width_multiplier (float): The scale of the channel counts.
+            block (``Literal["RepBlock", "CSPStackRepBlock"]``): The
+                block type of the stages. ``"RepBlock"`` stacks as many
+                `GeneralReparameterizableBlock` blocks as the block
+                count. ``"CSPStackRepBlock"`` uses one `CSPStackRepBlock`
+                with the block count as ``n_blocks``.
+            csp_e (float): The fraction of the output channels on each
+                of the two paths of a `CSPStackRepBlock`. ``"RepBlock"``
+                does not use it.
+            weights (str): The weights argument of `BaseNode`.
+                ``"yolo"`` applies the YOLO initialization. ``"download"``
+                loads the COCO weights from `get_weights_url`.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
         """
         super().__init__(weights=weights, **kwargs)
@@ -180,6 +207,27 @@ class EfficientRep(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run the stem and return the output of each stage.
+
+        Args:
+            inputs (``Tensor``): Image batch of shape
+                ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: The outputs of the four stages, at the
+            strides 4, 8, 16, and 32. Their channels are the last four
+            entries of the scaled ``channels_list``.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientRep
+            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
+            >>> node = EfficientRep(variant="n", input_shapes=shapes)
+            >>> [tuple(t.shape) for t in node(torch.zeros(1, 3, 64, 64))]
+            [(1, 32, 16, 16), (1, 64, 8, 8), (1, 128, 4, 4), (1, 256, 2, 2)]
+
+        """
         outputs: list[Tensor] = []
         x = self.repvgg_encoder(inputs)
         for block in self.blocks:
@@ -189,11 +237,54 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
+        """Return the URL of the COCO weights of the variant.
+
+        The file name holds the first letter of the variant name, so an
+        alias such as ``"nano"`` gives the same URL as ``"n"``.
+
+        Returns:
+            str: The URL ``{github}/efficientrep_<letter>_coco.ckpt``.
+            `BaseNode` replaces the ``{github}`` placeholder.
+
+        Raises:
+            AttributeError: When no variant built the node.
+
+        Example:
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientRep
+            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
+            >>> node = EfficientRep(variant="nano", input_shapes=shapes)
+            >>> node.get_weights_url()
+            '{github}/efficientrep_n_coco.ckpt'
+
+        """
         return f"{{github}}/efficientrep_{self.variant[0]}_coco.ckpt"
 
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the four EfficientRep sizes.
+
+        Each variant sets ``depth_multiplier``, ``width_multiplier``,
+        ``block``, and ``csp_e``. ``"n"`` and ``"s"`` use ``"RepBlock"``.
+        ``"m"`` and ``"l"`` use ``"CSPStackRepBlock"``. The aliases
+        ``"nano"``, ``"small"``, ``"medium"``, and ``"large"`` map to the
+        same dictionaries as ``"n"``, ``"s"``, ``"m"``, and ``"l"``.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
+            dictionary that maps each variant name and alias to its
+            constructor arguments.
+
+        Example:
+            >>> from luxonis_train.nodes import EfficientRep
+            >>> default, variants = EfficientRep.get_variants()
+            >>> default, list(variants)
+            ('n', ['n', 's', 'm', 'l', 'nano', 'small', 'medium', 'large'])
+            >>> variants["nano"] is variants["n"]
+            True
+
+        """
         return "n", add_variant_aliases(
             {
                 "n": {

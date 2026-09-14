@@ -1,7 +1,9 @@
-"""Necks that fuse the feature maps of a backbone.
+"""Necks that refine the feature maps of a backbone for a head.
 
-`RepPANNeck` merges features across strides for the detection heads.
-`SVTRNeck` refines a feature sequence for the OCR head.
+- `RepPANNeck` fuses the feature maps of several scales. The detection,
+  instance segmentation, and keypoint detection models use it.
+- `SVTRNeck` refines the last feature map with SVTR transformer blocks.
+  The OCR recognition model uses it.
 
 """
 

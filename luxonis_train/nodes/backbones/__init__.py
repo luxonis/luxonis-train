@@ -1,12 +1,19 @@
 """Backbones that turn an image into feature maps.
 
-Most backbones return one feature map for each stride, which a neck or a
-head then consumes. `DinoV3` also returns a single CLS embedding when
-``return_sequence`` is true. `GhostFaceNet` targets face embeddings and
-`RecSubNet` reconstructs an image without its anomalies.
+Most backbones return a list of feature maps. The stride increases from
+one map to the next. A neck or a head then reads the maps. Some
+backbones differ:
 
-Set ``variant`` to pick a size. Each backbone docstring lists the
-variants it declares and the parameters each one sets.
+- `ContextSpatial` and `DDRNet` return features at 1/8 of the input
+  size, for a segmentation head.
+- `DinoV3` returns a list with one CLS embedding instead of feature
+  maps when ``return_sequence`` is ``True``.
+- `GhostFaceNet` targets face embeddings.
+- `RecSubNet` returns a packet with an image reconstruction and the
+  original input, for anomaly detection.
+
+A backbone with variants takes ``variant`` to pick a size. Each backbone
+docstring lists its variants and the parameters that each variant sets.
 
 """
 

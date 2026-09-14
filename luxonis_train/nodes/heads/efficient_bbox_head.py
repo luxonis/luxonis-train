@@ -64,9 +64,10 @@ class EfficientBBoxHead(BaseDetectionHead):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Uses efficient decoupled prediction blocks and post-processes
-        detections with anchor generation, distribution decoding, and
-        NMS outside export mode.
+        The head runs one `EfficientDecoupledBlock` for each scale. In
+        evaluation mode, it decodes the distances around the anchor
+        points into boxes and runs NMS. Training mode and export mode
+        skip this step.
 
     Variants:
         None. Configure the node through ``params``.
@@ -108,18 +109,28 @@ class EfficientBBoxHead(BaseDetectionHead):
         bias_init_p: float = 1e-2,
         **kwargs,
     ):
-        """Head for object detection.
-
-        Adapted from `YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        """Initialize one decoupled block for each scale.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of output heads. Defaults to 3. Note: Should be same also on neck in most cases.
-            conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
-            iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
-            max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
-            bias_init_p (float): Prior probability used to initialize class prediction bias. Defaults to ``1e-2``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            n_heads (``Literal[2, 3, 4]``): Number of scales. The head
+                reads the last ``n_heads`` outputs of the input node. An
+                ``attach_index`` param replaces this selection. The value
+                is usually equal to the number of neck outputs. When the
+                input node gives fewer outputs, the head logs a warning
+                and uses that number. Defaults to ``3``.
+            conf_thres (float): NMS keeps only the boxes whose maximum
+                class score is above this value. The value must be in
+                ``[0, 1]``. Defaults to ``0.25``.
+            iou_thres (float): NMS removes a box when its IoU with a box of
+                the same class and a higher score is above this value.
+                The value must be in ``[0, 1]``. Defaults to ``0.45``.
+            max_det (int): Maximum number of boxes that NMS keeps for each
+                image. Defaults to ``300``.
+            bias_init_p (float): Initial class score of every anchor point.
+                `initialize_weights` sets the class bias from it.
+                Defaults to ``1e-2``.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`, such as
+                ``n_classes`` and ``input_shapes``.
 
         """
         super().__init__(
@@ -145,6 +156,42 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
+        r"""Initialize the weights and the priors of the last layers.
+
+        The method first calls `BaseNode.initialize_weights`. Then, for
+        each scale, it sets the weights of the last convolution of both
+        branches to zero. The bias of the class branch becomes
+        :math:`-\log\left((1 - p) / p\right)`, where :math:`p` is
+        ``bias_init_p``. The bias of the regression branch becomes ``1``.
+        A new head thus predicts the class score ``bias_init_p`` and the
+        distance ``1`` for every anchor point and every input.
+
+        Args:
+            method (str | None): Method for `BaseNode.initialize_weights`.
+                ``"yolo"`` changes the batch norm and activation settings.
+                Other values skip that step. Defaults to ``None``.
+
+        Example:
+            The node calls the method after construction, so a new head
+            already gives these outputs:
+
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientBBoxHead
+            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
+            >>> head = EfficientBBoxHead(
+            ...     n_heads=2,
+            ...     n_classes=2,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 256, 256]),
+            ... )
+            >>> out = head([torch.zeros(size) for size in sizes])
+            >>> torch.allclose(out["class_scores"], torch.tensor(0.01))
+            True
+            >>> out["distributions"].unique().tolist()
+            [1.0]
+
+        """
         super().initialize_weights(method)
         for head in self.heads:
             data = [
@@ -165,9 +212,91 @@ class EfficientBBoxHead(BaseDetectionHead):
     def load_checkpoint(
         self, path: str | None = None, strict: bool = False
     ) -> None:
+        """Load a checkpoint, with a non-strict key match by default.
+
+        The method passes ``path`` as ``ckpt`` to
+        `BaseNode.load_checkpoint`. The override renames the first
+        parameter and sets the default of ``strict`` to ``False``.
+
+        **Warning:** The override has no ``ckpt`` parameter. After
+        construction, the node calls ``load_checkpoint(ckpt=...)`` for a
+        ``weights`` URL. Thus, a call such as
+        ``EfficientBBoxHead(weights="https://...")`` raises ``TypeError``.
+
+        Args:
+            path (str | None): Local path or URL of a ``.ckpt`` file.
+                `LuxonisLightningModule` also gives a state dictionary,
+                and the base method loads it directly. ``None`` or ``""``
+                takes the URL from `get_weights_url`. That call fails
+                when no variant built the node.
+            strict (bool): Whether the keys of the checkpoint must match
+                the keys of the head exactly. Defaults to ``False``.
+
+        """
         return super().load_checkpoint(path, strict=strict)
 
     def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        """Run the block of each scale and build the packet of the mode.
+
+        Each `EfficientDecoupledBlock` returns the decoded features, the
+        class logits, and the distances of one scale. The head applies a
+        sigmoid to the class logits. Export mode has priority over
+        training mode. The packet depends on the mode:
+
+        - Export mode: ``"boundingbox"`` holds one map of shape
+          ``[B, 5 + n_classes, H_i, W_i]`` for each scale. Its channels
+          are the distances ``(l, t, r, b)``, the maximum class score,
+          and the class scores.
+        - Training mode: ``"features"`` holds the decoded feature map
+          of shape ``[B, C_i, H_i, W_i]`` for each scale.
+          ``"class_scores"`` of shape ``[B, N, n_classes]`` and
+          ``"distributions"`` of shape ``[B, N, 4]`` hold the class
+          scores and the distances of all ``N`` anchor points. The
+          distances ``(l, t, r, b)`` are in stride units. ``N`` is the
+          sum of ``H_i * W_i``.
+        - Evaluation mode: the training keys and ``"boundingbox"``. The
+          head decodes the distances into boxes in pixels and runs NMS.
+          Each image gets a tensor of shape ``[M_i, 6]`` with the rows
+          ``[x1, y1, x2, y2, score, class]``. An image without boxes
+          gets a tensor of shape ``[0, 5 + n_classes]``. After a call to
+          `BaseDetectionHead.request_detections_pre_nms`, the packet
+          also holds ``"detections_pre_nms"``. This is the NMS input of
+          shape ``[B, N, 5 + n_classes]``: the ``xyxy`` box in pixels, a
+          constant ``1``, and the class scores.
+
+        Args:
+            inputs (``list[Tensor]``): One feature map for each scale, of
+                shape ``[B, C_i, H_i, W_i]``.
+
+        Returns:
+            ``Packet[Tensor]``: The packet of the current mode.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientBBoxHead
+            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
+            >>> head = EfficientBBoxHead(
+            ...     n_heads=2,
+            ...     n_classes=3,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 256, 256]),
+            ... )
+            >>> out = head([torch.zeros(size) for size in sizes])
+            >>> out["class_scores"].shape, out["distributions"].shape
+            (torch.Size([1, 1280, 3]), torch.Size([1, 1280, 4]))
+
+            A new head gives each class the score ``0.01``, which is
+            below ``conf_thres``. In evaluation mode, NMS thus keeps no
+            box:
+
+            >>> out = head.eval()([torch.zeros(size) for size in sizes])
+            >>> sorted(out)
+            ['boundingbox', 'class_scores', 'distributions', 'features']
+            >>> out["boundingbox"][0].shape
+            torch.Size([0, 8])
+
+        """
         features_list, classes_list, regressions_list = self._forward(inputs)
 
         if self.export:
@@ -212,6 +341,21 @@ class EfficientBBoxHead(BaseDetectionHead):
     def _wrap_export(
         classes_list: list[Tensor], regressions_list: list[Tensor]
     ) -> Packet[Tensor]:
+        """Build the export map of each scale.
+
+        Args:
+            classes_list (``list[Tensor]``): Class scores of shape
+                ``[B, n_classes, H_i, W_i]`` for each scale.
+            regressions_list (``list[Tensor]``): Distances of shape
+                ``[B, 4, H_i, W_i]`` for each scale.
+
+        Returns:
+            ``Packet[Tensor]``: The key ``"boundingbox"`` with one map of
+            shape ``[B, 5 + n_classes, H_i, W_i]`` for each scale. Its
+            channels are the distances, the maximum class score, and the
+            class scores.
+
+        """
         bboxes: list[Tensor] = []
         for classes, regressions in zip(
             classes_list, regressions_list, strict=True
@@ -223,17 +367,57 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @staticmethod
     def _postprocess(outputs: Iterable[Tensor]) -> Tensor:
+        """Flatten the maps of all scales and join them.
+
+        Args:
+            outputs (``Iterable[Tensor]``): One tensor of shape
+                ``[B, C, H_i, W_i]`` or ``[B, C, H_i * W_i]`` for each
+                scale.
+
+        Returns:
+            ``Tensor``: Tensor of shape ``[B, N, C]``, where ``N`` is the
+            sum of ``H_i * W_i``.
+
+        """
         return torch.cat([out.flatten(2) for out in outputs], dim=2).permute(
             0, 2, 1
         )
 
     @override
     def get_weights_url(self) -> str:
+        """Return the URL template of the COCO checkpoint of the head.
+
+        The file name holds the first character of `BaseNode.variant`,
+        for example ``{github}/efficientbbox_head_n_coco.ckpt``.
+        `BaseNode.load_checkpoint` replaces the ``{github}`` placeholder
+        with the URL of the release.
+
+        **The call always fails on a node of this class.** The class
+        does not implement `BaseNode.get_variants`, so no variant can
+        build the node. Only a subclass with variants can use this URL.
+
+        Returns:
+            str: The URL template of the checkpoint.
+
+        Raises:
+            AttributeError: When no variant built the node.
+
+        """
         return f"{{github}}/efficientbbox_head_{self.variant[0]}_coco.ckpt"
 
     @property
     @override
     def export_output_names(self) -> list[str] | None:
+        """The names of the ``n_heads`` outputs of the exported model.
+
+        The default names are ``output1_yolov6r2``,
+        ``output2_yolov6r2``, and so on. These names are compatible with
+        DepthAI. The ``export_output_names`` param replaces them only
+        when it holds exactly ``n_heads`` names. The head logs a warning
+        each time it gives the default names. The value is never
+        ``None``.
+
+        """
         return self.get_output_names(
             [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
         )
@@ -248,7 +432,30 @@ class EfficientBBoxHead(BaseDetectionHead):
         *,
         tail: list[Tensor] | None = None,
     ) -> Tensor:
-        """Decode predictions into the tensor expected by NMS."""
+        """Decode the predictions into the input tensor of NMS.
+
+        Args:
+            features (``list[Tensor]``): Feature maps of the scales. The
+                method reads only the batch size of the last map.
+            class_scores (``Tensor``): Class scores of shape
+                ``[B, N, n_classes]``.
+            distributions (``Tensor``): Distances ``(l, t, r, b)`` in
+                stride units, of shape ``[B, N, 4]``.
+            anchor_points (``Tensor``): Anchor points in grid units, of
+                shape ``[N, 2]``.
+            stride_tensor (``Tensor``): Stride of each anchor point, of
+                shape ``[N, 1]``.
+            tail (``list[Tensor] | None``): Tensors of shape ``[B, N, D_j]``
+                to add after the class scores, in list order. NMS keeps
+                these values with each box. Defaults to ``None``.
+
+        Returns:
+            ``Tensor``: Tensor of shape ``[B, N, 5 + n_classes + D]``,
+            where ``D`` is the sum of all ``D_j``. Each row holds the
+            ``xyxy`` box in pixels, a constant ``1``, the class scores,
+            and the tail values.
+
+        """
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 
@@ -268,7 +475,21 @@ class EfficientBBoxHead(BaseDetectionHead):
         )
 
     def _run_nms(self, detections_pre_nms: Tensor) -> list[Tensor]:
-        """Apply NMS to decoded detection candidates."""
+        """Run NMS on the decoded candidates of each image.
+
+        Args:
+            detections_pre_nms (``Tensor``): Output of
+                ``_prepare_bbox_inference_output``, of shape
+                ``[B, N, 5 + n_classes + D]``.
+
+        Returns:
+            ``list[Tensor]``: One tensor of shape ``[M_i, 6 + D]`` for
+            each image, with ``M_i`` at most ``max_det``. Each row holds
+            ``[x1, y1, x2, y2, score, class]`` and the tail values. An
+            image without boxes gets a tensor of shape
+            ``[0, 5 + n_classes + D]``.
+
+        """
         return non_max_suppression(
             detections_pre_nms,
             n_classes=self.n_classes,
@@ -281,4 +502,27 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_custom_head_config(self) -> Params:
+        """Return the NN Archive metadata of the head.
+
+        Returns:
+            ``Params``: The keys ``"iou_threshold"``,
+            ``"conf_threshold"``, ``"max_det"``, and ``"strides"`` from
+            `BaseDetectionHead.get_custom_head_config`. The key
+            ``"subtype"`` has the value ``"yolov6r2"``.
+
+        Example:
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientBBoxHead
+            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
+            >>> head = EfficientBBoxHead(
+            ...     n_heads=2,
+            ...     n_classes=3,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 256, 256]),
+            ... )
+            >>> head.get_custom_head_config()
+            {'iou_threshold': 0.45, 'conf_threshold': 0.25, 'max_det': 300,
+             'strides': [8, 16], 'subtype': 'yolov6r2'}
+
+        """
         return super().get_custom_head_config() | {"subtype": "yolov6r2"}

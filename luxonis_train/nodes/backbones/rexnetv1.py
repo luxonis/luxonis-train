@@ -11,26 +11,34 @@ from luxonis_train.utils import make_divisible
 class ReXNetV1_lite(BaseNode):
     r"""Lite ReXNetV1 backbone for lightweight convolutional features.
 
-    ReXNetV1 expands channel dimensions across the network to improve
-    representational rank while keeping the model efficient.
+    ReXNet (Rank Expansion Networks) makes the channel counts of its
+    blocks grow linearly with the depth. The lite version has no
+    squeeze-and-excitation blocks, and ``ReLU6`` is its only activation.
+    The node is a stack of 18 modules: a ``3x3`` stem with stride 2, 16
+    `LinearBottleneck` blocks in six stages, and a ``1x1`` convolution.
+    With the default parameters, this convolution has 1280 channels.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
         - ``features`` (``list[Tensor]``): one per ``out_indices``; by
-          default strides 2, 8, 16, 32
+          default strides 2, 8, 16, 32 with 16, 56, 120, 1280 channels
 
     References:
         - Source: Adapted from `clovaai/rexnet
           <https://github.com/clovaai/rexnet>`_ (MIT). Paper:
           `Rethinking Channel Dimensions for Efficient Model Design
           <https://arxiv.org/abs/2007.00992>`_.
-        - License: MIT
+        - License: `MIT
+          <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_.
+          Copyright 2021-present NAVER Corp.
 
     Notes:
-        Implements the lite ReXNetV1 block schedule locally and returns
-        configured intermediate outputs.
+        The stem always expects 3 input channels. It does not read
+        ``in_channels``. ``out_indices`` selects outputs by module
+        index: ``0`` is the stem, ``1`` to ``16`` are the bottlenecks,
+        and ``17`` is the final ``1x1`` convolution.
 
     Variants:
         None. Configure the node through ``params``.
@@ -60,41 +68,51 @@ class ReXNetV1_lite(BaseNode):
         out_indices: list[int] | None = None,
         **kwargs,
     ):
-        """ReXNetV1 (Rank Expansion Networks) backbone, lite version.
+        """Build the stem, the 16 bottlenecks, and the final
+        convolution.
 
-        ReXNet proposes a new approach to designing lightweight CNN architectures by:
+        The six stages have 1, 2, 2, 3, 3, and 5 bottlenecks. Their first
+        bottlenecks have the strides 1, 2, 2, 2, 1, and 2 in stage order.
+        The other bottlenecks have the stride 1. The bottlenecks of the
+        first stage have no expansion. The other bottlenecks expand the
+        channels by a factor of 6.
 
-            - Studying proper channel dimension expansion at the layer level using rank analysis
-            - Searching for effective channel configurations across the entire network
-            - Parameterizing channel dimensions as a linear function of network depth
-
-        Key aspects:
-
-            - Uses inverted bottleneck blocks similar to MobileNetV2
-            - Employs a linear parameterization of channel dimensions across blocks
-            - Replaces ReLU6 with SiLU (Swish-1) activation in certain layers
-            - Incorporates Squeeze-and-Excitation modules
-
-        ReXNet achieves state-of-the-art performance among lightweight models on ImageNet
-        classification and transfers well to tasks like object detection and fine-grained classification.
-
-        Source: `https://github.com/clovaai/rexnet <https://github.com/clovaai/rexnet>`_
+        The output channels of the bottlenecks grow in 15 equal steps
+        from ``input_ch`` to ``input_ch + final_ch``. ``multiplier``
+        scales these counts. A ``multiplier`` below ``1`` scales only the
+        growth, not ``input_ch``. The stem has 32 channels. A
+        ``multiplier`` above ``1`` gives the stem ``32 * multiplier``
+        channels and the final convolution ``int(1280 * multiplier)``
+        channels, unless ``fix_head_stem`` is ``True``. The constructor
+        rounds the channel counts of the stem and the bottlenecks up to a
+        multiple of ``divisible_value``.
 
         Args:
-            fix_head_stem (bool): Whether to multiply head stem. Defaults to False.
-            divisible_value (int): Divisor used. Defaults to 8.
-            input_ch (int): Starting channel dimension. Defaults to 16.
-            final_ch (int): Final channel dimension. Defaults to 164.
-            multiplier (float): Channel dimension multiplier. Defaults to 1.0.
-            kernel_sizes (int | list[int]): Kernel size for each block. Defaults to 3.
-            out_indices (list[int] | None): Indices of the output layers. Defaults to [1, 4, 10, 17].
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            fix_head_stem (bool): Whether to keep the stem at 32 channels
+                and the final convolution at 1280 channels. It changes
+                the network only for a ``multiplier`` above ``1``.
+            divisible_value (int): The number that the channel counts of
+                the stem and the bottlenecks are multiples of.
+            input_ch (int): The output channels of the first bottleneck,
+                before ``multiplier``.
+            final_ch (int): The channel growth from the first to the last
+                bottleneck, before ``multiplier``. It is not the channel
+                count of the last bottleneck.
+            multiplier (float): The scale of the channel counts.
+            kernel_sizes (int | list[int]): The size of the depthwise
+                kernels. A list gives one size for each of the six
+                stages.
+            out_indices (list[int] | None): The indices of the modules
+                whose outputs `forward` returns. ``0`` is the stem, ``1``
+                to ``16`` are the bottlenecks, and ``17`` is the final
+                convolution. ``None`` or an empty list selects
+                ``[1, 4, 10, 17]``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
-        Notes:
-            License: `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_. Copyright: 2021-present NAVER Corp.
-
-        See Also:
-            `Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>`_
+        Raises:
+            ValueError: When ``kernel_sizes`` is a list that does not
+                have exactly six values.
 
         """
         super().__init__(**kwargs)
@@ -226,6 +244,25 @@ class ReXNetV1_lite(BaseNode):
         return in_channels_group, channels_group
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run all 18 modules and collect the selected outputs.
+
+        Args:
+            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: The outputs of the modules whose index is in
+            ``out_indices``, in module order. An index outside ``0`` to
+            ``17`` selects nothing. The default indices give the strides
+            2, 8, 16, and 32, with 16, 56, 120, and 1280 channels.
+
+        Example:
+            >>> import torch
+            >>> from luxonis_train.nodes import ReXNetV1_lite
+            >>> node = ReXNetV1_lite()
+            >>> [tuple(t.shape) for t in node(torch.zeros(1, 3, 64, 64))]
+            [(1, 16, 32, 32), (1, 56, 8, 8), (1, 120, 4, 4), (1, 1280, 2, 2)]
+
+        """
         outs: list[Tensor] = []
         for i, module in enumerate(self.features):
             inputs = module(inputs)
@@ -235,6 +272,37 @@ class ReXNetV1_lite(BaseNode):
 
 
 class LinearBottleneck(nn.Module):
+    """Inverted residual block of ReXNet with a linear projection.
+
+    When ``t`` is not ``1``, the block first expands the channels with a
+    ``1x1`` convolution. It then applies a depthwise convolution and
+    projects to ``channels`` with a ``1x1`` convolution. The expansion
+    and the depthwise convolution end with ``ReLU6``. The projection has
+    no activation. Each convolution has a batch norm.
+
+    When ``stride`` is ``1`` and ``in_channels <= channels``, the block
+    adds its input to the first ``in_channels`` output channels. The
+    other output channels get no shortcut.
+
+    Attributes:
+        use_shortcut (bool): Whether the block adds the shortcut.
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        out (``nn.Sequential``): The expansion, depthwise, and
+            projection layers.
+
+    Example:
+        >>> import torch
+        >>> block = LinearBottleneck(8, 12, t=6)
+        >>> block.use_shortcut
+        True
+        >>> block(torch.zeros(1, 8, 4, 4)).shape
+        torch.Size([1, 12, 4, 4])
+        >>> LinearBottleneck(8, 12, t=6, stride=2).use_shortcut
+        False
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -243,6 +311,20 @@ class LinearBottleneck(nn.Module):
         kernel_size: int = 3,
         stride: int = 1,
     ):
+        """Build the expansion, the depthwise, and the projection
+        layers.
+
+        Args:
+            in_channels (int): Number of input channels.
+            channels (int): Number of output channels.
+            t (int): Expansion factor. The depthwise convolution has
+                ``in_channels * t`` channels. For ``1``, the block has no
+                expansion convolution.
+            kernel_size (int): Size of the depthwise kernel. The padding
+                is ``kernel_size // 2``.
+            stride (int): Stride of the depthwise convolution.
+
+        """
         super().__init__()
         self.use_shortcut = stride == 1 and in_channels <= channels
         self.in_channels = in_channels
@@ -283,6 +365,18 @@ class LinearBottleneck(nn.Module):
         self.out = nn.Sequential(*out)
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the layers and add the partial shortcut.
+
+        Args:
+            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: Output of shape ``[B, channels, H', W']``. The
+            stride of the depthwise convolution sets ``H'`` and ``W'``.
+            With the shortcut, the first ``in_channels`` channels hold
+            the sum of the input and the projection.
+
+        """
         out = self.out(x)
 
         if self.use_shortcut:

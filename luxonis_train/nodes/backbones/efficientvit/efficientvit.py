@@ -1,5 +1,9 @@
-"""The EfficientViT backbone, which replaces softmax attention with a
-linear variant to keep the cost low at high resolution.
+"""The EfficientViT backbone.
+
+EfficientViT uses a ReLU linear attention instead of a softmax
+attention. Thus the cost of the attention grows linearly with the number
+of positions in the feature map.
+
 """
 
 from luxonis_ml.typing import Kwargs
@@ -19,17 +23,29 @@ from .blocks import (
 
 
 class EfficientViT(BaseNode):
-    r"""EfficientViT lightweight transformer backbone.
+    r"""EfficientViT backbone with multi-scale linear attention.
 
-    EfficientViT combines efficient convolutional blocks with lightweight
-    attention blocks for high-resolution dense prediction features.
+    The backbone has one stage for each entry of ``width_list``. Stage
+    ``i`` has ``width_list[i]`` output channels. Each stage halves the
+    height and the width of its input. The stages have these blocks:
+
+    - Stage ``0``: a ``3x3`` `ConvBlock` with a stride of ``2``, then
+      ``depth_list[0]`` `DepthWiseSeparableConv` blocks.
+    - Stages ``1`` and ``2``: ``depth_list[i]`` `MobileBottleneckBlock`
+      blocks. The first block has a stride of ``2``.
+    - Stage ``3`` and each later stage: a `MobileBottleneckBlock` with a
+      stride of ``2``, then ``depth_list[i]`` `EfficientViTBlock`
+      blocks. Only these stages use attention.
+
+    Every block with a stride of ``1`` adds its input to its output.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
-        - ``features`` (``list[Tensor]``): strides 2, 4, 8, 16, 32;
-          channels ``width_list``
+        - ``features`` (``list[Tensor]``): one tensor for each stage;
+          stage ``i`` has ``width_list[i]`` channels and the stride
+          :math:`2^{i+1}`, so strides 2, 4, 8, 16, 32 for the variants
 
     References:
         - Source: Reimplemented from `EfficientViT: Multi-Scale Linear
@@ -38,8 +54,14 @@ class EfficientViT(BaseNode):
         - License: Apache-2.0 (this project)
 
     Notes:
-        Local implementation using EfficientViT, mobile bottleneck, and
-        depthwise separable convolution blocks.
+        A stage rounds an odd height or width up when it halves it. A
+        ``depth_list[1]`` or ``depth_list[2]`` of ``0`` gives an empty
+        stage. That stage returns its input, so its output has the
+        channels and the stride of the stage before it. From index
+        ``3``, ``width_list[i]`` must be at least ``dim`` when
+        ``depth_list[i]`` is not ``0``. Otherwise the attention blocks
+        of the stage get no heads, and the constructor raises
+        ``ValueError``.
 
     Variants:
         - ``"n"``:
@@ -97,14 +119,39 @@ class EfficientViT(BaseNode):
         expand_ratio: int = 4,
         **kwargs,
     ):
-        """Initialize the EfficientViT backbone.
+        """Build the stages of the backbone.
+
+        The constructor reads `BaseNode.in_channels`, so the call must
+        give ``input_shapes`` or ``in_sizes``. Without them, that
+        property raises ``RuntimeError``.
 
         Args:
-            width_list (list[int] | None): List of number of channels for each block.
-            depth_list (list[int] | None): List of number of layers in each block.
-            dim (int): Dimension of the transformer.
-            expand_ratio (int): Expansion ratio for the `MobileBottleneckBlock`. Defaults to ``4``.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            width_list (list[int] | None): Number of output channels of
+                each stage. The length sets the number of stages. ``None``
+                or an empty list selects ``[8, 16, 32, 64, 128]``.
+            depth_list (list[int] | None): Number of repeated blocks of
+                each stage. Stage ``0`` has this number of
+                `DepthWiseSeparableConv` blocks after its stem
+                convolution. Stages ``1`` and ``2`` have this number of
+                `MobileBottleneckBlock` blocks. A later stage has this
+                number of `EfficientViTBlock` blocks after its first
+                `MobileBottleneckBlock`. ``None`` or an empty list
+                selects ``[1, 2, 2, 2, 2]``.
+            dim (int): Number of channels of the query, the key, and the
+                value of each attention head in the `EfficientViTBlock`
+                blocks. Defaults to ``16``.
+            expand_ratio (int): Channel expansion factor of every
+                `MobileBottleneckBlock`. This includes the
+                `MobileBottleneckBlock` of each `EfficientViTBlock`.
+                Defaults to ``4``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
+
+        Raises:
+            ValueError: When ``width_list`` and ``depth_list`` have
+                different lengths. Also when a stage from index ``3``
+                has `EfficientViTBlock` blocks and ``width_list[i]`` is
+                smaller than ``dim``.
 
         """
         super().__init__(**kwargs)
@@ -186,6 +233,32 @@ class EfficientViT(BaseNode):
             self.encoder_blocks.append(encoder_blocks)
 
     def forward(self, x: Tensor) -> list[Tensor]:
+        r"""Run the stages and return the output of each stage.
+
+        Args:
+            x (``Tensor``): Input of shape ``[B, C, H, W]``, where ``C``
+                is `BaseNode.in_channels`.
+
+        Returns:
+            ``list[Tensor]``: One tensor for each stage, in stage order.
+            When no stage is empty, stage ``i`` gives the shape
+            ``[B, width_list[i], H_i, W_i]``, with
+            :math:`H_i = \lceil H / 2^{i+1} \rceil` and
+            :math:`W_i = \lceil W / 2^{i+1} \rceil`. An empty stage
+            repeats the tensor of the stage before it.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import EfficientViT
+            >>> shapes = [{"features": [Size([1, 3, 64, 64])]}]
+            >>> node = EfficientViT(variant="n", input_shapes=shapes)
+            >>> features = node(torch.zeros(1, 3, 64, 64))
+            >>> [tuple(feature.shape) for feature in features]
+            [(1, 8, 32, 32), (1, 16, 16, 16), (1, 32, 8, 8),
+             (1, 64, 4, 4), (1, 128, 2, 2)]
+
+        """
         outputs = []
         for block in self.feature_extractor:
             x = block(x)
@@ -199,6 +272,28 @@ class EfficientViT(BaseNode):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the EfficientViT variants.
+
+        The variants ``"n"``, ``"s"``, ``"m"``, and ``"l"`` set
+        ``width_list``, ``depth_list``, and ``dim``. No variant sets
+        ``expand_ratio``. The aliases ``"nano"``, ``"small"``,
+        ``"medium"``, and ``"large"`` map to the same dictionary objects
+        as their variants. Each call builds new dictionaries.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
+            dictionary that maps each variant name and alias to its
+            constructor keyword arguments.
+
+        Example:
+            >>> from luxonis_train.nodes import EfficientViT
+            >>> default, variants = EfficientViT.get_variants()
+            >>> default, variants["small"]["width_list"]
+            ('n', [16, 32, 64, 128, 256])
+            >>> sorted(variants)
+            ['l', 'large', 'm', 'medium', 'n', 'nano', 's', 'small']
+
+        """
         return "n", add_variant_aliases(
             {
                 "n": {

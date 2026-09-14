@@ -13,18 +13,28 @@ from .blocks import LCNetV3Layer, scale_up
 
 
 class PPLCNetV3(BaseNode):
-    r"""PPLCNetV3 backbone.
+    r"""PPLCNetV3 backbone for text recognition.
 
-    PPLCNetV3 is a PaddleOCR-inspired lightweight convolutional backbone
-    for OCR recognition and optional detection-style feature outputs.
+    The backbone is a :math:`3 \times 3` convolution with a stride of
+    ``2`` and a batch norm, followed by `LCNetV3Layer` layers. Each
+    layer is a sequence of `LCNetV3Block` blocks. A block is a depthwise
+    and a pointwise `GeneralReparameterizableBlock`, with learnable
+    affine maps and ``Hardswish``. The node has two modes:
+
+    - In *recognition* mode, `forward` also pools the output of layer
+      ``4`` to a height of ``1`` and a width of ``max_text_len``.
+    - In *detection* mode, a :math:`1 \times 1` convolution maps each of
+      the four feature maps to a new number of channels.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
-        - ``features`` (``list[Tensor]``): strides 4, 4, 8, 8
-        - plus :math:`\left[B, C, 1, max_text_len\right]` in recognition
-          mode
+        - ``features`` (``list[Tensor]``): the outputs of layers ``1``
+          to ``4``, at strides 4, 4, 8, 8 for ``"rec-light"``
+        - plus the pooled output of layer ``4``,
+          :math:`\left[B, C_4, 1, L\right]` with :math:`L` equal to
+          ``max_text_len``, in recognition mode
 
     References:
         - Source: Adapted from `PaddlePaddle/PaddleOCR
@@ -34,8 +44,11 @@ class PPLCNetV3(BaseNode):
         - License: Apache-2.0
 
     Notes:
-        Local LCNetV3 layer implementation with recognition and
-        detection-backbone output modes.
+        Layer ``i`` is the layer of ``layer_params[i]``. ``layer_params``
+        must hold at least five layers, and `forward` runs only the
+        first five. The ``"rec-light"`` variant does not set
+        ``max_text_len``, and the argument has no default. Thus a config
+        must set it. `OCRRecognitionModel` sets it.
 
     Variants:
         - ``"rec-light"``:
@@ -100,15 +113,31 @@ class PPLCNetV3(BaseNode):
         layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
-        """Initialize the PPLCNetV3 backbone.
+        r"""Initialize the stem, the layers, and the pooling.
 
         Args:
-            scale (float): Scale factor. Defaults to 0.95.
-            n_branches (int): Number of convolution branches. Defaults to 4.
-            use_detection_backbone (bool): Whether to use the detection backbone. Defaults to False.
-            max_text_len (int): Maximum text length. Defaults to 40.
-            layer_params (list[LayerParamsDict] | None): Parameters for each LCNetV3 layer.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            scale (float): The width multiplier. `scale_up` applies it to
+                the ``16`` output channels of the stem and to the
+                ``out_channels`` of each layer.
+            n_branches (int): The number of dense branches of each
+                depthwise and pointwise convolution in the layers.
+            use_detection_backbone (bool): ``True`` selects detection
+                mode. Then :math:`1 \times 1` convolutions with a bias
+                map the outputs of layers ``1`` to ``4`` to
+                ``int(16 * scale)``, ``int(24 * scale)``,
+                ``int(56 * scale)``, and ``int(480 * scale)`` channels.
+                ``False`` selects recognition mode.
+            max_text_len (int): The output width of the pooling in
+                recognition mode. The constructor also builds the pooling
+                in detection mode, but `forward` does not run it.
+            layer_params (``list[LayerParamsDict] | None``): The
+                parameters of the layers, one dictionary for each layer,
+                in order. ``None`` or an empty list builds no layers.
+                With fewer than five layers, detection mode raises
+                ``IndexError`` in the constructor, and recognition mode
+                raises ``IndexError`` in `forward`.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -169,6 +198,32 @@ class PPLCNetV3(BaseNode):
         self.avg_pool = nn.AdaptiveAvgPool2d((1, max_text_len))
 
     def forward(self, x: Tensor) -> list[Tensor]:
+        r"""Run the stem and the first five layers on a batch of images.
+
+        Args:
+            x (``Tensor``): The input images, of shape ``[B, C, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: In recognition mode, five tensors: the
+            outputs of layers ``1`` to ``4``, then the output of layer
+            ``4`` pooled to ``[B, C_4, 1, max_text_len]``. In detection
+            mode, four tensors: the outputs of layers ``1`` to ``4``
+            after their :math:`1 \times 1` convolutions.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes.backbones import PPLCNetV3
+            >>> shapes = [{"features": [Size([2, 3, 48, 320])]}]
+            >>> node = PPLCNetV3(
+            ...     input_shapes=shapes, variant="rec-light", max_text_len=40
+            ... )
+            >>> features = node(torch.zeros(2, 3, 48, 320))
+            >>> [tuple(feature.shape) for feature in features]
+            [(2, 64, 12, 80), (2, 128, 12, 80), (2, 240, 6, 40),
+             (2, 480, 6, 40), (2, 480, 1, 40)]
+
+        """
         out = []
         x = self.conv(x)
         x = self.blocks[0](x)
@@ -194,6 +249,25 @@ class PPLCNetV3(BaseNode):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, "PPLCNetVariantDict"]]:
+        """Return the default variant name and the only PPLCNetV3 variant.
+
+        ``"rec-light"`` sets ``scale``, ``n_branches``,
+        ``use_detection_backbone``, and five layers in ``layer_params``.
+        It does not set ``max_text_len``. The ``Variants`` section of
+        `PPLCNetV3` lists all values. Each call builds new dictionaries.
+
+        Returns:
+            tuple[str, dict[str, PPLCNetVariantDict]]: The name of the
+            default variant, ``"rec-light"``, and a dictionary that maps
+            it to its constructor arguments.
+
+        Example:
+            >>> from luxonis_train.nodes.backbones import PPLCNetV3
+            >>> default, variants = PPLCNetV3.get_variants()
+            >>> default, len(variants[default]["layer_params"])
+            ('rec-light', 5)
+
+        """
         return "rec-light", {
             "rec-light": {
                 "scale": 0.95,
@@ -236,6 +310,26 @@ class PPLCNetV3(BaseNode):
 
 
 class LayerParamsDict(TypedDict):
+    """The parameters of one PPLCNetV3 layer in ``layer_params``.
+
+    `PPLCNetV3` passes the keys to `LCNetV3Layer` as keyword arguments,
+    together with the input channels, ``n_branches``, and ``scale``. The
+    four lists must have the same length. The layer builds one
+    `LCNetV3Block` for each position.
+
+    Attributes:
+        kernel_sizes (list[int]): The kernel size of the depthwise
+            convolution of each block.
+        out_channels (list[int]): The output channels of each block,
+            before `scale_up` scales them. The last value sets the output
+            channels of the layer.
+        strides (list[int]): The stride of the depthwise convolution of
+            each block.
+        use_se (list[bool]): Whether each block has a
+            `SqueezeExciteBlock` between its two convolutions.
+
+    """
+
     kernel_sizes: list[int]
     out_channels: list[int]
     strides: list[int]
@@ -243,6 +337,23 @@ class LayerParamsDict(TypedDict):
 
 
 class PPLCNetVariantDict(TypedDict):
+    """The constructor arguments of one PPLCNetV3 variant.
+
+    `PPLCNetV3.get_variants` maps each variant name to one of these
+    dictionaries. The ``__init__`` docstring of `PPLCNetV3` describes
+    the keys in full. A variant does not set ``max_text_len``.
+
+    Attributes:
+        scale (float): The width multiplier of the stem and the layers.
+        n_branches (int): The number of dense branches of each
+            convolution in the layers.
+        use_detection_backbone (bool): Whether the node runs in
+            detection mode.
+        layer_params (``list[LayerParamsDict]``): The parameters of the
+            layers, in order.
+
+    """
+
     scale: float
     n_branches: int
     use_detection_backbone: bool

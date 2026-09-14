@@ -1,15 +1,23 @@
 """The building blocks of a model graph.
 
-A node is one computational unit. Connect the nodes through the
-``inputs`` field of the config. Two nodes connect when the shapes
-agree.
+A node is one computational unit of the model. An entry in the
+``model.nodes`` section of the config names a node class. The
+``inputs`` field of the entry lists the nodes that feed the node. The
+``input_sources`` field lists the loader outputs that feed it. Every
+node inherits `BaseNode`.
 
-- `luxonis_train.nodes.backbones` extract features from an image
-- `luxonis_train.nodes.necks` fuse features across scales
-- `luxonis_train.nodes.heads` turn features into predictions for a task
+- `luxonis_train.nodes.backbones` holds the backbones. A backbone
+  turns an image into feature maps.
+- `luxonis_train.nodes.necks` holds the necks. A neck fuses the
+  feature maps of a backbone.
+- `luxonis_train.nodes.heads` holds the heads. A head turns features
+  into predictions for a task.
+- `luxonis_train.nodes.blocks` holds the layers that several nodes
+  share.
 
-A head carries a task, which decides the losses, the metrics, and the
-visualizers that can attach to it. Every node docstring lists them.
+A head carries a task. The task decides which losses, metrics, and
+visualizers can attach to the head. The docstring of each head lists
+them.
 
 """
 

@@ -1,4 +1,4 @@
-"""The RepPANNeck feature pyramid and its blocks."""
+"""The `RepPANNeck` node and the fusion blocks that it builds."""
 
 from .reppan_neck import RepPANNeck
 

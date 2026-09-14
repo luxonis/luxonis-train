@@ -1,4 +1,4 @@
-"""The DDRNet backbone, its blocks, and its dual-resolution stem."""
+"""The DDRNet backbone and its blocks."""
 
 from .ddrnet import DDRNet
 

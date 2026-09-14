@@ -16,27 +16,37 @@ from luxonis_train.typing import Packet
 # an arbitrary head. This node is intended to be used specifically
 # with the DiscSubNetHead for anomaly detection tasks.
 class RecSubNet(BaseNode):
-    r"""RecSubNet reconstruction backbone.
+    r"""RecSubNet reconstruction backbone of DRAEM anomaly detection.
 
-    RecSubNet is an encoder-decoder node for anomaly reconstruction flows
-    that outputs both the reconstruction and original input tensor.
+    RecSubNet is a `SimpleEncoder` and a `SimpleDecoder`. It reads an
+    image that can contain anomalies. It learns to reconstruct the image
+    without them, for example with `ReconstructionSegmentationLoss`. The
+    node returns the reconstruction and the unchanged input, so that
+    `DiscSubNetHead` can compare the two. The node does not return
+    feature maps for other heads.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
     Outputs:
-        - ``reconstruction`` (``Tensor``): :math:`\left[B, out_channels,
+        - ``reconstruction`` (``Tensor``): :math:`\left[B, out_{channels},
           H, W\right]`
         - ``original`` (``Tensor``): :math:`\left[B, C, H, W\right]`,
           the input unchanged
 
     References:
-        - Source: This project.
+        - Source: This project. Paper: `DRAEM - A Discriminatively
+          Trained Reconstruction Embedding for Surface Anomaly Detection
+          <https://arxiv.org/abs/2108.07610>`_.
         - License: Apache-2.0 (this project)
 
     Notes:
-        Local reconstruction-specific backbone using ``SimpleEncoder``
-        and ``SimpleDecoder``.
+        The encoder halves the height and the width once for each value
+        of ``width_multipliers``. The decoder doubles them the same
+        number of times. Thus the reconstruction has the input size only
+        when ``H`` and ``W`` are multiples of
+        ``2 ** len(width_multipliers)``. This is ``4`` for ``"n"`` and
+        ``16`` for ``"l"``.
 
     Variants:
         - ``"n"``:
@@ -77,22 +87,31 @@ class RecSubNet(BaseNode):
         out_channels: int = 3,
         **kwargs,
     ):
-        """RecSubNet reconstruction backbone with an encoder and
-        decoder.
+        r"""Initialize the encoder and the decoder.
 
-        This model is designed to reconstruct the original image from an input image that contains noise or anomalies.
-        The encoder extracts relevant features from the noisy input, and the decoder attempts to reconstruct the clean
-        version of the image by eliminating the noise or anomalies.
-
-        This architecture is based on the paper:
-        "DRAEM - A discriminatively trained reconstruction embedding
-        for surface anomaly detection" (https://arxiv.org/abs/2108.07610).
+        The encoder has ``len(width_multipliers) + 1`` stages. Each stage
+        has two :math:`3 \times 3` convolutions with batch norm and
+        ``ReLU``. Each stage after the first starts with a
+        :math:`2 \times 2` max pooling. The decoder has
+        ``len(width_multipliers)`` stages. Each stage doubles the height
+        and the width with bilinear upsampling. Then it applies three
+        :math:`3 \times 3` convolutions with batch norm and ``ReLU``. A
+        last :math:`3 \times 3` convolution without an activation gives
+        the reconstruction.
 
         Args:
-            base_channels (int): The base width of the network. Determines the number of filters in the encoder and decoder.
-            width_multipliers (list[float] | None): Width multipliers for encoder and decoder stages. Defaults to [1, 2, 4, 8].
-            out_channels (int): Number of output channels for the decoder. Defaults to 3.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            base_channels (int): The base width. Encoder stage ``i`` has
+                ``int(base_channels * width_multipliers[i])`` channels,
+                and the last encoder stage repeats the last multiplier.
+                The decoder uses the multipliers in reverse order. Its
+                last stage has ``base_channels`` channels.
+            width_multipliers (list[float] | None): The channel
+                multipliers of the encoder stages. ``None`` or an empty
+                list selects ``[1, 2, 4, 8]``.
+            out_channels (int): The number of channels of the
+                reconstruction.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -111,7 +130,37 @@ class RecSubNet(BaseNode):
         )
 
     def forward(self, x: Tensor) -> Packet[Tensor]:
-        """Perform the forward pass through the encoder and decoder."""
+        """Reconstruct a batch of images.
+
+        Args:
+            x (``Tensor``): The input images, of shape ``[B, C, H, W]``.
+
+        Returns:
+            ``Packet[Tensor]``: A packet with two keys.
+            ``"reconstruction"`` holds the decoder output, of shape
+            ``[B, out_channels, H', W']``. ``H'`` and ``W'`` are ``H``
+            and ``W`` rounded down to a multiple of
+            ``2 ** len(width_multipliers)``. ``"original"`` holds ``x``
+            unchanged.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes.backbones import RecSubNet
+            >>> shapes = [{"features": [Size([1, 3, 32, 32])]}]
+            >>> node = RecSubNet(input_shapes=shapes, variant="n")
+            >>> packet = node(torch.zeros(1, 3, 32, 32))
+            >>> tuple(packet["reconstruction"].shape)
+            (1, 3, 32, 32)
+
+            The ``"n"`` variant rounds the size down to a multiple of
+            ``4``:
+
+            >>> packet = node(torch.zeros(1, 3, 30, 30))
+            >>> {key: tuple(value.shape) for key, value in packet.items()}
+            {'reconstruction': (1, 3, 28, 28), 'original': (1, 3, 30, 30)}
+
+        """
         return {
             "reconstruction": self.decoder(self.encoder(x)),
             "original": x,
@@ -120,6 +169,25 @@ class RecSubNet(BaseNode):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the two RecSubNet variants.
+
+        Both variants set ``base_channels`` and ``width_multipliers``.
+        ``"n"`` has two multipliers, so it keeps sizes that are multiples
+        of ``4``. ``"l"`` has four multipliers, so it keeps sizes that
+        are multiples of ``16``. Each call builds new dictionaries.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name of the default
+            variant, ``"l"``, and a dictionary that maps ``"n"`` and
+            ``"l"`` to their constructor arguments.
+
+        Example:
+            >>> from luxonis_train.nodes.backbones import RecSubNet
+            >>> default, variants = RecSubNet.get_variants()
+            >>> default, variants["n"]
+            ('l', {'base_channels': 64, 'width_multipliers': [1, 1.1]})
+
+        """
         return "l", {
             "n": {
                 "base_channels": 64,
