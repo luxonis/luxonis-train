@@ -1,3 +1,10 @@
+"""The dataset metadata that the nodes read.
+
+The metadata holds the class names, the keypoint counts, and the
+metadata label types that come from the loader.
+
+"""
+
 from collections.abc import Iterator
 from pprint import pformat
 from typing import Any
@@ -9,9 +16,26 @@ from luxonis_train.loaders import BaseLoaderTorch
 
 
 class DatasetMetadata:
-    """A class encapsulating various metadata about a dataset, such as
-    the number of classes, the number of keypoints, and the types of
-    additional labels.
+    """The class names, keypoint counts, and metadata types of a dataset.
+
+    A node reads its class count, class names, and keypoint count from
+    this object, so the config does not have to set them. `from_loader`
+    creates the object from a loader. `dump` returns a dictionary that
+    a checkpoint stores and that the constructor accepts back as
+    keyword arguments.
+
+    Example:
+        >>> metadata = DatasetMetadata(
+        ...     classes={"detection": {"car": 0, "person": 1}},
+        ...     n_keypoints={"detection": 17},
+        ... )
+        >>> metadata.n_classes("detection")
+        2
+        >>> metadata.classes().inverse[0]
+        'car'
+        >>> metadata.n_keypoints("segmentation")
+        0
+
     """
 
     def __init__(
@@ -25,16 +49,32 @@ class DatasetMetadata:
         | None = None,
         loader: BaseLoaderTorch | None = None,
     ):
-        """Use to infer the number of classes, number of keypoints,
-        I{etc.} instead of passing them as arguments to the model.
+        """Initialize the metadata from plain dictionaries.
 
-        @type classes: dict[str, dict[str, int]] | None
-        @param classes: Dictionary mapping tasks to the classes.
-        @type n_keypoints: dict[str, int] | None
-        @param n_keypoints: Dictionary mapping tasks to the number of
-            keypoints.
-        @type loader: DataLoader | None
-        @param loader: Dataset loader.
+        A value in ``metadata_types`` can also be a type name: one of
+        ``"int"``, ``"float"``, ``"str"``, or ``"Category"``. The
+        constructor converts the name to the type. This is the form
+        `dump` writes and a checkpoint stores.
+
+        Args:
+            classes (dict[str, dict[str, int]] | None): Task names mapped to
+                the class names of the task and their indices. ``None``
+                means no tasks.
+            n_keypoints (dict[str, int] | None): Task names mapped to the
+                number of keypoints of the task. ``None`` means no
+                keypoints.
+            metadata_types (``dict[str, type[int] | type[Category] | type[float] | type[str]] | None``):
+                Metadata label names, such as
+                ``"<task>/metadata/<name>"``, mapped to the type of their
+                values. ``None`` means no metadata labels.
+            loader (BaseLoaderTorch | None): The loader that gave the
+                metadata. The object keeps a reference to it and does not
+                use it.
+
+        Raises:
+            ValueError: When a type name in ``metadata_types`` is not one
+                of the four supported names.
+
         """
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
@@ -55,10 +95,28 @@ class DatasetMetadata:
         yield from self.dump().items()
 
     def dump(self) -> dict[str, Any]:
-        """Dump the metadata to a dictionary.
+        """Dump the metadata to a dictionary of plain values.
 
-        @rtype: dict[str, dict[str, int] | int | dict[str, type]]
-        @return: Dictionary containing the metadata.
+        The constructor accepts the result back as keyword arguments.
+        This is how a checkpoint stores and restores the metadata.
+
+        Returns:
+            ``dict[str, Any]``: A dictionary with the keys ``"classes"``,
+            ``"n_keypoints"``, and ``"metadata_types"``. The metadata
+            types appear as type names, for example ``"str"``.
+
+        Example:
+            >>> metadata = DatasetMetadata(
+            ...     classes={"detection": {"car": 0}},
+            ...     metadata_types={"color": str},
+            ... )
+            >>> metadata.dump()
+            {'classes': {'detection': {'car': 0}},
+             'n_keypoints': {},
+             'metadata_types': {'color': 'str'}}
+            >>> DatasetMetadata(**metadata.dump()).metadata_types
+            {'color': <class 'str'>}
+
         """
         return {
             "classes": {k: dict(v) for k, v in self._classes.items()},
@@ -82,25 +140,30 @@ class DatasetMetadata:
 
     @property
     def task_names(self) -> set[str]:
-        """Gets the names of the tasks present in the dataset.
+        """The names of all tasks in the class mapping.
 
-        @rtype: set[str]
-        @return: Names of the tasks present in the dataset.
+        A task with an empty class mapping is also in the set.
+
         """
         return set(self._classes.keys())
 
     def n_classes(self, task_name: str | None = None) -> int:
-        """Get the number of classes for the specified task.
+        """Get the number of classes of a task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the number of classes for.
-        @rtype: int
-        @return: Number of classes for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different number of classes for different
-            task types.
+        Args:
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same number of classes.
+
+        Returns:
+            int: The number of classes of the task.
+
+        Raises:
+            ValueError: When ``task_name`` is not a task of the dataset.
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different numbers of classes.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -119,16 +182,23 @@ class DatasetMetadata:
         return n_classes
 
     def n_keypoints(self, task_name: str | None = None) -> int:
-        """Get the number of keypoints for the specified task.
+        """Get the number of keypoints of a task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the number of keypoints for.
-        @rtype: int
-        @return: Number of keypoints for the specified task type or 0 if
-            the task does not involve keypoints.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different number of keypoints for different
-            task types.
+        Args:
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same number of keypoints.
+
+        Returns:
+            int: The number of keypoints of the task. ``0`` when
+            ``task_name`` has no keypoint count, for example a task that
+            is not in the dataset.
+
+        Raises:
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different numbers of keypoints.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no keypoint counts.
+
         """
         if task_name is not None:
             return self._n_keypoints.get(task_name, 0)
@@ -142,18 +212,24 @@ class DatasetMetadata:
         return n_keypoints
 
     def classes(self, task_name: str | None = None) -> bidict[str, int]:
-        """Get the class names for the specified task.
+        """Get the class names and indices of a task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the class names for.
-        @rtype: bidict[str, int]
-        @return: Bidirectional dictionary mapping class names to their
-            indices for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different class names for different label
-            types.
+        Args:
+            task_name (str | None): The task to read. ``None`` means all
+                tasks, which must then have the same classes.
+
+        Returns:
+            ``bidict[str, int]``: A new bidirectional dictionary that maps
+            the class names to the class indices. Its ``inverse`` maps
+            the indices back to the names.
+
+        Raises:
+            ValueError: When ``task_name`` is not a task of the dataset.
+            RuntimeError: When ``task_name`` is ``None`` and the tasks
+                have different classes.
+            StopIteration: When ``task_name`` is ``None`` and the
+                metadata has no tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -175,11 +251,10 @@ class DatasetMetadata:
     def metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
-        """Gets the types of metadata for the dataset.
+        """The metadata label names mapped to the type of their values.
 
-        @rtype: dict[str, type[int] | type[Category] | type[float] |
-            type[str]
-        @return: Dictionary mapping metadata names to their types.
+        The dictionary is empty when the dataset has no metadata labels.
+
         """
         if self._metadata_types is None:
             raise RuntimeError("The dataset does define metadata types.")
@@ -187,13 +262,18 @@ class DatasetMetadata:
 
     @classmethod
     def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
-        """Create a L{DatasetMetadata} object from a L{LuxonisDataset}.
+        """Create the metadata from a loader.
 
-        @type loader: LuxonisDataset
-        @param loader: Loader to read the metadata from.
-        @rtype: DatasetMetadata
-        @return: Instance of L{DatasetMetadata} created from the
-            provided dataset.
+        The method reads ``loader.get_classes()``,
+        ``loader.get_n_keypoints()``, and ``loader.get_metadata_types()``.
+        The new object keeps a reference to ``loader``.
+
+        Args:
+            loader (BaseLoaderTorch): The loader to read.
+
+        Returns:
+            DatasetMetadata: The metadata of the dataset of the loader.
+
         """
         return cls(
             classes=loader.get_classes(),

@@ -1,3 +1,28 @@
+"""Bounding box helpers for the detection heads, losses, and metrics.
+
+The module holds:
+
+- the conversions between box corners and distances from anchor points;
+- the IoU, its variants, and an IoU loss;
+- non-maximum suppression;
+- the anchors of the feature maps of a feature pyramid;
+- the removal of the mask pixels outside of boxes, and the conversion
+  of keypoints to boxes.
+
+`BBoxFormatType` names the box formats:
+
+- ``"xyxy"``: the top-left corner and the bottom-right corner,
+  ``(x1, y1, x2, y2)``.
+- ``"xywh"``: the top-left corner, the width, and the height,
+  ``(x, y, w, h)``.
+- ``"cxcywh"``: the center, the width, and the height,
+  ``(cx, cy, w, h)``.
+
+`IoUType` names the IoU variants of `bbox_iou`: ``"none"``, ``"giou"``,
+``"diou"``, ``"ciou"``, and ``"siou"``.
+
+"""
+
 import math
 from typing import Literal, TypeAlias
 
@@ -21,18 +46,42 @@ def dist2bbox(
     out_format: BBoxFormatType = "xyxy",
     dim: int = -1,
 ) -> Tensor:
-    """Transform distance (ltrb) to box ("xyxy", "xywh" or "cxcywh").
+    r"""Convert distances from anchor points to boxes.
 
-    @type distance: Tensor
-    @param distance: Distance predictions
-    @type anchor_points: Tensor
-    @param anchor_points: Head's anchor points
-    @type out_format: BBoxFormatType
-    @param out_format: BBox output format. Defaults to "xyxy".
-    @rtype: Tensor
-    @param dim: Dimension to split distance tensor. Defaults to -1.
-    @rtype: Tensor
-    @return: BBoxes in correct format
+    The distances ``(l, t, r, b)`` go from an anchor point
+    :math:`(x, y)` to the left, top, right, and bottom side of a box.
+    The function computes the corners :math:`(x - l, y - t)` and
+    :math:`(x + r, y + b)`, and converts the box to ``out_format``.
+    `bbox2dist` does the opposite conversion.
+
+    Args:
+        distance (``Tensor``): The distances ``(l, t, r, b)``, with size
+            ``4`` on dimension ``dim``.
+        anchor_points (``Tensor``): The anchor points ``(x, y)``. The
+            shape must broadcast with one half of ``distance``, which has
+            size ``2`` on dimension ``dim``.
+        out_format (BBoxFormatType): The format of the returned boxes.
+        dim (int): The dimension that holds the coordinates. Only the
+            ``"xyxy"`` format supports a dimension other than the last
+            one, because the format conversion reads the last dimension.
+
+    Returns:
+        ``Tensor``: The boxes in ``out_format``, with size ``4`` on
+        dimension ``dim``.
+
+    Raises:
+        ValueError: When ``out_format`` is not ``"xyxy"``, ``"xywh"``, or
+            ``"cxcywh"``.
+
+    Example:
+        >>> import torch
+        >>> distance = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+        >>> anchor_points = torch.tensor([[10.0, 10.0]])
+        >>> dist2bbox(distance, anchor_points).tolist()
+        [[9.0, 8.0, 13.0, 14.0]]
+        >>> dist2bbox(distance, anchor_points, out_format="cxcywh").tolist()
+        [[11.0, 11.0, 4.0, 6.0]]
+
     """
     lt, rb = torch.split(distance, 2, dim=dim)
     x1y1 = anchor_points - lt
@@ -46,16 +95,36 @@ def dist2bbox(
 
 
 def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
-    """Transform bbox(xyxy) to distance(ltrb).
+    """Convert ``xyxy`` boxes to distances from anchor points.
 
-    @type bbox: Tensor
-    @param bbox: Bboxes in "xyxy" format
-    @type anchor_points: Tensor
-    @param anchor_points: Head's anchor points
-    @type reg_max: float
-    @param reg_max: Maximum regression distances
-    @rtype: Tensor
-    @return: BBoxes in distance(ltrb) format
+    The function computes the distances ``(l, t, r, b)`` from each anchor
+    point to the left, top, right, and bottom side of its box. It clips
+    the distances to ``[0, reg_max - 0.01]``. A distance is ``0`` when
+    the anchor point is outside of the box on that side. `dist2bbox`
+    does the opposite conversion.
+
+    Args:
+        bbox (``Tensor``): The boxes in ``xyxy`` format, of shape
+            ``[..., 4]``.
+        anchor_points (``Tensor``): The anchor points ``(x, y)``, of shape
+            ``[..., 2]``. The shape must broadcast with the shape of the
+            box corners.
+        reg_max (float): The limit of a distance. The largest returned
+            distance is ``reg_max - 0.01``.
+
+    Returns:
+        ``Tensor``: The distances ``(l, t, r, b)``, of shape ``[..., 4]``.
+
+    Example:
+        >>> import torch
+        >>> bbox = torch.tensor([[9.0, 8.0, 13.0, 14.0]])
+        >>> anchor_points = torch.tensor([[10.0, 10.0]])
+        >>> bbox2dist(bbox, anchor_points, reg_max=16).tolist()
+        [[1.0, 2.0, 3.0, 4.0]]
+        >>> distances = bbox2dist(bbox, anchor_points, reg_max=3)
+        >>> [round(value, 2) for value in distances[0].tolist()]
+        [1.0, 2.0, 2.99, 2.99]
+
     """
     x1y1, x2y2 = torch.split(bbox, 2, -1)
     lt = anchor_points - x1y1
@@ -71,34 +140,80 @@ def bbox_iou(
     iou_type: IoUType = "none",
     element_wise: bool = False,
 ) -> Tensor:
-    """Compute IoU between two sets of bounding boxes.
+    r"""Compute the IoU between two sets of bounding boxes.
 
-    @type bbox1: Tensor
-    @param bbox1: First set of bboxes [N, 4].
-    @type bbox2: Tensor
-    @param bbox2: Second set of bboxes [M, 4].
-    @type bbox_format: BBoxFormatType
-    @param bbox_format: Input bounding box format. Defaults to C{"xyxy"}.
-    @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
-    @param iou_type: IoU type. Defaults to "none".
-        Possible values are:
-            - "none": standard IoU
-            - "giou": Generalized IoU
-            - "diou": Distance IoU
-            - "ciou": Complete IoU. Introduced in U{
-                Enhancing Geometric Factors in Model Learning and
-                Inference for Object Detection and Instance
-                Segmentation<https://arxiv.org/pdf/2005.03572.pdf>}.
-                Implementation adapted from torchvision C{complete_box_iou}
-                with improved stability.
-            - "siou": Soft IoU. Introduced in U{
-                SIoU Loss: More Powerful Learning for Bounding Box
-                Regression<https://arxiv.org/pdf/2205.12740.pdf>}.
-    @type element_wise: bool
-    @param element_wise: If True returns element wise IoUs. Defaults to False.
-    @rtype: Tensor
-    @return: IoU between bbox1 and bbox2. If element_wise is True returns [N, M] tensor,
-        otherwise returns [N] tensor.
+    The function converts both sets to ``xyxy`` and computes the IoU of
+    every box in ``bbox1`` with every box in ``bbox2``. :math:`A` and
+    :math:`B` are two boxes, and :math:`C` is the smallest box that
+    encloses both. ``iou_type`` selects the variant:
+
+    - ``"none"``: the plain IoU,
+      :math:`\text{IoU} = \frac{|A \cap B|}{|A \cup B|}`.
+    - ``"giou"``: the generalized IoU,
+      :math:`\text{IoU} - \frac{|C \setminus (A \cup B)|}{|C|}`.
+    - ``"diou"``: the distance IoU,
+      :math:`\text{IoU} - \frac{\rho^2}{c^2}`. :math:`\rho` is the
+      distance between the box centers, and :math:`c` is the diagonal
+      of :math:`C`.
+    - ``"ciou"``: the complete IoU from `Enhancing Geometric Factors in
+      Model Learning and Inference for Object Detection and Instance
+      Segmentation <https://arxiv.org/pdf/2005.03572.pdf>`_,
+      :math:`\text{DIoU} - \alpha v`.
+    - ``"siou"``: the SIoU from `SIoU Loss: More Powerful Learning for
+      Bounding Box Regression <https://arxiv.org/pdf/2205.12740.pdf>`_,
+      :math:`\text{IoU} - \frac{\Delta + \Omega}{2}`. :math:`\Delta` is
+      the distance cost, which includes the angle cost, and
+      :math:`\Omega` is the shape cost.
+
+    For ``"ciou"``, :math:`w` and :math:`h` are the width and the height
+    of a box. The function adds :math:`10^{-7}` to the heights, and no
+    gradient flows through :math:`\alpha`:
+
+    .. math::
+
+        v = \frac{4}{\pi^2} \left(\arctan\frac{w_A}{h_A}
+        - \arctan\frac{w_B}{h_B}\right)^2
+
+        \alpha = \frac{v}{1 - \text{IoU} + v + 10^{-7}}
+
+    The function replaces a ``NaN`` result with ``0``.
+
+    **Warning:** ``"siou"`` pairs ``bbox1[i]`` with ``bbox2[i]`` in some
+    of its terms. It needs ``N`` equal to ``M``, and only the diagonal of
+    its result is correct. Use it with ``element_wise=True``.
+
+    Args:
+        bbox1 (``Tensor``): The first set of boxes, of shape ``[N, 4]``.
+        bbox2 (``Tensor``): The second set of boxes, of shape ``[M, 4]``.
+        bbox_format (BBoxFormatType): The format of both sets of boxes.
+        iou_type (IoUType): The IoU variant.
+        element_wise (bool): Whether to return only the diagonal of the
+            IoU matrix, the IoU of ``bbox1[i]`` and ``bbox2[i]``. The
+            function computes the full matrix in both cases.
+
+    Returns:
+        ``Tensor``: The IoU matrix of shape ``[N, M]``. With
+        ``element_wise``, its diagonal, of shape ``[min(N, M)]``.
+
+    Raises:
+        ValueError: When ``iou_type`` is not a supported variant.
+
+    Example:
+        >>> import torch
+        >>> boxes = torch.tensor([[0.0, 0.0, 2.0, 2.0], [0.0, 0.0, 2.0, 1.0]])
+        >>> target = torch.tensor([[0.0, 0.0, 2.0, 2.0]])
+        >>> bbox_iou(boxes, target).tolist()
+        [[1.0], [0.5]]
+        >>> bbox_iou(boxes, boxes, element_wise=True).tolist()
+        [1.0, 1.0]
+
+        The generalized IoU of two separate boxes is below ``0``:
+
+        >>> left = torch.tensor([[0.0, 0.0, 1.0, 1.0]])
+        >>> right = torch.tensor([[2.0, 0.0, 3.0, 1.0]])
+        >>> round(bbox_iou(left, right, iou_type="giou").item(), 4)
+        -0.3333
+
     """
     if bbox_format != "xyxy":
         bbox1 = box_convert(bbox1, in_fmt=bbox_format, out_fmt="xyxy")
@@ -196,44 +311,86 @@ def non_max_suppression(
     max_det: int = 300,
     predicts_objectness: bool = True,
 ) -> list[Tensor]:
-    """Non-maximum suppression on model's predictions to keep only best
-    instances.
+    """Run non-maximum suppression on the box predictions of a batch.
 
-    @type preds: Tensor
-    @param preds: Model's prediction tensor of shape [bs, N, M].
-    @type n_classes: int
-    @param n_classes: Number of model's classes.
-    @type conf_thres: float
-    @param conf_thres: Boxes with confidence higher than this will be kept. Defaults to
-        0.25.
-    @type iou_thres: float
-    @param iou_thres: Boxes with IoU higher than this will be discarded. Defaults to
-        0.45.
-    @type keep_classes: list[int] | None
-    @param keep_classes: Subset of classes to keep, if None then keep all of them.
-        Defaults to None.
-    @type agnostic: bool
-    @param agnostic: Whether perform NMS per class or treat all classes the same.
-        Defaults to False.
-    @type multi_label: bool
-    @param multi_label: Whether one prediction can have multiple labels. Defaults to
-        False.
-    @type bbox_format: BBoxFormatType
-    @param bbox_format: Input bbox format. Defaults to "xyxy".
-    @type max_det: int
-    @param max_det: Number of maximum output detections. Defaults to 300.
-    @type predicts_objectness: bool
-    @param predicts_objectness: Whether head predicts objectness confidence. Defaults to
-        True.
-    @rtype: list[Tensor]
-    @return: list of kept detections for each image, boxes in "xyxy" format. Tensors
-        with shape [n_kept, M]
+    A row of ``preds`` holds a box, a confidence, the class scores, and
+    optional extra values, such as keypoints or mask coefficients. For
+    each image, the function does these steps:
+
+    - It keeps the rows with a confidence above ``conf_thres``. When
+      ``predicts_objectness`` is ``False``, the highest class score must
+      also be above ``conf_thres``.
+    - It multiplies the class scores by the confidence. When
+      ``predicts_objectness`` is ``True`` and ``n_classes`` is ``1``, it
+      replaces the class score with the confidence.
+    - It gives each row the class with the highest score, and keeps the
+      rows with that score above ``conf_thres``. With ``multi_label``,
+      a row gets one copy for each class with a score above
+      ``conf_thres``.
+    - It drops the rows with a class that is not in ``keep_classes``.
+    - It runs NMS for each class, or across all classes when
+      ``agnostic`` is ``True``. It keeps at most ``max_det`` rows, the
+      rows with the highest scores.
+
+    Args:
+        preds (``Tensor``): The predictions, of shape ``[B, N, M]``. The
+            columns of a row are the box in ``bbox_format``, the
+            confidence, ``n_classes`` class scores, and
+            ``E = M - 5 - n_classes`` extra values.
+        n_classes (int): The number of class score columns in ``preds``.
+        conf_thres (float): The score threshold, in ``[0, 1]``. A kept
+            score is strictly above it.
+        iou_thres (float): The IoU threshold of NMS, in ``[0, 1]``. NMS
+            drops a box when its IoU with a box of higher score is above
+            this value.
+        keep_classes (list[int] | None): The indices of the classes to
+            keep. ``None`` keeps all classes.
+        agnostic (bool): Whether NMS compares the boxes of different
+            classes.
+        multi_label (bool): Whether a box can get more than one class.
+            The function ignores it when ``n_classes`` is ``1``.
+        bbox_format (BBoxFormatType): The format of the boxes in
+            ``preds``.
+        max_det (int): The maximum number of detections for each image.
+        predicts_objectness (bool): Whether the confidence column holds a
+            predicted objectness.
+
+    Returns:
+        ``list[Tensor]``: One tensor for each image, of shape
+        ``[K, 6 + E]``, where ``K`` is the number of kept detections. A
+        row holds the ``xyxy`` box, the score, the class index as a float,
+        and the extra values. The rows go from the highest score to the
+        lowest. An image without detections gets a tensor of shape
+        ``[0, M]``.
+
+    Raises:
+        ValueError: When ``conf_thres`` or ``iou_thres`` is outside
+            ``[0, 1]``.
+
+    Example:
+        The IoU of the first two boxes is ``0.81``, so NMS drops the box
+        with the lower score:
+
+        >>> import torch
+        >>> preds = torch.tensor(
+        ...     [
+        ...         [
+        ...             [0.0, 0.0, 10.0, 10.0, 0.75, 1.0],
+        ...             [1.0, 1.0, 10.0, 10.0, 0.625, 1.0],
+        ...             [20.0, 20.0, 30.0, 30.0, 0.5, 1.0],
+        ...         ]
+        ...     ]
+        ... )
+        >>> non_max_suppression(preds, n_classes=1)[0].tolist()
+        [[0.0, 0.0, 10.0, 10.0, 0.75, 0.0],
+         [20.0, 20.0, 30.0, 30.0, 0.5, 0.0]]
+
     """
     _validate_nms_thresholds(conf_thres, iou_thres)
 
     multi_label &= n_classes > 1
 
-    # If any data after bboxes are present.
+    # True when extra values follow the class scores.
     has_additional = preds.size(-1) > (4 + 1 + n_classes)
 
     candidate_mask = preds[..., 4] > conf_thres
@@ -275,24 +432,57 @@ def anchors_for_fpn_features(
     grid_cell_offset: float = 0.5,
     multiply_with_stride: bool = False,
 ) -> tuple[Tensor, Tensor, list[int], Tensor]:
-    """Generate anchor boxes, points and strides based on FPN feature
-    shapes and strides.
+    """Generate the anchors of the feature maps of a feature pyramid.
 
-    @type features: list[Tensor]
-    @param features: List of FPN features.
-    @type strides: Tensor
-    @param strides: Strides of FPN features.
-    @type grid_cell_size: float
-    @param grid_cell_size: Cell size in respect to input image size.
-        Defaults to 5.0.
-    @type grid_cell_offset: float
-    @param grid_cell_offset: Percent grid cell center's offset. Defaults
-        to 0.5.
-    @type multiply_with_stride: bool
-    @param multiply_with_stride: Whether to multiply per FPN values with
-        its stride. Defaults to False.
-    @rtype: tuple[Tensor, Tensor, list[int], Tensor]
-    @return: BBox anchors, center anchors, number of anchors, strides
+    The function puts one anchor in each cell of each feature map. The
+    anchor point of the cell in row ``i`` and column ``j`` is
+    ``(j + grid_cell_offset, i + grid_cell_offset)``, in cells. The
+    anchor box is a square with the side ``grid_cell_size * stride``
+    around the anchor point. The side does not change with
+    ``multiply_with_stride``. The anchors of the feature maps follow the
+    order of ``features``, and go row by row in each map.
+
+    The function pairs ``features`` with ``strides`` in order, and
+    ignores the extra items of the longer one. The returned tensors have
+    the dtype of the feature maps and are on the device of
+    ``features[0]``.
+
+    Args:
+        features (``list[Tensor]``): The feature maps, each of shape
+            ``[B, C, H, W]``. The function reads only their shapes and
+            dtypes, and the device of the first map.
+        strides (``Tensor``): One stride for each feature map, as a 1D
+            tensor.
+        grid_cell_size (float): The side of an anchor box, in strides.
+        grid_cell_offset (float): The offset of an anchor point from the
+            top-left corner of its cell, in cells.
+        multiply_with_stride (bool): Whether to multiply the anchor points
+            by the stride. The points are then in input image pixels.
+
+    Returns:
+        ``tuple[Tensor, Tensor, list[int], Tensor]``: Four values, where
+        ``A`` is the total number of anchors:
+
+        - the anchor boxes in ``xyxy`` format, of shape ``[A, 4]``;
+        - the anchor points ``(x, y)``, of shape ``[A, 2]``;
+        - the number of anchors ``H * W`` of each feature map;
+        - the stride of each anchor, of shape ``[A, 1]``.
+
+    Example:
+        >>> import torch
+        >>> features = [torch.zeros(1, 8, 2, 2), torch.zeros(1, 8, 1, 1)]
+        >>> anchors, points, n_anchors, strides = anchors_for_fpn_features(
+        ...     features, torch.tensor([8, 16]), multiply_with_stride=True
+        ... )
+        >>> n_anchors
+        [4, 1]
+        >>> points.tolist()
+        [[4.0, 4.0], [12.0, 4.0], [4.0, 12.0], [12.0, 12.0], [8.0, 8.0]]
+        >>> anchors[0].tolist()
+        [-16.0, -16.0, 24.0, 24.0]
+        >>> strides.flatten().tolist()
+        [8.0, 8.0, 8.0, 8.0, 16.0]
+
     """
     anchors: list[Tensor] = []
     anchor_points: list[Tensor] = []
@@ -349,15 +539,30 @@ def anchors_for_fpn_features(
 def apply_bounding_box_to_masks(
     masks: Tensor, bounding_boxes: Tensor
 ) -> Tensor:
-    """Crops the given masks to the regions specified by the
-    corresponding bounding boxes.
+    r"""Return the masks with zeros outside of their boxes.
 
-    @type masks: Tensor
-    @param masks: Masks tensor of shape [n, h, w].
-    @type bounding_boxes: Tensor
-    @param bounding_boxes: Bounding boxes tensor of shape [n, 4].
-    @rtype: Tensor
-    @return: Cropped masks tensor of shape [n, h, w].
+    Mask ``i`` keeps the pixel in column :math:`x` and row :math:`y` when
+    :math:`x_1 \le x < x_2` and :math:`y_1 \le y < y_2`, where
+    :math:`(x_1, y_1, x_2, y_2)` is box ``i``. The comparison uses the
+    integer indices of the pixels. The function does not change
+    ``masks``.
+
+    Args:
+        masks (``Tensor``): The masks, of shape ``[N, H, W]``.
+        bounding_boxes (``Tensor``): One ``xyxy`` box for each mask, in
+            mask pixels, of shape ``[N, 4]``.
+
+    Returns:
+        ``Tensor``: The masks multiplied by the box regions, of shape
+        ``[N, H, W]``.
+
+    Example:
+        >>> import torch
+        >>> masks = torch.ones(1, 4, 4)
+        >>> boxes = torch.tensor([[1.0, 0.0, 3.0, 2.0]])
+        >>> apply_bounding_box_to_masks(masks, boxes)[0].int().tolist()
+        [[0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+
     """
     _, mask_height, mask_width = masks.shape
     left, top, right, bottom = torch.split(
@@ -388,24 +593,71 @@ def compute_iou_loss(
     bbox_format: BBoxFormatType = "xyxy",
     reduction: Literal["sum", "mean"] = "mean",
 ) -> tuple[Tensor, Tensor]:
-    """Compute an IoU loss between 2 sets of bounding boxes.
+    r"""Compute the IoU loss between predicted boxes and target boxes.
 
-    @type pred_bboxes: Tensor
-    @param pred_bboxes: Predicted bounding boxes.
-    @type target_bboxes: Tensor
-    @param target_bboxes: Target bounding boxes.
-    @type target_scores: Tensor | None
-    @param target_scores: Target scores. Defaults to None.
-    @type mask_positive: Tensor | None
-    @param mask_positive: Mask for positive samples. Defaults to None.
-    @type iou_type: L{IoUType}
-    @param iou_type: IoU type. Defaults to "giou".
-    @type bbox_format: L{BBoxFormatType}
-    @param bbox_format: BBox format. Defaults to "xyxy".
-    @type reduction: Literal["sum", "mean"]
-    @param reduction: Reduction type. Defaults to "mean".
-    @rtype: tuple[Tensor, Tensor]
-    @return: IoU loss and IoU values.
+    The function pairs each box of ``pred_bboxes`` with the box at the
+    same position in ``target_bboxes``. It uses only the positive pairs
+    when ``mask_positive`` is set. The loss of a pair is
+    :math:`w (1 - \text{IoU})`. The weight :math:`w` is the sum of the
+    target scores of the pair, or ``1`` without ``target_scores``.
+    ``reduction`` selects the result:
+
+    - ``"mean"``: the mean loss of the pairs.
+    - ``"sum"``: the sum of the losses. When the sum of all values in
+      ``target_scores`` is greater than ``1``, the function divides the
+      result by that sum. This sum includes the pairs outside of
+      ``mask_positive``.
+
+    When ``mask_positive`` has no positive pair, the function returns a
+    zero loss at once. It then checks neither ``reduction`` nor
+    ``iou_type``.
+
+    Args:
+        pred_bboxes (``Tensor``): The predicted boxes, of shape
+            ``[B, N, 4]``. Without ``mask_positive``, any shape
+            ``[..., 4]`` works.
+        target_bboxes (``Tensor``): The target boxes, of the same shape as
+            ``pred_bboxes``. The function moves them to the device of
+            ``pred_bboxes``.
+        target_scores (``Tensor | None``): The target class scores, of
+            shape ``[B, N, n_classes]``. ``None`` gives each pair the
+            weight ``1``.
+        mask_positive (``Tensor | None``): The boolean mask of the
+            positive pairs, of shape ``[B, N]``. ``None`` uses all pairs.
+        iou_type (IoUType): The IoU variant. See `bbox_iou`.
+        bbox_format (BBoxFormatType): The format of both sets of boxes.
+        reduction (``Literal["sum", "mean"]``): The reduction of the losses
+            of the pairs.
+
+    Returns:
+        ``tuple[Tensor, Tensor]``: The scalar loss, and the detached IoU of
+        each used pair, clamped to at least ``0``, of shape ``[K, 1]``.
+        ``K`` is the number of used pairs. Without a positive pair, the
+        IoU values are zeros of shape ``[B]``.
+
+    Raises:
+        ValueError: When ``reduction`` is not ``"sum"`` or ``"mean"``, or
+            when ``iou_type`` is not a supported variant.
+        NotImplementedError: When ``reduction`` is ``"sum"`` and
+            ``target_scores`` is ``None``.
+
+    Example:
+        >>> import torch
+        >>> pred = torch.tensor([[0.0, 0.0, 2.0, 2.0], [0.0, 0.0, 2.0, 1.0]])
+        >>> target = torch.tensor([[0.0, 0.0, 2.0, 2.0]]).repeat(2, 1)
+        >>> loss, iou = compute_iou_loss(pred, target)
+        >>> loss.item(), iou.tolist()
+        (0.25, [[1.0], [0.5]])
+
+        Without a positive pair, the loss is zero:
+
+        >>> mask = torch.zeros(1, 2, dtype=torch.bool)
+        >>> loss, iou = compute_iou_loss(
+        ...     pred[None], target[None], mask_positive=mask
+        ... )
+        >>> loss.item(), iou.tolist()
+        (0.0, [0.0])
+
     """
     device = pred_bboxes.device
     target_bboxes = target_bboxes.to(device)
@@ -431,25 +683,51 @@ def keypoints_to_bboxes(
     box_width: int = 5,
     visibility_threshold: float = 0.5,
 ) -> list[Tensor]:
-    """Convert keypoints to bounding boxes in xyxy format with cls_id
-    and score, filtering low-visibility keypoints.
+    """Convert keypoints to square boxes in ``xyxy`` format.
 
-    @type keypoints: list[Tensor]
-    @param keypoints: List of tensors of keypoints with shape [N, 1, 4]
-        (x, y, v, cls_id).
-    @type img_height: int
-    @param img_height: Height of the image.
-    @type img_width: int
-    @param img_width: Width of the image.
-    @type box_width: int
-    @param box_width: Width of the bounding box in pixels. Defaults to
-        2.
-    @type visibility_threshold: float
-    @param visibility_threshold: Minimum visibility score to include a
-        keypoint. Defaults to 0.5.
-    @rtype: list[Tensor]
-    @return: List of tensors of bounding boxes with shape [N, 6] (x_min,
-        y_min, x_max, y_max, score, cls_id).
+    The function drops the keypoints with a visibility below
+    ``visibility_threshold``. It puts a square with the side
+    ``box_width`` around each kept keypoint. It clips the top-left
+    corner of the square at ``0``, and the bottom-right corner at
+    ``img_width`` and ``img_height``.
+
+    Args:
+        keypoints (``list[Tensor]``): The keypoints of each image, each of
+            shape ``[N, 1, 4]``. The values of a keypoint are
+            ``(x, y, visibility, class_id)``.
+        img_height (int): The image height, in pixels.
+        img_width (int): The image width, in pixels.
+        box_width (int): The side of a box, in pixels.
+        visibility_threshold (float): The minimum visibility of a kept
+            keypoint.
+
+    Returns:
+        ``list[Tensor]``: The boxes of each image, each of shape
+        ``[K, 6]``, where ``K`` is the number of kept keypoints of the
+        image. The values of a box are
+        ``(x_min, y_min, x_max, y_max, visibility, class_id)``. An image
+        without kept keypoints gets a tensor of shape ``[0, 6]``.
+
+    Example:
+        The function clips the box of the second keypoint at the image
+        border. It drops the third keypoint, because its visibility is
+        below ``0.5``:
+
+        >>> import torch
+        >>> keypoints = torch.tensor(
+        ...     [
+        ...         [[10.0, 10.0, 0.75, 2.0]],
+        ...         [[1.0, 30.0, 0.5, 0.0]],
+        ...         [[20.0, 20.0, 0.25, 1.0]],
+        ...     ]
+        ... )
+        >>> boxes = keypoints_to_bboxes(
+        ...     [keypoints], img_height=32, img_width=32
+        ... )
+        >>> boxes[0].tolist()
+        [[7.5, 7.5, 12.5, 12.5, 0.75, 2.0],
+         [0.0, 27.5, 3.5, 32.0, 0.5, 0.0]]
+
     """
     half_box = box_width / 2
     bboxes_list = []
@@ -575,7 +853,34 @@ def _nms_single_image(
     predicts_objectness: bool,
     has_additional: bool,
 ) -> Tensor | None:
-    """Run NMS for a single image; returns None when nothing is kept."""
+    """Run the NMS steps of `non_max_suppression` on one image.
+
+    Args:
+        x (``Tensor``): The predictions of the image, of shape ``[N, M]``.
+        candidate_mask_i (``Tensor``): The boolean mask of the rows of
+            ``x`` that pass the confidence check of `non_max_suppression`,
+            of shape ``[N]``.
+        n_classes (int): The number of class score columns in ``x``.
+        conf_thres (float): The score threshold.
+        iou_thres (float): The IoU threshold of NMS.
+        keep_classes (list[int] | None): The indices of the classes to
+            keep. ``None`` keeps all classes.
+        agnostic (bool): Whether NMS compares the boxes of different
+            classes.
+        multi_label (bool): Whether a box can get more than one class.
+        bbox_format (BBoxFormatType): The format of the boxes in ``x``.
+        max_det (int): The maximum number of detections.
+        predicts_objectness (bool): Whether the confidence column holds a
+            predicted objectness.
+        has_additional (bool): Whether ``x`` has extra columns after the
+            class scores.
+
+    Returns:
+        ``Tensor | None``: The kept detections in the format of the
+        result of `non_max_suppression`, or ``None`` when no detection
+        remains.
+
+    """
     curr_out = x[candidate_mask_i]
     if curr_out.size(0) == 0:
         return None

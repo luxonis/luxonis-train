@@ -71,6 +71,22 @@ def test_select_topk_candidates():
     )
 
 
+def test_select_topk_candidates_with_small_level():
+    topk = 3
+    n_level_bboxes = [2, 4]
+    assigner = ATSSAssigner(n_classes=2, topk=topk)
+    distances = torch.rand(1, 1, sum(n_level_bboxes))
+    mask_gt = torch.ones(1, 1, 1)
+
+    is_in_topk, topk_idxs = assigner._select_topk_candidates(
+        distances, n_level_bboxes, mask_gt
+    )
+
+    n_selected = sum(min(topk, n_anchors) for n_anchors in n_level_bboxes)
+    assert topk_idxs.shape == (1, 1, n_selected)
+    assert is_in_topk.sum() == n_selected
+
+
 def test_get_positive_samples():
     batch_size = 2
     n_max_boxes = 3

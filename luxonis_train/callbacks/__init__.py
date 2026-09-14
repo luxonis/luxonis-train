@@ -1,3 +1,5 @@
+__docformat__ = "epytext"
+
 from lightning.pytorch.callbacks import (
     DeviceStatsMonitor,
     EarlyStopping,

@@ -1,3 +1,7 @@
+"""Adaptive Training Sample Selection, which selects the positive
+anchors of each ground truth box by an adaptive IoU threshold.
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -6,19 +10,52 @@ from .utils import batch_iou, bbox_iou, candidates_in_gt, fix_collisions
 
 
 class ATSSAssigner(nn.Module):
-    def __init__(self, n_classes: int, topk: int = 9):
-        """Adaptive Training Sample Selection Assigner, adapted
-        from U{Bridging the Gap Between Anchor-based and Anchor-free Detection via
-        Adaptive Training Sample Selection<https://arxiv.org/pdf/1912.02424.pdf>}.
-        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/
-        ppyoloe/assigner/atss_assigner.py} and
-        U{https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/
-        assigners/atss_assigner.py}.
+    r"""Adaptive Training Sample Selection (ATSS) assigner.
 
-        @type n_classes: int
-        @param n_classes: Number of classes in the dataset.
-        @type topk: int
-        @param topk: Number of anchors considered in selection. Defaults to 9.
+    The assigner selects the positive anchors of each ground truth box
+    from the geometry of the anchors. It reads the predicted boxes only
+    to scale the assigned scores. For each ground truth box, it does
+    these steps:
+
+    - On each pyramid level, it selects up to ``topk`` anchors that have
+      the centers closest to the center of the box. These anchors are
+      the *candidates*.
+    - It computes the IoU between each candidate and the box. The
+      threshold of the box is :math:`\mu + \sigma`, the mean plus the
+      standard deviation of these IoUs.
+    - It keeps the candidates that have an IoU above the threshold and a
+      center inside the box.
+
+    An anchor that stays positive for more than one box goes to the box
+    that has the highest IoU with the anchor box. For details, see
+    `luxonis_train.assigners.utils.fix_collisions`.
+
+    `AdaptiveDetectionLoss` uses this assigner for the first
+    ``n_warmup_epochs`` epochs. After these epochs, it uses
+    `TaskAlignedAssigner`.
+
+    References:
+        - `Bridging the Gap Between Anchor-based and Anchor-free
+          Detection via Adaptive Training Sample Selection
+          <https://arxiv.org/pdf/1912.02424.pdf>`_
+        - The implementation adapts the code of `PPYOLOE_pytorch
+          <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/atss_assigner.py>`_
+          and `TOOD
+          <https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/assigners/atss_assigner.py>`_.
+
+    """
+
+    def __init__(self, n_classes: int, topk: int = 9):
+        """Initialize the ATSS assigner.
+
+        Args:
+            n_classes (int): Number of classes in the dataset. The label
+                ``n_classes`` marks a background anchor in the output.
+            topk (int): Maximum number of candidate anchors to select on
+                each pyramid level for each ground truth box. With fewer
+                than three candidates for a box over all levels, no
+                candidate passes the threshold.
+
         """
         super().__init__()
 
@@ -34,25 +71,77 @@ class ATSSAssigner(nn.Module):
         mask_gt: Tensor,
         pred_bboxes: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        """Generate final assignments.
+        """Assign each anchor to a ground truth box or to the background.
 
-        @type anchor_bboxes: Tensor
-        @param anchor_bboxes: Anchor bboxes of shape [n_anchors, 4]
-        @type n_level_bboxes: list[int]
-        @param n_level_bboxes: Number of bboxes per level
-        @type gt_labels: Tensor
-        @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
-        @type gt_bboxes: Tensor
-        @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
-        @type mask_gt: Tensor
-        @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
-        @type pred_bboxes: Tensor
-        @param pred_bboxes: Predicted bboxes of shape [bs, n_anchors, 4]
-        @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned
-            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
-            [bs, n_anchors, n_classes] and output positive mask of shape
-            [bs, n_anchors].
+        All boxes are in ``xyxy`` format and in the same units. Only the
+        boxes with ``mask_gt`` set to ``1`` get positive anchors.
+
+        Args:
+            anchor_bboxes (``Tensor``): Anchor boxes with shape
+                ``[n_anchors, 4]``, ordered level by level.
+            n_level_bboxes (list[int]): Number of anchors on each pyramid
+                level. The sum must equal ``n_anchors``.
+            gt_labels (``Tensor``): Class index of each ground truth box
+                with shape ``[bs, n_max_boxes, 1]``.
+            gt_bboxes (``Tensor``): Ground truth boxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
+                padded slot, with shape ``[bs, n_max_boxes, 1]``.
+            pred_bboxes (``Tensor``): Predicted boxes with shape
+                ``[bs, n_anchors, 4]``. The IoU between a predicted box
+                and its assigned box scales the assigned scores.
+
+        Returns:
+            ``tuple[Tensor, Tensor, Tensor, Tensor, Tensor]``: Five tensors:
+
+            - ``assigned_labels`` (``[bs, n_anchors]``, ``int64``): The
+              class of the assigned box, or ``n_classes`` for a
+              background anchor.
+            - ``assigned_bboxes`` (``[bs, n_anchors, 4]``): The assigned
+              box. Only the values at positive anchors are meaningful.
+            - ``assigned_scores`` (``[bs, n_anchors, n_classes]``): A
+              one-hot class vector scaled by the IoU between the
+              predicted box and the assigned box. Zero for a background
+              anchor.
+            - ``mask_positive`` (``[bs, n_anchors]``, ``bool``): ``True``
+              at an anchor with an assigned box.
+            - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``): The
+              index of the assigned box along dimension ``1`` of
+              ``gt_bboxes``, ``0`` for a background anchor.
+
+            When ``n_max_boxes`` is ``0``, every anchor is background. In
+            this case, ``mask_positive`` and ``assigned_gt_idx`` are
+            ``float32`` zeros.
+
+        Example:
+            The box has an IoU of ``0.64`` with the first anchor box. The
+            threshold is about ``0.5``, so only the first anchor is
+            positive. The predicted boxes equal the anchor boxes, so the
+            score of that anchor is also ``0.64``.
+
+            >>> import torch
+            >>> assigner = ATSSAssigner(n_classes=2, topk=4)
+            >>> anchors = torch.tensor(
+            ...     [
+            ...         [0.0, 0.0, 4.0, 4.0],
+            ...         [4.0, 0.0, 8.0, 4.0],
+            ...         [0.0, 4.0, 4.0, 8.0],
+            ...         [4.0, 4.0, 8.0, 8.0],
+            ...     ]
+            ... )
+            >>> gt_labels = torch.tensor([[[1.0]]])
+            >>> gt_bboxes = torch.tensor([[[0.0, 0.0, 5.0, 5.0]]])
+            >>> mask_gt = torch.tensor([[[1.0]]])
+            >>> labels, bboxes, scores, mask, gt_idx = assigner(
+            ...     anchors, [4], gt_labels, gt_bboxes, mask_gt, anchors[None]
+            ... )
+            >>> labels.tolist()
+            [[1, 2, 2, 2]]
+            >>> mask.tolist()
+            [[True, False, False, False]]
+            >>> [round(s, 2) for s in scores[0, 0].tolist()]
+            [0.0, 0.64]
+
         """
         self._n_anchors = anchor_bboxes.size(0)
         self._bs = gt_bboxes.size(0)
@@ -132,7 +221,16 @@ class ATSSAssigner(nn.Module):
         )
 
     def _get_bbox_center(self, bbox: Tensor) -> Tensor:
-        """Compute centers of bbox with shape [N,4]."""
+        """Compute the center of each box.
+
+        Args:
+            bbox (``Tensor``): Boxes in ``xyxy`` format with shape
+                ``[N, 4]``.
+
+        Returns:
+            ``Tensor``: Centers ``(x, y)`` with shape ``[N, 2]``.
+
+        """
         cx = (bbox[:, 0] + bbox[:, 2]) / 2.0
         cy = (bbox[:, 1] + bbox[:, 3]) / 2.0
         return torch.stack((cx, cy), dim=1).to(bbox.device)
@@ -140,19 +238,32 @@ class ATSSAssigner(nn.Module):
     def _select_topk_candidates(
         self, distances: Tensor, n_level_bboxes: list[int], mask_gt: Tensor
     ) -> tuple[Tensor, Tensor]:
-        """Select k anchors whose centers are closest to GT.
+        """Select up to ``topk`` closest anchors on each level.
 
-        @type distances: Tensor
-        @param distances: Distances between GT and anchor centers.
-        @type n_level_bboxes: list[int]
-        @param n_level_bboxes: list of number of bboxes per level.
-        @type mask_gt: Tensor
-        @param mask_gt: Mask for valid GT per image.
-        @rtype: tuple[Tensor, Tensor]
-        @return: Mask of selected anchors and indices of selected
-            anchors.
+        For a padded slot, the method sets each selected index to ``0``,
+        the first anchor of the level, before it builds the mask. The
+        mask does not mark an anchor that the method selects more than
+        once for a box. ``topk_idxs`` keeps the indices from before this
+        change.
+
+        Args:
+            distances (``Tensor``): Distances between the box centers and
+                the anchor centers with shape
+                ``[bs, n_max_boxes, n_anchors]``.
+            n_level_bboxes (list[int]): Number of anchors on each pyramid
+                level.
+            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
+                padded slot, with shape ``[bs, n_max_boxes, 1]``.
+
+        Returns:
+            ``tuple[Tensor, Tensor]``: The mask ``is_in_topk`` with shape
+            ``[bs, n_max_boxes, n_anchors]`` and the indices ``topk_idxs``
+            with shape ``[bs, n_max_boxes, n_selected]``. ``n_selected``
+            is the number of candidates over all levels. Each index points
+            into all ``n_anchors`` anchors, not into one level.
+
         """
-        mask_gt = mask_gt.repeat(1, 1, self._topk).bool()
+        mask_gt = mask_gt.bool()
         level_distances = distances.split(n_level_bboxes, dim=-1)
         is_in_topk_list: list[Tensor] = []
         topk_idxs: list[Tensor] = []
@@ -185,20 +296,23 @@ class ATSSAssigner(nn.Module):
     def _get_positive_samples(
         self, is_in_topk: Tensor, topk_idxs: Tensor, overlaps: Tensor
     ) -> Tensor:
-        """Compute threshold and returns mask for samples over
-        threshold.
+        """Keep the candidates with an IoU above the threshold.
 
-        @type is_in_topk: Tensor
-        @param is_in_topk: Mask of selected anchors [bx, n_max_boxes,
-            n_anchors]
-        @type topk_idxs: Tensor
-        @param topk_idxs: Indices of selected anchors [bx, n_max_boxes,
-            topK * n_levels]
-        @type overlaps: Tensor
-        @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes,
-            n_anchors]
-        @rtype: Tensor
-        @return: Mask of positive samples [bx, n_max_boxes, n_anchors]
+        The threshold of a box is the mean plus the standard deviation of
+        the IoUs of its candidates.
+
+        Args:
+            is_in_topk (``Tensor``): Candidate mask with shape
+                ``[bs, n_max_boxes, n_anchors]``.
+            topk_idxs (``Tensor``): Candidate indices with shape
+                ``[bs, n_max_boxes, n_selected]``.
+            overlaps (``Tensor``): IoU between each box and each anchor
+                with shape ``[bs, n_max_boxes, n_anchors]``.
+
+        Returns:
+            ``Tensor``: Positive mask with shape
+            ``[bs, n_max_boxes, n_anchors]``.
+
         """
         n_bs_max_boxes = self._bs * self._n_max_boxes
         _candidate_overlaps = torch.where(
@@ -233,20 +347,29 @@ class ATSSAssigner(nn.Module):
         assigned_gt_idx: Tensor,
         mask_pos_sum: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor]:
-        """Generate final assignments based on the mask.
+        """Gather the label, box, and one-hot score of each anchor.
 
-        @type gt_labels: Tensor
-        @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
-        @type gt_bboxes: Tensor
-        @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
-        @type assigned_gt_idx: Tensor
-        @param assigned_gt_idx: Indices of matched GTs [bs, n_anchors]
-        @type mask_pos_sum: Tensor
-        @param mask_pos_sum: Mask of matched GTs [bs, n_anchors]
-        @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned
-            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
-            [bs, n_anchors, n_classes].
+        Args:
+            gt_labels (``Tensor``): Class index of each ground truth box
+                with shape ``[bs, n_max_boxes, 1]``.
+            gt_bboxes (``Tensor``): Ground truth boxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            assigned_gt_idx (``Tensor``): Index of the assigned box with
+                shape ``[bs, n_anchors]``.
+            mask_pos_sum (``Tensor``): Number of assigned boxes per anchor
+                with shape ``[bs, n_anchors]``.
+
+        Returns:
+            ``tuple[Tensor, Tensor, Tensor]``: Three tensors:
+
+            - The assigned labels with shape ``[bs, n_anchors]`` and the
+              dtype of ``gt_labels``. ``n_classes`` for a background
+              anchor.
+            - The assigned boxes with shape ``[bs, n_anchors, 4]``.
+            - The ``float32`` one-hot scores with shape
+              ``[bs, n_anchors, n_classes]``. Zero for a background
+              anchor.
+
         """
         # assigned target labels
         batch_idx = torch.arange(

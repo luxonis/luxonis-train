@@ -1,3 +1,14 @@
+"""Helpers shared across the package.
+
+The package re-exports the main helpers of its modules. They cover the
+bounding box and keypoint maths, the conversion of head outputs to
+dataset records, the OCR encoder and decoder, the segmentation masks,
+the spatial transforms, the checkpoint filter, the dataset metadata, the
+experiment tracker, the logging setup, `IncompatibleError`, and general
+helpers for batches, signatures, and downloads.
+
+"""
+
 from .annotation import default_annotate
 from .boundingbox import (
     anchors_for_fpn_features,
