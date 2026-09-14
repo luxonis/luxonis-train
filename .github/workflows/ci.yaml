@@ -270,12 +270,8 @@ jobs:
           uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Run doctests
-        # These two examples fail on main. The nodes PR of the Google
-        # docstring migration corrects them and removes the deselection.
         run: >-
           uv run --no-sync pytest --doctest-modules luxonis_train
-          --deselect "luxonis_train/nodes/base_node.py::luxonis_train.nodes.base_node.BaseNode.in_sizes"
-          --deselect "luxonis_train/nodes/blocks/blocks.py::luxonis_train.nodes.blocks.blocks.DropPath"
           --cov=luxonis_train
           --cov-report=xml:coverage-doctest.xml
           --junitxml=junit-doctest.xml
