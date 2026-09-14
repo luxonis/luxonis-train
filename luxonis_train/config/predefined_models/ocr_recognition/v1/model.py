@@ -75,6 +75,69 @@ class OCRRecognitionModel(SimplePredefinedModel):
         ignore_unknown: bool = True,
         **kwargs,
     ):
+        """Initialize the model with its default components.
+
+        The defaults are:
+
+        - ``backbone``: `PPLCNetV3`
+        - ``neck``: `SVTRNeck`
+        - ``head``: `OCRCTCHead`
+        - ``loss``: `CTCLoss`
+        - ``metrics``: `OCRAccuracy`
+        - ``visualizer``: `OCRVisualizer`
+        - ``confusion_matrix_available``: ``False``
+
+        With these defaults, the model has no ``ConfusionMatrix``. The
+        constructor then adds ``max_text_len`` to ``backbone_params``,
+        and ``alphabet`` and ``ignore_unknown`` to ``head_params``. It
+        skips a key that the dictionary already holds. It edits a given
+        non-empty dictionary in place.
+
+        Args:
+            alphabet (``list[str] | AlphabetName``): The characters that
+                the head predicts. A name selects a predefined alphabet
+                and logs an info message:
+
+                - ``"english"``: ``a`` to ``z`` and ``A`` to ``Z``;
+                - ``"english_lowercase"``: ``a`` to ``z``;
+                - ``"numeric"``: ``0`` to ``9``;
+                - ``"alphanumeric"``: ``"english"`` and ``"numeric"``;
+                - ``"alphanumeric_lowercase"``: ``"english_lowercase"``
+                  and ``"numeric"``;
+                - ``"punctuation"``: the space and the ASCII punctuation
+                  characters;
+                - ``"ascii"``: the printable ASCII characters, codes
+                  ``32`` to ``126``.
+
+                The model passes a list on without a change. It does
+                not read the value when ``head_params`` holds
+                ``alphabet``.
+            max_text_len (int): The number of sequence steps of the
+                backbone output, and so the longest text the model can
+                predict.
+            ignore_unknown (bool): Whether the head drops a label
+                character that is not in the alphabet. With ``False``,
+                the head maps it to an extra ``"<UNK>"`` class.
+            **kwargs (``Any``): Keyword arguments for
+                `SimplePredefinedModel.__init__`. A key given here
+                replaces the default with the same name.
+
+        Raises:
+            ValueError: When ``alphabet`` is a string that names no
+                predefined alphabet, and ``head_params`` holds no
+                ``alphabet``.
+
+        Example:
+            >>> model = OCRRecognitionModel(
+            ...     alphabet=["a", "b"], max_text_len=8
+            ... )
+            >>> backbone, _, head = model.nodes
+            >>> backbone.params
+            {'max_text_len': 8}
+            >>> head.params
+            {'alphabet': ['a', 'b'], 'ignore_unknown': True}
+
+        """
         super().__init__(
             **{
                 "backbone": "PPLCNetV3",
@@ -97,6 +160,22 @@ class OCRRecognitionModel(SimplePredefinedModel):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Params]]:
+        """Get the default variant name and the available variants.
+
+        The model has one variant, ``light``. It sets
+        ``backbone_variant`` to ``"rec-light"``, the recognition variant
+        of `PPLCNetV3`. The variant sets no ``weights``, so no node
+        loads a checkpoint.
+
+        Returns:
+            ``tuple[str, dict[str, Params]]``: ``"light"`` and the single
+            variant with its constructor arguments.
+
+        Example:
+            >>> OCRRecognitionModel.get_variants()
+            ('light', {'light': {'backbone_variant': 'rec-light'}})
+
+        """
         return "light", {
             "light": {
                 "backbone_variant": "rec-light",

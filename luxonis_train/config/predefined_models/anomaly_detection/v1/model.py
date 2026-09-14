@@ -12,11 +12,15 @@ class AnomalyDetectionModel(SimplePredefinedModel):
     """Unsupervised anomaly detection, after `DRAEM
     <https://arxiv.org/abs/2108.07610>`_.
 
-    The model trains on images with no anomaly. A backbone reconstructs the
-    image, and the head segments the anomaly from the difference between the
-    two. Train it with `LuxonisLoaderPerlinNoise
-    <luxonis_train.loaders.LuxonisLoaderPerlinNoise>`, which pastes noise
-    from a texture dataset to make the anomalies.
+    The model trains on images with no anomaly. Train it with
+    `LuxonisLoaderPerlinNoise
+    <luxonis_train.loaders.LuxonisLoaderPerlinNoise>`. With the
+    probability ``noise_prob``, the loader blends an image from a texture
+    dataset into a training image inside a Perlin noise mask. That mask
+    marks the anomaly. The backbone reconstructs the clean image. The
+    head reads the reconstruction and the input image together and
+    segments the anomaly. The loss compares the reconstruction with the
+    clean image, and the predicted segmentation with the mask.
 
     Throughput:
         Frames per second at 256x256.
@@ -51,6 +55,29 @@ class AnomalyDetectionModel(SimplePredefinedModel):
     """
 
     def __init__(self, **kwargs):
+        """Initialize the model with its default components.
+
+        The defaults are:
+
+        - ``backbone``: `RecSubNet`
+        - ``head``: `DiscSubNetHead`
+        - ``loss``: `ReconstructionSegmentationLoss`
+        - ``metrics``: `JaccardIndex`
+        - ``metrics_params``: ``num_classes`` of ``2`` and ``task`` of
+          ``"multiclass"``
+        - ``visualizer``: `SegmentationVisualizer`
+        - ``confusion_matrix_available``: ``False``
+
+        A ``metrics_params`` given here replaces the whole default
+        dictionary. With these defaults, the model has no neck and no
+        ``ConfusionMatrix``.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments for
+                `SimplePredefinedModel.__init__`. A key given here
+                replaces the default with the same name.
+
+        """
         super().__init__(
             **{
                 "backbone": "RecSubNet",
@@ -70,6 +97,24 @@ class AnomalyDetectionModel(SimplePredefinedModel):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Params]]:
+        """Get the default variant name and the available variants.
+
+        The default is ``light``. Each variant sets ``backbone_variant``
+        and ``head_variant`` to one size: ``"n"`` for ``light`` and
+        ``"l"`` for ``heavy``.
+
+        Returns:
+            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
+            variants with their constructor arguments.
+
+        Example:
+            >>> default, variants = AnomalyDetectionModel.get_variants()
+            >>> default
+            'light'
+            >>> variants["heavy"]
+            {'backbone_variant': 'l', 'head_variant': 'l'}
+
+        """
         return "light", {
             "light": {
                 "backbone_variant": "n",

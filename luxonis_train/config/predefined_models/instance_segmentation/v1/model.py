@@ -51,6 +51,27 @@ class InstanceSegmentationModel(SimplePredefinedModel):
     """
 
     def __init__(self, **kwargs):
+        """Initialize the model with its default components.
+
+        The defaults are:
+
+        - ``backbone``: `EfficientRep`
+        - ``neck``: `RepPANNeck`
+        - ``head``: `PrecisionSegmentBBoxHead`
+        - ``loss``: `PrecisionDFLSegmentationLoss`
+        - ``metrics``: `MeanAveragePrecision`
+        - ``visualizer``: `InstanceSegmentationVisualizer`
+        - ``confusion_matrix_available``: ``True``
+
+        The head also gets a ``ConfusionMatrix``, unless
+        ``enable_confusion_matrix`` is ``False``.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments for
+                `SimplePredefinedModel.__init__`. A key given here
+                replaces the default with the same name.
+
+        """
         super().__init__(
             **{
                 "backbone": "EfficientRep",
@@ -67,6 +88,37 @@ class InstanceSegmentationModel(SimplePredefinedModel):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Params]]:
+        """Get the default variant name and the available variants.
+
+        The default is ``light``. Each variant sets ``backbone_variant``
+        and ``neck_variant`` to one size:
+
+        - ``light``: ``"n"``
+        - ``medium``: ``"s"``
+        - ``heavy``: ``"l"``
+
+        Each variant also sets ``weights`` to ``"download"`` in
+        ``backbone_params`` and ``neck_params``. Both nodes then
+        download and load the COCO checkpoint of their variant. The
+        variants do not set ``head_params``, so the head starts without a
+        checkpoint. A ``backbone_params`` or ``neck_params`` given in the
+        config replaces the whole dictionary of the variant. Set
+        ``weights`` in it again to keep the COCO checkpoint.
+
+        Returns:
+            ``tuple[str, dict[str, Params]]``: ``"light"`` and the three
+            variants with their constructor arguments.
+
+        Example:
+            >>> default, variants = InstanceSegmentationModel.get_variants()
+            >>> default
+            'light'
+            >>> variants["heavy"]["neck_variant"]
+            'l'
+            >>> variants["heavy"]["neck_params"]
+            {'weights': 'download'}
+
+        """
         return "light", {
             "light": {
                 "backbone_params": {"weights": "download"},

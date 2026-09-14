@@ -1,1 +1,1 @@
-"""Version 1 of the FOMO keypoint detection predefined model."""
+"""Version 1 of the FOMO detection predefined model."""
