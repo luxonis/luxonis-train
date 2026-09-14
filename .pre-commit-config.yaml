@@ -57,6 +57,15 @@ repos:
     hooks:
       - id: taplo-format
 
+  - repo: local
+    hooks:
+      - id: check-doc-schema
+        name: check doc schema
+        entry: python scripts/check_doc_schema.py
+        language: system
+        pass_filenames: false
+        files: ^luxonis_train/.*\.py$
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
