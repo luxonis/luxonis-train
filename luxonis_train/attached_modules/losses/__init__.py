@@ -5,8 +5,8 @@
   `SoftmaxFocalLoss`, and `OHEMLoss`
 - bounding boxes: `AdaptiveDetectionLoss` and
   `PrecisionDFLDetectionLoss`
-- instance keypoints: `EfficientKeypointBBoxLoss` and
-  `FOMOLocalizationLoss`
+- instance keypoints: `EfficientKeypointBBoxLoss`
+- FOMO object centers: `FOMOLocalizationLoss`
 - instance segmentation: `PrecisionDFLSegmentationLoss`
 - anomaly detection: `ReconstructionSegmentationLoss`
 - OCR: `CTCLoss`
@@ -14,8 +14,10 @@
   <https://kevinmusgrave.github.io/pytorch-metric-learning/losses/>`_
   losses, wrapped by `EmbeddingLossWrapper`
 
-Each loss docstring names the heads it accepts. At least one node in a
-config must carry a loss.
+A config attaches a loss to a node in the ``losses`` list of the node.
+The ``Compatible with`` section of each loss lists the nodes that it
+accepts. `BaseLoss` describes how to write a new loss. The training
+step raises ``ValueError`` when no node has a loss.
 
 """
 

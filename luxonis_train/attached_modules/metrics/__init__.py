@@ -1,18 +1,32 @@
-"""Metrics computed on the predictions of a node.
+"""Metrics that compare the predictions of a node with the labels.
+
+A metric attaches to a node through the ``metrics`` list of the node in
+the config. The trainer updates each metric on every validation and
+test batch. At the end of the epoch, it computes and resets each metric
+and logs the results.
 
 `Accuracy`, `F1Score`, `JaccardIndex`, `Precision`, and `Recall` wrap
-the matching ``torchmetrics`` classes. `MIoU`, `DiceCoefficient`,
-`ObjectKeypointSimilarity`, `MeanAveragePrecision`,
-`PrecisionRecallCurve`, `OCRAccuracy`, `ConfusionMatrix`,
-`ClosestIsPositiveAccuracy`, and `MedianDistances` cover the tasks that
-``torchmetrics`` does not.
+the matching ``torchmetrics`` classes. `MIoU` and `DiceCoefficient`
+wrap the segmentation metrics of ``torchmetrics``. `ConfusionMatrix`
+and `MeanAveragePrecision` select a concrete metric from the task of
+the node. `ObjectKeypointSimilarity`, `PrecisionRecallCurve`,
+`OCRAccuracy`, `ClosestIsPositiveAccuracy`, and `MedianDistances` cover
+keypoints, detection curves, OCR, and embeddings.
 
-Mark one metric with ``is_main_metric`` in the config. The trainer saves
-a checkpoint on that metric.
+Mark one metric with ``is_main_metric`` in the config. When no metric
+sets it, the config marks the first metric. The trainer keeps the
+checkpoints with the highest values of the main metric in the
+``best_val_metric`` directory.
 
-Every detection metric reads the predictions after non-maximum
-suppression, so the ``conf_thres`` and ``iou_thres`` of the head change
-the result. Tune both for your data.
+`MeanAveragePrecision` and `DetectionConfusionMatrix` read the boxes
+after the non-maximum suppression of the head. The ``conf_thres`` and
+the ``iou_thres`` of the head change their results.
+`PrecisionRecallCurve` reads the boxes before the suppression and runs
+its own suppression, so the ``conf_thres`` of the head does not change
+its result.
+
+To write a new metric, subclass `BaseMetric`. The example of
+`MetricState` shows a complete subclass.
 
 """
 

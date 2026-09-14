@@ -1,5 +1,5 @@
-"""Projects the embeddings of a batch to two dimensions and draws them
-coloured by class.
+"""Projects the embeddings of a batch to two dimensions with PCA and
+draws them colored by identity label.
 """
 
 from collections.abc import Callable
@@ -29,8 +29,8 @@ class EmbeddingsVisualizer(BaseVisualizer):
           labels
 
     Outputs:
-        - ``tuple[Tensor, Tensor]``: :math:`\left[B, 3, H, W\right]` KDE
-          and scatter plots of the 2-D PCA
+        - ``tuple[Tensor, Tensor]``: :math:`\left[1, 3, 512, 512\right]`
+          KDE and scatter plots of the 2-D PCA
 
     References:
         - Source: This project.
@@ -61,17 +61,32 @@ class EmbeddingsVisualizer(BaseVisualizer):
     supported_tasks = [Tasks.EMBEDDINGS]
 
     def __init__(self, z_score_threshold: float = 3, **kwargs):
-        """Visualizer for embedding tasks like reID.
+        """Initialize the visualizer and store the outlier threshold.
 
         Args:
-            z_score_threshold (float): The threshold for filtering out outliers.
-            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+            z_score_threshold (float): Limit for the absolute z-score of
+                a projected point. `forward` keeps a point only when the
+                absolute z-score of each of its two coordinates is below
+                the limit. The z-scores use the mean and the standard
+                deviation of the batch on each axis. Defaults to ``3``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseVisualizer`, such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
         self.z_score_threshold = z_score_threshold
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
+        """Return the color of a label from `BaseVisualizer.colormap`,
+        scaled to ``[0, 1]``.
+
+        Args:
+            label (int): Identity label.
+
+        Returns:
+            tuple[float, float, float]: RGB components for Matplotlib.
+
+        """
         r, g, b = self.colormap[label]
         return r / 255, g / 255, b / 255
 
@@ -82,17 +97,35 @@ class EmbeddingsVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Create a visualization of the embeddings.
+        """Project the embeddings to two dimensions and plot them.
+
+        The method replaces ``NaN`` and infinite values with ``0``. When
+        ``predictions`` is a CPU tensor, this replacement writes into
+        it. Then it fits a two-component PCA with ``random_state=42``.
+        When the explained variance of the second component is below
+        ``1e-12``, the embeddings are effectively one-dimensional. The
+        method then fixes the sign of the first projected coordinates.
+        It computes their dot product with the row sums of the
+        embeddings and flips the coordinates when the product is
+        negative. Next, `_filter_outliers` drops the points whose
+        absolute z-score reaches ``z_score_threshold`` on either axis.
+        Finally it renders a KDE plot and a scatter plot with
+        `kde_plot` and `scatter_plot`. The method ignores both
+        canvases.
+
+        Logs the number of dropped outliers at the ``INFO`` level.
 
         Args:
-            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
-            target_canvas (``Tensor``): The canvas to draw the labels on.
-            predictions (``Tensor``): Embeddings to visualize.
-            target (``Tensor``): IDs of the embeddings.
+            prediction_canvas (``Tensor``): Ignored.
+            target_canvas (``Tensor``): Ignored.
+            predictions (``Tensor``): Embeddings of shape ``[B, D]``.
+            target (``Tensor``): The ``id`` metadata label of each
+                embedding, of shape ``[B]``. The method casts it to
+                ``int``.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: KDE and scatter plot projections of the
-                embedding space.
+            ``tuple[Tensor, Tensor]``: The KDE plot and the scatter plot,
+            each a ``uint8`` image of shape ``[1, 3, 512, 512]``.
 
         """
         embeddings_np = predictions.detach().cpu().numpy()
@@ -121,6 +154,23 @@ class EmbeddingsVisualizer(BaseVisualizer):
     def _filter_outliers(
         self, points: np.ndarray, ids: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Drop the points whose absolute z-score reaches the threshold
+        on any axis.
+
+        The z-scores use the mean and the standard deviation of the
+        points on each axis. An axis with a standard deviation of ``0``
+        gives ``NaN`` z-scores, and then the method drops every point.
+        Logs the number of dropped points at the ``INFO`` level.
+
+        Args:
+            points (``np.ndarray``): Projected points of shape ``[N, 2]``.
+            ids (``np.ndarray``): Labels of shape ``[N]``.
+
+        Returns:
+            ``tuple[np.ndarray, np.ndarray]``: The kept points and their
+            labels.
+
+        """
         mean = np.mean(points, axis=0)
         std_dev = np.std(points, axis=0)
         z_scores = (points - mean) / std_dev
@@ -135,6 +185,34 @@ class EmbeddingsVisualizer(BaseVisualizer):
         ids_np: np.ndarray,
         plot_func: Callable[[plt.Axes, np.ndarray, np.ndarray], None],
     ) -> Tensor:
+        """Render a plot of the projected embeddings as an image tensor.
+
+        Creates a ``10 x 10`` inch figure and limits both axes to the
+        range of the points. Then it calls ``plot_func`` on the axes,
+        hides the axes, and converts the figure with `figure_to_torch`.
+
+        Args:
+            embeddings_2d (``np.ndarray``): Projected points of shape
+                ``[N, 2]``. May be empty; then the axis limits stay at
+                their defaults.
+            ids_np (``np.ndarray``): Labels of shape ``[N]``.
+            plot_func (``Callable[[plt.Axes, np.ndarray, np.ndarray], None]``):
+                Draws on the axes it receives, for example `kde_plot` or
+                `scatter_plot`.
+
+        Returns:
+            ``Tensor``: A ``uint8`` image of shape ``[1, 3, 512, 512]``.
+
+        Example:
+            >>> import numpy as np
+            >>> def no_op(ax, points, labels):
+            ...     pass
+            >>> EmbeddingsVisualizer.plot_to_tensor(
+            ...     np.zeros((0, 2)), np.zeros(0, dtype=int), no_op
+            ... ).shape
+            torch.Size([1, 3, 512, 512])
+
+        """
         fig, ax = plt.subplots(figsize=(10, 10))
         if embeddings_2d.size > 0:
             ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
@@ -150,6 +228,20 @@ class EmbeddingsVisualizer(BaseVisualizer):
     def kde_plot(
         self, ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
     ) -> None:
+        """Draw one filled KDE per label on the axes.
+
+        Each label gets its color from `BaseVisualizer.colormap`. The
+        KDE uses ``bw_adjust=1.5`` and ``alpha=0.9``.
+        ``warn_singular=False`` silences the Seaborn warning for a label
+        whose points cannot form a density.
+
+        Args:
+            ax (``plt.Axes``): Axes to draw on.
+            emb (``np.ndarray``): Projected points of shape ``[N, 2]``.
+            labels (``np.ndarray``): Label of each point, of shape
+                ``[N]``.
+
+        """
         for label in np.unique(labels):
             subset = emb[labels == label]
             color = self._get_color(label)
@@ -167,6 +259,18 @@ class EmbeddingsVisualizer(BaseVisualizer):
     def scatter_plot(
         self, ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
     ) -> None:
+        """Draw all points on the axes, colored by label.
+
+        Uses ``s=300``, ``alpha=0.9``, and no legend. The palette maps
+        each label to its color in `BaseVisualizer.colormap`.
+
+        Args:
+            ax (``plt.Axes``): Axes to draw on.
+            emb (``np.ndarray``): Projected points of shape ``[N, 2]``.
+            labels (``np.ndarray``): Label of each point, of shape
+                ``[N]``.
+
+        """
         unique_labels = np.unique(labels)
         palette = {label: self._get_color(label) for label in unique_labels}
         sns.scatterplot(
