@@ -68,25 +68,25 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = dict(enumerate(labels))
 
-        self.bbox_labels = labels or self.classes.inverse
+        self._bbox_labels = labels or self.classes.inverse
 
         if colors is None:
             colors = {
-                label: get_color(i) for i, label in self.bbox_labels.items()
+                label: get_color(i) for i, label in self._bbox_labels.items()
             }
         if isinstance(colors, list):
             colors = {
-                self.bbox_labels[i]: color for i, color in enumerate(colors)
+                self._bbox_labels[i]: color for i, color in enumerate(colors)
             }
 
-        self.colors = colors
-        self.fill = fill
-        self.width = width
-        self.font = font
-        self.font_size = font_size
-        self.draw_labels = draw_labels
-        self.draw_scores = draw_scores
-        self.alpha = alpha
+        self._colors = colors
+        self._fill = fill
+        self._width = width
+        self._font = font
+        self._font_size = font_size
+        self._draw_labels = draw_labels
+        self._draw_scores = draw_scores
+        self._alpha = alpha
 
     @classmethod
     def draw_predictions(
@@ -235,13 +235,13 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             prediction_canvas,
             boundingbox,
             instance_segmentation,
-            self.width,
-            self.bbox_labels,
-            self.colors,
-            self.draw_labels,
-            self.draw_scores,
-            self.alpha,
-            self.scale,
+            self._width,
+            self._bbox_labels,
+            self._colors,
+            self._draw_labels,
+            self._draw_scores,
+            self._alpha,
+            self._scale,
         )
         if target_boundingbox is None or target_instance_segmentation is None:
             return predictions_viz
@@ -249,11 +249,11 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             target_canvas,
             target_boundingbox,
             target_instance_segmentation,
-            self.width,
-            self.bbox_labels,
-            self.colors,
-            self.draw_labels,
-            self.alpha,
-            self.scale,
+            self._width,
+            self._bbox_labels,
+            self._colors,
+            self._draw_labels,
+            self._alpha,
+            self._scale,
         )
         return targets_viz, predictions_viz
