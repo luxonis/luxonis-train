@@ -59,6 +59,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: check-doc-schema
+        name: check doc schema
+        entry: python scripts/check_doc_schema.py
+        language: system
+        pass_filenames: false
+        files: ^luxonis_train/.*\.py$
+
       - id: gen-component-docs
         name: generated component docs are up to date
         entry: python scripts/gen_component_docs.py --check
