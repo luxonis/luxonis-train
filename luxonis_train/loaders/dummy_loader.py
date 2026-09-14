@@ -50,23 +50,37 @@ class DummyLoader(BaseLoaderTorch):
         self._n_keypoints = n_keypoints
         self._n_classes = n_classes
         self._batch_size = cfg.trainer.batch_size
-        self._labels: dict[str, set[str | Metadata]] = defaultdict(set)
+        self._labels = self._get_labels(cfg)
+        self._n_channels = 1 if color_space == "GRAY" else 3
+        self._class_names = self._get_class_names(class_names)
+
+    @staticmethod
+    def _get_labels(cfg: Config) -> dict[str, set[str | Metadata]]:
+        labels: dict[str, set[str | Metadata]] = defaultdict(set)
         for node in cfg.model.nodes:
             Node = NODES.get(node.name)
             if Node.task is not None:
                 for label in Node.task.required_labels:
-                    self._labels[f"{node.task_name or ''}"].add(label)
-        self._n_channels = 1 if color_space == "GRAY" else 3
+                    labels[f"{node.task_name or ''}"].add(label)
+        return labels
+
+    def _get_class_names(
+        self,
+        class_names: list[str]
+        | dict[str, int]
+        | dict[str, dict[str, int]]
+        | None,
+    ) -> dict[str, dict[str, int]]:
         if isinstance(class_names, list):
             class_names = {name: i for i, name in enumerate(class_names)}
         if check_type(class_names, dict[str, int]):
             class_names = dict.fromkeys(self._labels, class_names)
         if class_names is None:
             class_names = {
-                key: {str(i): i for i in range(n_classes)}
+                key: {str(i): i for i in range(self._n_classes)}
                 for key in self._labels
             }
-        self._class_names: dict[str, dict[str, int]] = class_names  # type: ignore
+        return class_names  # type: ignore
 
     @property
     @override

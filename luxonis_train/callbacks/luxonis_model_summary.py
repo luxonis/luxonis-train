@@ -67,7 +67,7 @@ class LuxonisModelSummary(RichModelSummary):
         console.print(table)
         self._log_console.print(table)
 
-        parameters = _format_parameter_counts(
+        trainable, non_trainable, total, size = _format_parameter_counts(
             trainable_parameters, total_parameters, model_size
         )
 
@@ -75,11 +75,11 @@ class LuxonisModelSummary(RichModelSummary):
         grid.add_column()
         grid.add_column()
 
-        grid.add_row(f"[bold]Trainable params[/]: {parameters[0]}")
-        grid.add_row(f"[bold]Non-trainable params[/]: {parameters[1]}")
-        grid.add_row(f"[bold]Total params[/]: {parameters[2]}")
+        grid.add_row(f"[bold]Trainable params[/]: {trainable}")
+        grid.add_row(f"[bold]Non-trainable params[/]: {non_trainable}")
+        grid.add_row(f"[bold]Total params[/]: {total}")
         grid.add_row(
-            f"[bold]Total estimated model params size (MB)[/]: {parameters[3]}"
+            f"[bold]Total estimated model params size (MB)[/]: {size}"
         )
         grid.add_row(
             f"[bold]Modules in train mode[/]: {total_training_modes['train']}"
@@ -112,13 +112,13 @@ class LuxonisModelSummary(RichModelSummary):
         )
         logger.info(f"\n{table}\n")
 
-        parameters = _format_parameter_counts(
+        trainable, non_trainable, total, size = _format_parameter_counts(
             trainable_parameters, total_parameters, model_size
         )
-        logger.info(f"Trainable params: {parameters[0]}")
-        logger.info(f"Non-trainable params: {parameters[1]}")
-        logger.info(f"Total params: {parameters[2]}")
-        logger.info(f"Total estimated model params size (MB): {parameters[3]}")
+        logger.info(f"Trainable params: {trainable}")
+        logger.info(f"Non-trainable params: {non_trainable}")
+        logger.info(f"Total params: {total}")
+        logger.info(f"Total estimated model params size (MB): {size}")
         logger.info(f"Modules in train mode: {total_training_modes['train']}")
         logger.info(f"Modules in eval mode: {total_training_modes['eval']}")
 

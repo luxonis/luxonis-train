@@ -78,3 +78,31 @@ def test_fomo_visualizer():
         computed_hash
         == "1b5954436143c02eae3fa3fd4400a0785d95a4ce1f9683a948d44abd027dce66"
     )
+
+
+def test_scale_moves_the_drawn_keypoints():
+    visualizer = FOMOVisualizer(scale=2.0, node=_single_class_node())
+    canvas = torch.zeros(1, 3, 40, 40, dtype=torch.uint8)
+    predictions = [torch.tensor([[[5.0, 5.0, 1.0, 0.0]]])]
+
+    drawn = visualizer.draw_predictions_per_class(canvas, predictions)
+
+    assert drawn[0, :, 10, 10].any()
+    assert not drawn[0, :, 5, 5].any()
+
+
+def test_invisible_keypoints_leave_the_canvas_untouched():
+    visualizer = FOMOVisualizer(node=_single_class_node())
+    canvas = torch.zeros(1, 3, 40, 40, dtype=torch.uint8)
+    predictions = [torch.tensor([[[5.0, 5.0, 0.0, 0.0]]])]
+
+    drawn = visualizer.draw_predictions_per_class(canvas, predictions)
+
+    assert not drawn.any()
+
+
+def _single_class_node() -> DummyFOMONode:
+    return DummyFOMONode(
+        n_classes=1,
+        dataset_metadata=DatasetMetadata(classes={"": {"class1": 0}}),
+    )

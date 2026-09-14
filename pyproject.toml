@@ -58,6 +58,7 @@ aimet = ["aimet-torch~=2.36"]
 [dependency-groups]
 config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
 dev = [
+  "complexipy~=7.0",
   "prek~=0.4",
   "pyright~=1.1",
   "pytest-cov~=7.1",

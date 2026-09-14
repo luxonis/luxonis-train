@@ -1,9 +1,11 @@
 from typing import Any, cast
 
+import torch
 from torch import Tensor, nn
 
 from luxonis_train import BaseNode
 from luxonis_train.attached_modules.metrics import MeanAveragePrecision, MIoU
+from luxonis_train.lightning.luxonis_lightning import _prepare_balanced_labels
 from luxonis_train.lightning.utils import (
     NodeWrapper,
     _translate_predefined_metric_params,
@@ -92,3 +94,22 @@ def test_node_wrapper_train_updates_self_and_attached_modules():
     assert loss.training is True
     assert metric.training is True
     assert visualizer.training is True
+
+
+def test_prepare_balanced_labels_skips_unpaired_segmentation_tasks():
+    labels = {
+        "paired/segmentation": torch.zeros(1, 2, 2, 2),
+        "paired/classification": torch.tensor([[0, 1, 0]]),
+        "unpaired/segmentation": torch.zeros(1, 2, 2, 2),
+        "other/classification": torch.tensor([[0, 1]]),
+    }
+
+    prepared = _prepare_balanced_labels(labels)
+
+    assert torch.equal(
+        prepared["paired/classification"],
+        labels["paired/classification"][:, 1:],
+    )
+    assert torch.equal(
+        prepared["other/classification"], labels["other/classification"]
+    )

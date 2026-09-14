@@ -270,39 +270,53 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         dataset_metadata: DatasetMetadata,
         node_cfg: NodeConfig,
     ) -> None:
+        if Node.task is None:
+            return
+        metadata = {
+            label
+            for label in Node.task.required_labels
+            if isinstance(label, Metadata)
+        }
         metadata_override = node_cfg.metadata_task_override
-        if Node.task is not None:
-            metadata = {
-                label
-                for label in Node.task.required_labels
-                if isinstance(label, Metadata)
-            }
-            if metadata_override is not None:
-                if isinstance(metadata_override, str):
-                    if len(metadata) != 1:
-                        raise ValueError(
-                            f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
-                            "so the `metadata_task_override` must be a dictionary."
-                        )
-                    metadata_override = {
-                        next(iter(metadata)).name: metadata_override
-                    }
+        if metadata_override is not None:
+            self._apply_metadata_override(metadata, metadata_override, Node)
+        self._validate_metadata_types(metadata, dataset_metadata, node_cfg)
 
-                for m in metadata:
-                    m.name = metadata_override.get(m.name, m.name)
+    @staticmethod
+    def _apply_metadata_override(
+        metadata: set[Metadata],
+        metadata_override: str | dict[str, str],
+        Node: type[BaseNode],
+    ) -> None:
+        if isinstance(metadata_override, str):
+            if len(metadata) != 1:
+                raise ValueError(
+                    f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                    "so the `metadata_task_override` must be a dictionary."
+                )
+            metadata_override = {next(iter(metadata)).name: metadata_override}
 
-            metadata_types = dataset_metadata.metadata_types
+        for m in metadata:
+            m.name = metadata_override.get(m.name, m.name)
 
-            for m in metadata:
-                m_name = f"{node_cfg.task_name}/{m}"
-                if m_name not in metadata_types:
-                    continue
-                typ = metadata_types[m_name]
-                if not m.check_type(typ):
-                    raise ValueError(
-                        f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
-                        f"Expected type '{m.typ}', got '{typ.__name__}'."
-                    )
+    @staticmethod
+    def _validate_metadata_types(
+        metadata: set[Metadata],
+        dataset_metadata: DatasetMetadata,
+        node_cfg: NodeConfig,
+    ) -> None:
+        metadata_types = dataset_metadata.metadata_types
+
+        for m in metadata:
+            m_name = f"{node_cfg.task_name}/{m}"
+            if m_name not in metadata_types:
+                continue
+            typ = metadata_types[m_name]
+            if not m.check_type(typ):
+                raise ValueError(
+                    f"Metadata type mismatch for label '{m}' in node '{node_cfg.identifier}'. "
+                    f"Expected type '{m.typ}', got '{typ.__name__}'."
+                )
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
@@ -701,38 +715,25 @@ def log_balanced_class_images(
     current_epoch: int,
 ) -> tuple[int, list[int], list[int]]:
     """Log images with balanced class distribution."""
-    logged_indices = []
-
-    batch_size = next(
-        iter(next(iter(visualizations.values())).values())
-    ).shape[0]
-    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
-    present_classes = [
-        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
-        for idx in range(batch_size)
-    ]
-    for idx, classes in enumerate(present_classes):
-        if classes:
-            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
-            if class_log_counts[min_logged_class] == min(class_log_counts):
-                logged_indices.append(idx)
-                for c in classes:
-                    class_log_counts[c] += 1
-
-    for node_name, node_visualizations in visualizations.items():
-        node_logged_images = n_logged_images
-        formatted_node_name = nodes.formatted_name(node_name)
-        for viz_name, viz_batch in node_visualizations.items():
-            for idx in logged_indices:
-                if node_logged_images >= max_log_images:
-                    break
-                tracker.log_image(
-                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}/{node_logged_images}",
-                    viz_batch[idx].detach().cpu().numpy().transpose(1, 2, 0),
-                    step=current_epoch,
-                )
-                node_logged_images += 1
-
+    logged_indices = _select_balanced_indices(
+        visualizations, labels, cls_task_keys, class_log_counts
+    )
+    balanced = {
+        node_name: {
+            viz_name: viz_batch[logged_indices]
+            for viz_name, viz_batch in node_visualizations.items()
+        }
+        for node_name, node_visualizations in visualizations.items()
+    }
+    node_logged_images = log_sequential_images(
+        tracker,
+        nodes,
+        balanced,
+        n_logged_images,
+        max_log_images,
+        mode,
+        current_epoch,
+    )
     return node_logged_images, class_log_counts, logged_indices
 
 
@@ -874,3 +875,32 @@ def check_tensor_device(
     if isinstance(x, (list | tuple)):
         return all(isinstance(i, Tensor) and i.device == device for i in x)
     raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
+
+
+def _select_balanced_indices(
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_task_keys: list[str],
+    class_log_counts: list[int],
+) -> list[int]:
+    """Pick batch indices that keep per-class logging balanced.
+
+    Mutates C{class_log_counts} in place.
+    """
+    logged_indices = []
+    batch_size = next(
+        iter(next(iter(visualizations.values())).values())
+    ).shape[0]
+    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
+    present_classes = [
+        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        for idx in range(batch_size)
+    ]
+    for idx, classes in enumerate(present_classes):
+        if classes:
+            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
+            if class_log_counts[min_logged_class] == min(class_log_counts):
+                logged_indices.append(idx)
+                for c in classes:
+                    class_log_counts[c] += 1
+    return logged_indices

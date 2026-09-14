@@ -148,41 +148,13 @@ class PrecisionRecallCurve(BaseMetric):
         min_confidence: float | None,
         max_confidence: float | None,
     ) -> Tensor:
-        grid_parameters = {
-            "num_thresholds": num_thresholds,
-            "min_confidence": min_confidence,
-            "max_confidence": max_confidence,
-        }
         if confidence_thresholds is not None:
-            provided = sorted(
-                name
-                for name, value in grid_parameters.items()
-                if value is not None
+            cls._reject_grid_parameters(
+                num_thresholds=num_thresholds,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
             )
-            if provided:
-                raise ValueError(
-                    "confidence_thresholds must not be combined with "
-                    f"{', '.join(provided)}; the explicit grid would "
-                    "silently take precedence."
-                )
-
-            thresholds = torch.tensor(
-                confidence_thresholds,
-                dtype=torch.float32,
-            )
-            if thresholds.ndim != 1 or len(thresholds) < 2:
-                raise ValueError(
-                    "confidence_thresholds must contain at least two values."
-                )
-            if torch.any(thresholds < 0) or torch.any(thresholds > 1):
-                raise ValueError(
-                    "confidence_thresholds values must be between 0 and 1."
-                )
-            if not torch.all(thresholds[1:] > thresholds[:-1]):
-                raise ValueError(
-                    "confidence_thresholds must be strictly increasing."
-                )
-            return thresholds
+            return cls._explicit_thresholds(confidence_thresholds)
 
         if num_thresholds is None:
             num_thresholds = DEFAULT_NUM_THRESHOLDS
@@ -516,6 +488,37 @@ class PrecisionRecallCurve(BaseMetric):
             axis.grid()
 
         return figure
+
+    @staticmethod
+    def _reject_grid_parameters(**grid_parameters: float | None) -> None:
+        provided = sorted(
+            name
+            for name, value in grid_parameters.items()
+            if value is not None
+        )
+        if provided:
+            raise ValueError(
+                "confidence_thresholds must not be combined with "
+                f"{', '.join(provided)}; the explicit grid would "
+                "silently take precedence."
+            )
+
+    @staticmethod
+    def _explicit_thresholds(confidence_thresholds: list[float]) -> Tensor:
+        thresholds = torch.tensor(confidence_thresholds, dtype=torch.float32)
+        if thresholds.ndim != 1 or len(thresholds) < 2:
+            raise ValueError(
+                "confidence_thresholds must contain at least two values."
+            )
+        if torch.any(thresholds < 0) or torch.any(thresholds > 1):
+            raise ValueError(
+                "confidence_thresholds values must be between 0 and 1."
+            )
+        if not torch.all(thresholds[1:] > thresholds[:-1]):
+            raise ValueError(
+                "confidence_thresholds must be strictly increasing."
+            )
+        return thresholds
 
 
 def _exclusive_threshold(value: float, dtype: torch.dtype) -> float:
