@@ -1,5 +1,8 @@
-"""Fails early when the training loader yields no batches, and reports
-the dataset size the current settings would need.
+"""Stops a fit with an error when the training loader yields no batches.
+
+The error message shows the minimum dataset size for the current
+settings.
+
 """
 
 from math import ceil
@@ -11,13 +14,51 @@ import luxonis_train as lxt
 
 
 class FailOnNoTrainBatches(pl.Callback):
-    """Handles cases where number of training batches is 0 either due to
-    too large effective batch size or skipping the last batch.
+    """Callback that stops a fit that has no training batches.
+
+    A fit has no training batches when the training dataset is empty. It
+    also has none when the dataset is smaller than the effective batch
+    size and the loader drops the last incomplete batch. `LuxonisModel`
+    drops it when ``trainer.skip_last_batch`` is set. Without this
+    callback, Lightning stops the fit and only logs an info message.
+
+    `LuxonisModel` gives this callback to its trainer. The config does
+    not have to list it.
+
     """
 
     def on_fit_start(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        """Raise an error when the fit loop has no training batches.
+
+        Lightning calls this hook at the start of ``trainer.fit``. The
+        hook sets up the training data of the fit loop, so that
+        Lightning computes the number of training batches early. When
+        that number is ``0``, the hook raises an error.
+
+        The message of the error shows these values when the hook can
+        find them:
+
+        - the size of the dataset;
+        - the minimum dataset size that the current settings need;
+        - the number of missing samples, when the dataset is smaller
+          than that minimum;
+        - the batch size, the world size, ``drop_last`` of the loader,
+          and ``limit_train_batches`` of the trainer.
+
+        The hook reads the batch size from the loader, or from
+        ``trainer.batch_size`` of the config.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer of the fit.
+            pl_module (LuxonisLightningModule): The model. The hook reads
+                its config.
+
+        Raises:
+            RuntimeError: When the fit loop has no training batches.
+
+        """
         # Ensure Lightning has computed the effective number of train batches.
         trainer.fit_loop.setup_data()
         if trainer.fit_loop.max_batches != 0:

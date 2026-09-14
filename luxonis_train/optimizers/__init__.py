@@ -1,13 +1,13 @@
 """Optimizers a config can name.
 
-Every optimizer of ``torch.optim`` is registered under its class name,
-so ``trainer.optimizer.name`` accepts any of them and
-``trainer.optimizer.params`` reaches its constructor.
+`luxonis_train.optimizers.optimizers` registers twelve optimizers of
+``torch.optim`` in the ``OPTIMIZERS`` registry, under their class names.
+``trainer.optimizer.name`` accepts any of them, and
+``trainer.optimizer.params`` goes to its constructor.
 
-`CompositeOptimizer` wraps the inner optimizers that node finetuning
-rules and training strategies produce. It presents them to Lightning as
-one optimizer, which keeps gradient accumulation and gradient clipping
-working however many groups a config creates.
+`CompositeOptimizer` wraps the inner optimizers of a training plan when
+the plan has more than one. Lightning then sees one optimizer, so
+gradient accumulation and gradient clipping still work.
 
 """
 

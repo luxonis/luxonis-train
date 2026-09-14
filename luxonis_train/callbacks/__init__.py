@@ -1,30 +1,50 @@
 """Callbacks that run at points in the training loop.
 
-The trainer calls the callbacks in the order the config lists them.
+An entry of ``trainer.callbacks`` in the config names a callback of the
+`CALLBACKS` registry. Its ``params`` go to the constructor. The run
+does not build an entry whose ``active`` is false.
 
-Added automatically:
-    - `ModelCheckpoint` on the minimum validation loss, and a second
-      one on the main metric when a config sets it
-    - `GracefulInterruptCallback`, `FailOnNoTrainBatches`,
-      `LuxonisModelSummary`, and `TrainingManager`
-    - `LuxonisRichProgressBar` when ``rich_logging`` is true, and
-      `LuxonisTQDMProgressBar` when it is false
-    - `GradientAccumulationScheduler` when
-      ``trainer.accumulate_grad_batches`` is set and no scheduler is
-      configured
-    - `ConvertOnTrainEnd`, `TestOnTrainEnd`, and `UploadCheckpoint`
-      when ``smart_cfg_auto_populate`` is true
+A run gets these callbacks without an entry in the config:
 
-Also registered:
-    `AIMETCallback`, `ArchiveOnTrainEnd`, `EMACallback`,
-    `ExportOnTrainEnd`, `GradCamCallback`, `MetadataLogger`, and
-    `TrainingProgressCallback`, plus the ``lightning.pytorch``
-    callbacks `DeviceStatsMonitor`, `EarlyStopping`,
-    `LearningRateMonitor`, `ModelPruning`, `StochasticWeightAveraging`,
-    and `Timer`.
+- `GracefulInterruptCallback` and `FailOnNoTrainBatches`.
+- `LuxonisRichProgressBar` when ``rich_logging`` is true, and
+  `LuxonisTQDMProgressBar` when it is false.
+- `TrainingManager` and `LuxonisModelSummary`.
+- A ``ModelCheckpoint`` on the lowest validation loss, and a second one
+  on the main metric when the config has one.
+- `AIMETCallback` when ``exporter.aimet.active`` is true.
+- A ``GradientAccumulationScheduler`` when
+  ``trainer.accumulate_grad_batches`` is set and no such callback is in
+  the list.
+
+When ``trainer.smart_cfg_auto_populate`` is true, the config also adds
+`UploadCheckpoint`, `TestOnTrainEnd`, and `ConvertOnTrainEnd` to
+``trainer.callbacks`` when they are missing.
+
+The registry holds every callback above. It also holds
+`ArchiveOnTrainEnd`, `EMACallback`, `ExportOnTrainEnd`,
+`GPUStatsMonitor`, `GradCamCallback`, `MetadataLogger`, and
+`TrainingProgressCallback`. It also holds these ``lightning.pytorch``
+callbacks: ``DeviceStatsMonitor``, ``EarlyStopping``,
+``LearningRateMonitor``, ``ModelPruning``,
+``StochasticWeightAveraging``, and ``Timer``.
+
+Lightning calls the callbacks in this order:
+
+1. `GracefulInterruptCallback`, `FailOnNoTrainBatches`, and the progress
+   bar.
+2. `TrainingManager`, `LuxonisModelSummary`, and `AIMETCallback`.
+3. The entries of ``trainer.callbacks``, in the order of the config.
+   The config moves `EMACallback` to the front.
+4. The ``GradientAccumulationScheduler``.
+5. Each ``ModelCheckpoint``.
 
 `ConvertOnTrainEnd` exports, archives, and converts in one step. Prefer
-it over a separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd`.
+it over a separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd`. When
+``trainer.callbacks`` lists an active `ConvertOnTrainEnd`, the config
+deactivates the other two. The check runs before
+``trainer.smart_cfg_auto_populate`` adds `ConvertOnTrainEnd`, so an
+added one leaves them active.
 
 """
 

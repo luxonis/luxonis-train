@@ -1,6 +1,4 @@
-"""GPU Stats Monitor.
-
-Monitor and logs GPU stats during training.
+"""Logs the GPU statistics of ``nvidia-smi`` while a model trains.
 
 Copyright The PyTorch Lightning team.
 
@@ -36,9 +34,64 @@ from luxonis_train.registry import CALLBACKS
 
 @CALLBACKS.register()
 class GPUStatsMonitor(pl.Callback):
-    """Log the utilization, the memory, and the temperature of each GPU.
+    """Callback that logs the GPU statistics of ``nvidia-smi``.
 
-    The callback reads ``nvidia-smi``, so it needs an NVIDIA driver.
+    The callback queries ``nvidia-smi --query-gpu`` for each GPU of the
+    trainer at the start and at the end of a train batch. It logs the
+    values with the logger of the trainer, at ``trainer.global_step``.
+    It logs only on the steps where the trainer updates its logs.
+    Lightning selects these steps with ``log_every_n_steps`` of the
+    trainer. The batch hooks run on rank 0 only.
+
+    Each flag of `GPUStatsMonitor.__init__` turns on a set of queries:
+
+    - ``gpu_utilization``: ``utilization.gpu``, in percent. It is the
+      part of the last sample period in which one or more kernels ran
+      on the GPU. The callback logs it at the start and at the end of a
+      batch.
+    - ``memory_utilization``: ``memory.used`` and ``memory.free``, in
+      MiB, and ``utilization.memory``, in percent. The last value is the
+      part of the last sample period in which the GPU read or wrote its
+      memory. The callback logs them at the start and at the end of a
+      batch.
+    - ``fan_speed``: ``fan.speed``, in percent of the maximum speed. It
+      is the intended speed, not a measured speed. The callback logs it
+      at the end of a batch only.
+    - ``temperature``: ``temperature.gpu`` and ``temperature.memory``,
+      in degrees Celsius. The callback logs them at the end of a batch
+      only.
+
+    A metric name has the form ``GPU_<device>/<query> - <unit>``, for
+    example ``GPU_0/utilization.gpu - percent`` or
+    ``GPU_0/memory.used - MB``. ``<device>`` is the logical device
+    index of the trainer. ``<unit>`` is ``percent``, ``MB``, or
+    ``°C``. The ``MB`` label marks a value in MiB. The callback logs
+    ``0.0`` for a value that is not a number, such as ``[N/A]``.
+
+    Two more flags log the time of the batches, in milliseconds:
+
+    - ``intra_step_time``: ``batch_time/intra_step (ms)``, the time
+      from the start to the end of a batch. The callback logs it at the
+      end of a batch.
+    - ``inter_step_time``: ``batch_time/inter_step (ms)``, the time
+      from the end of the previous batch to the start of this batch.
+      The callback logs it at the start of a batch. The first batch of
+      an epoch has no value.
+
+    Each time includes the ``nvidia-smi`` queries that run in its
+    interval.
+
+    The callback is in the ``CALLBACKS`` registry, so a config can add
+    it:
+
+    .. code-block:: yaml
+
+        trainer:
+          callbacks:
+            - name: GPUStatsMonitor
+              params:
+                temperature: true
+                intra_step_time: true
 
     """
 
@@ -51,35 +104,31 @@ class GPUStatsMonitor(pl.Callback):
         fan_speed: bool = False,
         temperature: bool = False,
     ):
-        """Automatically monitors and logs GPU stats during training
-        stage. ``GPUStatsMonitor`` is a callback and in order to use it
-        you need to assign a logger in the ``Trainer``.
+        """Initialize the callback with the statistics to log.
 
-        GPU stats are mainly based on ``nvidia-smi --query-gpu`` command. The description of the queries is as follows:
-
-            - ``fan.speed`` - The fan speed value is the percent of maximum speed that the device's fan is currently
-              intended to run at. It ranges from 0 to 100 %. Note: The reported speed is the intended fan speed.
-              If the fan is physically blocked and unable to spin, this output will not match the actual fan speed.
-              Many parts do not report fan speeds because they rely on cooling via fans in the surrounding enclosure.
-            - ``memory.used`` - Total memory allocated by active contexts.
-            - ``memory.free`` - Total free memory.
-            - ``utilization.gpu`` - Percent of time over the past sample period during which one or more kernels was
-              executing on the GPU. The sample period may be between 1 second and 1/6 second depending on the product.
-            - ``utilization.memory`` - Percent of time over the past sample period during which global (device) memory was
-              being read or written. The sample period may be between 1 second and 1/6 second depending on the product.
-            - ``temperature.gpu`` - Core GPU temperature, in degrees C.
-            - ``temperature.memory`` - HBM memory temperature, in degrees C.
+        The class docstring describes each statistic. The constructor
+        checks only for ``nvidia-smi``. `GPUStatsMonitor.setup` checks
+        for a logger and for CUDA.
 
         Args:
-            memory_utilization (bool): Set to ``True`` to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to ``True``.
-            gpu_utilization (bool): Set to ``True`` to monitor percentage of GPU utilization at the start and end of each step. Defaults to ``True``.
-            intra_step_time (bool): Set to ``True`` to monitor the time of each step. Defaults to ``False``.
-            inter_step_time (bool): Set to ``True`` to monitor the time between the end of one step and the start of the next step. Defaults to ``False``.
-            fan_speed (bool): Set to ``True`` to monitor percentage of fan speed. Defaults to ``False``.
-            temperature (bool): Set to ``True`` to monitor the memory and gpu temperature in degree Celsius. Defaults to ``False``.
+            memory_utilization (bool): Log ``memory.used``,
+                ``memory.free``, and ``utilization.memory`` at the start
+                and at the end of a batch.
+            gpu_utilization (bool): Log ``utilization.gpu`` at the start
+                and at the end of a batch.
+            intra_step_time (bool): Log the time from the start to the
+                end of a batch as ``batch_time/intra_step (ms)``.
+            inter_step_time (bool): Log the time from the end of a batch
+                to the start of the next batch as
+                ``batch_time/inter_step (ms)``.
+            fan_speed (bool): Log ``fan.speed`` at the end of a batch.
+            temperature (bool): Log ``temperature.gpu`` and
+                ``temperature.memory`` at the end of a batch.
 
         Raises:
-            MisconfigurationException: If NVIDIA driver is not installed, not running on GPUs, or ``Trainer`` has no logger.
+            MisconfigurationException: When the ``nvidia-smi``
+                executable is not on the ``PATH``. The message says
+                that the NVIDIA driver is not installed.
 
         """
         super().__init__()
@@ -108,6 +157,17 @@ class GPUStatsMonitor(pl.Callback):
 
     @staticmethod
     def is_available() -> bool:
+        """Return whether this machine can run the callback.
+
+        The constructor and `GPUStatsMonitor.setup` do not call this
+        method. They do their own checks and raise an error instead.
+
+        Returns:
+            bool: ``True`` when the ``nvidia-smi`` executable is on the
+            ``PATH`` and the Lightning ``CUDAAccelerator`` reports CUDA
+            as available.
+
+        """
         if shutil.which("nvidia-smi") is None:
             return False
         return CUDAAccelerator.is_available()
@@ -118,6 +178,25 @@ class GPUStatsMonitor(pl.Callback):
         pl_module: "pl.LightningModule",
         stage: str | None = None,
     ) -> None:
+        """Check the trainer and find the GPUs to query.
+
+        Lightning calls this hook at the start of every stage. The hook
+        stores the sorted, unique device indices of ``trainer``. It maps
+        each index to a physical GPU ID through the
+        ``CUDA_VISIBLE_DEVICES`` environment variable. When the variable
+        is not set, each GPU ID is equal to its index.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer. It must have a
+                logger.
+            pl_module (``pl.LightningModule``): The model. Unused.
+            stage (str | None): The stage that starts. Unused.
+
+        Raises:
+            MisconfigurationException: When ``trainer`` has no logger,
+                or when CUDA is not available.
+
+        """
         if not trainer.logger:
             raise MisconfigurationException(
                 "Cannot use GPUStatsMonitor callback with Trainer that has no logger."
@@ -129,7 +208,6 @@ class GPUStatsMonitor(pl.Callback):
             )
 
         # The logical device IDs for selected devices
-        # ignoring mypy check because `trainer.data_parallel_device_ids` is None when using CPU
         self._device_ids = sorted(set(trainer.device_ids))
 
         # The unmasked real GPU IDs
@@ -138,6 +216,17 @@ class GPUStatsMonitor(pl.Callback):
     def on_train_epoch_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        """Clear the recorded batch times.
+
+        Lightning calls this hook at the start of every train epoch, on
+        every rank. Because of the reset, the first batch of an epoch
+        logs no ``batch_time/inter_step (ms)`` value.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer. Unused.
+            pl_module (``pl.LightningModule``): The model. Unused.
+
+        """
         self._snap_intra_step_time: float | None = None
         self._snap_inter_step_time: float | None = None
 
@@ -149,6 +238,28 @@ class GPUStatsMonitor(pl.Callback):
         batch: Any,
         batch_idx: int,
     ) -> None:
+        """Log the GPU utilization and memory before a batch.
+
+        Lightning calls this hook before every train batch. The hook
+        runs on rank 0 only. When ``intra_step_time`` is on, the hook
+        first records the start time of the batch. It stops there when
+        the trainer does not update its logs on this step.
+
+        Otherwise the hook queries ``nvidia-smi`` for the statistics of
+        the enabled flags among ``gpu_utilization`` and
+        ``memory_utilization``. When ``inter_step_time`` is on and the
+        previous batch recorded its end time, the hook adds
+        ``batch_time/inter_step (ms)``. It logs the values with
+        ``trainer.logger.log_metrics`` at ``trainer.global_step``.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer. Its logger receives
+                the values.
+            pl_module (``pl.LightningModule``): The model. Unused.
+            batch (``Any``): The batch. Unused.
+            batch_idx (int): The index of the batch. Unused.
+
+        """
         if self._log_stats.intra_step_time:
             self._snap_intra_step_time = time.time()
 
@@ -179,6 +290,30 @@ class GPUStatsMonitor(pl.Callback):
         batch: Any,
         batch_idx: int,
     ) -> None:
+        """Log all enabled GPU statistics after a batch.
+
+        Lightning calls this hook after every train batch. The hook
+        runs on rank 0 only. When ``inter_step_time`` is on, the hook
+        first records the end time of the batch. It stops there when
+        the trainer does not update its logs on this step.
+
+        Otherwise the hook queries ``nvidia-smi`` for the statistics of
+        the enabled flags among ``gpu_utilization``,
+        ``memory_utilization``, ``fan_speed``, and ``temperature``.
+        When ``intra_step_time`` is on, the hook adds
+        ``batch_time/intra_step (ms)``. It logs the values with
+        ``trainer.logger.log_metrics`` at ``trainer.global_step``.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer. Its logger receives
+                the values.
+            pl_module (``pl.LightningModule``): The model. Unused.
+            outputs (``STEP_OUTPUT``): The output of the training step.
+                Unused.
+            batch (``Any``): The batch. Unused.
+            batch_idx (int): The index of the batch. Unused.
+
+        """
         if self._log_stats.inter_step_time:
             self._snap_inter_step_time = time.time()
 
@@ -203,7 +338,7 @@ class GPUStatsMonitor(pl.Callback):
 
     @staticmethod
     def _get_gpu_ids(device_ids: list[int]) -> list[str]:
-        """Get the unmasked real GPU IDs."""
+        """Return the physical GPU ID of each logical device index."""
         # All devices if `CUDA_VISIBLE_DEVICES` unset
         default = ",".join(str(i) for i in range(torch.cuda.device_count()))
         cuda_visible_devices: list[str] = os.getenv(
@@ -250,7 +385,7 @@ class GPUStatsMonitor(pl.Callback):
         stats: list[list[float]],
         keys: list[tuple[str, str]],
     ) -> dict[str, float]:
-        """Parse the gpu stats into a loggable dict."""
+        """Map the GPU statistics to their metric names."""
         logs = {}
         for i, device_id in enumerate(device_ids):
             for j, (x, unit) in enumerate(keys):
@@ -260,7 +395,7 @@ class GPUStatsMonitor(pl.Callback):
         return logs
 
     def _get_gpu_stat_keys(self) -> list[tuple[str, str]]:
-        """Get the GPU stats keys."""
+        """Return the queries and units of the utilization flags."""
         stat_keys = []
 
         if self._log_stats.gpu_utilization:
@@ -278,7 +413,7 @@ class GPUStatsMonitor(pl.Callback):
         return stat_keys
 
     def _get_gpu_device_stat_keys(self) -> list[tuple[str, str]]:
-        """Get the device stats keys."""
+        """Return the fan and temperature queries with their units."""
         stat_keys = []
 
         if self._log_stats.fan_speed:

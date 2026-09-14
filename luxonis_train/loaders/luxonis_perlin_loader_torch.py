@@ -1,6 +1,8 @@
-"""The loader of the anomaly detection model, which pastes Perlin noise
-from a texture dataset onto a clean image and returns the mask as the
-label.
+"""The loader of the anomaly detection task.
+
+`LuxonisLoaderPerlinNoise` blends a texture image into a clean image,
+inside a random Perlin noise mask. The mask is the label.
+
 """
 
 import random
@@ -23,8 +25,29 @@ from .perlin import apply_anomaly_to_img
 
 
 class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
-    """A custom loader for LDF that adds Perlin noise during training
-    with a given probability.
+    """Loader that adds synthetic anomalies for the anomaly detection
+    task.
+
+    The dataset must have only one task. When the first split of the
+    view is ``"train"``, the loader adds an anomaly to an image with the
+    probability ``noise_prob``. The anomaly is a random texture image
+    inside a random Perlin noise mask, see
+    `luxonis_train.loaders.perlin.apply_anomaly_to_img`. The image
+    height and width of the ``train`` view must then be multiples of
+    ``32``. For other views, the loader reads the anomaly mask from the
+    ``segmentation`` label of the dataset.
+
+    Example:
+        The ``loader`` section of a config:
+
+        .. code-block:: yaml
+
+            loader:
+              name: LuxonisLoaderPerlinNoise
+              params:
+                dataset_name: mvtec_v2
+                anomaly_source_path: ../data/dtd/images/
+
     """
 
     @override
@@ -36,19 +59,29 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         beta: float | None = None,
         **kwargs,
     ):
-        """Initialize the Perlin noise loader.
+        """Initialize the dataset and collect the texture images.
 
         Args:
-            *args (``Any``): Positional arguments forwarded to
+            *args (``Any``): Positional arguments for
                 `LuxonisLoaderTorch`.
-            anomaly_source_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the anomaly dataset used
-                to draw random noise samples. The Describable Textures
-                Dataset (DTD) works well here.
-            noise_prob (float): Probability of applying Perlin noise.
-            beta (float | None): Opacity of the anomaly mask. If ``None``, a
-                random value is chosen, which is the better choice in
-                most cases.
-            **kwargs (``Any``): Keyword arguments forwarded to `LuxonisLoaderTorch`.
+            anomaly_source_path (``PathType``): The directory of the
+                texture images. The loader collects all files in the
+                directory tree with an extension from ``IMAGE_FORMATS``,
+                in any letter case. The loader downloads a remote URL
+                into ``./data``, and uses a local path directly.
+            noise_prob (float): The probability that a sample of the
+                ``train`` view gets an anomaly.
+            beta (float | None): The weight of the clean image inside the
+                mask. The texture gets the weight ``1 - beta``, so
+                ``0.0`` gives an opaque anomaly. ``None`` draws a new
+                value from ``[0, 0.8)`` for each anomaly.
+            **kwargs (``Any``): Keyword arguments for
+                `LuxonisLoaderTorch`.
+
+        Raises:
+            FileNotFoundError: If the download of ``anomaly_source_path``
+                fails, or the directory has no image files.
+            ValueError: If the dataset has more than one task.
 
         """
         super().__init__(*args, **kwargs)
@@ -90,6 +123,38 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
     @override
     def __getitem__(self, idx: int) -> tuple[Tensor, Labels]:
+        """Load a sample and build the anomaly labels.
+
+        The method saves the Python and NumPy random states before it
+        reads the sample, and restores them after the read. When the
+        first split of the view is ``"train"``, the image gets
+        an anomaly with the probability ``noise_prob``. The texture is a
+        random file from ``anomaly_source_path``, with the augmentations
+        of the loader. A train image without an anomaly gets an empty
+        mask. For other views, the mask is the last channel of the
+        ``segmentation`` label of the dataset. The method ignores
+        ``return_sample_metadata`` and ``kpts_mapping_per_task``.
+
+        Args:
+            idx (int): The index of the sample.
+
+        Returns:
+            ``tuple[Tensor, Labels]``: The image of shape ``[C, H, W]``,
+            with the anomaly when it has one. The labels have two keys,
+            where ``task`` is the name of the dataset task:
+
+            - ``"task/segmentation"``: The one-hot anomaly mask of shape
+              ``[2, H, W]``. Channel ``1`` marks the anomaly.
+            - ``"task/original_segmentation"``: The image before the
+              anomaly, of shape ``[C, H, W]``.
+
+            The labels do not include the other labels of the dataset.
+
+        Raises:
+            NotImplementedError: If the dataset has more than one image
+                source and ``image_source`` is ``None``.
+
+        """
         with _freeze_seed():
             img, labels = self.loader[idx]
         if isinstance(img, dict):
@@ -140,6 +205,14 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, Mapping[str, int]]:
+        """Return the two classes of the anomaly mask.
+
+        Returns:
+            ``dict[str, Mapping[str, int]]``: One entry for the dataset
+            task. Its ``bidict`` maps ``"background"`` to ``0`` and
+            ``"anomaly"`` to ``1``.
+
+        """
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
         return {self.task_name: idx_map}

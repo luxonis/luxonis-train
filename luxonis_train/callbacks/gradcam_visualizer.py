@@ -1,5 +1,8 @@
-"""Logs Grad-CAM images during validation, which show the pixels a
-prediction responds to.
+"""Logs Grad-CAM heat maps of validation images.
+
+A heat map shows the image regions that contribute to the score of one
+class.
+
 """
 
 import lightning.pytorch as pl
@@ -22,14 +25,28 @@ from luxonis_train.typing import Packet
 
 
 class PLModuleWrapper(pl.LightningModule):
+    """Lightning module that gives Grad-CAM one score tensor per batch.
+
+    Grad-CAM needs a model that takes a tensor of images and returns a
+    tensor of scores. `LuxonisLightningModule.full_forward` returns a
+    `LuxonisOutput` with the packets of the output nodes. The wrapper
+    takes the images and returns one tensor from these packets.
+    `GradCamCallback` creates the wrapper.
+
+    """
+
     def __init__(
         self, pl_module: "lxt.LuxonisLightningModule", task: str
     ) -> None:
-        """Wrap a Luxonis Lightning module for Grad-CAM.
+        """Initialize the wrapper.
 
         Args:
-            pl_module (LuxonisLightningModule): The model to be wrapped.
-            task (str): The type of task (e.g., segmentation, detection, classification, keypoint_detection).
+            pl_module (LuxonisLightningModule): The model to wrap.
+            task (str): Selects the output that
+                `PLModuleWrapper.forward` returns. One of
+                ``"segmentation"``, ``"detection"``,
+                ``"classification"``, or ``"keypoints"``. The
+                constructor does not check the value.
 
         """
         super().__init__()
@@ -37,16 +54,38 @@ class PLModuleWrapper(pl.LightningModule):
         self.task = task
 
     def forward(self, inputs: Tensor, *args, **kwargs) -> Tensor:
-        """Forward pass through the model, returning the output based on
-        the task type.
+        """Run the model on images and return the scores for ``task``.
+
+        The method calls `LuxonisLightningModule.full_forward` with
+        ``{"image": inputs}`` and the extra arguments. When the model
+        has more than one output node, the method logs a warning. It
+        reads the packet of the first output node. The returned tensor
+        depends on ``task``:
+
+        - ``"segmentation"``: the ``"segmentation"`` output, unchanged.
+        - ``"classification"``: the ``"classification"`` output,
+          unchanged.
+        - ``"detection"`` and ``"keypoints"``: the ``"class_scores"``
+          output, summed over dimension 1. For the scores of
+          `EfficientBBoxHead`, of shape ``[B, N, n_classes]`` for ``N``
+          anchors, the result has the shape ``[B, n_classes]``.
 
         Args:
-            inputs (``Tensor``): Input tensor for the model.
-            *args (``Any``): Additional positional arguments.
-            **kwargs (``Any``): Additional keyword arguments.
+            inputs (``Tensor``): The images, of shape ``[B, C, H, W]``.
+                The method passes them as the input named ``"image"``.
+                The name does not follow ``loader.image_source`` of the
+                config.
+            *args (``Any``): Extra positional arguments for
+                `LuxonisLightningModule.full_forward`.
+            **kwargs (``Any``): Extra keyword arguments for
+                `LuxonisLightningModule.full_forward`.
 
         Returns:
-            ``Tensor``: The processed output based on the task type.
+            ``Tensor``: The scores for ``task``.
+
+        Raises:
+            ValueError: When ``task`` is not one of the four supported
+                values.
 
         """
         input_dict = {"image": inputs}
@@ -75,9 +114,30 @@ class PLModuleWrapper(pl.LightningModule):
 
 
 class GradCamCallback(pl.Callback):
-    """Callback to visualize gradients using Grad-CAM (experimental).
+    """Callback that logs Grad-CAM heat maps of validation images.
 
-    Works only during validation.
+    The callback is experimental. It runs ``HiResCAM`` of
+    ``pytorch_grad_cam`` on the first ``log_n_batches`` batches of each
+    validation epoch. It puts each heat map over its image and logs the
+    result with the tracker of the model. It logs nothing outside of
+    validation.
+
+    Grad-CAM needs gradients. The validation loop of a fit runs without
+    inference mode, so the callback works there. ``trainer.validate``
+    runs in inference mode by default. There, the backward pass of
+    Grad-CAM raises ``RuntimeError``.
+
+    The callback is in the ``CALLBACKS`` registry, so a config can add
+    it:
+
+    .. code-block:: yaml
+
+        trainer:
+          callbacks:
+            - name: GradCamCallback
+              params:
+                target_layer: 10
+                task: segmentation
 
     """
 
@@ -88,13 +148,25 @@ class GradCamCallback(pl.Callback):
         log_n_batches: int = 1,
         task: str = "classification",
     ) -> None:
-        """Initialize the Grad-CAM visualization callback.
+        """Initialize the callback.
 
         Args:
-            target_layer (int): Layer to visualize gradients.
-            class_idx (int | None): Index of the class for visualization. Defaults to None.
-            log_n_batches (int): Number of batches to log. Defaults to 1.
-            task (str): The type of task. Defaults to "classification".
+            target_layer (int): The index of the layer that Grad-CAM
+                reads, in the order of ``named_modules()`` of the
+                `PLModuleWrapper`. Index ``0`` is the wrapper and index
+                ``1`` is the wrapped model. The callback selects the
+                layer with the slice
+                ``[target_layer : target_layer + 1]``. When the slice
+                is empty, for example for ``-1`` or an index out of
+                range, Grad-CAM raises ``ValueError``.
+            class_idx (int): The index of the class that the heat maps
+                explain.
+            log_n_batches (int): The number of batches to log in each
+                validation epoch, from the first batch.
+            task (str): The type of the output to explain. One of
+                ``"segmentation"``, ``"detection"``,
+                ``"classification"``, or ``"keypoints"``. See
+                `PLModuleWrapper.forward`.
 
         """
         super().__init__()
@@ -109,12 +181,16 @@ class GradCamCallback(pl.Callback):
         pl_module: "lxt.LuxonisLightningModule",
         stage: str,
     ) -> None:
-        """Initialize the model wrapper.
+        """Wrap the model for Grad-CAM.
+
+        Lightning calls this hook at the start of every stage. The hook
+        stores a new `PLModuleWrapper` of ``pl_module`` and ``task`` as
+        ``self.pl_module``.
 
         Args:
-            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
-            pl_module (LuxonisLightningModule): The LuxonisLightningModule.
-            stage (str): The stage of the training loop.
+            trainer (``pl.Trainer``): The trainer. Unused.
+            pl_module (LuxonisLightningModule): The model to wrap.
+            stage (str): The stage that starts. Unused.
 
         """
         self.pl_module = PLModuleWrapper(pl_module, self.task)
@@ -127,15 +203,26 @@ class GradCamCallback(pl.Callback):
         batch: tuple[dict[str, Tensor], Packet[Tensor]],
         batch_idx: int,
     ) -> None:
-        """At the end of first n batches, visualize the gradients using
-        Grad-CAM.
+        """Log the heat maps of the first ``log_n_batches`` batches.
+
+        Lightning calls this hook after every validation batch. When
+        ``batch_idx`` is lower than ``log_n_batches``, the hook takes
+        the inputs of the batch. From a dictionary of inputs, it takes
+        the entry ``pl_module.image_source``. Then it calls
+        `GradCamCallback.visualize_gradients`. For a later batch, the
+        hook does nothing.
 
         Args:
-            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
-            pl_module (LuxonisLightningModule): The PyTorch Lightning module.
-            outputs (``STEP_OUTPUT``): The output of the model.
-            batch (``Any``): The input batch.
-            batch_idx (int): The index of the batch.
+            trainer (``pl.Trainer``): The trainer. It gives the step of
+                the logged images.
+            pl_module (LuxonisLightningModule): The model. It gives
+                ``image_source``, the config, and the tracker.
+            outputs (``STEP_OUTPUT``): The output of the validation
+                step. Unused.
+            batch (``tuple[dict[str, Tensor], Packet[Tensor]]``): The
+                inputs and the labels of the batch.
+            batch_idx (int): The index of the batch in the validation
+                epoch.
 
         """
         if batch_idx < self.log_n_batches:
@@ -151,13 +238,46 @@ class GradCamCallback(pl.Callback):
         images: Tensor,
         batch_idx: int,
     ) -> None:
-        """Visualizes the gradients using Grad-CAM.
+        """Compute the Grad-CAM heat maps of a batch and log them.
+
+        The method creates a ``HiResCAM`` on the layer at index
+        ``target_layer`` in ``named_modules()`` of the
+        `PLModuleWrapper`. ``HiResCAM`` sets the wrapper and the model
+        to eval mode. The method stores the ``HiResCAM`` as
+        ``self.gradcam``, so its hooks stay on the layer until a later
+        call replaces it. Until then, the hooks keep a CPU copy of the
+        output of the layer from each forward pass, and of its gradient
+        from each backward pass.
+
+        The Grad-CAM target of each image depends on ``task``:
+
+        - ``"segmentation"``: the method first runs the model on the
+          images and applies a softmax over the classes. The mask of an
+          image holds the pixels where ``class_idx`` has the highest
+          probability. The target is the sum of the ``class_idx`` score
+          map over that mask.
+        - Any other task: the target is the ``class_idx`` entry of the
+          scores from `PLModuleWrapper.forward`.
+
+        The method computes the heat maps with gradients enabled.
+        Grad-CAM clears the gradients of the model and runs a backward
+        pass, so the parameters of the model keep new ``grad`` values.
+        The method denormalizes the images with
+        ``trainer.preprocessing.normalize`` of ``pl_module.cfg``. Each
+        heat map goes over its image as a JET color map at half
+        opacity. The tracker of ``pl_module`` logs each result as
+        ``gradcam/gradcam_<batch_idx>_<i>`` at ``trainer.global_step``.
+        ``<i>`` is the index of the image in the batch.
 
         Args:
-            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
-            pl_module (``pl.LightningModule``): The PyTorch Lightning module.
-            images (``Tensor``): The input images.
-            batch_idx (int): The index of the batch.
+            trainer (``pl.Trainer``): The trainer. It gives the step of
+                the logged images.
+            pl_module (LuxonisLightningModule): The model. It gives the
+                config for the denormalization and the tracker.
+            images (``Tensor``): The normalized images, of shape
+                ``[B, C, H, W]``.
+            batch_idx (int): The index of the batch. It is part of the
+                image names.
 
         """
         target_layers = [m[1] for m in self.pl_module.named_modules()][

@@ -1,11 +1,14 @@
 """Learning rate schedulers a config can name.
 
-Every scheduler of ``torch.optim.lr_scheduler`` is registered under its
-class name, so ``trainer.scheduler.name`` accepts any of them.
+`luxonis_train.schedulers.schedulers` registers fifteen schedulers of
+``torch.optim.lr_scheduler`` in the ``SCHEDULERS`` registry, under their
+class names. ``trainer.scheduler.name`` accepts any of them.
 
-`CompositeLRScheduler` steps the schedulers of a `CompositeOptimizer`
-together, and `CompositeReduceLROnPlateau` does the same for the
-schedulers that need a metric.
+Each inner optimizer of a training plan gets its own member scheduler.
+When the plan has more than one inner optimizer, `CompositeLRScheduler`
+steps the members of the `CompositeOptimizer` together.
+`CompositeReduceLROnPlateau` does the same for the ``ReduceLROnPlateau``
+members that monitor the same value.
 
 """
 
