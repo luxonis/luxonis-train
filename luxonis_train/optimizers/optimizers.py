@@ -1,3 +1,12 @@
+"""The registration of the ``torch.optim`` optimizers.
+
+Importing the module registers these optimizers in the ``OPTIMIZERS``
+registry, under their class names: ``Adadelta``, ``Adagrad``, ``Adam``,
+``AdamW``, ``SparseAdam``, ``Adamax``, ``ASGD``, ``LBFGS``, ``NAdam``,
+``RAdam``, ``RMSprop``, and ``SGD``.
+
+"""
+
 from torch import optim
 
 from luxonis_train.registry import OPTIMIZERS
