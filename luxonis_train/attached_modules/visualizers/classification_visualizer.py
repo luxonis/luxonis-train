@@ -22,6 +22,15 @@ from .utils import (
 class ClassificationVisualizer(BaseVisualizer):
     r"""Visualize classification predictions and optional labels.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/class.png
+       :width: 700px
+       :height: 262px
+       :loading: embed
+
+       The image shows the target class and the predicted class. The
+       plot shows the predicted probability of each class.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`

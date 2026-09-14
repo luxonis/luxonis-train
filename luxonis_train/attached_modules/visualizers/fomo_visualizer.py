@@ -13,6 +13,15 @@ from .keypoint_visualizer import KeypointVisualizer
 class FOMOVisualizer(BBoxVisualizer):
     r"""Visualize FOMO heatmap detections as points and optional boxes.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/fomo_parking_lot.png
+       :width: 507px
+       :height: 284px
+       :loading: embed
+
+       The predicted points in a parking lot. Each class has its own
+       color.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`

@@ -18,6 +18,15 @@ from .utils import Color, draw_keypoint_labels, draw_keypoints
 class KeypointVisualizer(BBoxVisualizer):
     r"""Visualizer for instance keypoints and their bounding boxes.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/kpts.png
+       :width: 700px
+       :height: 350px
+       :loading: embed
+
+       The left image shows the targets. The right image shows the
+       predictions.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`

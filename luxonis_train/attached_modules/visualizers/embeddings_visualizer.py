@@ -20,6 +20,15 @@ from .utils import figure_to_torch
 class EmbeddingsVisualizer(BaseVisualizer):
     r"""Visualize embedding spaces as two-dimensional plots.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/embeddings.png
+       :width: 700px
+       :height: 347px
+       :loading: embed
+
+       The KDE plot on the left and the scatter plot on the right show
+       the 2-D PCA of the embeddings. Each color is one identity label.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`

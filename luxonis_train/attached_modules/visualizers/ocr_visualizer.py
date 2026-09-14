@@ -18,6 +18,14 @@ class OCRVisualizer(BaseVisualizer):
     with a white panel for each image. The panel shows the target text
     and the predicted text with its mean probability.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/ocr.png
+       :width: 700px
+       :height: 52px
+       :loading: embed
+
+       An input image and its text panel.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`

@@ -23,6 +23,15 @@ from .utils import (
 class InstanceSegmentationVisualizer(BaseVisualizer):
     r"""Visualizer for instance segmentation predictions and targets.
 
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/instance_seg.png
+       :width: 700px
+       :height: 262px
+       :loading: embed
+
+       The left image shows the targets. The right image shows the
+       predictions.
+
     Inputs:
         - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
           :math:`\left[B, 3, H, W\right]`
