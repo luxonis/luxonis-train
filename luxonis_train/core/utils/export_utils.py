@@ -1,3 +1,19 @@
+"""Helpers of the ONNX export and of the conversions that follow it.
+
+`LuxonisModel.export`, `LuxonisModel.archive`, `LuxonisModel.convert`,
+and `LuxonisModel.quantize` call these helpers. The helpers do these
+steps:
+
+- simplify the ONNX graph and duplicate its shared initializers;
+- rename the graph outputs;
+- read the normalization of the config;
+- convert the model with ``blobconverter`` or the HubAI SDK.
+
+`replace_weights` also loads the weights for `LuxonisModel.test`,
+`LuxonisModel.infer`, and `LuxonisModel.annotate`.
+
+"""
+
 import copy
 import os
 import shutil
@@ -25,6 +41,38 @@ def replace_weights(
     module: "lxt.LuxonisLightningModule",
     weights: PathType | dict[str, Any] | None = None,
 ) -> Generator:
+    """Load ``weights`` into ``module`` inside a ``with`` block.
+
+    On entry, when ``weights`` is not ``None``, the manager keeps the
+    result of ``module.state_dict()``. It then loads ``weights`` with
+    `LuxonisLightningModule.load_checkpoint`, which also puts the module
+    in evaluation mode. It sets the private flag
+    ``_weights_explicitly_loaded`` on the module. While that flag is
+    set, `EMACallback` does not swap the module to the EMA weights and
+    does not swap it back. On exit, also after an error in the block,
+    the manager clears the flag and loads the kept state dict into the
+    module. It does not restore the training mode that the module had
+    before the block.
+
+    **The kept state dict is not a copy.** Its tensors share memory
+    with the module, so the load of ``weights`` overwrites them too.
+    After the block, the module still holds ``weights``.
+
+    With ``weights`` of ``None``, the block runs with the module
+    unchanged.
+
+    Args:
+        module (LuxonisLightningModule): The module that receives the
+            weights.
+        weights (``PathType | dict[str, Any] | None``): A path to a
+            checkpoint file, or a loaded checkpoint with a
+            ``state_dict`` key. ``None`` leaves the module unchanged.
+
+    Yields:
+        None: The manager yields no value. The block runs with
+        ``weights`` loaded.
+
+    """
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()
@@ -41,6 +89,20 @@ def replace_weights(
 
 
 def try_onnx_simplify(onnx_path: PathType) -> None:
+    """Simplify an ONNX model in place with ``onnxsim``, when available.
+
+    The function loads the model, runs ``onnxsim.simplify``, and saves
+    the result over ``onnx_path``. It logs an error and leaves the file
+    unchanged in these cases:
+
+    - ``onnxsim`` is not installed. The function also logs a warning.
+    - The check of ``onnxsim`` reports that the simplified model is not
+      valid.
+
+    Args:
+        onnx_path (``PathType``): The ONNX file to simplify.
+
+    """
     import onnx
 
     try:
@@ -67,6 +129,32 @@ def try_onnx_simplify(onnx_path: PathType) -> None:
 
 
 def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
+    """Rename the graph outputs of an ONNX model in place.
+
+    The function pairs the outputs of the graph with ``output_names``
+    in order. It renames each graph output, and the output of every
+    node that produces it. It does not rename the inputs of the nodes
+    that read such an output.
+
+    When the file ``<onnx_path.name>.data`` exists next to the model,
+    the function deletes it after the load. It then saves the model
+    over ``onnx_path``, with the initializers in a new external data
+    file of that name. The tensors of the node attributes stay in the
+    model file. Otherwise the function saves the whole model over
+    ``onnx_path``. It then checks the saved file with
+    ``onnx.checker.check_model``. The check raises an error when the
+    model is not valid.
+
+    Args:
+        onnx_path (``PathType``): The ONNX file to modify.
+        output_names (list[str]): The new output names, one for each
+            graph output, in graph order.
+
+    Raises:
+        ValueError: When the length of ``output_names`` differs from
+            the number of graph outputs.
+
+    """
     import onnx
 
     onnx_path = Path(onnx_path)
@@ -118,6 +206,52 @@ def get_preprocessing(
 ) -> tuple[
     list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]
 ]:
+    """Read the normalization values and the color space of a config.
+
+    The mean and the standard deviation come from
+    ``cfg.normalize.params``, multiplied by ``255`` and rounded to
+    five decimals, so they apply to ``uint8`` pixel values.
+    `LuxonisModel` puts these values into the ``modelconverter``
+    config and the NN Archive, and passes them to ``blobconverter``.
+    ``exporter.mean_values`` and ``exporter.scale_values`` replace
+    them there when they are set.
+
+    A value is ``None`` in these cases:
+
+    - ``cfg.normalize.active`` is ``False``. Both values are then
+      ``None``.
+    - ``cfg.normalize.params`` has no ``"mean"`` or ``"std"`` key for
+      the value.
+    - The value under the key is not a list of numbers.
+
+    In the last two cases, the function logs a warning when
+    ``log_label`` is not ``None``. The warning names the caller and
+    the value that stays unset.
+
+    Args:
+        cfg (PreprocessingConfig): The ``trainer.preprocessing``
+            section of the config.
+        log_label (str | None): The name of the caller in the warning,
+            such as ``"Model export"``. ``None`` disables the warning.
+
+    Returns:
+        ``tuple[list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]]``:
+        The mean values, the standard deviation values, and
+        ``cfg.color_space``.
+
+    Examples:
+        >>> from luxonis_train.config.config import PreprocessingConfig
+        >>> get_preprocessing(PreprocessingConfig())
+        ([123.675, 116.28, 103.53], [58.395, 57.12, 57.375], 'RGB')
+
+        >>> get_preprocessing(PreprocessingConfig(normalize={"active": False}))
+        (None, None, 'RGB')
+
+        >>> cfg = PreprocessingConfig(normalize={"params": {"mean": [0.5]}})
+        >>> get_preprocessing(cfg)
+        ([127.5], None, 'RGB')
+
+    """
     if not cfg.normalize.active:
         return None, None, cfg.color_space
 
@@ -155,6 +289,42 @@ def blobconverter_export(
     export_path: PathType,
     onnx_path: PathType,
 ) -> Path:
+    """Convert an ONNX model to a ``.blob`` file with ``blobconverter``.
+
+    The function calls ``blobconverter.from_onnx`` with
+    ``cfg.blobconverter.shaves`` and ``cfg.blobconverter.version``,
+    and with the cache off. It passes ``scale_values``,
+    ``mean_values``, and ``reverse_channels`` to the model optimizer
+    as ``--scale_values=[...]``, ``--mean_values=[...]``, and
+    ``--reverse_input_channels``. It leaves out a value that is
+    ``None``, empty, or ``False``. ``blobconverter`` sends the model to
+    its online service, so the conversion needs network access.
+
+    ``cfg.quantization_mode`` selects the data type. The mode
+    ``"FP16_STANDARD"`` gives ``FP16``, and ``"FP32_STANDARD"`` gives
+    ``FP32``. Any other mode, such as the default ``"INT8_STANDARD"``,
+    gives ``FP16`` and logs a warning.
+
+    Args:
+        cfg (ExportConfig): The ``exporter`` section of the config.
+        scale_values (list[float] | None): The scale of the input
+            normalization, per channel, in ``uint8`` pixel units. The
+            standard deviation from `get_preprocessing` has this
+            format.
+        mean_values (list[float] | None): The mean of the input
+            normalization, per channel, in ``uint8`` pixel units. The
+            mean from `get_preprocessing` has this format.
+        reverse_channels (bool): When ``True``, pass
+            ``--reverse_input_channels``, which swaps the order of the
+            input channels.
+        export_path (``PathType``): The directory that receives the
+            ``.blob`` file.
+        onnx_path (``PathType``): The ONNX file to convert.
+
+    Returns:
+        ``Path``: The path of the ``.blob`` file.
+
+    """
     import blobconverter
 
     logger.info("Converting ONNX to .blob")
@@ -201,29 +371,58 @@ def hubai_export(
     model_name: str,
     dataset_name: str | None = None,
 ) -> Path:
-    """Convert an ONNX NNArchive to a platform-specific NNArchive using
-    HubAI SDK.
+    """Convert an ONNX NN Archive for a device through the HubAI SDK.
 
-    If a model with the given name already exists on HubAI, a new
-    variant will be created under that model. Otherwise, a new model
-    will be created.
+    The function uploads the archive to HubAI as a variant of the model
+    named ``model_name``. It reuses the first model with this name, and
+    creates the model when none exists. When the lookup of the models
+    fails, the function logs a warning and creates a new model. The
+    variant is named ``<model_name>:<dataset_name>``, or
+    ``model_name`` when ``dataset_name`` is ``None`` or empty.
 
-    @type cfg: HubAIExportConfig
-    @param cfg: HubAI export configuration containing platform and
-        params.
-    @type quantization_mode: str
-    @param quantization_mode: Quantization mode for model conversion.
-    @type archive_path: PathType
-    @param archive_path: Path to the ONNX NNArchive to convert.
-    @type export_path: PathType
-    @param export_path: Directory where the converted archive will be
-        saved.
-    @type model_name: str
-    @param model_name: Name for the model on HubAI.
-    @type dataset_name: str | None
-    @param dataset_name: Name of the dataset the model was trained on.
-    @rtype: Path
-    @return: Path to the converted platform-specific NNArchive.
+    ``cfg.platform`` selects the conversion call of the SDK: ``RVC3``
+    for ``"rvc3"``, ``RVC4`` for ``"rvc4"``, and ``RVC2`` for
+    ``"rvc2"`` or ``None``. The call receives the keyword arguments
+    ``path``, ``quantization_mode``, ``name``, and ``model_id``. The
+    entries of ``cfg.params`` go to the call too, and replace an
+    argument of the same name.
+
+    The SDK downloads the converted archive. The function moves it
+    into ``export_path`` under its own file name. It then removes the
+    download directory when that directory is empty and is not the
+    working directory.
+
+    When ``cfg.delete_remote_model`` is set, the function cleans up
+    HubAI at the end:
+
+    - It deletes the model that it created, also when the conversion
+      raises an error.
+    - It deletes only the new variant when the model existed before.
+      This happens only when the conversion call returns.
+
+    A failed deletion logs a warning and does not raise an error.
+
+    Args:
+        cfg (HubAIExportConfig): The ``exporter.hubai`` section of the
+            config.
+        quantization_mode (str): The precision to convert to, such as
+            ``"INT8_STANDARD"`` or ``"FP16_STANDARD"``.
+        archive_path (``PathType``): The ONNX NN Archive to convert.
+        export_path (``PathType``): The directory that receives the
+            converted archive.
+        model_name (str): The name of the model on HubAI.
+        dataset_name (str | None): The name of the train dataset. It
+            is the second part of the variant name.
+
+    Returns:
+        ``Path``: The path of the converted archive inside
+        ``export_path``.
+
+    Raises:
+        ValueError: When the ``HUBAI_API_KEY`` environment variable is
+            not set or empty.
+        NotImplementedError: When ``cfg.platform`` is ``"hailo"``.
+
     """
     from hubai_sdk import HubAIClient
 
@@ -265,11 +464,24 @@ def hubai_export(
 
 
 def make_initializers_unique(onnx_path: PathType) -> None:
-    """Each initializer that is used by multiple nodes gets duplicated
-    so each node has its own copy.
+    """Give every node input its own copy of a shared ONNX initializer.
 
-    @type onnx_path: PathType
-    @param onnx_path: Path to the ONNX model file to modify.
+    The function counts how many node inputs of the main graph read
+    each initializer. It replaces an initializer read by two or more
+    inputs with one copy per input, named ``<name>_unique_<i>``. The
+    ``i``-th such input in node order, from ``0``, reads the copy with
+    index ``i``. An initializer read once, or not at all, keeps its
+    name. The function saves the model over ``onnx_path`` and checks
+    it with ``onnx.checker.check_model``. A failed check logs a
+    warning. At the end, the function logs how many initializers it
+    duplicated.
+
+    When the graph has no initializers, the function logs a warning
+    and leaves the file unchanged.
+
+    Args:
+        onnx_path (``PathType``): The ONNX file to modify.
+
     """
     import onnx
 
@@ -329,12 +541,28 @@ def _resolve_hubai_model(
     model_name: str,
     variant_name: str,
 ) -> tuple[str, str | None]:
-    """Attach an existing HubAI model, or create a new one.
+    """Select the HubAI model of the variant, and create it when needed.
 
-    @rtype: tuple[str, str | None]
-    @return: The model to put the variant under, and the model this call
-        created. The second value is C{None} if an existing model was
-        used, so only a new model is cleaned up on failure.
+    The function selects ``existing_model_id`` when it is not ``None``.
+    Otherwise it creates a model named ``model_name`` on HubAI. It logs
+    which of the two happens.
+
+    Args:
+        client (``HubAIClient``): The client of the HubAI SDK.
+        existing_model_id (str | None): The id of the model named
+            ``model_name`` on HubAI, or ``None`` when no such model
+            exists.
+        model_name (str): The name of the model.
+        variant_name (str): The name of the new variant, for the log
+            message.
+
+    Returns:
+        tuple[str, str | None]: The id of the model that receives
+        the variant, and the id of the model this call created. The
+        second value is ``None`` when the model existed before.
+        `hubai_export` deletes a whole model only when this call
+        created it.
+
     """
     if existing_model_id is not None:
         logger.info(
