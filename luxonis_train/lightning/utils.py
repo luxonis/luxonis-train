@@ -118,13 +118,6 @@ class LossAccumulator(defaultdict[str, float]):
     """
 
     def __init__(self, *args, **kwargs):
-        """Initialize an empty accumulator.
-
-        Args:
-            *args (``Any``): Ignored.
-            **kwargs (``Any``): Ignored.
-
-        """
         super().__init__(float)
         self.counts = defaultdict(int)
 
@@ -291,25 +284,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     ):
         """Build every node of the config and wrap it.
 
-        The constructor builds the nodes in topological order. Each
-        node receives the shapes of its inputs and runs once on zero
-        tensors with a batch size of 2. Its output packet becomes the
-        input of the nodes that follow. A node with neither ``inputs``
-        nor ``input_sources`` reads every loader input. The ``params``,
-        the ``variant``, and ``remove_on_export`` of the config entry
-        reach the node constructor. A ``metadata_task_override``
-        renames the metadata labels that the task of the node requires.
-
-        The constructor builds the losses, the metrics, and the
-        visualizers of a node from the same config entry. It keys them
-        by the alias of the entry, or by the class name without an
-        alias. A module whose key would be ``"ConfusionMatrix"`` gets
-        the key ``"mcc"`` instead. The ``weight`` of a loss entry
-        reaches the loss as ``final_loss_weight``. A
-        ``per_class_metrics`` entry in the ``params`` of a metric
-        becomes the parameter the metric class declares for it. When
-        the class declares none, the constructor drops the entry and
-        logs a warning. It drops a ``None`` value without a warning.
+        Nodes are built in topological order and run once on zero
+        tensors to infer the shapes consumed by later nodes. The same
+        pass builds each node's losses, metrics, and visualizers.
 
         Args:
             cfg (Config): The config. ``model.nodes`` lists the nodes,

@@ -67,25 +67,8 @@ class FOMOModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
         """Initialize the model with its default components.
 
-        The defaults are:
-
-        - ``backbone``: `EfficientRep`
-        - ``head``: `FOMOHead`
-        - ``loss``: `FOMOLocalizationLoss`
-        - ``metrics``: `ConfusionMatrix`, which is the main metric
-        - ``visualizer``: `FOMOVisualizer`
-        - ``confusion_matrix_available``: ``True``
-
-        With these defaults, the model has no neck, and
-        ``enable_confusion_matrix`` adds a second ``ConfusionMatrix``
-        entry beside the main one. `ModelConfig.check_unique_names`
-        gives that entry a derived alias. Set ``enable_confusion_matrix``
-        to ``False`` to keep one entry.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
+        ``ConfusionMatrix`` is already the main metric, so set
+        ``enable_confusion_matrix=False`` to avoid adding a second one.
 
         """
         super().__init__(

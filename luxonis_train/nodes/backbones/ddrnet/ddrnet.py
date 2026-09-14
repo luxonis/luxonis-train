@@ -452,32 +452,6 @@ class DDRNet(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the URL template of the checkpoint of the variant.
-
-        The file name holds the variant name without hyphens:
-        ``{github}/ddrnet_23slim_coco.ckpt`` for ``"23-slim"`` and
-        ``{github}/ddrnet_23_coco.ckpt`` for ``"23"``.
-        `BaseNode.load_checkpoint` replaces the ``{github}`` placeholder
-        with the URL of the release. The URL depends only on the variant
-        name. The checkpoint does not fit a node whose explicit arguments
-        change the layer shapes, for example ``channels`` or ``layers``.
-
-        Returns:
-            str: The URL template of the checkpoint.
-
-        Raises:
-            AttributeError: When no variant built the node.
-            ValueError: When the variant name is ``None``.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import DDRNet
-            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
-            >>> node = DDRNet(variant="23-slim", input_shapes=shapes)
-            >>> node.get_weights_url()
-            '{github}/ddrnet_23slim_coco.ckpt'
-
-        """
         if self._variant is None:
             raise ValueError(
                 f"Online weights are available for '{self.name}' "

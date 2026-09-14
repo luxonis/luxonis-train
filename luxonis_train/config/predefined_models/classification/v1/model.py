@@ -61,28 +61,6 @@ class ClassificationModel(SimplePredefinedModel):
     """
 
     def __init__(self, **kwargs):
-        """Initialize the model with its default components.
-
-        The defaults are:
-
-        - ``backbone``: `ResNet`
-        - ``head``: `ClassificationHead`
-        - ``loss``: `CrossEntropyLoss`
-        - ``metrics``: `F1Score`, `Accuracy`, and `Recall`
-        - ``main_metric``: `F1Score`
-        - ``visualizer``: `ClassificationVisualizer`
-        - ``confusion_matrix_available``: ``True``
-
-        With these defaults, the model has no neck. The head also gets a
-        ``ConfusionMatrix``, unless ``enable_confusion_matrix`` is
-        ``False``.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
-
-        """
         super().__init__(
             **{
                 "backbone": "ResNet",

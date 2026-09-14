@@ -337,24 +337,9 @@ def upgrade_config(config: PathType | Params) -> Params:
 def upgrade_installation() -> None:
     """Upgrade the installed ``luxonis-train`` package from PyPI.
 
-    The function gets the latest release with `get_latest_version`. When
-    that check fails, it logs a message and returns. When the latest
-    release is equal to ``luxonis_train.__version__``, it logs that the
-    package is up to date. Otherwise, it runs
-    ``<python> -m pip install -U`` with ``sys.executable`` as
-    ``<python>``. It runs the command for these packages, in this order:
-
-    - ``pip``
-    - ``luxonis_train``
-    - ``luxonis_ml[data]``
-
-    Then it logs ``luxonis_train.__version__`` as the old version and
-    the latest release as the new version. The new version comes from
-    the check, not from the result of ``pip``. The function also runs
-    these commands when ``luxonis_train.__version__`` is newer than the
-    latest release. A failed ``pip`` command raises
-    ``subprocess.CalledProcessError``. Each log message has the ``INFO``
-    level.
+    If a newer release exists, upgrade ``pip``, ``luxonis_train``, and
+    ``luxonis_ml[data]`` with the current Python interpreter. A failed
+    version check is logged and leaves the installation unchanged.
 
     """
     latest_version = get_latest_version()

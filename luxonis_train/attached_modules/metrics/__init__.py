@@ -5,25 +5,15 @@ the config. The trainer updates each metric on every validation and
 test batch. At the end of the epoch, it computes and resets each metric
 and logs the results.
 
-`Accuracy`, `F1Score`, `JaccardIndex`, `Precision`, and `Recall` wrap
-the matching ``torchmetrics`` classes. `MIoU` and `DiceCoefficient`
-wrap the segmentation metrics of ``torchmetrics``. `ConfusionMatrix`
-and `MeanAveragePrecision` select a concrete metric from the task of
-the node. `ObjectKeypointSimilarity`, `PrecisionRecallCurve`,
-`OCRAccuracy`, `ClosestIsPositiveAccuracy`, and `MedianDistances` cover
-keypoints, detection curves, OCR, and embeddings.
-
 Mark one metric with ``is_main_metric`` in the config. When no metric
 sets it, the config marks the first metric. The trainer keeps the
 checkpoints with the highest values of the main metric in the
 ``best_val_metric`` directory.
 
-`MeanAveragePrecision` and `DetectionConfusionMatrix` read the boxes
-after the non-maximum suppression of the head. The ``conf_thres`` and
-the ``iou_thres`` of the head change their results.
-`PrecisionRecallCurve` reads the boxes before the suppression and runs
-its own suppression, so the ``conf_thres`` of the head does not change
-its result.
+`MeanAveragePrecision` and `DetectionConfusionMatrix` consume boxes
+after the head's non-maximum suppression, so its ``conf_thres`` and
+``iou_thres`` affect their results. `PrecisionRecallCurve` uses the raw
+boxes and performs its own suppression.
 
 To write a new metric, subclass `BaseMetric`. The example of
 `MetricState` shows a complete subclass.

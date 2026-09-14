@@ -84,33 +84,23 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         Args:
             dataset_name (str | None): The name of the dataset. Without
-                ``dataset_dir``, the dataset must exist and hold records.
-                Otherwise ``LuxonisLoader`` raises ``FileNotFoundError``.
-                With ``dataset_dir``, the parsed dataset gets this name.
-                ``None`` then uses the last part of ``dataset_dir``.
+                ``dataset_dir``, the loader opens this dataset. With
+                ``dataset_dir``, the parsed dataset gets this name;
+                ``None`` uses the directory name.
             dataset_dir (str | None): The directory to parse, in a format
                 that ``LuxonisParser`` recognizes. It can be a local path,
                 a remote URL, or a ZIP file. The parser downloads a
                 remote directory to ``data/`` in the working directory.
             dataset_type (``DatasetType | None``): The format of
-                ``dataset_dir``. ``None`` logs a warning, and the parser
-                detects the format from the directory structure. The
-                loader ignores the value when it does not parse, see
-                ``delete_existing``.
+                ``dataset_dir``. ``None`` lets the parser detect it.
             team_id (str | None): The team ID of the dataset. It selects
-                the local directory and the bucket directory of the
-                dataset. ``None`` uses the ``LUXONISML_TEAM_ID`` setting
-                of ``luxonis_ml``. The loader uses it only without
-                ``dataset_dir``.
+                its local and remote location. ``None`` uses the
+                ``LUXONISML_TEAM_ID`` setting of ``luxonis_ml``.
             bucket_type (``Literal["internal", "external"]``): The bucket
                 type of a remote dataset. The loader uses it only without
                 ``dataset_dir``.
             bucket_storage (``Literal["local", "s3", "gcs", "azure"]``):
-                The storage of the dataset. ``"local"`` opens a local
-                dataset, and the other values open a remote dataset.
-                ``LuxonisDataset`` does not support ``"azure"`` and
-                raises ``NotImplementedError``. The loader uses it only
-                without ``dataset_dir``.
+                The storage backend of the dataset.
             update_mode (``Literal["all", "missing"]``): The sync mode for
                 the media files of a remote dataset. ``"all"`` downloads
                 all media files again. ``"missing"`` downloads only the
@@ -132,20 +122,14 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 augmentations remove a smaller box and the labels of its
                 instance, such as the keypoints and the instance mask.
             class_order_per_task (dict[str, list[str]] | None): The class
-                names of each task, in a new order. The class at position
-                ``i`` gets the class ID ``i``. Each list must hold
-                exactly the classes of its task. Otherwise, or for a task
-                that is not in the dataset, ``LuxonisDataset`` raises
-                ``ValueError``. A changed order logs a warning. ``None``
-                keeps the class IDs of the dataset.
+                names of each task in their desired order. Each list
+                must contain exactly the classes of its task. ``None``
+                keeps the dataset order.
             kpts_mapping_per_task (dict[str, list[int]] | None): A new
                 keypoint order for each task. For a list ``m``, the
                 keypoint at position ``j`` is the original keypoint
-                ``m[j]``. Each list must have one index for each keypoint
-                of its task. Otherwise ``__getitem__`` raises
-                ``ValueError`` for a sample with keypoints of that task.
-                Duplicate indices log a warning. ``None`` keeps the
-                original order.
+                ``m[j]``. Each list must map every keypoint of its task.
+                ``None`` keeps the original order.
             return_sample_metadata (bool): Whether ``__getitem__``
                 returns the sample metadata as a third element.
             **kwargs (``Any``): Arguments for `BaseLoaderTorch`, such as
@@ -250,7 +234,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @override
     def __len__(self) -> int:
-        """Return the number of samples in the splits of the view."""
         return len(self.loader)
 
     @property

@@ -77,22 +77,6 @@ class OCRRecognitionModel(SimplePredefinedModel):
     ):
         """Initialize the model with its default components.
 
-        The defaults are:
-
-        - ``backbone``: `PPLCNetV3`
-        - ``neck``: `SVTRNeck`
-        - ``head``: `OCRCTCHead`
-        - ``loss``: `CTCLoss`
-        - ``metrics``: `OCRAccuracy`
-        - ``visualizer``: `OCRVisualizer`
-        - ``confusion_matrix_available``: ``False``
-
-        With these defaults, the model has no ``ConfusionMatrix``. The
-        constructor then adds ``max_text_len`` to ``backbone_params``,
-        and ``alphabet`` and ``ignore_unknown`` to ``head_params``. It
-        skips a key that the dictionary already holds. It edits a given
-        non-empty dictionary in place.
-
         Args:
             alphabet (``list[str] | AlphabetName``): The characters that
                 the head predicts. A name selects a predefined alphabet
@@ -119,8 +103,7 @@ class OCRRecognitionModel(SimplePredefinedModel):
                 character that is not in the alphabet. With ``False``,
                 the head maps it to an extra ``"<UNK>"`` class.
             **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
+                `SimplePredefinedModel.__init__`.
 
         Raises:
             ValueError: When ``alphabet`` is a string that names no

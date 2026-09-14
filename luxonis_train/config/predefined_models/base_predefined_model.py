@@ -179,6 +179,7 @@ class BasePredefinedModel(
         holds the losses, the metrics, and the visualizers of its node.
 
         """
+        ...
 
     @staticmethod
     @abstractmethod
@@ -407,7 +408,6 @@ class SimplePredefinedModel(BasePredefinedModel):
         Raises:
             ValueError: When ``main_metric`` is ``None`` and ``metrics``
                 names more than one metric.
-            TypeCheckError: When an argument has the wrong type.
 
         Notes:
             A ``freezing`` key in ``backbone_params``, ``neck_params``,

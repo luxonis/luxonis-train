@@ -435,36 +435,6 @@ class RepPANNeck(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the URL template of the COCO checkpoint of the neck.
-
-        The file name holds the first character of `BaseNode.variant`.
-        An alias such as ``"small"`` thus selects the same file as
-        ``"s"``. `BaseNode.load_checkpoint` replaces the ``{github}``
-        placeholder with the URL of the release.
-
-        Returns:
-            str: The URL template of the checkpoint.
-
-        Raises:
-            AttributeError: When no variant built the node.
-
-        Example:
-            >>> import torch
-            >>> from luxonis_train.nodes import RepPANNeck
-            >>> sizes = [
-            ...     torch.Size([1, 32, 16, 16]),
-            ...     torch.Size([1, 64, 8, 8]),
-            ... ]
-            >>> neck = RepPANNeck(
-            ...     n_heads=2,
-            ...     variant="small",
-            ...     input_shapes=[{"features": sizes}],
-            ...     original_in_shape=torch.Size([3, 256, 256]),
-            ... )
-            >>> neck.get_weights_url()
-            '{github}/reppanneck_s_coco.ckpt'
-
-        """
         return f"{{github}}/reppanneck_{self.variant[0]}_coco.ckpt"
 
     @override

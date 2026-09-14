@@ -124,57 +124,16 @@ class BaseHead(BaseNode):
     ) -> DatasetIterator:
         """Convert the outputs of the head into dataset records.
 
-        `LuxonisModel.annotate` calls the method for each batch. The
-        base implementation returns the generator of
-        `luxonis_train.utils.annotation.default_annotate`. That generator
-        supports the labels ``"boundingbox"``, ``"keypoints"``,
-        ``"instance_segmentation"``, ``"segmentation"``,
-        ``"classification"``, and ``"text"``. A head whose task requires
-        another label must override this method.
-
-        For each image, the generator reads the image file to get its
-        original size. Then it converts the predictions:
-
-        - It turns the segmentation logits into one mask for each class.
-          With one class, a pixel is in the mask when its sigmoid is at
-          least ``0.5``. With more classes, the class with the highest
-          logit gets the pixel.
-        - With ``keep_aspect_ratio``, it subtracts the letterbox padding
-          from the box and keypoint coordinates and divides them by the
-          resize ratio. It also crops the padding from the masks.
-        - It divides the box and keypoint coordinates by the original
-          width and height.
-        - It resizes each mask to the original size.
-        - It rounds the keypoint confidence to get the visibility.
-        - For classification, it keeps the class with the highest score.
-
-        **Warning:** Without ``keep_aspect_ratio``, the generator divides
-        the box and keypoint coordinates by the original size, not by
-        ``train_image_size``. The coordinates are then not relative to
-        the original image when the two sizes differ.
-
-        The records are in the `luxonis-ml record
-        format
-        <https://github.com/luxonis/luxonis-ml/blob/main/luxonis_ml/data/README.md>`_.
-        An image without predicted instances gives one record with only
-        the ``"file"`` key. This rule applies to the heads that predict
-        boxes, keypoints, or instance masks.
-
-        The generator raises errors only during the iteration. It raises
-        ``ValueError`` for an unsupported label, or for an OCR head
-        without a ``decoder``. It raises ``FileNotFoundError`` when it
-        cannot read an image.
+        This delegates to `luxonis_train.utils.annotation.default_annotate`.
+        Override it for tasks that the default converter does not support.
 
         Args:
             head_output (``Packet[Tensor]``): The output packet of the
-                head for one batch. The generator reads the entry of each
-                label that the task requires, one element for each image.
-                For the ``"text"`` label, it reads the ``"ocr"`` entry.
+                head for one batch.
             image_paths (``list[Path]``): The paths of the original
                 images, in the order of the batch.
             config_preprocessing (PreprocessingConfig): The preprocessing
-                config. The generator reads ``train_image_size`` and
-                ``keep_aspect_ratio`` from it.
+                settings used to map predictions back to the images.
 
         Returns:
             ``DatasetIterator``: A generator of the annotation records.

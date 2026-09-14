@@ -17,34 +17,10 @@ A run gets these callbacks without an entry in the config:
   ``trainer.accumulate_grad_batches`` is set and no such callback is in
   the list.
 
-When ``trainer.smart_cfg_auto_populate`` is true, the config also adds
-`UploadCheckpoint`, `TestOnTrainEnd`, and `ConvertOnTrainEnd` to
-``trainer.callbacks`` when they are missing.
-
-The registry holds every callback above. It also holds
-`ArchiveOnTrainEnd`, `EMACallback`, `ExportOnTrainEnd`,
-`GPUStatsMonitor`, `GradCamCallback`, `MetadataLogger`, and
-`TrainingProgressCallback`. It also holds these ``lightning.pytorch``
-callbacks: ``DeviceStatsMonitor``, ``EarlyStopping``,
-``LearningRateMonitor``, ``ModelPruning``,
-``StochasticWeightAveraging``, and ``Timer``.
-
-Lightning calls the callbacks in this order:
-
-1. `GracefulInterruptCallback`, `FailOnNoTrainBatches`, and the progress
-   bar.
-2. `TrainingManager`, `LuxonisModelSummary`, and `AIMETCallback`.
-3. The entries of ``trainer.callbacks``, in the order of the config.
-   The config moves `EMACallback` to the front.
-4. The ``GradientAccumulationScheduler``.
-5. Each ``ModelCheckpoint``.
-
-`ConvertOnTrainEnd` exports, archives, and converts in one step. Prefer
-it over a separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd`. When
-``trainer.callbacks`` lists an active `ConvertOnTrainEnd`, the config
-deactivates the other two. The check runs before
-``trainer.smart_cfg_auto_populate`` adds `ConvertOnTrainEnd`, so an
-added one leaves them active.
+With ``trainer.smart_cfg_auto_populate``, the config also adds the
+checkpoint upload, testing, and conversion callbacks when they are
+missing. `ConvertOnTrainEnd` replaces separate export and archive
+callbacks when it is configured explicitly.
 
 """
 

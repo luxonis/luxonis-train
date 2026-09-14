@@ -451,17 +451,6 @@ class SimpleDecoder(BaseDecoder):
         encoder_width_multipliers: list[float],
         n_convolutions: int = 2,
     ):
-        """Build the decoder steps and the output convolution.
-
-        Args:
-            base_width (int): The ``base_hidden_channels`` of the encoder.
-            out_channels (int): The number of output channels.
-            encoder_width_multipliers (list[float]): The
-                ``width_multipliers`` of the encoder.
-            n_convolutions (int): The number of ``3x3`` `ConvBlock`
-                layers in the stack of each step.
-
-        """
         super().__init__(
             base_width=base_width,
             out_channels=out_channels,
@@ -520,17 +509,6 @@ class UNetDecoder(BaseDecoder):
         encoder_width_multipliers: list[float],
         n_convolutions: int = 2,
     ):
-        """Build the decoder steps and the output convolution.
-
-        Args:
-            base_width (int): The ``base_hidden_channels`` of the encoder.
-            out_channels (int): The number of output channels.
-            encoder_width_multipliers (list[float]): The
-                ``width_multipliers`` of the encoder.
-            n_convolutions (int): The number of ``3x3`` `ConvBlock`
-                layers in the stack of each step.
-
-        """
         super().__init__(
             base_width=base_width,
             out_channels=out_channels,

@@ -735,7 +735,6 @@ class ModelConfig(BaseModelExtraForbid):
     def _populate_implicit_node_inputs(
         nodes: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """Apply the ``inputs`` rule of `validate_nodes` in place."""
         logged_general_warning = False
         names = []
         last_body_index: int | None = None
@@ -974,7 +973,6 @@ class ModelConfig(BaseModelExtraForbid):
         node: NodeConfig,
         modules: Sequence[AttachedModuleConfig],
     ) -> None:
-        """Rename duplicates among ``node`` and ``modules`` in place."""
         names: set[str] = set()
         node_index = 0
         for module in [node, *modules]:
@@ -1947,7 +1945,6 @@ class ArchiveConfig(BaseModelExtraForbid):
 
 
 def _validate_quantization_mode(value: str) -> str:
-    """Upper-case the mode, expand a shorthand, and check it."""
     value = value.upper()
 
     shorthand_map = {

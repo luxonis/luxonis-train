@@ -70,20 +70,6 @@ class SegmentationModel(SimplePredefinedModel):
     ):
         """Initialize the model with its default components.
 
-        The defaults are:
-
-        - ``backbone``: `DDRNet`
-        - ``head``: `DDRNetSegmentationHead`
-        - ``loss``: `OHEMLoss`
-        - ``metrics``: `JaccardIndex` and `F1Score`
-        - ``main_metric``: `JaccardIndex`
-        - ``visualizer``: `SegmentationVisualizer`
-        - ``confusion_matrix_available``: ``True``
-
-        With these defaults, the model has no neck. The head also gets a
-        ``ConfusionMatrix``, unless ``enable_confusion_matrix`` is
-        ``False``.
-
         The constructor sets ``attach_index`` to ``-1`` in
         ``head_params``, unless ``head_params`` holds an ``aux_head``
         key. This value replaces an ``attach_index`` that
@@ -106,8 +92,7 @@ class SegmentationModel(SimplePredefinedModel):
                   Without the key, the value is ``True``.
 
             **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
+                `SimplePredefinedModel.__init__`.
 
         Raises:
             TypeError: When the ``use_aux_heads`` value in

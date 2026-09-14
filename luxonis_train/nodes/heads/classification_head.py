@@ -120,12 +120,4 @@ class ClassificationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Return the NN Archive metadata of the head.
-
-        Returns:
-            ``Params``: The dictionary ``{"is_softmax": False}``. The
-            value tells the parser that the outputs are logits, not
-            softmax probabilities.
-
-        """
         return {"is_softmax": False}

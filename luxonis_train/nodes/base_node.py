@@ -139,11 +139,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     ):
         """Initialize the node.
 
-        All arguments are keyword-only and optional. A property that
-        needs a missing argument raises a ``RuntimeError`` on access.
-        For example, `input_shapes` raises it when ``input_shapes`` is
-        ``None``. The ``typeguard`` decorator checks the argument types.
-        On a mismatch, it raises ``typeguard.TypeCheckError``.
+        All arguments are keyword-only and optional. Properties that
+        depend on missing metadata raise ``RuntimeError`` when accessed.
 
         Args:
             input_shapes (``list[Packet[Size]] | None``): One shape

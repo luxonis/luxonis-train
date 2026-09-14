@@ -22,42 +22,14 @@ __all__ = ["Metadata", "Task", "Tasks"]
 class staticproperty:
     """Descriptor that calls a function on each attribute access.
 
-    The function takes no arguments. The descriptor works on the class
-    and on an instance. `Tasks` uses it, so that each access to
-    ``Tasks.BOUNDINGBOX`` returns a new `BoundingBox` task.
-
-    Example:
-        >>> from luxonis_train.tasks import staticproperty
-        >>> class Defaults:
-        ...     @staticproperty
-        ...     def SIZE() -> int:
-        ...         return 8
-        >>> Defaults.SIZE, Defaults().SIZE
-        (8, 8)
+    `Tasks` uses it so that every attribute access returns a fresh task.
 
     """
 
     def __init__(self, func: Callable) -> None:
-        """Wrap a function that takes no arguments.
-
-        Args:
-            func (``Callable``): The function to call on each access.
-                Its return value is the value of the attribute.
-
-        """
         self.func = func
 
     def __get__(self, *_) -> Any:
-        """Call the wrapped function and return its result.
-
-        Args:
-            *_ (``Any``): The instance and the owner class from the
-                descriptor protocol. The method ignores them.
-
-        Returns:
-            ``Any``: The return value of the wrapped function.
-
-        """
         return self.func()
 
 
@@ -90,30 +62,12 @@ class Metadata:
     typ: UnionType | type
 
     def __str__(self) -> str:
-        """Return the label path ``"metadata/<name>"``.
-
-        Returns:
-            str: The label path without the task name.
-
-        """
         return f"metadata/{self.name}"
 
     def __repr__(self) -> str:
-        """Return the label path, the same as ``str(self)``.
-
-        Returns:
-            str: The label path ``"metadata/<name>"``.
-
-        """
         return str(self)
 
     def __hash__(self) -> int:
-        """Return the hash of the label path.
-
-        Returns:
-            int: The hash of ``str(self)``. It depends only on ``name``.
-
-        """
         return hash(str(self))
 
     def check_type(self, typ: UnionType | type) -> bool:
@@ -198,42 +152,30 @@ class Task(ABC):
 class Classification(Task):
     """The classification task.
 
-    Its name is ``"classification"``.
+    Its name and required label are both ``"classification"``.
 
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"classification"``."""
         super().__init__("classification")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"classification"``.
-
-        """
         return {"classification"}
 
 
 class Segmentation(Task):
     """The semantic segmentation task.
 
-    Its name is ``"segmentation"``.
+    Its name and required label are both ``"segmentation"``.
 
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"segmentation"``."""
         super().__init__("segmentation")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"segmentation"``.
-
-        """
         return {"segmentation"}
 
 
@@ -247,11 +189,6 @@ class InstanceBaseTask(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"boundingbox"``.
-
-        """
         return {"boundingbox"}
 
 
@@ -264,80 +201,54 @@ class BoundingBox(InstanceBaseTask):
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"boundingbox"``."""
         super().__init__("boundingbox")
 
 
 class InstanceSegmentation(InstanceBaseTask):
     """The instance segmentation task.
 
-    Its name is ``"instance_segmentation"``.
+    Its name is ``"instance_segmentation"``. It requires bounding boxes
+    and instance masks.
 
     """
 
     def __init__(self):
-        """Initialize the task.
-
-        The name of the task is ``"instance_segmentation"``.
-
-        """
         super().__init__("instance_segmentation")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The labels are ``"boundingbox"`` and
-        ``"instance_segmentation"``.
-
-        """
         return super().required_labels | {"instance_segmentation"}
 
 
 class InstanceKeypoints(InstanceBaseTask):
     """The keypoint detection task for object instances.
 
-    Its name is ``"keypoints"``.
+    Its name is ``"keypoints"``. It requires bounding boxes and
+    keypoints.
 
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"keypoints"``."""
         super().__init__("keypoints")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The labels are ``"boundingbox"`` and ``"keypoints"``.
-
-        """
         return super().required_labels | {"keypoints"}
 
 
 class InstanceSegmentationKeypoints(InstanceBaseTask):
     """The instance segmentation and keypoint detection task.
 
-    Its name is ``"instance_segmentation_keypoints"``.
+    Its name is ``"instance_segmentation_keypoints"``. It requires
+    bounding boxes, instance masks, and keypoints.
 
     """
 
     def __init__(self):
-        """Initialize the task.
-
-        The name of the task is ``"instance_segmentation_keypoints"``.
-
-        """
         super().__init__("instance_segmentation_keypoints")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The labels are ``"boundingbox"``, ``"instance_segmentation"``,
-        and ``"keypoints"``.
-
-        """
         return super().required_labels | {"instance_segmentation", "keypoints"}
 
 
@@ -350,16 +261,10 @@ class Keypoints(Task):
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"pointcloud"``."""
         super().__init__("pointcloud")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"keypoints"``.
-
-        """
         return {"keypoints"}
 
 
@@ -373,38 +278,26 @@ class Fomo(InstanceBaseTask):
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"fomo"``."""
         super().__init__("fomo")
 
     @property
     def main_output(self) -> str:
-        """The key of the main prediction of a head with this task.
-
-        It is ``"heatmap"``, not the task name.
-
-        """
         return "heatmap"
 
 
 class Embeddings(Task):
     """The embedding task.
 
-    Its name is ``"embeddings"``.
+    Its name is ``"embeddings"``. It requires integer or categorical
+    ``"metadata/id"`` labels.
 
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"embeddings"``."""
         super().__init__("embeddings")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"metadata/id"``, with ``int`` or ``Category``
-        values.
-
-        """
         return {Metadata("id", int | Category)}
 
 
@@ -420,47 +313,30 @@ class AnomalyDetection(Task):
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"anomaly_detection"``."""
         super().__init__("anomaly_detection")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The labels are ``"segmentation"`` and
-        ``"original_segmentation"``.
-
-        """
         return {"segmentation", "original_segmentation"}
 
     @property
     def main_output(self) -> str:
-        """The key of the main prediction of a head with this task.
-
-        It is ``"segmentation"``, not the task name.
-
-        """
         return "segmentation"
 
 
 class Ocr(Task):
     """The optical character recognition task.
 
-    Its name is ``"ocr"``.
+    Its name is ``"ocr"``. It requires string ``"metadata/text"``
+    labels.
 
     """
 
     def __init__(self):
-        """Initialize the task with the name ``"ocr"``."""
         super().__init__("ocr")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """The labels that the loader must supply for this task.
-
-        The label is ``"metadata/text"``, with ``str`` values.
-
-        """
         return {Metadata("text", str)}
 
 
@@ -487,55 +363,44 @@ class Tasks:
 
     @staticproperty
     def CLASSIFICATION() -> Classification:
-        """Return a new `Classification` task."""
         return Classification()
 
     @staticproperty
     def SEGMENTATION() -> Segmentation:
-        """Return a new `Segmentation` task."""
         return Segmentation()
 
     @staticproperty
     def INSTANCE_SEGMENTATION() -> InstanceSegmentation:
-        """Return a new `InstanceSegmentation` task."""
         return InstanceSegmentation()
 
     @staticproperty
     def BOUNDINGBOX() -> BoundingBox:
-        """Return a new `BoundingBox` task."""
         return BoundingBox()
 
     @staticproperty
     def INSTANCE_KEYPOINTS() -> InstanceKeypoints:
-        """Return a new `InstanceKeypoints` task."""
         return InstanceKeypoints()
 
     @staticproperty
     def KEYPOINTS() -> Keypoints:
-        """Return a new `Keypoints` task."""
         return Keypoints()
 
     @staticproperty
     def EMBEDDINGS() -> Embeddings:
-        """Return a new `Embeddings` task."""
         return Embeddings()
 
     @staticproperty
     def ANOMALY_DETECTION() -> AnomalyDetection:
-        """Return a new `AnomalyDetection` task."""
         return AnomalyDetection()
 
     @staticproperty
     def OCR() -> Ocr:
-        """Return a new `Ocr` task."""
         return Ocr()
 
     @staticproperty
     def INSTANCE_SEGMENTATION_KEYPOINTS() -> InstanceSegmentationKeypoints:
-        """Return a new `InstanceSegmentationKeypoints` task."""
         return InstanceSegmentationKeypoints()
 
     @staticproperty
     def FOMO() -> Fomo:
-        """Return a new `Fomo` task."""
         return Fomo()

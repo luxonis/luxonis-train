@@ -401,12 +401,6 @@ class MicroNet(BaseNode):
             **kwargs (``Any``): Keyword arguments forwarded to
                 `BaseNode`.
 
-        Raises:
-            TypeCheckError: When an argument does not match its type
-                annotation. A list for a tuple argument, such as
-                ``stem_groups``, raises it. The check reads only the
-                first dictionary of ``layer_params``.
-
         """
         super().__init__(**kwargs)
         out_indices = out_indices or [1, 2, 4, 7]

@@ -125,30 +125,20 @@ class MetricState:
 class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     """Base class for all metrics.
 
-    A metric is a `BaseAttachedModule` and a ``torchmetrics`` ``Metric``.
-    Every subclass registers itself in the `METRICS` registry under its
-    class name, unless its class statement passes ``register=False``. A
-    config names a registered metric by that string. A subclass
-    implements `update` and `compute`. It declares its states with
-    `MetricState`, or with ``add_state`` in its ``__init__``. The
-    example of `MetricState` shows a complete subclass.
+    A metric is a `BaseAttachedModule` and a ``torchmetrics``
+    ``Metric``. Every subclass registers itself in the `METRICS`
+    registry under its class name, unless its class statement passes
+    ``register=False``. A config names a registered metric by that
+    string. A subclass implements `update` and `compute`. It declares
+    its states with `MetricState`, or with ``add_state`` in its
+    ``__init__``. The example of `MetricState` shows a complete
+    subclass.
 
-    `run_update` fills the parameters of `update` by their names:
+    `BaseAttachedModule.get_parameters` describes how `run_update` fills
+    the parameters of `update` from predictions and labels.
 
-    - ``predictions``, or another name that starts with ``pred`` and
-      has no underscore, selects the main output of the task.
-    - Another name that starts with ``pred`` selects the packet key
-      after the first underscore, so ``pred_boundingbox`` selects
-      ``boundingbox``.
-    - ``target``, or another name that starts with ``target`` and has
-      no underscore, selects the single label that the task requires.
-      ``target_<label>`` selects the label ``<label>``. Both look the
-      label up as ``<task_name>/<label>``, with the ``task_name`` of
-      the node.
-    - Any other name selects the packet key of that name.
-
-    The trainer calls `run_update` on each validation and test batch.
-    At the end of the epoch, it calls `compute` and logs the images of
+    The trainer calls `run_update` on each validation and test batch. At
+    the end of the epoch, it calls `compute` and logs the images of
     `get_artifacts`. It then calls ``reset`` and logs the values that
     `get_loggable_values` selects.
 
@@ -277,16 +267,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
     @abstractmethod
     def update(self, *args: Tensor | list[Tensor]) -> None:
-        """Add the data of one batch to the metric states.
-
-        An implementation declares one named parameter for each input.
-        `run_update` fills the parameters by name, as the class
-        docstring describes, and passes them as keyword arguments. The
-        implementation adds the batch to the states, and `compute`
-        derives the value from them.
-
-        ``torchmetrics`` wraps the method. Each call clears the cached
-        result of `compute` and runs with gradients disabled.
+        """Add one batch to the metric state.
 
         Args:
             *args (``Tensor | list[Tensor]``): The inputs of the batch.
@@ -300,12 +281,6 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         self,
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
         """Compute the value of the metric from its states.
-
-        ``torchmetrics`` wraps the method. The wrapper warns when no
-        `update` ran since the last ``reset``. In a distributed run, it
-        syncs the states across processes. It squeezes each one-element
-        tensor to a scalar and clones the result. It caches the result
-        until the next `update` or ``reset``.
 
         Returns:
             ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``:
@@ -324,13 +299,10 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         self,
         values: MetricResult,
     ) -> MetricResult:
-        """Select the part of a computed result that the trainer logs.
+        """Select the part of a computed result to log.
 
-        The trainer passes the result of `compute` through this method
-        before it logs and prints the values. `get_artifacts` receives
-        the full result. This implementation returns ``values``
-        unchanged. `PrecisionRecallCurve` overrides it, because
-        `PrecisionRecallCurve.compute` returns whole curves.
+        Override this when `compute` returns data that belongs in
+        artifacts rather than scalar logs.
 
         Args:
             values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
@@ -349,14 +321,6 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     ) -> dict[str, Tensor]:
         """Render images from a computed result.
 
-        At the end of an evaluation epoch, the trainer calls this method
-        on the main process with the full result of `compute`. It skips
-        the call during the sanity check. It logs each returned image to
-        the tracker. It logs a warning for an item that is not a tensor
-        with three dimensions, and skips that item. When the method
-        raises or returns no dictionary, the trainer logs the problem
-        and continues. This implementation returns an empty dictionary.
-
         Args:
             values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
                 The result of `compute`.
@@ -369,11 +333,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         return {}
 
     def get_artifact_names(self) -> tuple[str, ...]:
-        """Return the names of the images that `get_artifacts` renders.
-
-        `LuxonisLightningModule.get_mlflow_logging_keys` uses the names
-        to list the artifact paths of a run without rendering the
-        images. This implementation returns an empty tuple.
+        """Return the stable names emitted by `get_artifacts`.
 
         Returns:
             ``tuple[str, ...]``: The keys of the dictionary that
@@ -383,52 +343,20 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         return ()
 
     def __eq__(self, other: object) -> bool:
-        """Return whether ``other`` is this metric object.
-
-        Args:
-            other (object): The object to compare with.
-
-        Returns:
-            bool: ``True`` only when ``other`` is ``self``.
-
-        """
         return self is other
 
     def __hash__(self) -> int:
-        """Return the ``id`` of the metric as its hash.
-
-        The hash stays the same when the states change.
-
-        Returns:
-            int: ``id(self)``.
-
-        """
         return id(self)
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        """The parameters of `update` that `run_update` fills.
-
-        `get_signature` leaves out ``self`` and ``kwargs``.
-
-        """
         return get_signature(self.update)
 
     def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
-        """Select the inputs of `update` from a batch and call it.
+        """Resolve the inputs of `update` and add one batch.
 
-        `BaseAttachedModule.get_parameters` picks a value for each
-        parameter of `update` by its name, as the class docstring
-        describes. It clones every tensor that it picks, so `update`
-        cannot change ``inputs`` or ``labels``.
-
-        When a value is missing, a parameter annotated with ``| None``
-        receives ``None``, even when it has a default value. Another
-        parameter with a default value keeps the default. For any other
-        parameter, the lookup raises ``RuntimeError``. It also raises
-        ``RuntimeError`` for a ``target`` name without an underscore
-        when the task requires more than one label. A value that does
-        not match the annotation of its parameter raises ``TypeError``.
+        `BaseAttachedModule.get_parameters` documents how parameter
+        names select predictions and labels.
 
         Args:
             inputs (``Packet[Tensor]``): The output packet of the node.

@@ -51,27 +51,6 @@ class InstanceSegmentationModel(SimplePredefinedModel):
     """
 
     def __init__(self, **kwargs):
-        """Initialize the model with its default components.
-
-        The defaults are:
-
-        - ``backbone``: `EfficientRep`
-        - ``neck``: `RepPANNeck`
-        - ``head``: `PrecisionSegmentBBoxHead`
-        - ``loss``: `PrecisionDFLSegmentationLoss`
-        - ``metrics``: `MeanAveragePrecision`
-        - ``visualizer``: `InstanceSegmentationVisualizer`
-        - ``confusion_matrix_available``: ``True``
-
-        The head also gets a ``ConfusionMatrix``, unless
-        ``enable_confusion_matrix`` is ``False``.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
-
-        """
         super().__init__(
             **{
                 "backbone": "EfficientRep",

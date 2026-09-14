@@ -25,27 +25,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     itself in the `VISUALIZERS` registry under its class name, so a
     config names it as a string.
 
-    A subclass implements `forward`. The name of each parameter that
-    does not contain ``canvas`` selects the data it receives:
-
-    - ``predictions``, or another name that starts with ``pred`` and
-      has no underscore, selects the main output of the task of the
-      visualizer.
-    - ``pred_<key>`` selects the key ``<key>`` of the node packet.
-    - ``target``, or another name that starts with ``target`` and has
-      no underscore, selects the single label the task requires. When
-      the task requires several labels, this raises ``RuntimeError``.
-      ``target_<label>`` selects the label ``<label>``. Both look the
-      label up as ``<task_name>/<label>``, with the ``task_name`` of
-      the node.
-    - Any other name selects the packet key of that name.
-    - A parameter annotated with ``| None`` receives ``None`` when the
-      data is not available, even when it has a default value. A
-      parameter without ``| None`` but with a default value keeps the
-      default. A parameter with neither raises ``RuntimeError``.
-
-    `run` resolves these parameters with
-    `BaseAttachedModule.get_parameters` before it calls `forward`.
+    A subclass implements `forward`. `BaseAttachedModule.get_parameters`
+    describes how `run` fills its non-canvas parameters.
 
     """
 
@@ -54,8 +35,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
         Args:
             *args (``Any``): Positional arguments forwarded to
-                `BaseAttachedModule`. It accepts none, so any value
-                raises ``TypeError``.
+                `BaseAttachedModule`.
             scale (float): Factor that `run` applies to both canvases
                 with `scale_canvas` before it calls `forward`. The
                 visualizer stores the value as ``self.scale``, so a
@@ -140,9 +120,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     ):
         """Draw the labels and the predictions on the canvases.
 
-        An implementation receives the two canvases and the data that
-        `run` resolves from the names of its remaining parameters. It
-        returns one of:
+        Implementations return one of:
 
         - One image, as `ClassificationVisualizer` does when
           ``include_plot`` is ``False``.
@@ -150,13 +128,6 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
           `BBoxVisualizer` does.
         - A tuple of the labels image and a list of images.
         - A list of unrelated images.
-
-        `combine_visualizations` accepts the first two forms only. It
-        resizes a pair to the larger height, with the aspect ratios
-        kept, and puts it side by side, with the labels on the left.
-        It raises ``NotImplementedError`` for the third form. It
-        treats a list of exactly two images as a pair, and raises
-        ``ValueError`` for a list of any other length.
 
         Args:
             target_canvas (``Tensor``): Images to draw the labels on, of
@@ -176,12 +147,6 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        """The `forward` parameters that `run` must resolve.
-
-        `get_signature` drops ``self`` and ``kwargs``. This property
-        also drops every parameter whose name contains ``canvas``.
-
-        """
         signature = get_signature(self.forward)
         for key in list(signature.keys()):
             if "canvas" in key:
@@ -198,16 +163,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
         """Scale the canvases, resolve the inputs, and call `forward`.
 
-        The trainer calls this method with the same batch of images for
-        both canvases. `scale_canvas` resizes both by ``self.scale``.
-        Then `BaseAttachedModule.get_parameters` picks the predictions
-        and labels that the `forward` parameters name. It clones every
-        tensor it picks, so `forward` cannot change ``inputs`` or
-        ``labels``. It raises ``TypeError`` when a value does not match
-        the annotation of its parameter. Finally `forward` runs with
-        ``target_canvas`` as the first positional argument,
-        ``prediction_canvas`` as the second, and the resolved data as
-        keyword arguments.
+        `BaseAttachedModule.get_parameters` documents how the remaining
+        `forward` parameters select predictions and labels.
 
         Args:
             prediction_canvas (``Tensor``): Images to draw the

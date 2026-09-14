@@ -147,12 +147,6 @@ class DummyLoader(BaseLoaderTorch):
 
     @override
     def __len__(self) -> int:
-        """Return the number of samples: ten batches.
-
-        Returns:
-            int: Ten times ``trainer.batch_size``.
-
-        """
         return self.batch_size * 10
 
     @override

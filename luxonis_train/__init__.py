@@ -1,41 +1,12 @@
 """Train computer vision models for Luxonis cameras from a YAML config.
 
-One config file describes the whole pipeline: the loader, the model
-graph, the losses, the metrics, the visualizers, and the export
-settings. The ``luxonis_train`` command and `LuxonisModel
-<luxonis_train.core.core.LuxonisModel>` both read that file.
+A config describes the loader, model graph, attached modules, and export
+settings. Components are referenced by their registered names; see
+`luxonis_train.registry` and `luxonis_train.config.config`.
 
-The config refers to each component by its registered name. The name
-is usually the class name. A registry gets the class for the name, so
-a new component needs no change to the training loop. See
-`luxonis_train.registry` for the registries and
-`luxonis_train.config.config` for the config schema.
-
-``__version__`` holds the package version as a string, and
-``__semver__`` holds it as a ``SemanticVersion``.
-
-An import of the package also imports its submodules, so that the
-built-in components register. After the submodule imports, the import
-does these steps:
-
-- It calls `luxonis_train.utils.setup_logging`.
-- It adds `pathlib.Path`, `pathlib.PosixPath`, and
-  `pathlib.WindowsPath` to the safe globals of
-  ``torch.serialization``.
-
-When the import of ``torch`` or of a submodule raises ``ImportError``,
-the package issues a ``UserWarning``. It then skips the remaining
-imports and these steps.
-
-The package skips the submodule imports and these steps when
-``sys.argv[0]`` ends with ``/luxonis_train``, so that the
-``luxonis_train`` command starts fast. It does not skip them in these
-cases:
-
-- ``--source`` is on the command line.
-- A reload of the package follows the skipped import. `create_model
-  <luxonis_train.__main__.create_model>` does this reload for the
-  commands that build a model.
+Importing the package registers the built-in components and configures
+logging. The command-line entry point defers those imports until it
+needs to build a model, which keeps startup fast.
 
 """
 

@@ -172,24 +172,6 @@ class LuxonisModel:
     ):
         """Build the run from a config, a checkpoint, or a model name.
 
-        The constructor:
-
-        - resolves the config and applies ``opts`` to it;
-        - creates the tracker, the run directory, the log file, and the
-          Lightning trainer, and seeds every random generator when
-          ``trainer.seed`` is set;
-        - builds a loader and a PyTorch data loader for each view. For
-          a `LuxonisLoaderTorch`, it first sets
-          ``loader.params.filter_task_names`` to the task names of the
-          heads, when every head has one. With ``dataset_dir`` in
-          ``loader.params``, it also sets ``delete_existing`` to
-          ``False`` before the validation and the test loaders, so they
-          reuse the dataset the train loader parsed;
-        - writes the config to ``training_config.yaml`` in the run
-          directory;
-        - builds the `LuxonisLightningModule` and loads ``weights`` into
-          it.
-
         Give ``cfg`` or ``model``, not both. With neither, the config
         comes from the ``config`` key of the ``weights`` checkpoint.
         Without ``weights`` too, ``opts`` alone builds the config from
@@ -1024,10 +1006,6 @@ class LuxonisModel:
             the node name, prefixed with ``<task>-`` when the node has
             a task name. The prefix is ``test`` for every ``view``. The
             started thread when ``new_thread`` is ``True``.
-
-        Raises:
-            TypeCheckError: When an argument has the wrong type, for
-                example a ``view`` other than the three names.
 
         """
         weights = self.resolve_weights(weights)

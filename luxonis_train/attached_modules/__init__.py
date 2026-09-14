@@ -12,35 +12,23 @@ prediction of the task of the node, and ``target`` gets the only label
 of the task. `BaseAttachedModule.get_parameters` gives all the rules.
 For the label formats, see `luxonis_train.loaders`.
 
-Predictions:
-    This list gives the main prediction of each task in evaluation
-    mode. It covers the tasks of the heads of this package. In training
-    mode, the detection heads run no NMS. Their packets then do not
-    hold the ``boundingbox``, ``keypoints``, or
-    ``instance_segmentation`` key.
+Prediction packets use these shapes in evaluation:
 
-    - ``Tasks.CLASSIFICATION``: ``classification`` (``Tensor``),
-      :math:`\left[B, n_{classes}\right]` logits
-    - ``Tasks.SEGMENTATION``: ``segmentation`` (``Tensor``),
-      :math:`\left[B, n_{classes}, H, W\right]` logits
-    - ``Tasks.ANOMALY_DETECTION``: ``segmentation`` (``Tensor``),
-      :math:`\left[B, C, H, W\right]` logits of the anomaly mask
-    - ``Tasks.EMBEDDINGS``: ``embeddings`` (``Tensor``),
-      :math:`\left[B, D\right]`, one embedding for each image
-    - ``Tasks.OCR``: ``ocr`` (``Tensor``),
-      :math:`\left[B, T, n_{classes}\right]` logits, one row for each
-      step of the sequence
-    - ``Tasks.BOUNDINGBOX``: ``boundingbox`` (``list[Tensor]``),
-      :math:`\left[M_i, 6\right]` for each image,
-      ``[x1, y1, x2, y2, score, class]`` in pixels
-    - ``Tasks.INSTANCE_KEYPOINTS``: ``keypoints`` (``list[Tensor]``),
-      :math:`\left[M_i, n_{keypoints}, 3\right]` for each image,
-      ``(x, y, confidence)`` in pixels, next to ``boundingbox``
-    - ``Tasks.INSTANCE_SEGMENTATION``: ``instance_segmentation``
-      (``list[Tensor]``), :math:`\left[M_i, H, W\right]` binary masks
-      for each image, next to ``boundingbox``
-    - ``Tasks.FOMO``: ``heatmap`` (``Tensor``),
-      :math:`\left[B, n_{classes}, H_f, W_f\right]` logits
+- Classification: ``[B, n_classes]`` logits.
+- Segmentation and anomaly detection: ``[B, C, H, W]`` logits.
+- Embeddings: ``[B, D]``.
+- OCR: ``[B, T, n_classes]`` logits.
+- Bounding boxes: one ``[M_i, 6]`` tensor per image, with rows
+  ``[x1, y1, x2, y2, score, class]`` in pixels.
+- Keypoints: one ``[M_i, n_keypoints, 3]`` tensor per image, with
+  ``(x, y, confidence)`` in pixels.
+- Instance masks: one ``[M_i, H, W]`` tensor per image.
+- FOMO: ``[B, n_classes, H_f, W_f]`` heatmap logits.
+
+Detection heads skip non-maximum suppression during training, so their
+packets do not yet contain the final boxes, keypoints, or instance
+masks. The heads document their packet keys; `luxonis_train.loaders`
+documents the matching label formats.
 
 """
 

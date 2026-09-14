@@ -57,25 +57,8 @@ class AnomalyDetectionModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
         """Initialize the model with its default components.
 
-        The defaults are:
-
-        - ``backbone``: `RecSubNet`
-        - ``head``: `DiscSubNetHead`
-        - ``loss``: `ReconstructionSegmentationLoss`
-        - ``metrics``: `JaccardIndex`
-        - ``metrics_params``: ``num_classes`` of ``2`` and ``task`` of
-          ``"multiclass"``
-        - ``visualizer``: `SegmentationVisualizer`
-        - ``confusion_matrix_available``: ``False``
-
-        A ``metrics_params`` given here replaces the whole default
-        dictionary. With these defaults, the model has no neck and no
-        ``ConfusionMatrix``.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments for
-                `SimplePredefinedModel.__init__`. A key given here
-                replaces the default with the same name.
+        A ``metrics_params`` given here replaces the whole default two-
+        class configuration.
 
         """
         super().__init__(

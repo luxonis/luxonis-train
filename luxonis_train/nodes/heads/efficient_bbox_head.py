@@ -385,22 +385,10 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the URL template of the COCO checkpoint of the head.
+        """Return the COCO checkpoint URL for the selected variant.
 
-        The file name holds the first character of `BaseNode.variant`,
-        for example ``{github}/efficientbbox_head_n_coco.ckpt``.
-        `BaseNode.load_checkpoint` replaces the ``{github}`` placeholder
-        with the URL of the release.
-
-        **The call always fails on a node of this class.** The class
-        does not implement `BaseNode.get_variants`, so no variant can
-        build the node. Only a subclass with variants can use this URL.
-
-        Returns:
-            str: The URL template of the checkpoint.
-
-        Raises:
-            AttributeError: When no variant built the node.
+        This base head defines no variants itself; only subclasses with
+        variants can use the URL.
 
         """
         return f"{{github}}/efficientbbox_head_{self.variant[0]}_coco.ckpt"
@@ -502,27 +490,4 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Return the NN Archive metadata of the head.
-
-        Returns:
-            ``Params``: The keys ``"iou_threshold"``,
-            ``"conf_threshold"``, ``"max_det"``, and ``"strides"`` from
-            `BaseDetectionHead.get_custom_head_config`. The key
-            ``"subtype"`` has the value ``"yolov6r2"``.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import EfficientBBoxHead
-            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
-            >>> head = EfficientBBoxHead(
-            ...     n_heads=2,
-            ...     n_classes=3,
-            ...     input_shapes=[{"features": sizes}],
-            ...     original_in_shape=Size([3, 256, 256]),
-            ... )
-            >>> head.get_custom_head_config()
-            {'iou_threshold': 0.45, 'conf_threshold': 0.25, 'max_det': 300,
-             'strides': [8, 16], 'subtype': 'yolov6r2'}
-
-        """
         return super().get_custom_head_config() | {"subtype": "yolov6r2"}

@@ -82,18 +82,6 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     total: Annotated[Tensor, MetricState()]
 
     def __init__(self, **kwargs):
-        """Initialize the metric and read the memory size of the head.
-
-        The method copies ``cross_batch_memory_size`` of the node to the
-        metric. The ``node`` property raises ``RuntimeError`` when
-        ``kwargs`` holds no ``node``.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`. They must hold ``node``, a
-                `GhostFaceNetHead`.
-
-        """
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
 
@@ -247,18 +235,6 @@ class MedianDistances(BaseMetric):
     closest_vs_positive_distances: Annotated[list[Tensor], MetricState()]
 
     def __init__(self, **kwargs):
-        """Initialize the metric and read the memory size of the head.
-
-        The method copies ``cross_batch_memory_size`` of the node to the
-        metric. The ``node`` property raises ``RuntimeError`` when
-        ``kwargs`` holds no ``node``.
-
-        Args:
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`. They must hold ``node``, a
-                `GhostFaceNetHead`.
-
-        """
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
 

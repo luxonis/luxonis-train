@@ -418,29 +418,6 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Return the NN Archive metadata of the head.
-
-        Returns:
-            ``Params``: The keys ``"iou_threshold"``,
-            ``"conf_threshold"``, ``"max_det"``, and ``"strides"`` from
-            `BaseDetectionHead.get_custom_head_config`. The key
-            ``"subtype"`` has the value ``"yolov8"``.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import PrecisionBBoxHead
-            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
-            >>> head = PrecisionBBoxHead(
-            ...     n_heads=2,
-            ...     n_classes=3,
-            ...     input_shapes=[{"features": sizes}],
-            ...     original_in_shape=Size([3, 256, 256]),
-            ... )
-            >>> head.get_custom_head_config()
-            {'iou_threshold': 0.45, 'conf_threshold': 0.25, 'max_det': 300,
-             'strides': [8, 16], 'subtype': 'yolov8'}
-
-        """
         return super().get_custom_head_config() | {"subtype": "yolov8"}
 
     def _construct_raw_bboxes(

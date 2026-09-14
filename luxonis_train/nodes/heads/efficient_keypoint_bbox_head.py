@@ -358,30 +358,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Return the NN Archive metadata of the head.
-
-        Returns:
-            ``Params``: The metadata of
-            `EfficientBBoxHead.get_custom_head_config`, and the key
-            ``"n_keypoints"`` with the number of keypoints. The key
-            ``"subtype"`` keeps the value ``"yolov6r2"``.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import EfficientKeypointBBoxHead
-            >>> sizes = [Size([1, 8, 32, 32]), Size([1, 16, 16, 16])]
-            >>> head = EfficientKeypointBBoxHead(
-            ...     n_heads=2,
-            ...     n_classes=3,
-            ...     n_keypoints=5,
-            ...     input_shapes=[{"features": sizes}],
-            ...     original_in_shape=Size([3, 256, 256]),
-            ... )
-            >>> config = head.get_custom_head_config()
-            >>> config["subtype"], config["n_keypoints"], config["strides"]
-            ('yolov6r2', 5, [8, 16])
-
-        """
         return super().get_custom_head_config() | {
             "n_keypoints": self.n_keypoints
         }

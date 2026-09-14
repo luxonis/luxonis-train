@@ -22,19 +22,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     config names a registered loss in the ``losses`` list of a node. A
     subclass implements `forward`.
 
-    `run` fills the parameters of `forward` by their names:
-
-    - ``predictions``, or another name that starts with ``pred`` and
-      has no underscore, selects the main output of the task.
-    - Another name that starts with ``pred`` selects the packet key
-      after the first underscore, so ``pred_boundingbox`` selects
-      ``boundingbox``.
-    - ``target``, or another name that starts with ``target`` and has
-      no underscore, selects the single label that the task requires.
-      ``target_<label>`` selects the label ``<label>``. Both look the
-      label up as ``<task_name>/<label>``, with the ``task_name`` of
-      the node.
-    - Any other name selects the packet key of that name.
+    `BaseAttachedModule.get_parameters` describes how `run` fills the
+    parameters of `forward` from predictions and labels.
 
     The trainer calls `run` on each training, validation, and test
     batch. It sums the main values of all losses into the total loss.
@@ -65,11 +54,6 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     @typechecked
     def __init__(self, final_loss_weight: float = 1.0, **kwargs):
         """Initialize the loss and store the factor of its main value.
-
-        The ``typechecked`` decorator of ``typeguard`` raises
-        ``TypeCheckError`` when ``final_loss_weight`` is not a ``float``
-        or an ``int``. `BaseAttachedModule` raises `IncompatibleError`
-        when the node does not fit the loss.
 
         Args:
             final_loss_weight (float): The factor by which `run`
@@ -111,34 +95,15 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        """The parameters of `forward` that `run` fills.
-
-        `get_signature` leaves out ``self`` and ``kwargs``.
-
-        """
         return get_signature(self.forward)
 
     def run(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
-        """Select the inputs of `forward` from a batch and run the loss.
+        """Resolve the inputs of `forward` and apply the loss weight.
 
-        `BaseAttachedModule.get_parameters` picks a value for each
-        parameter of `forward` by its name, as the class docstring
-        describes. It clones every tensor that it picks. The method
-        calls the module with these values, which runs `forward`. It
-        then multiplies the main value by ``final_loss_weight``.
-
-        When a value is missing, a parameter annotated with ``| None``
-        receives ``None``, even when it has a default value. Another
-        parameter with a default value keeps the default. Any other
-        parameter raises ``RuntimeError``. A ``target`` name without an
-        underscore also raises ``RuntimeError`` when the task requires
-        more than one label. A ``pred`` or ``target`` name without an
-        underscore raises ``RuntimeError`` when the module has no task.
-        A ``target`` name raises ``RuntimeError`` when the module has no
-        node. A value that does not match the annotation of its
-        parameter raises ``TypeError``.
+        `BaseAttachedModule.get_parameters` documents how parameter
+        names select predictions and labels.
 
         Args:
             inputs (``Packet[Tensor]``): The output packet of the node.
@@ -147,9 +112,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
         Returns:
             ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The result of
-            `forward` in the same form. The method multiplies the main
-            value by ``final_loss_weight`` and keeps the sub-losses as
-            they are.
+            `forward`, with ``final_loss_weight`` applied to the main
+            value. Sub-losses remain unscaled.
 
         """
         loss = self(**self.get_parameters(inputs, labels))

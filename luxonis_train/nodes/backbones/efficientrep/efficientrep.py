@@ -237,27 +237,6 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the URL of the COCO weights of the variant.
-
-        The file name holds the first letter of the variant name, so an
-        alias such as ``"nano"`` gives the same URL as ``"n"``.
-
-        Returns:
-            str: The URL ``{github}/efficientrep_<letter>_coco.ckpt``.
-            `BaseNode` replaces the ``{github}`` placeholder.
-
-        Raises:
-            AttributeError: When no variant built the node.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import EfficientRep
-            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
-            >>> node = EfficientRep(variant="nano", input_shapes=shapes)
-            >>> node.get_weights_url()
-            '{github}/efficientrep_n_coco.ckpt'
-
-        """
         return f"{{github}}/efficientrep_{self.variant[0]}_coco.ckpt"
 
     @staticmethod

@@ -222,34 +222,14 @@ class DDRNetSegmentationHead(BaseHead):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the URL template of the COCO checkpoint of the head.
+        """Select the COCO checkpoint from the input channel count.
 
-        The input channels select the checkpoint. ``128`` channels, the
-        output of the ``"23-slim"`` variant of `DDRNet`, select
-        ``{github}/ddrnet_head_23slim_coco.ckpt``. ``256`` channels, the
-        output of the ``"23"`` variant, select
-        ``{github}/ddrnet_head_23_coco.ckpt``.
-        `BaseNode.load_checkpoint` replaces the ``{github}`` placeholder
-        with the URL of the release.
-
-        Returns:
-            str: The URL template of the checkpoint.
+        The 128-channel ``23-slim`` backbone uses the slim checkpoint;
+        the 256-channel ``23`` backbone uses the full checkpoint.
 
         Raises:
-            NotImplementedError: When the input has neither ``128`` nor
-                ``256`` channels. `BaseNode.load_checkpoint` then raises
-                ``ValueError``.
-
-        Example:
-            >>> from torch import Size
-            >>> from luxonis_train.nodes import DDRNetSegmentationHead
-            >>> head = DDRNetSegmentationHead(
-            ...     n_classes=3,
-            ...     input_shapes=[{"features": [Size([1, 128, 4, 4])]}],
-            ...     original_in_shape=Size([3, 32, 32]),
-            ... )
-            >>> head.get_weights_url()
-            '{github}/ddrnet_head_23slim_coco.ckpt'
+            NotImplementedError: If the input has neither 128 nor 256
+                channels.
 
         """
         if self.in_channels == 128:
@@ -308,12 +288,4 @@ class DDRNetSegmentationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Return the NN Archive metadata of the head.
-
-        Returns:
-            ``Params``: The dictionary ``{"is_softmax": False}``. The
-            value tells the parser that the outputs are not softmax
-            probabilities.
-
-        """
         return {"is_softmax": False}

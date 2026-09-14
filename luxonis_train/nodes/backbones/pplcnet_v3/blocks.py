@@ -28,7 +28,6 @@ class AffineActivation(nn.Module):
     """
 
     def __init__(self):
-        """Initialize the ``Hardswish`` and the `AffineBlock`."""
         super().__init__()
         self.activation = nn.Hardswish()
         self.affine = AffineBlock()
