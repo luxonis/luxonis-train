@@ -1,5 +1,10 @@
-"""Builds the NN Archive: the input and output descriptions a parser
-needs to read the exported model.
+"""The NN Archive entries of an exported model and of its heads.
+
+`LuxonisModel.archive` builds the ``inputs``, the ``outputs``, and the
+``heads`` of the archive config with these functions.
+`LuxonisModel.export` also reads the inputs and the outputs for the
+``modelconverter`` config that it writes next to the ONNX file.
+
 """
 
 from pathlib import Path
@@ -14,18 +19,39 @@ from luxonis_train.nodes import BaseHead
 
 
 class ArchiveMetadataDict(TypedDict):
+    """The shape and the data type of one input or output of a model.
+
+    Attributes:
+        shape (list[int]): The dimensions of the tensor. A dimension
+            without a fixed size in the model file is ``0``.
+        dtype (``DataType``): The data type of the tensor, one of
+            ``int8``, ``int32``, ``uint8``, ``float32``, and
+            ``float16``.
+
+    """
+
     shape: list[int]
     dtype: DataType
 
 
 def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
-    """Get inputs of a model executable.
+    """Read the inputs of an exported model file.
+
+    The function supports only ONNX files. It reads every entry of
+    ``graph.input`` of the model.
 
     Args:
-        path (``Path``): ``Path`` to model executable file.
+        path (``Path``): The model file, with the suffix ``.onnx``.
 
     Returns:
-        dict[str, ArchiveMetadataDict]: Input metadata keyed by input name.
+        ``dict[str, ArchiveMetadataDict]``: The shape and the data type
+        of each input, keyed by input name, in graph order.
+
+    Raises:
+        NotImplementedError: When the suffix of ``path`` is not
+            ``.onnx``.
+        ValueError: When the file does not load as an ONNX model, or
+            when an input has an unsupported data type.
 
     """
     if path.suffix == ".onnx":
@@ -36,13 +62,23 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
 
 def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
-    """Get outputs of a model executable.
+    """Read the outputs of an exported model file.
+
+    The function supports only ONNX files. It reads every entry of
+    ``graph.output`` of the model.
 
     Args:
-        path (``Path``): ``Path`` to model executable file.
+        path (``Path``): The model file, with the suffix ``.onnx``.
 
     Returns:
-        dict[str, ArchiveMetadataDict]: Output metadata keyed by output name.
+        ``dict[str, ArchiveMetadataDict]``: The shape and the data type
+        of each output, keyed by output name, in graph order.
+
+    Raises:
+        NotImplementedError: When the suffix of ``path`` is not
+            ``.onnx``.
+        ValueError: When the file does not load as an ONNX model, or
+            when an output has an unsupported data type.
 
     """
     if path.suffix == ".onnx":
@@ -103,15 +139,21 @@ def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
 
 
 def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
-    """Get model outputs in a head-specific format.
+    """Select the names of the model outputs that belong to a head.
+
+    An output name with four parts separated by ``/`` matches when its
+    second part is ``head_name``. Any other output name matches when it
+    is ``head_name`` itself.
 
     Args:
-        outputs (list[dict]): List of NN Archive outputs.
-        head_name (str): ``Type`` of the head, such as ``"EfficientBBoxHead"``, or
-            its custom alias.
+        outputs (list[dict]): The outputs of the NN Archive config. The
+            function reads the ``"name"`` key of each output.
+        head_name (str): The name of the head node, such as
+            ``"EfficientBBoxHead"``, or its alias.
 
     Returns:
-        list[str]: List of output names.
+        list[str]: The matching output names, in the order of
+        ``outputs``.
 
     """
     output_names = []
@@ -129,14 +171,30 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
 def get_head_configs(
     lightning_module: LuxonisLightningModule, outputs: list[dict]
 ) -> list[dict]:
-    """Get model heads.
+    """Build the ``heads`` entries of the NN Archive config.
+
+    The function visits the nodes of ``lightning_module`` in build
+    order. It skips a node that is not a `BaseHead`, and a head with
+    ``remove_on_export`` set. For each other head, it starts from
+    `BaseHead.get_head_config` and adds two keys:
+
+    - ``"name"``: the name of the node. When an earlier head already
+      took that name, the function appends ``_<n>``, where ``<n>`` is
+      the number of names taken so far.
+    - ``"outputs"``: the `BaseNode.export_output_names` of the head.
+      When they are ``None`` or empty, the function selects the names
+      in ``outputs`` that belong to the node name.
 
     Args:
-        lightning_module (LuxonisLightningModule): Lightning module.
-        outputs (list[dict]): List of NN Archive outputs.
+        lightning_module (LuxonisLightningModule): The module whose
+            heads the archive describes.
+        outputs (list[dict]): The outputs of the NN Archive config, each
+            with a ``"name"`` key.
 
     Returns:
-        list[dict]: List of head configurations.
+        list[dict]: One config dictionary for each exported head, with
+        the keys ``"parser"``, ``"metadata"``, ``"name"``, and
+        ``"outputs"``.
 
     """
     head_configs = []

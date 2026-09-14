@@ -1,5 +1,17 @@
-"""The inference loop over an image, a video, a directory, or a dataset,
-and the rendering of its visualizations.
+"""Inference over an image, a video, a directory, or a dataset view.
+
+`LuxonisModel.infer` calls these helpers. They run the model, convert
+the images of its visualizers to OpenCV arrays, and save the arrays or
+show them in a window. `LuxonisModel.annotate` also reads its images
+through `create_loader_from_directory`.
+
+``VIDEO_FORMATS`` holds the lowercase file extensions that
+`LuxonisModel.infer` reads as a video. ``IMAGE_FORMATS`` holds the
+lowercase file extensions of the images that `LuxonisModel.infer` and
+`LuxonisModel.annotate` select in a directory.
+`LuxonisLoaderPerlinNoise` also selects its anomaly source images with
+it.
+
 """
 
 from collections import defaultdict
@@ -44,7 +56,39 @@ VIDEO_FORMATS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 def process_visualizations(
     visualizations: dict[str, dict[str, Tensor]],
 ) -> dict[tuple[str, str], list[np.ndarray]]:
-    """Render or save visualizations."""
+    """Convert the images of the visualizers into OpenCV arrays.
+
+    The function takes the ``visualizations`` of a `LuxonisOutput` and
+    turns every image of every batch into a NumPy array. It detaches
+    each image, moves it to the CPU, and transposes it from
+    ``[C, H, W]`` to ``[H, W, C]``. It then converts the channels from
+    RGB to BGR with ``cv2.cvtColor``, because OpenCV writes and shows
+    BGR. An image with four channels loses its fourth channel.
+
+    Args:
+        visualizations (``dict[str, dict[str, Tensor]]``): The image
+            batch of every visualizer, of shape ``[B, C, H, W]``, keyed
+            by node name and visualizer name.
+
+    Returns:
+        ``dict[tuple[str, str], list[np.ndarray]]``: The ``B`` images
+        of every visualizer, each of shape ``[H, W, 3]`` in BGR, keyed
+        by the pair of node name and visualizer name. The result is a
+        ``defaultdict``, so a missing key gives an empty list.
+
+    Example:
+        >>> import torch
+        >>> image = torch.zeros(2, 3, 4, 5, dtype=torch.uint8)
+        >>> image[:, 0] = 255  # red in RGB
+        >>> renders = process_visualizations({"head": {"boxes": image}})
+        >>> sorted(renders)
+        [('head', 'boxes')]
+        >>> [render.shape for render in renders["head", "boxes"]]
+        [(4, 5, 3), (4, 5, 3)]
+        >>> renders["head", "boxes"][0][0, 0].tolist()
+        [0, 0, 255]
+
+    """
     renders = defaultdict(list)
 
     for node_name, vzs in visualizations.items():
@@ -60,7 +104,34 @@ def process_visualizations(
 def prepare_and_infer_image(
     model: "lxt.LuxonisModel", images: dict[str, Tensor]
 ) -> LuxonisOutput:
-    """Prepare the image for inference and runs the model."""
+    """Preprocess one raw image with the ``val`` loader and run the
+    model on it.
+
+    The function passes ``images`` to ``augment_test_image`` of the
+    ``val`` loader of ``model``. That method returns one image of shape
+    ``[H, W, C]``. `LuxonisLoaderTorch` applies its augmentations
+    there, such as the resize and the normalization. A
+    `LuxonisLoaderTorch` without a height or a width returns the image
+    unchanged. A loader that does not override the method raises
+    ``NotImplementedError``. The function adds the batch dimension,
+    moves the channels first, and casts to ``torch.float32``. It
+    then runs `LuxonisLightningModule.full_forward` on this batch of
+    one, under the ``image_source`` name of the module. The visualizers
+    draw on the denormalized image. The function gives no labels, so no
+    loss and no metric runs.
+
+    Args:
+        model (LuxonisModel): The model to run.
+        images (``dict[str, Tensor]``): The raw image of shape
+            ``[H, W, C]``, keyed by the input name of the loader.
+
+    Returns:
+        LuxonisOutput: ``outputs`` holds the packet of every output
+        node. ``visualizations`` holds the image batch of every
+        visualizer, with a batch size of ``1``. ``losses`` and
+        ``metrics`` are empty.
+
+    """
     npy_img = model.loaders["val"].augment_test_image(images)
     torch_img = torch.tensor(npy_img).unsqueeze(0).permute(0, 3, 1, 2).float()
 
@@ -72,19 +143,47 @@ def prepare_and_infer_image(
 
 
 def window_closed() -> bool:  # pragma: no cover
+    """Wait for a key press in the OpenCV windows and report a stop
+    request.
+
+    The function blocks in ``cv2.waitKey`` until the user presses a
+    key.
+
+    Returns:
+        bool: ``True`` when the key is ``Esc`` or ``q``.
+
+    """
     return cv2.waitKey(0) in {27, ord("q")}
 
 
 def infer_from_video(
     model: "lxt.LuxonisModel", video_path: PathType, save_dir: Path | None
 ) -> None:
-    """Run inference on individual frames from a video.
+    """Run the model on every frame of a video, one frame at a time.
+
+    The function reads the frames with ``cv2.VideoCapture``. When
+    ``trainer.preprocessing.color_space`` of the config is ``"RGB"``,
+    it converts each frame from BGR to RGB first. It then runs
+    `prepare_and_infer_image` on the frame under the input name
+    ``"image"``, and renders the visualizations with
+    `process_visualizations`. When OpenCV cannot open ``video_path``,
+    the function reads no frame and writes nothing.
+
+    With ``save_dir``, the function writes the renders of each
+    visualizer to ``<save_dir>/<node>_<visualizer>.mp4``. The video
+    gets the ``mp4v`` codec, the frame rate of the source video, and
+    the size of the first render. Without ``save_dir``, the function
+    shows the
+    render of each visualizer in an OpenCV window named
+    ``<node>/<visualizer>``. It then waits for a key press after every
+    frame. ``Esc`` or ``q`` stops the loop. At the end, the function
+    releases the capture and the writers, and closes the windows.
 
     Args:
-        model (LuxonisModel): Model to use for inference.
-        video_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the video.
-        save_dir (``Path | None``): Directory where visualizations are saved. If
-            ``None``, visualizations are displayed on screen.
+        model (LuxonisModel): The model to run.
+        video_path (``PathType``): The video file.
+        save_dir (``Path | None``): The directory of the output videos.
+            ``None`` shows the renders on screen instead.
 
     """
     cap = cv2.VideoCapture(filename=str(video_path))
@@ -164,14 +263,38 @@ def infer_from_loader(
     save_dir: PathType | None,
     img_paths: list[PathType] | None = None,
 ) -> None:
-    """Run inference on images from the dataset.
+    """Run the prediction loop of the trainer over a loader and render
+    the visualizations.
+
+    The function runs ``model.pl_trainer.predict`` with
+    ``model.lightning_module`` on ``loader``, so each batch goes
+    through `LuxonisLightningModule.predict_step`.
+
+    With ``save_dir``, a temporary ``BasePredictionWriter`` callback
+    saves the renders of each batch as PNG files as they arrive:
+
+    - ``<save_dir>/<image stem>_<node>_<visualizer>.png`` when
+      ``img_paths`` is given. The callback takes the next path for
+      each sample, in loader order.
+    - ``<save_dir>/<node>_<visualizer>_<n>.png`` otherwise, where
+      ``<n>`` counts the written files from ``0``.
+
+    A ``/`` in a file name becomes ``-``.
+
+    Without ``save_dir``, the function collects all predictions first.
+    It then shows every render of every sample in an OpenCV window
+    named ``<node>/<visualizer>``. It waits for a key press after
+    every sample. ``Esc`` or ``q`` stops the loop. The function closes
+    the windows at the end.
 
     Args:
-        model (LuxonisModel): Model to use for inference.
-        loader (torch_data.DataLoader): Loader to use for inference.
-        save_dir (``PathType | None``): Directory where visualizations are saved.
-            If ``None``, visualizations are displayed on screen.
-        img_paths (``list[PathType] | None``): Paths to the images.
+        model (LuxonisModel): The model to run.
+        loader (torch.utils.data.DataLoader): The batches to run on.
+        save_dir (``PathType | None``): The directory of the PNG files.
+            ``None`` shows the renders on screen instead.
+        img_paths (``list[PathType] | None``): The source path of
+            every sample, in loader order. It names the saved files.
+            It is not read without ``save_dir``.
 
     """
     if save_dir is not None:
@@ -212,6 +335,10 @@ def infer_from_loader(
 
 
 class _VisualizationPredictionWriter(BasePredictionWriter):
+    """Callback that saves the renders of every prediction batch as PNG
+    files, as `infer_from_loader` describes.
+    """
+
     def __init__(
         self,
         save_dir: Path,
@@ -286,18 +413,39 @@ def create_loader_from_directory(
     batch_size: int | None = None,
     return_sample_metadata: bool = False,
 ) -> torch_data.DataLoader:
-    """Create a DataLoader from a directory of images.
+    """Build a ``DataLoader`` over image files.
+
+    The function creates a local ``LuxonisDataset`` named
+    ``infer_from_directory``, after it deletes a local dataset of that
+    name. It adds every image with the sample metadata
+    ``{"path": <image path>}``, and puts all images in the ``test``
+    split. It wraps the dataset in a `LuxonisLoaderTorch` on the
+    ``test`` view. The loader applies these settings of
+    ``trainer.preprocessing`` of ``model``: the train image size, the
+    active augmentations, the color space, and ``keep_aspect_ratio``.
+
+    The loader does not keep the order of ``img_paths``. Use the
+    ``"path"`` metadata to match a sample to its file. The function
+    does not delete the dataset. `infer_from_directory` and
+    `annotate_from_directory` delete it after use.
 
     Args:
-        img_paths (``Iterable[PathType]``): Iterable of paths to the images.
-        model (LuxonisModel): Model to use for inference.
-        batch_size (int | None): Batch size for the DataLoader. If ``None``,
-            the model's default batch size is used.
-        return_sample_metadata (bool): Whether the DataLoader also returns the
-            per-sample metadata. Passed to ``LuxonisLoaderTorch``.
+        img_paths (``Iterable[PathType]``): The image files.
+        model (LuxonisModel): The model whose preprocessing the loader
+            applies.
+        batch_size (int | None): The batch size. ``None`` selects
+            ``trainer.batch_size`` of the config of ``model``.
+        return_sample_metadata (bool): Also return the metadata of
+            every sample. Each batch is then a tuple of the inputs,
+            the labels, and a list with the metadata dictionary of
+            every sample, each with the ``"path"`` key.
 
     Returns:
-        torch_data.DataLoader: The DataLoader for the images.
+        torch.utils.data.DataLoader: The loader, with ``pin_memory``
+        on and without shuffling. Without ``return_sample_metadata``,
+        each batch is a list of the inputs and the labels. The inputs
+        are one ``Tensor`` of shape ``[B, C, H, W]``. The labels are an
+        empty dictionary, because the dataset has no annotations.
 
     """
     dataset_name = "infer_from_directory"
@@ -349,13 +497,20 @@ def infer_from_directory(
     img_paths: Iterable[PathType],
     save_dir: Path | None,
 ) -> None:
-    """Run inference on individual images from a directory.
+    """Run the model on image files.
+
+    The function builds a loader with `create_loader_from_directory`
+    and runs `infer_from_loader` on it. It passes ``img_paths`` in the
+    given order to name the saved renders. The loader does not keep
+    that order, so with two or more images a saved render can get the
+    name of a different image. At the end, the function deletes the
+    temporary local dataset ``infer_from_directory``.
 
     Args:
-        model (LuxonisModel): Model to use for inference.
-        img_paths (``Iterable[PathType]``): Iterable of paths to the images.
-        save_dir (``Path | None``): Directory where visualizations are saved. If
-            ``None``, visualizations are displayed on screen.
+        model (LuxonisModel): The model to run.
+        img_paths (``Iterable[PathType]``): The image files.
+        save_dir (``Path | None``): The directory of the PNG files.
+            ``None`` shows the renders on screen instead.
 
     """
     img_paths = list(img_paths)
@@ -369,7 +524,9 @@ def infer_from_directory(
 
 
 class _LimitedLoader:
-    """Wrapper around a DataLoader that limits the number of batches."""
+    """Wrapper of a ``DataLoader`` that yields at most ``n_batches``
+    batches.
+    """
 
     def __init__(self, loader: torch_data.DataLoader, n_batches: int) -> None:
         self._loader = loader
@@ -390,13 +547,20 @@ def infer_from_dataset(
     view: Literal["train", "val", "test"],
     save_dir: PathType | None,
 ) -> None:
-    """Run inference on images from the dataset.
+    """Run the model on one view of its dataset.
+
+    The function reads ``model.pytorch_loaders[view]``. When
+    ``trainer.overfit_batches`` of the config is above ``0`` and
+    ``view`` is ``"train"``, it reads only that many batches and logs
+    a warning. It then runs `infer_from_loader` without image paths,
+    so a saved render is named ``<node>_<visualizer>_<n>.png``.
 
     Args:
-        model (LuxonisModel): Model to use for inference.
-        view (``Literal["train", "val", "test"]``): Dataset view to use.
-        save_dir (``PathType | None``): Directory where visualizations are saved.
-            If ``None``, visualizations are displayed on screen.
+        model (LuxonisModel): The model to run.
+        view (``Literal["train", "val", "test"]``): The dataset view to
+            read.
+        save_dir (``PathType | None``): The directory of the PNG files.
+            ``None`` shows the renders on screen instead.
 
     """
     loader = model.pytorch_loaders[view]
