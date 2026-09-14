@@ -50,13 +50,13 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         @param draw_scores: Whether to append prediction confidence
             scores to the rendered labels. Defaults to C{False}.
         @type colors: dict[str, L{Color}] | list[L{Color}] | None
-        @param colors: Dicionary mapping class labels to colors.
+        @param colors: Dictionary mapping class labels to colors.
         @type fill: bool | None
         @param fill: Whether to fill the boundingbox with color.
         @type width: int | None
         @param width: Width of the bounding box Lines.
         @type font: str | None
-        @param font: Font of the clas labels.
+        @param font: Font of the class labels.
         @type font_size: int | None
         @param font_size: Font size of the class Labels.
         @type alpha: float
@@ -68,25 +68,25 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = dict(enumerate(labels))
 
-        self.bbox_labels = labels or self.classes.inverse
+        self._bbox_labels = labels or self.classes.inverse
 
         if colors is None:
             colors = {
-                label: get_color(i) for i, label in self.bbox_labels.items()
+                label: get_color(i) for i, label in self._bbox_labels.items()
             }
         if isinstance(colors, list):
             colors = {
-                self.bbox_labels[i]: color for i, color in enumerate(colors)
+                self._bbox_labels[i]: color for i, color in enumerate(colors)
             }
 
-        self.colors = colors
-        self.fill = fill
-        self.width = width
-        self.font = font
-        self.font_size = font_size
-        self.draw_labels = draw_labels
-        self.draw_scores = draw_scores
-        self.alpha = alpha
+        self._colors = colors
+        self._fill = fill
+        self._width = width
+        self._font = font
+        self._font_size = font_size
+        self._draw_labels = draw_labels
+        self._draw_scores = draw_scores
+        self._alpha = alpha
 
     @classmethod
     def draw_predictions(
@@ -218,30 +218,30 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         @type prediction_canvas: Tensor
         @param prediction_canvas: Tensor containing the predicted
             visualizations.
-        @type target_bboxes: Tensor | None
-        @param target_bboxes: Tensor containing the target bounding
+        @type target_boundingbox: Tensor | None
+        @param target_boundingbox: Tensor containing the target bounding
             boxes.
-        @type target_masks: Tensor | None
-        @param target_masks: Tensor containing the target instance
-            masks.
-        @type predicted_bboxes: list[Tensor]
-        @param predicted_bboxes: List of tensors containing the
-            predicted bounding boxes.
-        @type predicted_masks: list[Tensor]
-        @param predicted_masks: List of tensors containing the predicted
-            instance masks.
+        @type target_instance_segmentation: Tensor | None
+        @param target_instance_segmentation: Tensor containing the
+            target instance masks.
+        @type boundingbox: list[Tensor]
+        @param boundingbox: List of tensors containing the predicted
+            bounding boxes.
+        @type instance_segmentation: list[Tensor]
+        @param instance_segmentation: List of tensors containing the
+            predicted instance masks.
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,
             boundingbox,
             instance_segmentation,
-            self.width,
-            self.bbox_labels,
-            self.colors,
-            self.draw_labels,
-            self.draw_scores,
-            self.alpha,
-            self.scale,
+            self._width,
+            self._bbox_labels,
+            self._colors,
+            self._draw_labels,
+            self._draw_scores,
+            self._alpha,
+            self._scale,
         )
         if target_boundingbox is None or target_instance_segmentation is None:
             return predictions_viz
@@ -249,11 +249,11 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             target_canvas,
             target_boundingbox,
             target_instance_segmentation,
-            self.width,
-            self.bbox_labels,
-            self.colors,
-            self.draw_labels,
-            self.alpha,
-            self.scale,
+            self._width,
+            self._bbox_labels,
+            self._colors,
+            self._draw_labels,
+            self._alpha,
+            self._scale,
         )
         return targets_viz, predictions_viz

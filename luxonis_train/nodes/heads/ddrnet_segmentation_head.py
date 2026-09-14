@@ -53,7 +53,7 @@ class DDRNetSegmentationHead(BaseHead):
         scale_factor = 2 ** infer_upscale_factor(
             (self.in_height, self.in_width), (model_in_h, model_in_w)
         )
-        self.scale_factor = scale_factor
+        self._scale_factor = scale_factor
         if (
             inter_mode == "pixel_shuffle"
             and inter_channels % (scale_factor**2) != 0

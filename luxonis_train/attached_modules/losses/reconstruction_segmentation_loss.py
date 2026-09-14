@@ -80,13 +80,13 @@ class SSIM(nn.Module):
         val_range: float | None = None,
     ):
         super().__init__()
-        self.window_size = window_size
-        self.size_average = size_average
-        self.val_range = val_range
+        self._window_size = window_size
+        self._size_average = size_average
+        self._val_range = val_range
 
         # Assume 1 channel for SSIM
-        self.channel = 1
-        self.window = create_window(window_size)
+        self._channel = 1
+        self._window = create_window(window_size)
 
     def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
         device = img1.device
@@ -95,23 +95,23 @@ class SSIM(nn.Module):
             img2 = img2.float()
 
             (_, channel, _, _) = img1.size()
-            if channel == self.channel and self.window.dtype == img1.dtype:
-                window = self.window.to(device).clone()
+            if channel == self._channel and self._window.dtype == img1.dtype:
+                window = self._window.to(device).clone()
             else:
                 window = (
-                    create_window(self.window_size, channel)
+                    create_window(self._window_size, channel)
                     .to(device)
                     .type(img1.dtype)
                 )
-                self.window = window
-                self.channel = channel
+                self._window = window
+                self._channel = channel
 
             s_score = ssim(
                 img1,
                 img2,
                 window=window,
-                window_size=self.window_size,
-                size_average=self.size_average,
+                window_size=self._window_size,
+                size_average=self._size_average,
             )
             return 1.0 - s_score
 
@@ -148,27 +148,27 @@ def ssim(
     else:
         dynamic_range = val_range
 
-    padd = window_size // 2
+    pad = window_size // 2
     (_, channel, height, width) = img1.size()
     if window is None:
         real_size = min(window_size, height, width)
         window = create_window(real_size, channel=channel).to(img1.device)
 
-    mu1 = F.conv2d(img1, window, padding=padd, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=padd, groups=channel)
+    mu1 = F.conv2d(img1, window, padding=pad, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=pad, groups=channel)
 
     mu1_sq = mu1.pow(2)
     mu2_sq = mu2.pow(2)
     mu1_mu2 = mu1 * mu2
 
     sigma1_sq = (
-        F.conv2d(img1 * img1, window, padding=padd, groups=channel) - mu1_sq
+        F.conv2d(img1 * img1, window, padding=pad, groups=channel) - mu1_sq
     )
     sigma2_sq = (
-        F.conv2d(img2 * img2, window, padding=padd, groups=channel) - mu2_sq
+        F.conv2d(img2 * img2, window, padding=pad, groups=channel) - mu2_sq
     )
     sigma12 = (
-        F.conv2d(img1 * img2, window, padding=padd, groups=channel) - mu1_mu2
+        F.conv2d(img1 * img2, window, padding=pad, groups=channel) - mu1_mu2
     )
 
     c1 = (0.01 * dynamic_range) ** 2

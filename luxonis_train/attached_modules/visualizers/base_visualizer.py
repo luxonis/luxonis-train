@@ -25,7 +25,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.scale = scale
+        self._scale = scale
 
     @override
     def __getstate__(self) -> dict:
@@ -102,8 +102,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
-        prediction_canvas = self.scale_canvas(prediction_canvas, self.scale)
-        target_canvas = self.scale_canvas(target_canvas, self.scale)
+        prediction_canvas = self.scale_canvas(prediction_canvas, self._scale)
+        target_canvas = self.scale_canvas(target_canvas, self._scale)
 
         return self(
             target_canvas,

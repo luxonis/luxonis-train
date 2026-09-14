@@ -2,8 +2,8 @@ tests:
   - changed-files:
       - any-glob-to-any-file: "tests/*"
   - head-branch:
-      - "test/*"
-      - "tests/*"
+      - "^test/"
+      - "^tests/"
 
 DevOps:
   - changed-files:
@@ -19,19 +19,19 @@ documentation:
 
 enhancement:
   - head-branch:
-      - "feature/*"
-      - "feat/*"
-      - "enhancement/*"
+      - "^feature/"
+      - "^feat/"
+      - "^enhancement/"
 
 release:
   - head-branch:
-      - "release/*"
+      - "^release/"
 
 fix:
   - head-branch:
-      - "fix/*"
-      - "bug/*"
-      - "hotfix/*"
-      - "issue/*"
-      - "bugfix/*"
-      - "patch/*"
+      - "^fix/"
+      - "^bug/"
+      - "^hotfix/"
+      - "^issue/"
+      - "^bugfix/"
+      - "^patch/"

@@ -47,26 +47,26 @@ class DummyLoader(BaseLoaderTorch):
             image_source=image_source,
             color_space=color_space,
         )
-        self.n_keypoints = n_keypoints
-        self.n_classes = n_classes
-        self.batch_size = cfg.trainer.batch_size
-        self.labels: dict[str, set[str | Metadata]] = defaultdict(set)
+        self._n_keypoints = n_keypoints
+        self._n_classes = n_classes
+        self._batch_size = cfg.trainer.batch_size
+        self._labels: dict[str, set[str | Metadata]] = defaultdict(set)
         for node in cfg.model.nodes:
             Node = NODES.get(node.name)
             if Node.task is not None:
                 for label in Node.task.required_labels:
-                    self.labels[f"{node.task_name or ''}"].add(label)
-        self.n_channels = 1 if color_space == "GRAY" else 3
+                    self._labels[f"{node.task_name or ''}"].add(label)
+        self._n_channels = 1 if color_space == "GRAY" else 3
         if isinstance(class_names, list):
             class_names = {name: i for i, name in enumerate(class_names)}
         if check_type(class_names, dict[str, int]):
-            class_names = dict.fromkeys(self.labels, class_names)
+            class_names = dict.fromkeys(self._labels, class_names)
         if class_names is None:
             class_names = {
                 key: {str(i): i for i in range(n_classes)}
-                for key in self.labels
+                for key in self._labels
             }
-        self.class_names: dict[str, dict[str, int]] = class_names  # type: ignore
+        self._class_names: dict[str, dict[str, int]] = class_names  # type: ignore
 
     @property
     @override
@@ -74,7 +74,7 @@ class DummyLoader(BaseLoaderTorch):
         return {
             self.image_source: Size(
                 [
-                    self.n_channels,
+                    self._n_channels,
                     self.height,
                     self.width,
                 ]
@@ -83,30 +83,30 @@ class DummyLoader(BaseLoaderTorch):
 
     @override
     def __len__(self) -> int:
-        return self.batch_size * 10
+        return self._batch_size * 10
 
     @override
     def __getitem__(
         self, idx: int
     ) -> tuple[Tensor | dict[str, Tensor], Labels]:
-        img = torch.zeros(self.n_channels, self.height, self.width)
-        label_shapes = self.get_label_shapes(self.labels)
+        img = torch.zeros(self._n_channels, self.height, self.width)
+        label_shapes = self.get_label_shapes(self._labels)
         labels = {
             f"{task_name}/{task_type}": torch.zeros(
                 label_shapes[f"{task_name}/{task_type}"]
             )
-            for task_name, task_types in self.labels.items()
+            for task_name, task_types in self._labels.items()
             for task_type in task_types
         }
         return img, labels
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return self.class_names
+        return self._class_names
 
     @override
     def get_n_keypoints(self) -> dict[str, int] | None:
-        return dict.fromkeys(self.labels, self.n_keypoints)
+        return dict.fromkeys(self._labels, self._n_keypoints)
 
     def get_label_shapes(
         self, labels: dict[str, set[str | Metadata]]
@@ -125,7 +125,7 @@ class DummyLoader(BaseLoaderTorch):
                     case "boundingbox":
                         shapes[name] = (1, 5)
                     case "keypoints":
-                        shapes[name] = (1, self.n_keypoints * 3)
+                        shapes[name] = (1, self._n_keypoints * 3)
                     case "segmentation" | "instance_segmentation":
                         shapes[name] = (1, self.height, self.width)
                     case _:

@@ -38,55 +38,64 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
 
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module to be used.
-        @type params: dict
-        @param params: The parameters for the strategy. Those are:
-            - lr: The learning rate.
-            - momentum: The momentum.
-            - weight_decay: The weight decay.
-            - nesterov: Whether to use nesterov.
-            - warmup_epochs: The number of warmup epochs.
-            - warmup_bias_lr: The warmup bias learning rate.
-            - warmup_momentum: The warmup momentum.
-            - lre: The learning rate for the end of the training.
-            - cosine_annealing: Whether to use cosine annealing.
+        @type lr: float
+        @param lr: The learning rate.
+        @type momentum: float
+        @param momentum: The momentum.
+        @type weight_decay: float
+        @param weight_decay: The weight decay.
+        @type nesterov: bool
+        @param nesterov: Whether to use nesterov.
+        @type warmup_epochs: int
+        @param warmup_epochs: The number of warmup epochs.
+        @type warmup_bias_lr: float
+        @param warmup_bias_lr: The warmup bias learning rate.
+        @type warmup_momentum: float
+        @param warmup_momentum: The warmup momentum.
+        @type lre: float
+        @param lre: The learning rate for the end of the training.
+        @type cosine_annealing: bool
+        @param cosine_annealing: Whether to use cosine annealing.
         """
-        self.model = pl_module
-        self.cfg = pl_module.cfg
-        self.lr = lr
-        self.momentum = momentum
-        self.weight_decay = weight_decay
-        self.nesterov = nesterov
-        self.warmup_epochs = warmup_epochs
-        self.warmup_bias_lr = warmup_bias_lr
-        self.warmup_momentum = warmup_momentum
-        self.lre = lre
-        self.cosine_annealing = cosine_annealing
+        self._model = pl_module
+        self._cfg = pl_module.cfg
+        self._lr = lr
+        self._momentum = momentum
+        self._weight_decay = weight_decay
+        self._nesterov = nesterov
+        self._warmup_epochs = warmup_epochs
+        self._warmup_bias_lr = warmup_bias_lr
+        self._warmup_momentum = warmup_momentum
+        self._lre = lre
+        self._cosine_annealing = cosine_annealing
 
-        self.max_stepnum = math.ceil(
-            len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
+        self._max_stepnum = math.ceil(
+            len(self._model.core.loaders["train"])
+            / self._cfg.trainer.batch_size
         )
-        self.warmup_stepnum = max(
-            round(self.warmup_epochs * self.max_stepnum), 100
+        self._warmup_stepnum = max(
+            round(self._warmup_epochs * self._max_stepnum), 100
         )
-        self.step = 0
-        self.lrf = self.lre / self.lr
-        epochs = self.cfg.trainer.epochs
-        if self.cosine_annealing:
-            self.lf = lambda x: (
-                ((1 - math.cos(x * math.pi / epochs)) / 2) * (self.lrf - 1) + 1
+        self._step = 0
+        self._lrf = self._lre / self._lr
+        epochs = self._cfg.trainer.epochs
+        if self._cosine_annealing:
+            self._lf = lambda x: (
+                ((1 - math.cos(x * math.pi / epochs)) / 2) * (self._lrf - 1)
+                + 1
             )
         else:
-            self.lf = lambda x: (
-                max(1 - x / epochs, 0) * (1.0 - self.lrf) + self.lrf
+            self._lf = lambda x: (
+                max(1 - x / epochs, 0) * (1.0 - self._lrf) + self._lrf
             )
 
     def _sgd(self, **extra: float | bool) -> OptimizerConfig:
         return OptimizerConfig(
             name="SGD",
             params={
-                "lr": self.lr,
-                "momentum": self.momentum,
-                "nesterov": self.nesterov,
+                "lr": self._lr,
+                "momentum": self._momentum,
+                "nesterov": self._nesterov,
                 **extra,
             },
         )
@@ -104,7 +113,7 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             StrategyRule(
                 tag=self.WEIGHT_TAG,
                 selector=_is_weight,
-                optimizer=self._sgd(weight_decay=self.weight_decay),
+                optimizer=self._sgd(weight_decay=self._weight_decay),
             ),
             StrategyRule(
                 tag=self.BIAS_TAG,
@@ -117,29 +126,29 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
     def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]:
         return self._sgd(), SchedulerConfig(
             name="LambdaLR",
-            params={"lr_lambda": self.lf},  # type: ignore
+            params={"lr_lambda": self._lf},  # type: ignore
         )
 
     @override
     def update_parameters(self) -> None:
-        current_epoch = self.model.current_epoch
-        self.step = self.step % self.max_stepnum
-        curr_step = self.step + self.max_stepnum * current_epoch
+        current_epoch = self._model.current_epoch
+        self._step = self._step % self._max_stepnum
+        curr_step = self._step + self._max_stepnum * current_epoch
 
-        if curr_step <= self.warmup_stepnum:
+        if curr_step <= self._warmup_stepnum:
             for tag, warmup_start_lr in (
                 (self.BATCH_NORM_TAG, 0.0),
                 (self.WEIGHT_TAG, 0.0),
-                (self.BIAS_TAG, self.warmup_bias_lr),
+                (self.BIAS_TAG, self._warmup_bias_lr),
             ):
-                target_lr = self.lr * self.lf(current_epoch)
+                target_lr = self._lr * self._lf(current_epoch)
                 for handle in self.group_handles.get(tag, ()):
                     self.runtime.group(handle)["lr"] = np.interp(
                         curr_step,
-                        [0, self.warmup_stepnum],
+                        [0, self._warmup_stepnum],
                         [warmup_start_lr, target_lr],
                     )
-        self.step += 1
+        self._step += 1
 
 
 def _is_batch_norm_weight(

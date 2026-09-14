@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    GeneralReparametrizableBlock,
+    GeneralReparameterizableBlock,
     SqueezeExciteBlock,
 )
 from luxonis_train.nodes.blocks.utils import forward_gather
@@ -76,14 +76,14 @@ class MobileOne(BaseNode):
         """
         super().__init__(**kwargs)
 
-        self.n_blocks_per_stage = [2, 8, 10, 1]
-        self.n_conv_branches = n_conv_branches
+        self._n_blocks_per_stage = [2, 8, 10, 1]
+        self._n_conv_branches = n_conv_branches
 
         self._in_channels = min(64, int(64 * width_multipliers[0]))
 
         self.stages = nn.ModuleList(
             [
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self.in_channels,
                     out_channels=self._in_channels,
                     kernel_size=3,
@@ -92,25 +92,25 @@ class MobileOne(BaseNode):
                 ),
                 self._make_stage(
                     int(64 * width_multipliers[0]),
-                    self.n_blocks_per_stage[0],
+                    self._n_blocks_per_stage[0],
                     n_se_blocks=0,
                 ),
                 self._make_stage(
                     int(128 * width_multipliers[1]),
-                    self.n_blocks_per_stage[1],
+                    self._n_blocks_per_stage[1],
                     n_se_blocks=0,
                 ),
                 self._make_stage(
                     int(256 * width_multipliers[2]),
-                    self.n_blocks_per_stage[2],
-                    n_se_blocks=self.n_blocks_per_stage[2] // 2
+                    self._n_blocks_per_stage[2],
+                    n_se_blocks=self._n_blocks_per_stage[2] // 2
                     if use_se
                     else 0,
                 ),
                 self._make_stage(
                     int(512 * width_multipliers[3]),
-                    self.n_blocks_per_stage[3],
-                    n_se_blocks=self.n_blocks_per_stage[3] if use_se else 0,
+                    self._n_blocks_per_stage[3],
+                    n_se_blocks=self._n_blocks_per_stage[3] if use_se else 0,
                 ),
             ]
         )
@@ -177,28 +177,28 @@ class MobileOne(BaseNode):
 
             # Depthwise conv
             blocks.append(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self._in_channels,
                     out_channels=self._in_channels,
                     kernel_size=3,
                     stride=stride,
                     padding=1,
                     groups=self._in_channels,
-                    n_branches=self.n_conv_branches,
+                    n_branches=self._n_conv_branches,
                     refine_block=refine_block,
                     scale_layer_padding=0,
                 )
             )
             # Pointwise conv
             blocks.append(
-                GeneralReparametrizableBlock(
+                GeneralReparameterizableBlock(
                     in_channels=self._in_channels,
                     out_channels=out_channels,
                     kernel_size=1,
                     stride=1,
                     padding=0,
                     groups=1,
-                    n_branches=self.n_conv_branches,
+                    n_branches=self._n_conv_branches,
                     refine_block=refine_block,
                     use_scale_layer=False,
                 )

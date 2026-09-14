@@ -54,7 +54,7 @@ class ReXNetV1_lite(BaseNode):
         @param multiplier: Channel dimension multiplier. Defaults to 1.0.
         @type kernel_sizes: int | list[int]
         @param kernel_sizes: Kernel size for each block. Defaults to 3.
-        @param out_indices: list[int] | None
+        @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [1, 4, 10, 17].
         """
         super().__init__(**kwargs)
@@ -62,8 +62,8 @@ class ReXNetV1_lite(BaseNode):
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
 
-        self.n_convblocks = sum(layers)
-        self.out_indices = out_indices or [1, 4, 10, 17]
+        self._n_convblocks = sum(layers)
+        self._out_indices = out_indices or [1, 4, 10, 17]
 
         kernel_sizes = (
             [kernel_sizes] * 6
@@ -106,7 +106,7 @@ class ReXNetV1_lite(BaseNode):
             )
         )
 
-        for i in range(self.n_convblocks):
+        for i in range(self._n_convblocks):
             inplanes_divisible = make_divisible(
                 round(inplanes * multiplier), divisible_value
             )
@@ -115,7 +115,7 @@ class ReXNetV1_lite(BaseNode):
                 channels_group.append(inplanes_divisible)
             else:
                 in_channels_group.append(inplanes_divisible)
-                inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
+                inplanes += final_ch / (self._n_convblocks - 1 * 1.0)
                 inplanes_divisible = make_divisible(
                     round(inplanes * multiplier), divisible_value
                 )
@@ -155,7 +155,7 @@ class ReXNetV1_lite(BaseNode):
         outs: list[Tensor] = []
         for i, module in enumerate(self.features):
             inputs = module(inputs)
-            if i in self.out_indices:
+            if i in self._out_indices:
                 outs.append(inputs)
         return outs
 
@@ -170,9 +170,9 @@ class LinearBottleneck(nn.Module):
         stride: int = 1,
     ):
         super().__init__()
-        self.use_shortcut = stride == 1 and in_channels <= channels
-        self.in_channels = in_channels
-        self.out_channels = channels
+        self._use_shortcut = stride == 1 and in_channels <= channels
+        self._in_channels = in_channels
+        self._out_channels = channels
         out: list[nn.Module] = []
         if t != 1:
             dw_channels = in_channels * t
@@ -211,12 +211,12 @@ class LinearBottleneck(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         out = self.out(x)
 
-        if self.use_shortcut:
+        if self._use_shortcut:
             # NOTE: this results in a ScatterND node which isn't supported yet in myriad
-            a = out[:, : self.in_channels]
+            a = out[:, : self._in_channels]
             b = x
             a = a + b
-            c = out[:, self.in_channels :]
+            c = out[:, self._in_channels :]
             return torch.concat([a, c], dim=1)
 
         return out

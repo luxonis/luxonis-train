@@ -44,16 +44,11 @@ class GhostFaceNet(BaseNode):
         """
         @type width_multiplier: int
         @param width_multiplier: Width multiplier for the blocks.
-        @type kernel_sizes: list[list[int]]
-        @param kernel_sizes: List of kernel sizes for block in each stage.
-        @type expand_sizes: list[list[int]]
-        @param expand_sizes: List of expansion sizes for block in each stage.
-        @type output_channels: list[list[int]]
-        @param output_channels: List of output channels for block in each stage.
-        @type se_ratios: list[list[float]]
-        @param se_ratios: List of Squeeze-and-Excitation ratios for block in each stage.
-        @type strides: list[list[int]]
-        @param strides: List of strides for block in each stage.
+        @type layer_params: list[LayerParamsDict]
+        @param layer_params: List of per-layer parameters. Each entry
+            holds the kernel sizes, expansion sizes, output channels,
+            Squeeze-and-Excitation ratios, and strides of the blocks in
+            one stage.
         """
         super().__init__(**kwargs)
 

@@ -77,7 +77,7 @@ class NestedDict:
         self,
         old_key: str,
         new_key: str,
-        value: ParamValue | None | EllipsisType = ...,
+        value: ParamValue | EllipsisType | None = ...,
     ) -> None:
         if old_key not in self:
             return

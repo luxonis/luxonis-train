@@ -96,20 +96,20 @@ class PrecisionRecallCurve(BaseMetric):
         )
         self.register_buffer("thresholds", thresholds, persistent=False)
 
-        self.matching_iou_threshold = self._validate_unit_interval(
+        self._matching_iou_threshold = self._validate_unit_interval(
             matching_iou_threshold,
             "matching_iou_threshold",
         )
-        self.nms_iou_threshold = self._resolve_nms_iou_threshold(
+        self._nms_iou_threshold = self._resolve_nms_iou_threshold(
             nms_iou_threshold
         )
-        self.max_detections = self._resolve_max_detections(max_detections)
-        self.lowest_threshold = float(thresholds[0])
-        self.nms_conf_threshold = max(
+        self._max_detections = self._resolve_max_detections(max_detections)
+        self._lowest_threshold = float(thresholds[0])
+        self._nms_conf_threshold = max(
             self._validate_unit_interval(
                 nms_conf_threshold, "nms_conf_threshold"
             ),
-            self.lowest_threshold,
+            self._lowest_threshold,
         )
 
         self.add_state(
@@ -239,12 +239,12 @@ class PrecisionRecallCurve(BaseMetric):
             detections_pre_nms,
             n_classes=self.node.n_classes,
             conf_thres=_exclusive_threshold(
-                self.nms_conf_threshold,
+                self._nms_conf_threshold,
                 detections_pre_nms.dtype,
             ),
-            iou_thres=self.nms_iou_threshold,
+            iou_thres=self._nms_iou_threshold,
             bbox_format="xyxy",
-            max_det=self.max_detections,
+            max_det=self._max_detections,
             predicts_objectness=False,
         )
 
@@ -357,7 +357,7 @@ class PrecisionRecallCurve(BaseMetric):
         ious = box_iou(prediction_boxes, target_boxes)
         eligible = (
             prediction_classes.unsqueeze(1) == target_classes.unsqueeze(0)
-        ) & (ious >= self.matching_iou_threshold)
+        ) & (ious >= self._matching_iou_threshold)
         matched_targets = torch.zeros(
             len(target_boxes),
             dtype=torch.bool,

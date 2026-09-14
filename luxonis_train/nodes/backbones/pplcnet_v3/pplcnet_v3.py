@@ -53,13 +53,13 @@ class PPLCNetV3(BaseNode):
         super().__init__(**kwargs)
         layer_params = layer_params or []
 
-        self.scale = scale
-        self.use_detection_backbone = use_detection_backbone
-        self.n_branches = n_branches
+        self._scale = scale
+        self._use_detection_backbone = use_detection_backbone
+        self._n_branches = n_branches
 
         self.conv = ConvBlock(
             in_channels=self.in_channels,
-            out_channels=scale_up(16, self.scale),
+            out_channels=scale_up(16, self._scale),
             kernel_size=3,
             stride=2,
             padding=1,
@@ -68,27 +68,27 @@ class PPLCNetV3(BaseNode):
         )
 
         blocks: list[LCNetV3Layer] = []
-        in_channels = scale_up(16, self.scale)
+        in_channels = scale_up(16, self._scale)
         for params in layer_params:
             blocks.append(
                 LCNetV3Layer(
                     in_channels=in_channels,
-                    n_branches=self.n_branches,
-                    scale=self.scale,
+                    n_branches=self._n_branches,
+                    scale=self._scale,
                     **params,
                 )
             )
             in_channels = blocks[-1].out_channels
         self.blocks = nn.ModuleList(blocks)
 
-        if self.use_detection_backbone:
+        if self._use_detection_backbone:
             blocks_out_channels = [blocks[i].out_channels for i in range(1, 5)]
 
-            detecion_out_channels = [
-                int(c * self.scale) for c in [16, 24, 56, 480]
+            detection_out_channels = [
+                int(c * self._scale) for c in [16, 24, 56, 480]
             ]
 
-            self.detecion_blocks = nn.ModuleList(
+            self.detection_blocks = nn.ModuleList(
                 [
                     nn.Conv2d(
                         in_channels=in_channels,
@@ -99,7 +99,9 @@ class PPLCNetV3(BaseNode):
                         bias=True,
                     )
                     for in_channels, out_channels in zip(
-                        blocks_out_channels, detecion_out_channels, strict=True
+                        blocks_out_channels,
+                        detection_out_channels,
+                        strict=True,
                     )
                 ]
             )
@@ -119,9 +121,9 @@ class PPLCNetV3(BaseNode):
         x = self.blocks[4](x)
         out.append(x)
 
-        if self.use_detection_backbone:
+        if self._use_detection_backbone:
             for i in range(4):
-                out[i] = self.detecion_blocks[i](out[i])
+                out[i] = self.detection_blocks[i](out[i])
             return out
 
         out.append(self.avg_pool(x))

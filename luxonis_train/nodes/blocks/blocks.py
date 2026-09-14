@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
 
-from .reparametrizable import Reparametrizable
+from .reparameterizable import Reparameterizable
 from .utils import ModuleFactory, autopad
 
 
@@ -78,8 +78,6 @@ class EfficientDecoupledBlock(nn.Module):
         @param n_classes: Number of classes.
         @type in_channels: int
         @param in_channels: Number of input channels.
-        @type prior_probability: float
-        @param prior_probability: ???
         """
         super().__init__()
 
@@ -222,7 +220,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: Callable[[Tensor], Tensor] | None | bool = True,
+        activation: Callable[[Tensor], Tensor] | bool | None = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -260,7 +258,7 @@ class ConvBlock(nn.Module):
         self.padding = padding
         self.dilation = dilation
         self.groups = groups
-        self.bias = bias
+        self._bias = bias
 
         self.conv = nn.Conv2d(
             in_channels,
@@ -337,7 +335,7 @@ class SqueezeExciteBlock(nn.Sequential):
 
 
 # TODO: Maybe a better name?
-class GeneralReparametrizableBlock(Reparametrizable):
+class GeneralReparameterizableBlock(Reparameterizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -354,9 +352,9 @@ class GeneralReparametrizableBlock(Reparametrizable):
         refine_block: nn.Module | Literal["se"] | None = None,
         use_scale_layer: bool = True,
         scale_layer_padding: int | tuple[int, int] | None = None,
-        activation: nn.Module | None | bool = True,
+        activation: nn.Module | bool | None = True,
     ):
-        """GeneralReparametrizableBlock is a basic rep-style block,
+        """GeneralReparameterizableBlock is a basic rep-style block,
         including training and deploy status.
 
         @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
@@ -375,7 +373,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         @param groups: Groups. Defaults to C{1}.
         @type n_branches: int
         @param n_branches: Number of convolutional branches.
-            During reparametrization, the branches are fused to a single
+            During reparameterization, the branches are fused to a single
             convolutional layer. Defaults to C{1}.
         @type refine_block: nn.Module | Literal["se"] | None
         @param refine_block: A block to refine the output.
@@ -392,10 +390,10 @@ class GeneralReparametrizableBlock(Reparametrizable):
         """
         super().__init__()
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.groups = groups
+        self._in_channels = in_channels
+        self._out_channels = out_channels
+        self._kernel_size = kernel_size
+        self._groups = groups
 
         self.skip_layer: nn.BatchNorm2d | None = None
         if out_channels == in_channels and stride in (1, (1, 1)):
@@ -406,23 +404,23 @@ class GeneralReparametrizableBlock(Reparametrizable):
         if use_scale_layer:
             padding_scale = scale_layer_padding or padding - kernel_size // 2
             self.scale_layer = ConvBlock(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
+                in_channels=self._in_channels,
+                out_channels=self._out_channels,
                 kernel_size=1,
                 stride=stride,
                 padding=padding_scale,
-                groups=self.groups,
+                groups=self._groups,
                 activation=False,
             )
 
         branches = [
             ConvBlock(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
+                in_channels=self._in_channels,
+                out_channels=self._out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=self.groups,
+                groups=self._groups,
                 activation=False,
             )
             for _ in range(n_branches)
@@ -468,7 +466,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         return self.__class__.__name__
 
     @override
-    def reparametrize(self) -> None:
+    def reparameterize(self) -> None:
         if self.fused_branch is not None:
             return
 
@@ -512,7 +510,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
 
         if self.scale_layer is not None:
             kernel_scale, bias_scale = self._fuse_conv(self.scale_layer)
-            pad = self.kernel_size // 2
+            pad = self._kernel_size // 2
             kernel += F.pad(kernel_scale, [pad, pad, pad, pad])
             bias += bias_scale
 
@@ -540,15 +538,23 @@ class GeneralReparametrizableBlock(Reparametrizable):
     def _fuse_batch_norm(
         self, module: nn.BatchNorm2d
     ) -> tuple[Tensor, Tensor]:
-        input_dim = self.in_channels // self.groups
+        input_dim = self._in_channels // self._groups
         kernel = torch.zeros(
-            (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
+            (
+                self._in_channels,
+                input_dim,
+                self._kernel_size,
+                self._kernel_size,
+            ),
             dtype=module.weight.dtype,
             device=module.weight.device,
         )
-        for i in range(self.in_channels):
+        for i in range(self._in_channels):
             kernel[
-                i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
+                i,
+                i % input_dim,
+                self._kernel_size // 2,
+                self._kernel_size // 2,
             ] = 1
 
         running_mean = module.running_mean
@@ -572,7 +578,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         if running_var is None or running_mean is None:
             raise ValueError(
                 "Running variance and mean must be "
-                "provided for reparametrization."
+                "provided for reparameterization."
             )
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1).to(kernel.device)
@@ -605,8 +611,7 @@ class BlockRepeater(nn.Sequential):
         if "out_channels" in kwargs:
             kwargs["in_channels"] = kwargs["out_channels"]
 
-        for _ in range(n_repeats - 1):
-            blocks.append(module(**kwargs))
+        blocks.extend(module(**kwargs) for _ in range(n_repeats - 1))
 
         super().__init__(*blocks)
 
@@ -677,15 +682,15 @@ class BottleRep(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        module: ModuleFactory = GeneralReparametrizableBlock,
+        module: ModuleFactory = GeneralReparameterizableBlock,
         weight: bool = True,
         **kwargs,
     ):
         """RepVGG bottleneck module.
 
-        @type block: Callable[..., nn.Module]
-        @param block: Block to use. Defaults to
-            L{GeneralReparametrizableBlock}.
+        @type module: Callable[..., nn.Module]
+        @param module: Block to use. Defaults to
+            L{GeneralReparameterizableBlock}.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
@@ -703,13 +708,13 @@ class BottleRep(nn.Module):
         self.conv_2 = module(
             in_channels=out_channels, out_channels=out_channels, **kwargs
         )
-        self.shortcut = in_channels == out_channels
+        self._shortcut = in_channels == out_channels
         self.alpha = nn.Parameter(torch.ones(1)) if weight else 1.0
 
     def forward(self, x: Tensor) -> Tensor:
         out = self.conv_1(x)
         out = self.conv_2(out)
-        return out + self.alpha * x if self.shortcut else out
+        return out + self.alpha * x if self._shortcut else out
 
 
 class SpatialPyramidPoolingBlock(nn.Module):
@@ -747,10 +752,10 @@ class SpatialPyramidPoolingBlock(nn.Module):
         return self.conv2(x)
 
 
-class AttentionRefinmentBlock(nn.Module):
+class AttentionRefinementBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
-        """Attention Refinment block adapted from
+        """Attention Refinement block adapted from
         U{https://github.com/taveraantonio/BiseNetv1}.
 
         @type in_channels: int
@@ -838,7 +843,7 @@ class UpscaleOnline(nn.Module):
     @typechecked
     def __init__(self, mode: str = "bilinear"):
         super().__init__()
-        self.mode = mode
+        self._mode = mode
 
     def forward(
         self, x: Tensor, output_height: int, output_width: int
@@ -854,7 +859,7 @@ class UpscaleOnline(nn.Module):
         @return: Upscaled tensor.
         """
         return F.interpolate(
-            x, size=[output_height, output_width], mode=self.mode
+            x, size=[output_height, output_width], mode=self._mode
         )
 
 
@@ -886,8 +891,8 @@ class DropPath(nn.Module):
     @typechecked
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
         super().__init__()
-        self.drop_prob = drop_prob
-        self.scale_by_keep = scale_by_keep
+        self._drop_prob = drop_prob
+        self._scale_by_keep = scale_by_keep
 
     def drop_path(self, x: Tensor) -> Tensor:
         """Drop paths (Stochastic Depth) per sample when applied in the
@@ -895,24 +900,18 @@ class DropPath(nn.Module):
 
         @type x: Tensor
         @param x: Input tensor.
-        @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to
-            0.0.
-        @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep
-            probability. Defaults to True.
         @return: Tensor with dropped paths based on the provided drop
             probability.
         """
-        keep_prob = 1 - self.drop_prob
+        keep_prob = 1 - self._drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
         random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
-        if keep_prob > 0.0 and self.scale_by_keep:
+        if keep_prob > 0.0 and self._scale_by_keep:
             random_tensor.div_(keep_prob)
         return x * random_tensor
 
     def forward(self, x: Tensor) -> Tensor:
-        if self.drop_prob == 0.0 or not self.training:
+        if self._drop_prob == 0.0 or not self.training:
             return x
         return self.drop_path(x)
 

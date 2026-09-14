@@ -98,7 +98,7 @@ class BaseAttachedModule(
                 "or is being connected to a node that also does not "
                 "specify its task. Either specify the `task` attribute "
                 f"on the node '{self.node.name}', or specify the "
-                f"`supported_tasks` atribute on the attached module "
+                f"`supported_tasks` attribute on the attached module "
                 f"'{self.name}'."
             )
         return self._task

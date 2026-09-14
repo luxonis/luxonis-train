@@ -132,10 +132,8 @@ def apply_anomaly_to_img(
 
     @type img: Tensor
     @param img: The input image tensor of shape (C, H, W).
-    @type anomaly_source_paths: list[str]
-    @param anomaly_source_paths: List of file paths to the anomaly images.
-    @type pixel_augs: list[Callable] | None
-    @param pixel_augs: A list of albumentations augmentations to apply to the anomaly image. Defaults to C{None}.
+    @type anomaly_img: Tensor
+    @param anomaly_img: The anomaly image tensor of shape (C, H, W).
     @type beta: float | None
     @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
                  is used. Defaults to C{None}.

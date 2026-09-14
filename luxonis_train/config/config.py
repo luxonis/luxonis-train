@@ -657,7 +657,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def validate_gradient_acc_scheduler(self) -> Self:
-        """Keys in the GradientAccumulationSheduler.params.scheduling
+        """Keys in the GradientAccumulationScheduler.params.scheduling
         should be ints but yaml can sometime auto-convert them to
         strings.
 
@@ -705,7 +705,7 @@ class TrainerConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
-    def check_n_workes_platform(self) -> Self:
+    def check_n_workers_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
         ) and self.n_workers != 0:

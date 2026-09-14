@@ -1,8 +1,10 @@
+import numpy as np
 import pytest
 import torch
 from pytest_subtests import SubTests
 
 from luxonis_train.utils.general import (
+    decode_text_metadata_labels,
     infer_upscale_factor,
     instances_from_batch,
     safe_download,
@@ -113,3 +115,22 @@ def test_instances_from_batch(subtests: SubTests):
                 torch.tensor([[10], [20]]),
             )
         )
+
+
+@pytest.mark.parametrize(
+    "label", [np.array([]), np.array(["hi", "ok"]), np.array([b"hi"])]
+)
+def test_decode_text_metadata_labels_returns_array_unchanged(
+    label: np.ndarray,
+):
+    decoded = decode_text_metadata_labels(
+        {"/metadata/text": label}, {"/metadata/text": str}
+    )
+    assert decoded["/metadata/text"].tolist() == label.tolist()
+
+
+def test_decode_text_metadata_labels_passes_through_non_text():
+    decoded = decode_text_metadata_labels(
+        {"/metadata/id": np.array([1, 2, 3])}, {"/metadata/id": int}
+    )
+    assert decoded["/metadata/id"].tolist() == [1, 2, 3]

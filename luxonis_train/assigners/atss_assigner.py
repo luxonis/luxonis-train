@@ -18,12 +18,12 @@ class ATSSAssigner(nn.Module):
         @type n_classes: int
         @param n_classes: Number of classes in the dataset.
         @type topk: int
-        @param topk: Number of anchors considere in selection. Defaults to 9.
+        @param topk: Number of anchors considered in selection. Defaults to 9.
         """
         super().__init__()
 
-        self.topk = topk
-        self.n_classes = n_classes
+        self._topk = topk
+        self._n_classes = n_classes
 
     def forward(
         self,
@@ -54,29 +54,29 @@ class ATSSAssigner(nn.Module):
             [bs, n_anchors, n_classes] and output positive mask of shape
             [bs, n_anchors].
         """
-        self.n_anchors = anchor_bboxes.size(0)
-        self.bs = gt_bboxes.size(0)
-        self.n_max_boxes = gt_bboxes.size(1)
+        self._n_anchors = anchor_bboxes.size(0)
+        self._bs = gt_bboxes.size(0)
+        self._n_max_boxes = gt_bboxes.size(1)
 
-        if self.n_max_boxes == 0:
+        if self._n_max_boxes == 0:
             device = gt_bboxes.device
             return (
-                torch.full([self.bs, self.n_anchors], self.n_classes).to(
+                torch.full([self._bs, self._n_anchors], self._n_classes).to(
                     device
                 ),
-                torch.zeros([self.bs, self.n_anchors, 4]).to(device),
-                torch.zeros([self.bs, self.n_anchors, self.n_classes]).to(
+                torch.zeros([self._bs, self._n_anchors, 4]).to(device),
+                torch.zeros([self._bs, self._n_anchors, self._n_classes]).to(
                     device
                 ),
-                torch.zeros([self.bs, self.n_anchors]).to(device),
-                torch.zeros([self.bs, self.n_anchors]).to(device),
+                torch.zeros([self._bs, self._n_anchors]).to(device),
+                torch.zeros([self._bs, self._n_anchors]).to(device),
             )
 
         gt_bboxes_flat = gt_bboxes.reshape([-1, 4])
 
         # Compute iou between all gt and anchor bboxes
         overlaps = bbox_iou(gt_bboxes_flat, anchor_bboxes)
-        overlaps = overlaps.reshape([self.bs, -1, self.n_anchors])
+        overlaps = overlaps.reshape([self._bs, -1, self._n_anchors])
 
         # Compute center distance between all gt and anchor bboxes
         gt_centers = self._get_bbox_center(gt_bboxes_flat)
@@ -87,7 +87,7 @@ class ATSSAssigner(nn.Module):
             .sum(-1)
             .sqrt()
         )
-        distances = distances.reshape([self.bs, -1, self.n_anchors])
+        distances = distances.reshape([self._bs, -1, self._n_anchors])
 
         # Select candidates based on the center distance
         is_in_topk, topk_idxs = self._select_topk_candidates(
@@ -99,14 +99,14 @@ class ATSSAssigner(nn.Module):
 
         # Select candidates inside GT
         is_in_gts = candidates_in_gt(anchor_centers, gt_bboxes_flat)
-        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
+        is_in_gts = is_in_gts.reshape(self._bs, self._n_max_boxes, -1)
 
         # Final positive candidates
         mask_pos = is_pos * is_in_gts * mask_gt
 
         # If an anchor box is assigned to multiple gts, the one with the highest IoU is selected
         assigned_gt_idx, mask_pos_sum, mask_pos = fix_collisions(
-            mask_pos, overlaps, self.n_max_boxes
+            mask_pos, overlaps, self._n_max_boxes
         )
 
         # Generate final assignments based on masks
@@ -142,8 +142,8 @@ class ATSSAssigner(nn.Module):
     ) -> tuple[Tensor, Tensor]:
         """Select k anchors whose centers are closest to GT.
 
-        @type distance: Tensor
-        @param distance: Distances between GT and anchor centers.
+        @type distances: Tensor
+        @param distances: Distances between GT and anchor centers.
         @type n_level_bboxes: list[int]
         @param n_level_bboxes: list of number of bboxes per level.
         @type mask_gt: Tensor
@@ -152,7 +152,7 @@ class ATSSAssigner(nn.Module):
         @return: Mask of selected anchors and indices of selected
             anchors.
         """
-        mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
+        mask_gt = mask_gt.repeat(1, 1, self._topk).bool()
         level_distances = distances.split(n_level_bboxes, dim=-1)
         is_in_topk_list: list[Tensor] = []
         topk_idxs: list[Tensor] = []
@@ -161,7 +161,7 @@ class ATSSAssigner(nn.Module):
             level_distances, n_level_bboxes, strict=True
         ):
             end_idx = start_idx + per_level_boxes
-            selected_k = min(self.topk, per_level_boxes)
+            selected_k = min(self._topk, per_level_boxes)
             _, per_level_topk_idxs = per_level_distances.topk(
                 selected_k, dim=-1, largest=False
             )
@@ -200,28 +200,28 @@ class ATSSAssigner(nn.Module):
         @rtype: Tensor
         @return: Mask of positive samples [bx, n_max_boxes, n_anchors]
         """
-        n_bs_max_boxes = self.bs * self.n_max_boxes
+        n_bs_max_boxes = self._bs * self._n_max_boxes
         _candidate_overlaps = torch.where(
             is_in_topk > 0, overlaps, torch.zeros_like(overlaps)
         )
         topk_idxs = topk_idxs.reshape([n_bs_max_boxes, -1])
-        assist_idxs = self.n_anchors * torch.arange(
+        assist_idxs = self._n_anchors * torch.arange(
             n_bs_max_boxes, device=topk_idxs.device
         )
         assist_idxs = assist_idxs[:, None]
         flatten_idxs = topk_idxs + assist_idxs
         candidate_overlaps = _candidate_overlaps.reshape(-1)[flatten_idxs]
         candidate_overlaps = candidate_overlaps.reshape(
-            [self.bs, self.n_max_boxes, -1]
+            [self._bs, self._n_max_boxes, -1]
         )
 
         overlaps_mean_per_gt = candidate_overlaps.mean(dim=-1, keepdim=True)
         overlaps_std_per_gt = candidate_overlaps.std(dim=-1, keepdim=True)
-        overlaps_thr_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
+        overlaps_threshold_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
 
         return torch.where(
             _candidate_overlaps
-            > overlaps_thr_per_gt.repeat([1, 1, self.n_anchors]),
+            > overlaps_threshold_per_gt.repeat([1, 1, self._n_anchors]),
             is_in_topk,
             torch.zeros_like(is_in_topk),
         )
@@ -250,28 +250,30 @@ class ATSSAssigner(nn.Module):
         """
         # assigned target labels
         batch_idx = torch.arange(
-            self.bs, dtype=gt_labels.dtype, device=gt_labels.device
+            self._bs, dtype=gt_labels.dtype, device=gt_labels.device
         )
         batch_idx = batch_idx[..., None]
         assigned_gt_idx = (
-            assigned_gt_idx + batch_idx * self.n_max_boxes
+            assigned_gt_idx + batch_idx * self._n_max_boxes
         ).long()
         assigned_labels = gt_labels.flatten()[assigned_gt_idx.flatten()]
-        assigned_labels = assigned_labels.reshape([self.bs, self.n_anchors])
+        assigned_labels = assigned_labels.reshape([self._bs, self._n_anchors])
         assigned_labels = torch.where(
             mask_pos_sum > 0,
             assigned_labels,
-            torch.full_like(assigned_labels, self.n_classes),
+            torch.full_like(assigned_labels, self._n_classes),
         )
 
         # assigned target boxes
         assigned_bboxes = gt_bboxes.reshape([-1, 4])[assigned_gt_idx.flatten()]
-        assigned_bboxes = assigned_bboxes.reshape([self.bs, self.n_anchors, 4])
+        assigned_bboxes = assigned_bboxes.reshape(
+            [self._bs, self._n_anchors, 4]
+        )
 
         # assigned target scores
         assigned_scores = F.one_hot(
-            assigned_labels.long(), self.n_classes + 1
+            assigned_labels.long(), self._n_classes + 1
         ).float()
-        assigned_scores = assigned_scores[:, :, : self.n_classes]
+        assigned_scores = assigned_scores[:, :, : self._n_classes]
 
         return assigned_labels, assigned_bboxes, assigned_scores

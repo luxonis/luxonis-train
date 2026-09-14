@@ -269,7 +269,7 @@ def test_parameter_pattern_matching_is_unanchored(
         5. The search is case-insensitive.
         6. A set `module_type` that does not match rejects.
         7. `name` is a substring search too, so `conv1` claims `conv10`.
-        8. `name` and `module_type` are ANDed, both unanchored.
+        8. `name` and `module_type` must both match; each is unanchored.
 
     `is expected` rather than `== expected` is deliberate: `matches`
     must return a real `bool`, never a truthy `re.Match`.

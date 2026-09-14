@@ -31,9 +31,9 @@ class OCRVisualizer(BaseVisualizer):
         @param thickness: Thickness of the text. Defaults to C{1}.
         """
         super().__init__(**kwargs)
-        self.font_scale = font_scale
-        self.color = color
-        self.thickness = thickness
+        self._font_scale = font_scale
+        self._color = color
+        self._thickness = thickness
 
     def forward(
         self,
@@ -44,8 +44,8 @@ class OCRVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor]:
         """Create a visualization of the OCR predictions and labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: list[str]
@@ -80,9 +80,9 @@ class OCRVisualizer(BaseVisualizer):
                     f"GT: {gt_text}",
                     (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale,
-                    self.color,
-                    self.thickness,
+                    self._font_scale,
+                    self._color,
+                    self._thickness,
                 )
 
             pred_img = cv2.putText(
@@ -90,9 +90,9 @@ class OCRVisualizer(BaseVisualizer):
                 f"Pred: {pred_text} {probability:.2f}",
                 (5, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                self.font_scale,
-                self.color,
-                self.thickness,
+                self._font_scale,
+                self._color,
+                self._thickness,
             )
 
             overlay[i] = numpy_to_torch_img(arr)

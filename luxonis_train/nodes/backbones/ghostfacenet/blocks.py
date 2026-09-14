@@ -22,7 +22,7 @@ class OriginalGhostModuleV2(nn.Module):
         use_prelu: bool = True,
     ):
         super().__init__()
-        self.out_channels = out_channels
+        self._out_channels = out_channels
         intermediate_channels = math.ceil(out_channels / ratio)
         new_channels = intermediate_channels * (ratio - 1)
         self.primary_conv = ConvBlock(
@@ -47,7 +47,7 @@ class OriginalGhostModuleV2(nn.Module):
         x1 = self.primary_conv(x)
         x2 = self.cheap_operation(x1)
         out = torch.cat([x1, x2], dim=1)
-        return out[:, : self.out_channels, ...]
+        return out[:, : self._out_channels, ...]
 
 
 class AttentionGhostModuleV2(OriginalGhostModuleV2):
@@ -107,7 +107,7 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
         x2 = self.cheap_operation(x1)
         out = torch.cat([x1, x2], dim=1)
 
-        return out[:, : self.out_channels, ...] * F.interpolate(
+        return out[:, : self._out_channels, ...] * F.interpolate(
             self.short_conv(x),
             size=(out.shape[-2], out.shape[-1]),
             mode="nearest",
@@ -128,7 +128,7 @@ class GhostBottleneckV2(nn.Module):
     ):
         super().__init__()
         has_se = se_ratio is not None and se_ratio > 0.0
-        self.stride = stride
+        self._stride = stride
 
         # Point-wise expansion
         if mode == "original":
@@ -141,7 +141,7 @@ class GhostBottleneckV2(nn.Module):
             )
 
         # Depth-wise convolution
-        if self.stride > 1:
+        if self._stride > 1:
             self.conv_dw = nn.Conv2d(
                 hidden_channels,
                 hidden_channels,
@@ -170,7 +170,7 @@ class GhostBottleneckV2(nn.Module):
         )
 
         # shortcut
-        if in_channels == out_channels and self.stride == 1:
+        if in_channels == out_channels and self._stride == 1:
             self.shortcut = nn.Identity()
         else:
             self.shortcut = nn.Sequential(
@@ -198,7 +198,7 @@ class GhostBottleneckV2(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         residual = x
         x = self.ghost1(x)
-        if self.stride > 1:
+        if self._stride > 1:
             x = self.conv_dw(x)
             x = self.bn_dw(x)
         if self.se is not None:

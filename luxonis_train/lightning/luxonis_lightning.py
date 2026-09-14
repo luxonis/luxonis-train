@@ -34,7 +34,7 @@ from luxonis_train.lightning.training_plan import (
     resolve_training_plan,
 )
 from luxonis_train.nodes import BaseNode
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
@@ -307,10 +307,10 @@ class LuxonisLightningModule(pl.LightningModule):
         predecessors are computed. Once the outputs are not needed
         anymore, they are removed from the memory.
 
-        @type inputs: L{Tensor}
+        @type inputs: dict[str, Tensor] | Tensor
         @param inputs: Input tensor.
-        @type task_labels: L{TaskLabels} | None
-        @param task_labels: Labels dictionary. Defaults to C{None}.
+        @type labels: L{Labels} | None
+        @param labels: Labels dictionary. Defaults to C{None}.
         @type images: L{Tensor} | None
         @param images: Canvas tensor for visualizers. Defaults to
             C{None}.
@@ -412,10 +412,10 @@ class LuxonisLightningModule(pl.LightningModule):
                 module.set_export_mode(mode=mode)
         return self
 
-    def reparametrize(self) -> Self:
+    def reparameterize(self) -> Self:
         for module in self.modules():
-            if isinstance(module, Reparametrizable):
-                module.reparametrize()
+            if isinstance(module, Reparameterizable):
+                module.reparameterize()
         return self
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
@@ -561,7 +561,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def on_train_epoch_end(self) -> None:
         for name, value in self._loss_accumulators["train"].items():
-            formated_name = (
+            formatted_name = (
                 name.replace(
                     name.split("/")[1],
                     self.nodes.formatted_name(name.split("/")[1]),
@@ -569,7 +569,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 if "/" in name
                 else name
             )
-            self.log(f"train/{formated_name}", value, sync_dist=True)
+            self.log(f"train/{formatted_name}", value, sync_dist=True)
         self._loss_accumulators["train"].clear()
 
     @override
@@ -652,7 +652,7 @@ class LuxonisLightningModule(pl.LightningModule):
         found in the model state dict or in the checkpoint.
 
         @type ckpt: PathType | dict | None
-        @param path: Either a path to or a loaded checkpoint. If
+        @param ckpt: Either a path to or a loaded checkpoint. If
             C{None}, no checkpoint will be loaded.
         """
         if ckpt is None:
@@ -878,7 +878,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
         for name, value in self._loss_accumulators[mode].items():
-            formated_name = (
+            formatted_name = (
                 name.replace(
                     name.split("/")[1],
                     self.nodes.formatted_name(name.split("/")[1]),
@@ -886,7 +886,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 if "/" in name
                 else name
             )
-            self.log(f"{mode}/{formated_name}", value, sync_dist=True)
+            self.log(f"{mode}/{formatted_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
         matrices = defaultdict(dict)

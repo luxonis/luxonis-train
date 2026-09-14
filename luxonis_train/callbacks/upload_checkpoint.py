@@ -19,12 +19,8 @@ class UploadCheckpoint(pl.Callback):
     """
 
     def __init__(self):
-        """
-        @type upload_directory: str
-        @param upload_directory: Path used as upload directory.
-        """
         super().__init__()
-        self.last_best_checkpoints = set()
+        self._last_best_checkpoints = set()
 
     @override
     def on_save_checkpoint(
@@ -41,7 +37,7 @@ class UploadCheckpoint(pl.Callback):
             if isinstance(c, ModelCheckpoint) and c.best_model_path
         ]
         for curr_best_checkpoint in checkpoint_paths:
-            if curr_best_checkpoint not in self.last_best_checkpoints:
+            if curr_best_checkpoint not in self._last_best_checkpoints:
                 logger.info("Uploading checkpoint...")
                 temp_filename = (
                     Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
@@ -54,4 +50,4 @@ class UploadCheckpoint(pl.Callback):
                 Path(temp_filename).unlink(missing_ok=True)
 
                 logger.info("Checkpoint upload finished")
-                self.last_best_checkpoints.add(curr_best_checkpoint)
+                self._last_best_checkpoints.add(curr_best_checkpoint)

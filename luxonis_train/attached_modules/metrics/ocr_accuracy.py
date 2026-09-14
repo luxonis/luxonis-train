@@ -29,7 +29,7 @@ class OCRAccuracy(BaseMetric):
         @param blank_class: Index of the blank class. Defaults to C{0}.
         """
         super().__init__(**kwargs)
-        self.blank_class = blank_class
+        self._blank_class = blank_class
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
@@ -38,8 +38,8 @@ class OCRAccuracy(BaseMetric):
 
         @type predictions: Tensor
         @param predictions: A tensor containing the network predictions.
-        @type targets: Tensor
-        @param targets: A tensor containing the target labels.
+        @type target: Tensor
+        @param target: A tensor containing the target labels.
         """
         target = self.node.encoder(target).to(self.device)
 
@@ -53,7 +53,7 @@ class OCRAccuracy(BaseMetric):
         for i in range(batch_size):
             unique_cons_classes = torch.unique_consecutive(pred_classes[i])
             unique_cons_classes = unique_cons_classes[
-                unique_cons_classes != self.blank_class
+                unique_cons_classes != self._blank_class
             ]
             if len(unique_cons_classes) != 0:
                 predictions[i, : unique_cons_classes.shape[0]] = (
@@ -61,7 +61,7 @@ class OCRAccuracy(BaseMetric):
                 )
 
         target = F.pad(
-            target, (0, text_length - target.shape[1]), value=self.blank_class
+            target, (0, text_length - target.shape[1]), value=self._blank_class
         )
         errors = (predictions != target).sum(dim=1)
 

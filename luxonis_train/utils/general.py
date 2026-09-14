@@ -196,9 +196,9 @@ def safe_download(
     @type file: str | None
     @param file: Name of the saved file, if None infers it from URL.
         Defaults to None.
-    @type dir: str
-    @param dir: Directory to store downloaded file in. Defaults to
-        '.cache_data'.
+    @type cache_dir: PathType
+    @param cache_dir: Directory to store downloaded file in. Defaults to
+        '.cache/luxonis_train'.
     @type retry: int
     @param retry: Number of retries when downloading. Defaults to 3.
     @type force: bool

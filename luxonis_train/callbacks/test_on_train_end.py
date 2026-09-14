@@ -19,7 +19,7 @@ class TestOnTrainEnd(NeedsCheckpoint):
         @param view: The view to use for testing. Defaults to "test".
         """
         super().__init__()
-        self.view: View = view
+        self._view: View = view
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
@@ -40,7 +40,7 @@ class TestOnTrainEnd(NeedsCheckpoint):
 
         pl_module.core.test(
             weights=checkpoint,
-            view=self.view,
+            view=self._view,
             finalize_tracker=False,
         )
 

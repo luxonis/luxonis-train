@@ -1,5 +1,5 @@
 model:
-  name: AnomalyDetecion
+  name: AnomalyDetection
   predefined_model:
     name: AnomalyDetectionModel
     variant: light

@@ -38,7 +38,7 @@ class TrainingProgressCallback(pl.Callback):
         By default 1 means real-time.
         """
         super().__init__()
-        self.log_every_n_batches = max(1, log_every_n_batches)
+        self._log_every_n_batches = max(1, log_every_n_batches)
         self._train_epoch_start_time: float | None = None
         self._val_epoch_start_time: float | None = None
         self._test_epoch_start_time: float | None = None
@@ -367,4 +367,4 @@ class TrainingProgressCallback(pl.Callback):
         )
 
     def _should_log_batch(self, seen_batches: int) -> bool:
-        return seen_batches % self.log_every_n_batches == 0
+        return seen_batches % self._log_every_n_batches == 0

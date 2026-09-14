@@ -45,10 +45,10 @@ class SegmentationVisualizer(BaseVisualizer):
         if colors is not None and not isinstance(colors, list):
             colors = [colors]
 
-        self.colors = colors
-        self.background_class = background_class
-        self.background_color = background_color
-        self.alpha = alpha
+        self._colors = colors
+        self._background_class = background_class
+        self._background_color = background_color
+        self._alpha = alpha
 
         self._warn_colors = True
 
@@ -104,21 +104,21 @@ class SegmentationVisualizer(BaseVisualizer):
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: Tensor
         @param predictions: The predictions to visualize.
-        @type targets: Tensor
-        @param targets: The targets to visualize.
+        @type target: Tensor | None
+        @param target: The targets to visualize.
         @rtype: tuple[Tensor, Tensor]
         @return: A tuple of the label and prediction visualizations.
         """
         colors = self._adjust_colors(
-            self.colors, self.background_class, self.background_color
+            self._colors, self._background_class, self._background_color
         )
 
         predictions_vis = self.draw_predictions(
             prediction_canvas,
             predictions,
-            alpha=self.alpha,
+            alpha=self._alpha,
             colors=colors,
-            scale=self.scale,
+            scale=self._scale,
         )
         if target is None:
             return predictions_vis
@@ -126,9 +126,9 @@ class SegmentationVisualizer(BaseVisualizer):
         targets_vis = self.draw_targets(
             target_canvas,
             target,
-            alpha=self.alpha,
+            alpha=self._alpha,
             colors=colors,
-            scale=self.scale,
+            scale=self._scale,
         )
         return targets_vis, predictions_vis
 

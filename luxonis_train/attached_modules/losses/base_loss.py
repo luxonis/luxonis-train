@@ -22,8 +22,9 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     @typechecked
     def __init__(self, final_loss_weight: float = 1.0, **kwargs):
         """
-        @type weight: float
-        @param weight: Optional weight by which the final loss is multiplied.
+        @type final_loss_weight: float
+        @param final_loss_weight: Optional weight by which the final
+            loss is multiplied.
         """
         super().__init__(**kwargs)
         self.__final_loss_weight = final_loss_weight

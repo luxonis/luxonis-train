@@ -84,9 +84,9 @@ class DinoV3(BaseNode):
         @param variant: Architecture variant of the DINOv3 backbone.
         @type variant: Literal DINOv3Variant.
 
-        @param repo_dir: "facebookresearch/dinov3" if the repository
+        @param repo_or_dir: "facebookresearch/dinov3" if the repository
         is not locally downloaded or cached, "local" otherwise
-        @type repo_dir: str
+        @type repo_or_dir: str
 
         @param freeze_backbone: if True, freeze the backbone;
         this will lead to a transfer learning scenario where
@@ -99,10 +99,10 @@ class DinoV3(BaseNode):
         """
         super().__init__(**kwargs)
 
-        self.return_sequence = return_sequence
-        self.depth = depth
+        self._return_sequence = return_sequence
+        self._depth = depth
 
-        self.backbone, self.patch_size = self._get_backbone(
+        self.backbone, self._patch_size = self._get_backbone(
             weights=weights_link,
             variant=variant,
             repo_or_dir=repo_or_dir,
@@ -120,14 +120,14 @@ class DinoV3(BaseNode):
             "target platform, please pick a different backbone."
         )
         if (
-            self.original_in_shape[-1] % self.patch_size != 0
-            or self.original_in_shape[-2] % self.patch_size != 0
+            self.original_in_shape[-1] % self._patch_size != 0
+            or self.original_in_shape[-2] % self._patch_size != 0
         ):
             logger.warning(
-                f"Image dimensions should be divisible by {self.patch_size},"
+                f"Image dimensions should be divisible by {self._patch_size},"
                 f"but got {self.original_in_shape}. "
                 "This will cause inconsistent image sizes"
-                f"as DINOv3 natively reshapes to multiples of {self.patch_size}."
+                f"as DINOv3 natively reshapes to multiples of {self._patch_size}."
             )
 
     def _replace_rope_embedding(self) -> None:
@@ -153,17 +153,17 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """If self.return_sequence is True, a list containing the CLS
+        """If self._return_sequence is True, a list containing the CLS
         token embedding [B, C] is returned and this can be used for
         downstream classification tasks.
 
-        Otherwise, the last `self.depth` layers of the network are
+        Otherwise, the last `self._depth` layers of the network are
         returned as [B, C, H, W] feature maps, which can be used for
         downstream segmentation and other dense feature tasks
         """
         outs: list[Tensor] = []
 
-        if self.return_sequence:
+        if self._return_sequence:
             features_with_cls = cast(
                 list[tuple[Tensor, Tensor]],
                 self.backbone.get_intermediate_layers(
@@ -176,13 +176,13 @@ class DinoV3(BaseNode):
             seq_features = cast(
                 list[Tensor],
                 self.backbone.get_intermediate_layers(
-                    inputs, norm=True, n=self.depth, return_class_token=False
+                    inputs, norm=True, n=self._depth, return_class_token=False
                 ),
             )
             for x in seq_features:
                 B, N, C = x.shape
                 h, w = self.original_in_shape[1:]
-                gh, gw = h // self.patch_size, w // self.patch_size
+                gh, gw = h // self._patch_size, w // self._patch_size
                 assert gh * gw == N, f"Expected {gh * gw} tokens, got {N}"
                 outs.append(x.permute(0, 2, 1).reshape(B, C, gh, gw))
 

@@ -269,21 +269,20 @@ def non_max_suppression(
             curr_out[:, 5 : 5 + n_classes] *= curr_out[:, 4:5]
 
         bboxes = curr_out[:, :4]
-        keep_mask = torch.zeros(bboxes.size(0)).bool()
         if bbox_format != "xyxy":
             bboxes = box_convert(bboxes, in_fmt=bbox_format, out_fmt="xyxy")
 
         if multi_label:
-            box_idx, class_idx = (
+            # A box repeats once for each of its classes above the threshold.
+            keep_idx, class_idx = (
                 (curr_out[:, 5 : 5 + n_classes] > conf_thres)
                 .nonzero(as_tuple=False)
                 .T
             )
-            keep_mask[box_idx] = True
             curr_out = torch.cat(
                 (
-                    bboxes[keep_mask],
-                    curr_out[keep_mask, class_idx + 5, None],
+                    bboxes[keep_idx],
+                    curr_out[keep_idx, class_idx + 5, None],
                     class_idx[:, None].float(),
                 ),
                 1,
@@ -292,14 +291,14 @@ def non_max_suppression(
             conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(
                 1, keepdim=True
             )
-            keep_mask[conf.view(-1) > conf_thres] = True
+            keep_idx = (conf.view(-1) > conf_thres).nonzero().view(-1)
             curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[
-                keep_mask
+                keep_idx
             ]
 
         if has_additional:
             curr_out = torch.hstack(
-                [curr_out, x[candidate_mask[i]][keep_mask, 5 + n_classes :]]
+                [curr_out, x[candidate_mask[i]][keep_idx, 5 + n_classes :]]
             )
 
         if keep_classes is not None:

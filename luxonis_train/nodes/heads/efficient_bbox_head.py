@@ -60,13 +60,13 @@ class EfficientBBoxHead(BaseDetectionHead):
 
         self.heads = cast(list[EfficientDecoupledBlock], nn.ModuleList())
 
-        for i in range(self.n_heads):
+        for i in range(self._n_heads):
             self.heads.append(
                 EfficientDecoupledBlock(
                     in_channels=self.in_channels[i], n_classes=self.n_classes
                 )
             )
-        self.bias_init_p = bias_init_p
+        self._bias_init_p = bias_init_p
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
@@ -75,7 +75,7 @@ class EfficientBBoxHead(BaseDetectionHead):
             data = [
                 (
                     head.class_branch[-1],
-                    -math.log((1 - self.bias_init_p) / self.bias_init_p),
+                    -math.log((1 - self._bias_init_p) / self._bias_init_p),
                 ),
                 (head.regression_branch[-1], 1.0),
             ]
@@ -160,7 +160,7 @@ class EfficientBBoxHead(BaseDetectionHead):
     @override
     def export_output_names(self) -> list[str] | None:
         return self.get_output_names(
-            [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
+            [f"output{i + 1}_yolov6r2" for i in range(self._n_heads)]
         )
 
     def _prepare_bbox_inference_output(
@@ -197,7 +197,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         return non_max_suppression(
             detections_pre_nms,
             n_classes=self.n_classes,
-            conf_thres=self.conf_thres,
+            conf_thres=self._conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="xyxy",
             max_det=self.max_det,
