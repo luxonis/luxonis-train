@@ -1,3 +1,5 @@
+"""The blocks of the MicroNet backbone."""
+
 from typing import Literal
 
 import torch
@@ -7,6 +9,58 @@ from luxonis_train.nodes.blocks import ConvBlock
 
 
 class MicroBlock(nn.Module):
+    r"""The basic block of MicroNet.
+
+    The block expands the input to
+    ``in_channels * expand_ratio[0] * expand_ratio[1]`` channels.
+    ``groups_1`` and ``groups_2`` select one of three layouts:
+
+    - A *lite* block, when ``groups_1[0]`` is ``0``. A
+      `DepthSpatialSepConv` expands the channels and applies the stride.
+      A grouped :math:`1 \times 1` convolution projects them to
+      ``out_channels``.
+    - A *transition* block, when ``groups_2[1]`` is ``0`` and
+      ``groups_1[0]`` is not ``0``. A grouped :math:`1 \times 1`
+      convolution expands the channels. The block has no depthwise
+      convolution and no projection. Its output keeps the expanded
+      channels.
+    - A *full* block, in all other cases. A grouped :math:`1 \times 1`
+      convolution expands the channels. A `DepthSpatialSepConv` without
+      expansion applies the stride. A second grouped :math:`1 \times 1`
+      convolution projects the channels to ``out_channels``.
+
+    Each convolution has a batch norm and no bias. A `DYShiftMax`, a
+    ``ReLU6``, or no activation follows each :math:`1 \times 1`
+    convolution and each `DepthSpatialSepConv`, as ``dy_shift`` selects.
+    `ChannelShuffle` layers mix the channels of the groups. The block
+    adds its input to its output when ``stride`` is ``1`` and
+    ``out_channels`` is equal to ``in_channels``.
+
+    Example:
+        >>> import torch
+        >>> x = torch.zeros(2, 8, 16, 16)
+        >>> lite = MicroBlock(
+        ...     8, 16, stride=2, groups_1=(0, 8), groups_2=(4, 4)
+        ... )
+        >>> lite(x).shape
+        torch.Size([2, 16, 8, 8])
+
+        A transition block ignores ``out_channels`` and ``stride`` in its
+        layers:
+
+        >>> transition = MicroBlock(
+        ...     8,
+        ...     16,
+        ...     stride=2,
+        ...     expand_ratio=(1, 6),
+        ...     groups_1=(4, 4),
+        ...     groups_2=(0, 0),
+        ... )
+        >>> transition(x).shape
+        torch.Size([2, 48, 16, 16])
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -21,43 +75,73 @@ class MicroBlock(nn.Module):
         init_a: tuple[float, float] = (1.0, 1.0),
         init_b: tuple[float, float] = (0.0, 0.0),
     ):
-        """MicroBlock: The basic building block of MicroNet.
+        r"""Build the layers of the lite, transition, or full layout.
 
-        This block implements the Micro-Factorized Convolution and
-        Dynamic Shift-Max activation. It can be configured to use
-        different combinations of these components based on the network
-        design.
+        Args:
+            in_channels (int): The number of input channels.
+            out_channels (int): The number of output channels of a lite
+                or a full block. The layers of a transition block do not
+                read it. The residual check reads it in all layouts.
+            kernel_size (int): The kernel size :math:`k` of the
+                `DepthSpatialSepConv`, which is a :math:`k \times 1` and
+                a :math:`1 \times k` convolution. A transition block
+                ignores it.
+            stride (int): The stride of the `DepthSpatialSepConv`. The
+                layers of a transition block ignore it.
+            expand_ratio (tuple[int, int]): The two channel multipliers
+                of the expansion. A lite block applies one multiplier in
+                each half of its `DepthSpatialSepConv`. The other layouts
+                apply the product in the expansion :math:`1 \times 1`
+                convolution.
+            groups_1 (tuple[int, int]): The first value is the number of
+                groups of the expansion :math:`1 \times 1` convolution.
+                ``0`` selects a lite block. The second value sets the
+                groups of the `DYShiftMax` layers before the projection
+                and of the `ChannelShuffle` after the first activation.
+                In the `DYShiftMax` after the depthwise convolution of a
+                full block, the groups are the expanded channels divided
+                by the value, when the value is not ``1``. In a transition
+                block, the value sets the groups of its only `DYShiftMax`.
+            groups_2 (tuple[int, int]): The first value is the number of
+                groups of the projection :math:`1 \times 1` convolution.
+                The second value sets the groups of the last `DYShiftMax`
+                and of the `ChannelShuffle` after it. ``0`` selects a
+                transition block when ``groups_1[0]`` is not ``0``.
+            dy_shift (tuple[int, int, int]): The activations after the
+                expansion convolution, after the depthwise convolution,
+                and after the projection. In the first two positions, a
+                positive value selects `DYShiftMax`, and other values
+                select ``ReLU6``. ``2`` selects two branches, and another
+                positive value selects one branch. In the last position,
+                a positive value selects a one-branch `DYShiftMax`, and
+                other values select no activation. A lite block ignores
+                the first value. A transition block reads only the last
+                value, for the activation after its expansion. In a lite
+                or a full block, values other than ``0`` also add a
+                `ChannelShuffle` after an activation. In a lite block,
+                the second value adds one with ``C // 2`` groups, where
+                ``C`` is the number of expanded channels. In a full block,
+                the first two values share one after the depthwise
+                activation. It has ``C // 4`` groups when both values are
+                not ``0``, and ``C // 2`` groups when only one is not
+                ``0``. The last value adds one with ``out_channels // 2``
+                groups. In a lite block, it does so only when
+                ``out_channels`` is even.
+            reduction_factor (int): The reduction of the squeeze network
+                of `DYShiftMax`. The activations use a ``reduction`` of
+                ``8 * reduction_factor``. The last activation of a lite
+                block uses ``4 * reduction_factor``. The last activation
+                of a full block also does, when ``out_channels`` is
+                smaller than the expanded channels.
+            init_a (tuple[float, float]): The offsets for the weights of
+                the input in `DYShiftMax`. The activations after the
+                expansion and after the depthwise convolution use them.
+                The last activation, and the activation of a transition
+                block, use ``(1.0, 0.0)`` instead.
+            init_b (tuple[float, float]): The offsets for the weights of
+                the shifted input in `DYShiftMax`. The same activations
+                as for ``init_a`` use them. The others use ``(0.0, 0.0)``.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Size of the convolution kernel. Defaults to
-            3.
-        @type stride: int
-        @param stride: Stride of the convolution. Defaults to 1.
-        @type expand_ratio: tuple[int, int]
-        @param expand_ratio: Expansion ratios for the intermediate
-            channels. Defaults to (2, 2).
-        @type groups_1: tuple[int, int]
-        @param groups_1: Groups for the first set of convolutions.
-            Defaults to (0, 6).
-        @type groups_2: tuple[int, int]
-        @param groups_2: Groups for the second set of convolutions.
-            Defaults to (1, 1).
-        @type dy_shift: tuple[int, int, int]
-        @param dy_shift: Flags to use Dynamic Shift-Max in different
-            positions. Defaults to (2, 0, 1).
-        @type reduction_factor: int
-        @param reduction_factor: Reduction factor for the squeeze-and-
-            excitation-like operation. Defaults to 1.
-        @type init_a: tuple[float, float]
-        @param init_a: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (1.0, 1.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (0.0, 0.0).
         """
         super().__init__()
 
@@ -112,6 +196,24 @@ class MicroBlock(nn.Module):
             )
 
     def forward(self, inputs: Tensor) -> Tensor:
+        """Run the layers, and add the input for a residual connection.
+
+        Args:
+            inputs (``Tensor``): The input of shape
+                ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: The output of shape ``[B, C, H', W']``. ``C`` is
+            ``out_channels`` for a lite or a full block, and the expanded
+            number of channels for a transition block. For an odd
+            ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and ``W'`` is
+            ``ceil(W / stride)``. A transition block keeps ``H`` and
+            ``W``. With the residual connection, the output is the sum
+            of the layer output and ``inputs``. For a transition block,
+            this sum raises ``RuntimeError`` unless the expanded number
+            of channels is equal to ``in_channels``.
+
+        """
         out = self.layers(inputs)
         if self._use_residual:
             out += inputs
@@ -291,20 +393,46 @@ class MicroBlock(nn.Module):
 
 
 class ChannelShuffle(nn.Module):
+    """Channel shuffle that interleaves the channels of the groups.
+
+    The module splits the channels into ``groups`` groups of equal size.
+    The output takes the first channel of each group, then the second
+    channel of each group, and so on. A grouped convolution after the
+    shuffle then reads channels from all groups. With ``groups`` equal
+    to ``1`` or to the number of channels, the order does not change.
+
+    Example:
+        >>> import torch
+        >>> x = torch.arange(6.0).view(1, 6, 1, 1)
+        >>> ChannelShuffle(3)(x).flatten().tolist()
+        [0.0, 2.0, 4.0, 1.0, 3.0, 5.0]
+
+    """
+
     def __init__(self, groups: int):
-        """Shuffle the channels of the input tensor.
+        """Store the number of groups.
 
-        This operation is used to mix information between groups after
-        grouped convolutions.
+        Args:
+            groups (int): The number of groups. The number of input
+                channels must be a multiple of it.
 
-        @type groups: int
-        @param groups: Number of groups to divide the channels into
-            before shuffling.
         """
         super().__init__()
         self._groups = groups
 
     def forward(self, x: Tensor) -> Tensor:
+        """Interleave the channels of the groups.
+
+        Args:
+            x (``Tensor``): The input of shape ``[B, C, H, W]``. ``C``
+                must be a multiple of ``groups``. Otherwise, the reshape
+                raises ``RuntimeError``.
+
+        Returns:
+            ``Tensor``: The input with its channels in the new order, of
+            the same shape.
+
+        """
         batch_size, channels, height, width = x.size()
         channels_per_group = channels // self._groups
         x = x.view(batch_size, self._groups, channels_per_group, height, width)
@@ -313,6 +441,36 @@ class ChannelShuffle(nn.Module):
 
 
 class DYShiftMax(nn.Module):
+    r"""Dynamic Shift-Max activation of MicroNet.
+
+    The activation mixes each channel with one channel of the next
+    group. The shifted input :math:`\tilde{x}` takes channel ``c + 1``
+    of group ``g + 1`` for channel ``c`` of group ``g``. Both indices
+    wrap around. With 8 channels in 2 groups, channel ``0`` of
+    :math:`\tilde{x}` takes channel ``5``, the second channel of the
+    second group. With two branches, the output is
+
+    .. math::
+
+        y = \max\left(a_1 x + b_1 \tilde{x},\; a_2 x + b_2 \tilde{x}\right)
+
+    With one branch, the output is :math:`y = a_1 x + b_1 \tilde{x}`.
+
+    A squeeze network computes the coefficients from the input. It
+    averages each channel over the height and the width. Two linear
+    layers with a ``ReLU`` between them and a hard sigmoid follow. The
+    module maps the result from ``[0, 1]`` to ``[-2, 2]`` and adds the
+    offsets ``init_a`` and ``init_b``. Each coefficient has
+    ``out_channels`` values for each sample.
+
+    Example:
+        >>> import torch
+        >>> act = DYShiftMax(8, 8, groups=2)
+        >>> act(torch.ones(2, 8, 4, 4)).shape
+        torch.Size([2, 8, 4, 4])
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -324,34 +482,35 @@ class DYShiftMax(nn.Module):
         reduction: int = 4,
         expansion: bool = False,
     ):
-        """Dynamic Shift-Max activation function.
+        r"""Initialize the squeeze network and the channel shift.
 
-        This module implements the Dynamic Shift-Max operation, which
-        adaptively fuses and selects channel information based on the
-        input.
+        Args:
+            in_channels (int): The number of input channels. It must be
+                a multiple of the number of groups.
+            out_channels (int): The number of channels of each
+                coefficient. `forward` needs it equal to ``in_channels``
+                or to ``1``. With ``1``, all channels of a sample share
+                each coefficient.
+            init_a (tuple[float, float]): The offsets for :math:`a_1`
+                and :math:`a_2`. `forward` adds ``init_a[0]`` to
+                :math:`a_1`. It does not read ``init_a[1]``, because it
+                adds ``init_b[1]`` to :math:`a_2`.
+            init_b (tuple[float, float]): The offsets for :math:`b_1`
+                and :math:`b_2`. ``init_b[1]`` also goes to :math:`a_2`.
+            use_relu (bool): ``True`` selects two branches and their
+                maximum, a dynamic form of ``ReLU``. ``False`` selects
+                one branch without a maximum.
+            groups (int): The number of channel groups for the shift.
+                With ``1``, the shift moves the channels by one position.
+            reduction (int): The divisor of ``in_channels`` for the
+                hidden layer of the squeeze network. The module rounds
+                ``in_channels // reduction`` to the nearest multiple of
+                ``4``, with a minimum of ``4``. When the rounding goes
+                more than 10% down, it adds ``4``.
+            expansion (bool): When ``True`` and ``groups`` is not ``1``,
+                the number of groups is ``in_channels // groups``. Then
+                ``groups`` is the number of channels in each group.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type init_a: tuple[float, float]
-        @param init_a: Initial values for the 'a' parameters. Defaults
-            to (0.0, 0.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initial values for the 'b' parameters. Defaults
-            to (0.0, 0.0).
-        @type use_relu: bool
-        @param use_relu: Whether to use ReLU activation. Defaults to
-            True.
-        @type groups: int
-        @param groups: Number of groups for channel shuffling. Defaults
-            to 6.
-        @type reduction: int
-        @param reduction: Reduction factor for the squeeze operation.
-            Defaults to 4.
-        @type expansion: bool
-        @param expansion: Whether to use expansion in grouping. Defaults
-            to False.
         """
         super().__init__()
         self._exp: Literal[2, 4] = 4 if use_relu else 2
@@ -385,6 +544,15 @@ class DYShiftMax(nn.Module):
         self._index = index_splits.view(in_channels).long()
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the activation with the coefficients of the input.
+
+        Args:
+            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: The activated input, of the same shape.
+
+        """
         batch_size, channels, _, _ = x.shape
         x_out = x
 
@@ -428,6 +596,24 @@ def _make_divisible(value: int, divisor: int) -> int:
 
 
 class SpatialSepConvSF(nn.Module):
+    r"""Spatially separable convolution with a channel shuffle.
+
+    A :math:`k \times 1` convolution maps the input to ``outs[0]``
+    channels and applies the stride along the height. A
+    :math:`1 \times k` convolution with ``outs[0]`` groups multiplies
+    the channels by ``outs[1]`` and applies the stride along the width.
+    A batch norm follows each convolution. A `ChannelShuffle` with
+    ``outs[0]`` groups ends the block. The convolutions have no bias,
+    and the block has no activation.
+
+    Example:
+        >>> import torch
+        >>> conv = SpatialSepConvSF(3, (4, 2), kernel_size=3, stride=2)
+        >>> conv(torch.zeros(1, 3, 32, 32)).shape
+        torch.Size([1, 8, 16, 16])
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -435,6 +621,21 @@ class SpatialSepConvSF(nn.Module):
         kernel_size: int,
         stride: int,
     ):
+        r"""Initialize the two convolutions and the channel shuffle.
+
+        Args:
+            in_channels (int): The number of input channels.
+            outs (tuple[int, int]): The channel layout. The first value
+                is the number of output channels of the
+                :math:`k \times 1` convolution. It is also the number of
+                groups of the :math:`1 \times k` convolution and of the
+                shuffle. The second value is the channel multiplier of
+                the :math:`1 \times k` convolution.
+            kernel_size (int): The kernel size :math:`k`. The padding is
+                ``kernel_size // 2``.
+            stride (int): The stride along the height and the width.
+
+        """
         super().__init__()
         out_channels1, out_channels2 = outs
         self.conv = nn.Sequential(
@@ -461,23 +662,90 @@ class SpatialSepConvSF(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the convolutions, the batch norms, and the shuffle.
+
+        Args:
+            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: The output of shape
+            ``[B, outs[0] * outs[1], H', W']``. For an odd
+            ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and ``W'`` is
+            ``ceil(W / stride)``.
+
+        """
         return self.conv(x)
 
 
 class Stem(nn.Module):
+    """Stem of MicroNet.
+
+    The stem is a `SpatialSepConvSF` with a kernel size of ``3``,
+    followed by an in-place ``ReLU6``.
+
+    Example:
+        >>> import torch
+        >>> stem = Stem(3, stride=2, outs=(3, 2))
+        >>> stem(torch.zeros(1, 3, 32, 32)).shape
+        torch.Size([1, 6, 16, 16])
+
+    """
+
     def __init__(
         self, in_channels: int, stride: int, outs: tuple[int, int] = (4, 4)
     ):
+        r"""Initialize the convolution and the activation.
+
+        Args:
+            in_channels (int): The number of input channels.
+            stride (int): The stride along the height and the width.
+            outs (tuple[int, int]): The channel layout of the
+                `SpatialSepConvSF`. The first value is the number of
+                output channels of the :math:`3 \times 1` convolution and
+                the number of groups after it. The second value is the
+                channel multiplier. The stem has
+                ``outs[0] * outs[1]`` output channels.
+
+        """
         super().__init__()
         self.stem = nn.Sequential(
             SpatialSepConvSF(in_channels, outs, 3, stride), nn.ReLU6(True)
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the convolution and ``ReLU6``.
+
+        Args:
+            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: The output of shape
+            ``[B, outs[0] * outs[1], ceil(H / stride), ceil(W / stride)]``,
+            with values in ``[0, 6]``.
+
+        """
         return self.stem(x)
 
 
 class DepthSpatialSepConv(nn.Module):
+    r"""Factorized depthwise convolution that expands the channels.
+
+    A :math:`k \times 1` convolution with ``in_channels`` groups
+    multiplies the channels by ``expand[0]`` and applies the stride
+    along the height. A :math:`1 \times k` convolution with one group
+    for each of its input channels multiplies the channels by
+    ``expand[1]`` and applies the stride along the width. A batch norm
+    follows each convolution. The convolutions have no bias, and the
+    block has no activation.
+
+    Example:
+        >>> import torch
+        >>> conv = DepthSpatialSepConv(4, (2, 3), kernel_size=3, stride=2)
+        >>> conv(torch.zeros(1, 4, 9, 9)).shape
+        torch.Size([1, 24, 5, 5])
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -485,6 +753,19 @@ class DepthSpatialSepConv(nn.Module):
         kernel_size: int,
         stride: int,
     ):
+        r"""Initialize the two depthwise convolutions.
+
+        Args:
+            in_channels (int): The number of input channels.
+            expand (tuple[int, int]): The channel multipliers of the
+                :math:`k \times 1` and the :math:`1 \times k`
+                convolution. The block has
+                ``in_channels * expand[0] * expand[1]`` output channels.
+            kernel_size (int): The kernel size :math:`k`. The padding is
+                ``kernel_size // 2``.
+            stride (int): The stride along the height and the width.
+
+        """
         super().__init__()
         exp1, exp2 = expand
         intermediate_channels = in_channels * exp1
@@ -514,4 +795,16 @@ class DepthSpatialSepConv(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the two convolutions and their batch norms.
+
+        Args:
+            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: The output of shape
+            ``[B, in_channels * expand[0] * expand[1], H', W']``. For an
+            odd ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and
+            ``W'`` is ``ceil(W / stride)``.
+
+        """
         return self.conv(x)
