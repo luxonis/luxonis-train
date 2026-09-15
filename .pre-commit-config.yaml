@@ -37,14 +37,14 @@ repos:
       - id: docformatter
         additional_dependencies: [tomli]
         args: [--in-place, --blank, --close-quotes-on-newline]
-        exclude: ^luxonis_train/(attached_modules|callbacks|config|configs|core|lightning|loaders|nodes|optimizers|schedulers|strategies)/
+        exclude: ^luxonis_train/(attached_modules|callbacks|core|lightning|loaders|nodes|optimizers|schedulers|strategies)/
       # These packages still have Epytext docstrings. The PRs of the
       # Google docstring migration remove them from this entry.
       - id: docformatter
         name: docformatter (Epytext)
         additional_dependencies: [tomli]
         args: [--in-place, --style=epytext, --close-quotes-on-newline]
-        files: ^luxonis_train/(attached_modules|callbacks|config|configs|core|lightning|loaders|nodes|optimizers|schedulers|strategies)/
+        files: ^luxonis_train/(attached_modules|callbacks|core|lightning|loaders|nodes|optimizers|schedulers|strategies)/
 
   - repo: https://github.com/executablebooks/mdformat
     rev: 1.0.0
@@ -64,6 +64,15 @@ repos:
 
     hooks:
       - id: taplo-format
+
+  - repo: local
+    hooks:
+      - id: gen-component-docs
+        name: generated component docs are up to date
+        entry: python scripts/gen_component_docs.py --check
+        language: system
+        pass_filenames: false
+        files: ^(luxonis_train/(nodes|attached_modules|config/predefined_models)/.*\.py|scripts/gen_component_docs\.py)$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
