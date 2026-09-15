@@ -1,3 +1,12 @@
+"""The base class of every loss, metric, and visualizer.
+
+`BaseAttachedModule` checks that a module fits the task and the type of
+its node. `BaseAttachedModule.get_parameters` selects the inputs of a
+module from the output packet of the node and the labels, by the
+parameter names of the module.
+
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
@@ -9,7 +18,7 @@ from typing import Literal, Union, get_args, get_origin
 from bidict import bidict
 from loguru import logger
 from luxonis_ml.typing import check_type
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 from torch import Size, Tensor, nn
 
 from luxonis_train.nodes import BaseNode
@@ -21,39 +30,57 @@ from luxonis_train.utils import IncompatibleError
 class BaseAttachedModule(
     nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
-    """Base class for all modules that are attached to a L{LuxonisNode}.
+    """Base class for all modules that attach to a `BaseNode`.
 
-    Attached modules include losses, metrics and visualizers.
+    `BaseLoss`, `BaseMetric`, and `BaseVisualizer` subclass it. A
+    subclass can restrict the nodes that it accepts in two ways:
 
-    This class contains a default implementation of C{prepare} method, which
-    should be sufficient for most simple cases. More complex modules should
-    override the C{prepare} method.
+    - Set the class attribute ``supported_tasks``.
+    - Annotate ``node`` in the class body, for example
+      ``node: OCRCTCHead``. The constructor then raises
+      `IncompatibleError` when the node is not an instance of that
+      class. The check reads only the annotations of the nearest class
+      that has annotations. Thus the annotations of a subclass hide the
+      ``node`` annotation of its parent.
 
-    When subclassing, the following methods can be overridden:
-        - L{prepare}: Prepares node outputs for the forward pass of the module.
-          Override this method if the default implementation is not sufficient.
+    The properties that read the node, such as `n_classes`, raise
+    ``RuntimeError`` when the module has no node.
 
-    Additionally, the following attributes can be overridden:
-        - L{supported_tasks}: List of task types that the module supports.
-          Used to determine which labels to extract from the dataset and to validate
-          compatibility with the node based on the node's tasks.
+    Attributes:
+        supported_tasks (``Sequence[Task] | None``): The tasks that the
+            module supports. The constructor raises `IncompatibleError`
+            when the task of the node is not in the sequence. When the
+            module gets no task from its node and the sequence holds
+            one task, that task becomes the task of the module. ``None``
+            accepts a node with any task.
 
-
-    @type supported_tasks: list[Task] | None
-    @ivar supported_tasks: List of task types that the module supports.
-        Elements of the list can be either a single task type or a tuple of
-        task types. In case of the latter, the module requires all of the
-        specified labels in the tuple to be present.
     """
 
     supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
-        """
-        @type node: BaseNode
-        @param node: Reference to the node that this module is attached
-            to.
-        @param kwargs: Additional keyword arguments.
+        """Initialize the module and select its task.
+
+        The task of the node becomes the task of the module. Without a
+        node, or with a node that has no task, the only item of
+        ``supported_tasks`` becomes the task. In the other cases, the
+        module has no task, and `task` raises ``RuntimeError``.
+
+        Args:
+            node (BaseNode | None): The node that the module attaches to.
+                The trainer passes it. ``None`` makes the properties that
+                read the node raise ``RuntimeError``.
+            **kwargs (``Any``): Keyword arguments forwarded to the next
+                base class. For a metric, it is the ``torchmetrics``
+                ``Metric``. For a loss or a visualizer, it is
+                `torch.nn.Module`, which raises ``TypeError`` for any
+                keyword argument.
+
+        Raises:
+            IncompatibleError: When the task of the node is not in
+                ``supported_tasks``, or when the node is not an instance
+                of the class in the ``node`` annotation.
+
         """
         super().__init__(**kwargs)
         self._node = node
@@ -83,6 +110,15 @@ class BaseAttachedModule(
 
     @property
     def current_epoch(self) -> int:
+        """The number of the current training epoch, from ``0``.
+
+        The value comes from `node`. `LuxonisLightningModule` sets it on
+        the node at the start of each training epoch.
+
+        Raises:
+            RuntimeError: When the module has no node.
+
+        """
         return self.node.current_epoch
 
     @cached_property
@@ -91,6 +127,15 @@ class BaseAttachedModule(
 
     @property
     def task(self) -> Task:
+        """The task of the module.
+
+        The constructor selects it from the node or from
+        ``supported_tasks``.
+
+        Raises:
+            RuntimeError: When the module has no task.
+
+        """
         if self._task is None:
             raise RuntimeError(
                 f"Task of module '{self.name}' is not set. This can happen "
@@ -105,19 +150,35 @@ class BaseAttachedModule(
 
     @property
     def required_labels(self) -> set[str | Metadata]:
+        """The labels that the task of the module requires.
+
+        The base implementation returns the `Task.required_labels` of
+        `task`. A ``target`` parameter without an underscore selects the
+        only label of this set.
+
+        Raises:
+            RuntimeError: When the module has no task.
+
+        """
         return self.task.required_labels
 
     @property
     def name(self) -> str:
+        """The class name of the module.
+
+        It is not the alias of the module in the config. The error
+        messages of the module use it.
+
+        """
         return self.__class__.__name__
 
     @property
     def node(self) -> BaseNode:
-        """Reference to the node that this module is attached to.
+        """The node that the module attaches to.
 
-        @type: L{BaseNode}
-        @raises RuntimeError: If the node was not provided during
-            initialization.
+        Raises:
+            RuntimeError: When the constructor got no node.
+
         """
         if self._node is None:
             raise RuntimeError(
@@ -128,49 +189,129 @@ class BaseAttachedModule(
 
     @property
     def n_keypoints(self) -> int:
-        """Getter for the number of keypoints.
+        """The number of keypoints of the node task.
 
-        @type: int
-        @raises ValueError: If the node does not support keypoints.
-        @raises RuntimeError: If the node doesn't define any task.
+        The value is `BaseNode.n_keypoints` of `node`. It is ``0`` when
+        the dataset has no keypoints for the task of the node.
+
+        Raises:
+            RuntimeError: When the module has no node, or when the node
+                got neither ``n_keypoints`` nor ``dataset_metadata``.
+
         """
         return self.node.n_keypoints
 
     @property
     def n_classes(self) -> int:
-        """Getter for the number of classes.
+        """The number of classes of the node task.
 
-        @type: int
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the number of classes is different for
-            different tasks. In that case, use the L{get_n_classes}
-            method.
+        The value is `BaseNode.n_classes` of `node`.
+
+        Raises:
+            RuntimeError: When the module has no node, or when the node
+                got neither ``n_classes`` nor ``dataset_metadata``.
+            ValueError: When the dataset has no task with the
+                ``task_name`` of the node.
+
         """
         return self.node.n_classes
 
     @property
     def original_in_shape(self) -> Size:
-        """Getter for the original input shape as [N, H, W].
+        """The shape of the model input image, ``[C, H, W]``.
 
-        @type: Size
+        The value is `BaseNode.original_in_shape` of `node`. The shape
+        does not include the batch dimension.
+
+        Raises:
+            RuntimeError: When the module has no node, or when the node
+                got no ``original_in_shape``.
+
         """
         return self.node.original_in_shape
 
     @property
     def classes(self) -> bidict[str, int]:
-        """Getter for the class mapping.
+        """The class indices of the node task, keyed by class name.
 
-        @type: dict[str, int]
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the class names are different for
-            different tasks. In that case, use the L{get_class_names}
-            method.
+        The value is `BaseNode.classes` of `node`, a new ``bidict``.
+
+        Raises:
+            RuntimeError: When the module has no node, or when the node
+                got no ``dataset_metadata``.
+            ValueError: When the dataset has no task with the
+                ``task_name`` of the node.
+
         """
         return self.node.classes
 
     def get_parameters(
         self, predictions: Packet[Tensor], labels: Labels | None = None
     ) -> dict[str, Tensor | list[Tensor] | None]:
+        """Select the arguments of the module from a batch.
+
+        The method reads the parameters of `BaseLoss.forward`,
+        `BaseMetric.update`, or `BaseVisualizer.forward`, without
+        ``self``, ``kwargs``, and the canvases of a visualizer. It picks
+        a value for each parameter by its name:
+
+        - A name that starts with ``target`` selects a label. The part
+          after the first underscore is the label, so
+          ``target_boundingbox`` selects ``<task_name>/boundingbox``. A
+          name without an underscore, such as ``target``, selects the
+          only label in `required_labels`.
+        - A name that starts with ``pred`` selects the packet key
+          after the first underscore. A name without an underscore,
+          such as ``predictions``, selects the ``main_output`` of
+          `task`.
+        - Any other name selects the packet key of that name.
+
+        ``<task_name>`` is the ``task_name`` of `node`. The method
+        clones each selected tensor, and each tensor of a selected list.
+        When a value is missing, a parameter annotated with ``| None``
+        gets ``None``. Another parameter with a default value gets no
+        entry, so the default applies.
+
+        Args:
+            predictions (``Packet[Tensor]``): The output packet of the
+                node.
+            labels (``Labels | None``): The labels of the batch, keyed
+                ``<task_name>/<label>``. ``None`` acts as an empty
+                dictionary.
+
+        Returns:
+            ``dict[str, Tensor | list[Tensor] | None]``: The values keyed
+            by parameter name, ready to pass as keyword arguments.
+
+        Raises:
+            RuntimeError: When a parameter without a default value gets
+                no value. Also when a ``target`` name has no underscore
+                and the task does not require exactly one label. Also
+                when a name needs a node or a task that the module does
+                not have.
+            TypeError: When a value does not match the annotation of its
+                parameter.
+
+        Example:
+            A missing optional value becomes ``None``. The selected
+            tensor is a copy:
+
+            >>> import torch
+            >>> from torch import Tensor
+            >>> from luxonis_train.attached_modules.losses import BaseLoss
+            >>> class Loss(BaseLoss, register=False):
+            ...     def forward(
+            ...         self, features: Tensor, scale: Tensor | None = None
+            ...     ) -> Tensor:
+            ...         return features.sum()
+            >>> packet = {"features": torch.ones(2)}
+            >>> kwargs = Loss().get_parameters(packet)
+            >>> kwargs["scale"] is None
+            True
+            >>> kwargs["features"] is packet["features"]
+            False
+
+        """
         kwargs: dict[str, Tensor | list[Tensor] | None] = {}
         labels = labels or {}
         for kwarg_name, parameter in self._signature.items():
