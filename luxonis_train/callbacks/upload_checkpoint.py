@@ -13,6 +13,8 @@ from typing_extensions import override
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
 
+_CHECKPOINT_STATE_KEY = "last_best_checkpoints"
+
 
 @CALLBACKS.register()
 class UploadCheckpoint(pl.Callback):
@@ -35,7 +37,7 @@ class UploadCheckpoint(pl.Callback):
     def __init__(self):
         """Initialize the callback with no uploaded checkpoints."""
         super().__init__()
-        self._last_best_checkpoints = set()
+        self._last_best_checkpoints: set[str] = set()
 
     @override
     def on_save_checkpoint(
@@ -74,11 +76,9 @@ class UploadCheckpoint(pl.Callback):
         The uploaded file holds the state of the current save, not the
         file at ``best_model_path``. A ``ModelCheckpoint`` sets its new
         best path just before it saves, so the two hold the same
-        weights. **A resumed run breaks this.** Each ``ModelCheckpoint``
-        restores its ``best_model_path`` from the checkpoint, but the
-        record of uploaded paths starts empty. The first save after the
-        resume uploads the current state for every restored path. That
-        state can differ from the best weights.
+        weights. The callback stores the uploaded paths in its
+        checkpoint state. A resumed run restores them and does not
+        upload the current state for a historical best path.
 
         Args:
             trainer (``pl.Trainer``): The trainer. The hook reads its
@@ -90,25 +90,61 @@ class UploadCheckpoint(pl.Callback):
                 it.
 
         """
-        checkpoint = copy(checkpoint)
-        module._add_custom_data_to_checkpoint(checkpoint)
+        upload_checkpoint = copy(checkpoint)
+        upload_checkpoint["callbacks"] = copy(checkpoint["callbacks"])
+        module._add_custom_data_to_checkpoint(upload_checkpoint)
         checkpoint_paths = [
             c.best_model_path
             for c in trainer.checkpoint_callbacks
             if isinstance(c, ModelCheckpoint) and c.best_model_path
         ]
         for curr_best_checkpoint in checkpoint_paths:
-            if curr_best_checkpoint not in self._last_best_checkpoints:
-                logger.info("Uploading checkpoint...")
-                temp_filename = (
-                    Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
-                )
+            if curr_best_checkpoint in self._last_best_checkpoints:
+                continue
+
+            logger.info("Uploading checkpoint...")
+            self._last_best_checkpoints.add(curr_best_checkpoint)
+            callback_state = self.state_dict()
+            checkpoint["callbacks"][self.state_key] = callback_state
+            upload_checkpoint["callbacks"][self.state_key] = callback_state
+            temp_filename = (
+                Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
+            )
+            try:
                 torch.save(  # nosemgrep
-                    checkpoint, temp_filename
+                    upload_checkpoint, temp_filename
                 )
                 module.logger.upload_artifact(temp_filename, typ="weights")
+            except Exception:
+                self._last_best_checkpoints.remove(curr_best_checkpoint)
+                checkpoint["callbacks"][self.state_key] = self.state_dict()
+                raise
 
-                Path(temp_filename).unlink(missing_ok=True)
+            Path(temp_filename).unlink(missing_ok=True)
+            logger.info("Checkpoint upload finished")
 
-                logger.info("Checkpoint upload finished")
-                self._last_best_checkpoints.add(curr_best_checkpoint)
+    @override
+    def state_dict(self) -> dict[str, set[str]]:
+        """Return the paths of the checkpoints already uploaded.
+
+        Returns:
+            dict[str, set[str]]: The uploaded paths under
+                ``"last_best_checkpoints"``.
+
+        """
+        return {
+            _CHECKPOINT_STATE_KEY: self._last_best_checkpoints.copy(),
+        }
+
+    @override
+    def load_state_dict(self, state_dict: dict[str, set[str]]) -> None:
+        """Restore the paths of the checkpoints already uploaded.
+
+        Args:
+            state_dict (dict[str, set[str]]): The callback state from a
+                checkpoint. An old checkpoint can hold an empty dictionary.
+
+        """
+        self._last_best_checkpoints = state_dict.get(
+            _CHECKPOINT_STATE_KEY, set()
+        ).copy()
