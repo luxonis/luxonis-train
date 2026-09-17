@@ -41,9 +41,9 @@ class ExportOnTrainEnd(NeedsCheckpoint):
         ``exporter.upload_to_run`` is set. When no checkpoint exists,
         the hook logs a warning and exports nothing.
 
-        The export loads the checkpoint into ``pl_module`` and does not
-        restore the earlier weights. After the hook, ``pl_module`` holds
-        the weights of the checkpoint.
+        The export loads the checkpoint into ``pl_module`` only for the
+        export. After the hook, ``pl_module`` holds its earlier weights
+        again.
 
         Args:
             _ (``pl.Trainer``): The trainer. Unused.
