@@ -45,11 +45,11 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
         warning and builds no archive. It logs an error and builds no
         archive when its own export produced no ONNX file.
 
-        The export and the archive do not restore the earlier weights of
-        ``pl_module``. After an export of the hook, ``pl_module`` holds
-        the checkpoint weights. `LuxonisModel.archive` then loads the
-        weights of the `LuxonisModel` constructor, or ``model.weights``
-        of the config, when either exists.
+        The export of the hook loads the checkpoint into ``pl_module``
+        only for the export. When the `LuxonisModel` constructor or
+        ``model.weights`` of the config gives weights,
+        `LuxonisModel.archive` loads them only for the archive. After the
+        hook, ``pl_module`` holds its earlier weights again.
 
         Args:
             _ (``pl.Trainer``): The trainer. Unused.

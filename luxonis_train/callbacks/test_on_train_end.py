@@ -68,9 +68,9 @@ class TestOnTrainEnd(NeedsCheckpoint):
 
         The test loads the checkpoint into
         ``pl_module.core.lightning_module``, which is ``pl_module`` in a
-        `LuxonisModel.train` run. It does not restore the earlier
-        weights, so that module holds the checkpoint weights after the
-        hook.
+        `LuxonisModel.train` run. It loads the checkpoint only for the
+        test. After the hook, that module holds its earlier weights
+        again.
 
         Args:
             trainer (``pl.Trainer``): The trainer. The hook reads and

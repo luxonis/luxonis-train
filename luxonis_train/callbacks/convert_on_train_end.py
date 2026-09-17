@@ -55,9 +55,9 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
 
         The conversion loads the checkpoint into
         ``pl_module.core.lightning_module``, which is ``pl_module`` in a
-        `LuxonisModel.train` run. It does not restore the earlier
-        weights, so that module holds the weights of the checkpoint
-        after the hook.
+        `LuxonisModel.train` run. It loads the checkpoint only for the
+        export and for the archive. After the hook, that module holds
+        its earlier weights again.
 
         Args:
             trainer (``pl.Trainer``): The trainer. The hook reads its
