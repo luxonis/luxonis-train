@@ -33,9 +33,10 @@ class AIMETCallback(NeedsCheckpoint):
 
         Args:
             **kwargs (``Any``): Keyword arguments forwarded to
-                `NeedsCheckpoint`. The only valid key is
-                ``preferred_checkpoint``, with the value ``"metric"`` or
-                ``"loss"``. Any other key raises ``TypeError``.
+                `NeedsCheckpoint`. The ``preferred_checkpoint`` value
+                ``"loss"`` selects the loss checkpoint. Every other value
+                selects the metric checkpoint. Any other key raises
+                ``TypeError``.
 
         """
         super().__init__(**kwargs)
