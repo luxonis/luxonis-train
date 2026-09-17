@@ -60,25 +60,34 @@ class UploadCheckpoint(pl.Callback):
         ``ModelCheckpoint`` of ``trainer``. For each non-empty path that
         the callback did not upload before, the hook does these steps:
 
-        1. It writes the copy to ``<directory>.ckpt`` in the current
+        1. It records the path as uploaded. It writes the new callback
+           state to ``checkpoint["callbacks"]`` and to the copy.
+        2. It writes the copy to ``<directory>.ckpt`` in the current
            working directory. ``<directory>`` is the name of the
            directory that holds the path. For the checkpoints that
            `Nodes.build_callbacks` adds, the names are
            ``min_val_loss.ckpt`` and ``best_val_metric.ckpt``. The write
            replaces a file of that name.
-        2. It uploads the file with ``module.logger.upload_artifact`` and
+        3. It uploads the file with ``module.logger.upload_artifact`` and
            the artifact type ``weights``. The upload runs on rank zero
            only.
-        3. It deletes the file and records the path as uploaded.
+        4. It deletes the file.
+
+        When the write or the upload raises an error, the hook removes
+        the path from the record. It writes the callback state without
+        that path to ``checkpoint["callbacks"]`` and raises the error
+        again.
 
         The hook logs an info message before and after each upload.
 
         The uploaded file holds the state of the current save, not the
         file at ``best_model_path``. A ``ModelCheckpoint`` sets its new
         best path just before it saves, so the two hold the same
-        weights. The callback stores the uploaded paths in its
-        checkpoint state. A resumed run restores them and does not
-        upload the current state for a historical best path.
+        weights. Lightning collects the callback states before it calls
+        this hook. Thus the hook must write the new state into
+        ``checkpoint`` itself. A resumed run restores the uploaded paths
+        and does not upload the current state for a historical best
+        path.
 
         Args:
             trainer (``pl.Trainer``): The trainer. The hook reads its
@@ -86,8 +95,10 @@ class UploadCheckpoint(pl.Callback):
             module (LuxonisLightningModule): The model. The hook uploads
                 through its logger and adds its metadata to the copy.
             checkpoint (``dict[str, Any]``): The checkpoint dictionary
-                that Lightning is about to write. The hook does not change
-                it.
+                that Lightning is about to write. For each new upload,
+                the hook replaces the state of this callback in
+                ``checkpoint["callbacks"]``. It does not change the
+                other keys.
 
         """
         upload_checkpoint = copy(checkpoint)
