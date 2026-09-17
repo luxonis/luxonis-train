@@ -18,15 +18,14 @@ import copy
 import os
 import shutil
 from collections import defaultdict
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Literal, Protocol, TypedDict, TypeVar
 
 from loguru import logger
 from luxonis_ml.typing import PathType, check_type
 
-import luxonis_train as lxt
 from luxonis_train.config import ExportConfig
 from luxonis_train.config.config import HubAIExportConfig, PreprocessingConfig
 
@@ -34,17 +33,20 @@ if TYPE_CHECKING:
     from hubai_sdk import HubAIClient
     from hubai_sdk.utils.sdk_models import ConvertResponse
     from onnx import GraphProto, TensorProto
+    from torch import Tensor
+
+_WeightsT_contra = TypeVar("_WeightsT_contra", contravariant=True)
 
 
 @contextmanager
 def replace_weights(
-    module: "lxt.LuxonisLightningModule",
-    weights: PathType | dict[str, Any] | None = None,
-) -> Generator:
+    module: "_WeightLoadable[_WeightsT_contra]",
+    weights: _WeightsT_contra | None = None,
+) -> Generator[None, None, None]:
     """Load ``weights`` into ``module`` inside a ``with`` block.
 
-    On entry, when ``weights`` is not ``None``, the manager keeps the
-    result of ``module.state_dict()``. It then loads ``weights`` with
+    On entry, when ``weights`` is not ``None``, the manager keeps a deep
+    copy of ``module.state_dict()``. It then loads ``weights`` with
     `LuxonisLightningModule.load_checkpoint`, which also puts the module
     in evaluation mode. It sets the private flag
     ``_weights_explicitly_loaded`` on the module. While that flag is
@@ -53,10 +55,6 @@ def replace_weights(
     the manager clears the flag and loads the kept state dict into the
     module. It does not restore the training mode that the module had
     before the block.
-
-    **The kept state dict is not a copy.** Its tensors share memory
-    with the module, so the load of ``weights`` overwrites them too.
-    After the block, the module still holds ``weights``.
 
     With ``weights`` of ``None``, the block runs with the module
     unchanged.
@@ -75,7 +73,7 @@ def replace_weights(
     """
     old_weights = None
     if weights is not None:
-        old_weights = module.state_dict()
+        old_weights = copy.deepcopy(module.state_dict())
         module.load_checkpoint(weights)
         object.__setattr__(module, "_weights_explicitly_loaded", True)
 
@@ -702,3 +700,13 @@ def _remap_node_inputs(
 
         del node.input[:]
         node.input.extend(new_inputs)
+
+
+class _WeightLoadable(Protocol[_WeightsT_contra]):
+    def state_dict(self) -> "Mapping[str, Tensor]": ...
+
+    def load_checkpoint(self, ckpt: _WeightsT_contra) -> None: ...
+
+    def load_state_dict(
+        self, state_dict: "Mapping[str, Tensor]"
+    ) -> object: ...
