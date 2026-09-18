@@ -1,3 +1,22 @@
+"""Backbones that turn an image into feature maps.
+
+Most backbones return a list of feature maps. The stride increases from
+one map to the next. A neck or a head then reads the maps. Some
+backbones differ:
+
+- `ContextSpatial` and `DDRNet` return features at 1/8 of the input
+  size, for a segmentation head.
+- `DinoV3` returns a list with one CLS embedding instead of feature
+  maps when ``return_sequence`` is ``True``.
+- `GhostFaceNet` targets face embeddings.
+- `RecSubNet` returns a packet with an image reconstruction and the
+  original input, for anomaly detection.
+
+A backbone with variants takes ``variant`` to pick a size. Each backbone
+docstring lists its variants and the parameters that each variant sets.
+
+"""
+
 from luxonis_train.nodes.backbones.dinov3.dinov3 import DinoV3
 
 from .contextspatial import ContextSpatial

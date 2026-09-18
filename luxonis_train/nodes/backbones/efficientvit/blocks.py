@@ -1,3 +1,5 @@
+"""The convolution and attention blocks of the EfficientViT backbone."""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -7,6 +9,24 @@ from luxonis_train.nodes.blocks import ConvBlock, autopad
 
 
 class DepthWiseSeparableConv(nn.Module):
+    """Depthwise separable convolution with an optional residual
+    connection.
+
+    The block runs a depthwise `ConvBlock` and then a ``1x1`` pointwise
+    `ConvBlock`. The depthwise convolution has one group for each input
+    channel. Both convolutions have a batch norm.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.backbones.efficientvit.blocks import (
+        ...     DepthWiseSeparableConv,
+        ... )
+        >>> block = DepthWiseSeparableConv(8, 16, stride=2)
+        >>> block(torch.zeros(1, 8, 15, 15)).shape
+        torch.Size([1, 16, 8, 8])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -22,32 +42,38 @@ class DepthWiseSeparableConv(nn.Module):
         dilation: int | tuple[int, int] = 1,
         use_residual: bool = False,
     ):
-        """Depthwise separable convolution.
+        """Build the depthwise and the pointwise convolutions.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type depthwise_bias: bool
-        @param depthwise_bias: Whether to use bias for the depthwise
-            convolution.
-        @type pointwise_bias: bool
-        @param pointwise_bias: Whether to use bias for the pointwise
-            convolution.
-        @type depthwise_activation: nn.Module
-        @param depthwise_activation: Activation function for the
-            depthwise convolution. Defaults to nn.ReLU6().
-        @type pointwise_activation: nn.Module
-        @param pointwise_activation: Activation function for the
-            pointwise convolution.
-        @type padding: int | str | None
-        @param padding: Padding. Defaults to None.
-        @type dilation: int | tuple[int, int]
-        @param dilation: Dilation. Defaults to 1.
+        Args:
+            in_channels (int): Number of input channels. The depthwise
+                convolution keeps this number of channels.
+            out_channels (int): Number of output channels of the
+                pointwise convolution.
+            kernel_size (int): Kernel size of the depthwise convolution.
+                Defaults to ``3``.
+            stride (int): Stride of the depthwise convolution. Defaults
+                to ``1``.
+            depthwise_bias (bool): Whether the depthwise convolution has
+                a bias term. Defaults to ``False``.
+            pointwise_bias (bool): Whether the pointwise convolution has
+                a bias term. Defaults to ``False``.
+            depthwise_activation (``nn.Module | None``): The activation
+                after the depthwise convolution. ``None`` selects
+                `torch.nn.ReLU6`.
+            pointwise_activation (``nn.Module | None``): The activation
+                after the pointwise convolution. ``None`` selects no
+                activation.
+            padding (int | str | None): Padding of the depthwise
+                convolution, or the string ``"same"`` or ``"valid"``.
+                ``None`` selects ``kernel_size // 2``. This value keeps
+                the size only for an odd kernel size, a stride of ``1``,
+                and a dilation of ``1``.
+            dilation (int | tuple[int, int]): Dilation of the depthwise
+                convolution. Defaults to ``1``.
+            use_residual (bool): Whether `forward` adds the input to the
+                output. The input and the output must then have the same
+                shape. Defaults to ``False``.
+
         """
         super().__init__()
 
@@ -73,6 +99,20 @@ class DepthWiseSeparableConv(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply the depthwise and the pointwise convolutions.
+
+        Args:
+            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. With
+            the default padding, an odd kernel size, and a dilation of
+            ``1``, :math:`H' = \lceil H / s \rceil` and
+            :math:`W' = \lceil W / s \rceil`, where :math:`s` is
+            ``stride``. When ``use_residual`` is ``True``, the method adds
+            the input to the result.
+
+        """
         identity = x
         x = self.pointwise_conv(self.depthwise_conv(x))
         if self._use_residual:
@@ -81,6 +121,27 @@ class DepthWiseSeparableConv(nn.Module):
 
 
 class MobileBottleneckBlock(nn.Module):
+    """Mobile inverted bottleneck block.
+
+    The block runs three `ConvBlock` layers. A ``1x1`` convolution
+    expands the channels. A depthwise convolution with one group for
+    each hidden channel follows. A second ``1x1`` convolution projects
+    the channels to ``out_channels``. Each of the three layers has its
+    own bias, batch norm, and activation settings.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.backbones.efficientvit.blocks import (
+        ...     MobileBottleneckBlock,
+        ... )
+        >>> block = MobileBottleneckBlock(8, 16, stride=2, expand_ratio=4)
+        >>> block.depthwise_conv.conv.in_channels
+        32
+        >>> block(torch.zeros(1, 8, 16, 16)).shape
+        torch.Size([1, 16, 8, 8])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -94,31 +155,34 @@ class MobileBottleneckBlock(nn.Module):
         activation: list[nn.Module] | None = None,
         use_residual: bool = False,
     ):
-        """MobileBottleneckBlock is a block used in the EfficientViT
-        model.
+        """Build the expansion, the depthwise, and the projection
+        layers.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type expand_ratio: float
-        @param expand_ratio: Expansion ratio. Defaults to 6.
-        @type use_bias: list[bool, bool, bool]
-        @param use_bias: Whether to use bias for the depthwise and
-            pointwise convolutions.
-        @type use_norm: list[bool, bool, bool]
-        @param use_norm: Whether to use normalization for the depthwise
-            and pointwise convolutions.
-        @type activation: list[nn.Module, nn.Module, nn.Module]
-        @param activation: Activation functions for the depthwise and
-            pointwise convolutions.
-        @type use_residual: bool
-        @param use_residual: Whether to use residual connection.
-            Defaults to False.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size of the depthwise convolution.
+                The padding is ``kernel_size // 2``. Defaults to ``3``.
+            stride (int): Stride of the depthwise convolution. Defaults
+                to ``1``.
+            expand_ratio (float): Channel expansion factor. The hidden
+                layers have ``round(in_channels * expand_ratio)``
+                channels. Defaults to ``6``.
+            use_bias (list[bool] | None): Whether each layer has a bias
+                term, as three values for the expansion, the depthwise,
+                and the projection layers. ``None`` selects
+                ``[False, False, False]``.
+            use_norm (list[bool] | None): Whether each layer has a batch
+                norm, in the same order. ``None`` selects
+                ``[True, True, True]``.
+            activation (``list[nn.Module] | None``): The activation after
+                each layer, in the same order. ``None`` selects
+                `torch.nn.ReLU6`, `torch.nn.ReLU6`, and
+                `torch.nn.Identity`.
+            use_residual (bool): Whether `forward` adds the input to the
+                output. The input and the output must then have the same
+                shape. Defaults to ``False``.
+
         """
         super().__init__()
 
@@ -162,6 +226,19 @@ class MobileBottleneckBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Apply the expansion, the depthwise, and the projection layers.
+
+        Args:
+            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. For
+            an odd kernel size, :math:`H' = \lceil H / s \rceil` and
+            :math:`W' = \lceil W / s \rceil`, where :math:`s` is
+            ``stride``. When ``use_residual`` is ``True``, the method adds
+            the input to the result.
+
+        """
         identity = x
         x = self.expand_conv(x)
         x = self.depthwise_conv(x)
@@ -172,6 +249,24 @@ class MobileBottleneckBlock(nn.Module):
 
 
 class EfficientViTBlock(nn.Module):
+    """EfficientViT block of an attention part and a convolution part.
+
+    A `LightweightMLABlock` mixes the features of all positions. A
+    `MobileBottleneckBlock` then mixes the features of adjacent
+    positions. Both parts add their input to their output, so the block
+    keeps the shape of its input.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.backbones.efficientvit.blocks import (
+        ...     EfficientViTBlock,
+        ... )
+        >>> block = EfficientViTBlock(32, head_dim=8)
+        >>> block(torch.zeros(1, 32, 8, 8)).shape
+        torch.Size([1, 32, 8, 8])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -181,24 +276,32 @@ class EfficientViTBlock(nn.Module):
         expansion_factor: float = 4.0,
         aggregation_scales: tuple[int, ...] = (5,),
     ):
-        """EfficientVisionTransformerBlock is a modular component
-        designed for multi-scale linear attention and local feature
-        processing.
+        """Build the attention part and the convolution part.
 
-        @type n_channels: int
-        @param n_channels: The number of input and output channels.
-        @type attention_ratio: float
-        @param attention_ratio: Ratio for determining the number of
-            attention heads. Default is 1.0.
-        @type head_dim: int
-        @param head_dim: Dimension size for each attention head. Default
-            is 32.
-        @type expansion_factor: float
-        @param expansion_factor: Factor by which channels expand in the
-            local module. Default is 4.0.
-        @type aggregation_scales: tuple[int, ...]
-        @param aggregation_scales: Tuple defining the scales for
-            aggregation in the attention module. Default is (5,).
+        The attention part is a `LightweightMLABlock` with a batch norm
+        only after its projection. The convolution part is a
+        `MobileBottleneckBlock` with a ``3x3`` kernel. Its expansion and
+        depthwise layers have a bias term and a `torch.nn.Hardswish`
+        activation. Only its projection layer has a batch norm.
+
+        Args:
+            n_channels (int): Number of input and output channels.
+            attention_ratio (float): Factor for the number of attention
+                heads. The attention part has
+                ``int(n_channels // head_dim * attention_ratio)`` heads.
+                The number of heads must be at least ``1``. With ``0``
+                heads and at least one aggregation scale,
+                `torch.nn.Conv2d` raises ``ValueError``. Defaults to
+                ``1.0``.
+            head_dim (int): Number of channels of the query, the key, and
+                the value of each attention head. Defaults to ``32``.
+            expansion_factor (float): Channel expansion factor of the
+                convolution part. Defaults to ``4.0``.
+            aggregation_scales (``tuple[int, ...]``): Kernel size of the
+                depthwise convolution of each multi-scale aggregation
+                branch of the attention part. The values must be odd.
+                Defaults to ``(5,)``.
+
         """
         super().__init__()
 
@@ -223,17 +326,53 @@ class EfficientViTBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        """Forward pass of the block.
+        """Apply the attention part and then the convolution part.
 
-        @param x: Input tensor with shape [batch, channels, height,
-            width].
-        @return: Output tensor after attention and local feature
-            processing.
+        Args:
+            x (``Tensor``): Input of shape ``[B, n_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: Output of shape ``[B, n_channels, H, W]``.
+
         """
         return self.feature_module(self.attention_module(x))
 
 
 class LightweightMLABlock(nn.Module):
+    r"""Lightweight multi-scale linear attention block of EfficientViT.
+
+    A ``1x1`` `ConvBlock` computes the queries, the keys, and the values
+    of all heads as one ``qkv`` tensor. Each aggregation branch runs a
+    depthwise convolution with a kernel size from ``scale_factors`` and
+    a grouped ``1x1`` convolution on that tensor. The block concatenates
+    the ``qkv`` tensor and the branch outputs. Each head of each scale
+    then computes its own attention. For the query :math:`Q`, the key
+    :math:`K`, and the value :math:`V` of one head, the output at the
+    position :math:`j` is:
+
+    .. math::
+
+        O_j = \frac{\sum_i V_i \, \phi(K_i)^\top \phi(Q_j)}
+            {\sum_i \phi(K_i)^\top \phi(Q_j) + \epsilon}
+
+    The sums run over all positions :math:`i`. :math:`\phi` is
+    ``kernel_activation``. A ``1x1`` `ConvBlock` projects the attention
+    outputs of all scales to ``output_channels``. When ``use_residual``
+    is ``True``, the block adds the input to the projection output.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.backbones.efficientvit.blocks import (
+        ...     LightweightMLABlock,
+        ... )
+        >>> block = LightweightMLABlock(16, 24, use_residual=False)
+        >>> block.qkv_layer.conv.out_channels
+        48
+        >>> block(torch.zeros(1, 16, 4, 4)).shape
+        torch.Size([1, 24, 4, 4])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -250,36 +389,49 @@ class LightweightMLABlock(nn.Module):
         use_residual: bool = True,
         kernel_activation: nn.Module | None = None,
     ):
-        """LightweightMLABlock is a modular component used in the
-        EfficientViT framework. It facilitates efficient multi-scale
-        linear attention.
+        r"""Build the ``qkv`` layer, the aggregation branches, and the
+        projection.
 
-        @type input_channels: int
-        @param input_channels: Number of input channels.
-        @type output_channels: int
-        @param output_channels: Number of output channels.
-        @type n_heads: int
-        @param n_heads: Number of attention heads. Default is None.
-        @type head_ratio: float
-        @param head_ratio: Ratio to determine the number of heads.
-            Default is 1.0.
-        @type dimension: int
-        @param dimension: Size of each head. Default is 8.
-        @type use_bias: list[bool, bool]
-        @param use_bias: List specifying if bias is used in qkv and
-            projection layers.
-        @type use_norm: list[bool, bool]
-        @param use_norm: List specifying if normalization is applied in
-            qkv and projection layers.
-        @type activations: list[nn.Module, nn.Module]
-        @param activations: List of activation functions for qkv and
-            projection layers.
-        @type scale_factors: tuple[int, ...]
-        @param scale_factors: Tuple defining scales for aggregation.
-            Default is (5,).
-        @type epsilon: float
-        @param epsilon: Epsilon value for numerical stability. Default
-            is 1e-15.
+        Args:
+            input_channels (int): Number of input channels.
+            output_channels (int): Number of output channels. It must be
+                equal to ``input_channels`` when ``use_residual`` is
+                ``True``.
+            n_heads (int | None): Number of attention heads. ``None`` or
+                ``0`` selects
+                ``int(input_channels // dimension * head_ratio)``. The
+                number of heads must be at least ``1``. With ``0`` heads
+                and at least one aggregation branch, `torch.nn.Conv2d`
+                raises ``ValueError``.
+            head_ratio (float): Factor for the number of heads when
+                ``n_heads`` is ``None`` or ``0``. Defaults to ``1.0``.
+            dimension (int): Number of channels of the query, the key,
+                and the value of each head. Defaults to ``8``.
+            use_bias (list[bool] | None): Whether the layers have a bias
+                term, as two values. The first value applies to the
+                ``qkv`` layer and to the convolutions of the aggregation
+                branches. The second value applies to the projection.
+                ``None`` selects ``[False, False]``.
+            use_norm (list[bool] | None): Whether the ``qkv`` layer and
+                the projection have a batch norm, as two values. ``None``
+                selects ``[False, True]``.
+            activations (``list[nn.Module] | None``): The activations
+                after the ``qkv`` layer and after the projection. ``None``
+                selects two `torch.nn.Identity` modules.
+            scale_factors (``tuple[int, ...]``): Kernel size of the
+                depthwise convolution of each aggregation branch. The
+                block has one branch for each value. The values must be
+                odd. An even value changes the height and the width of
+                the branch output, and `forward` fails. Defaults to
+                ``(5,)``.
+            epsilon (float): Value that the attention adds to its
+                denominator. Defaults to ``1e-15``.
+            use_residual (bool): Whether `forward` adds the input to the
+                output. Defaults to ``True``.
+            kernel_activation (``nn.Module | None``): The kernel function
+                :math:`\phi` that runs on the queries and the keys.
+                ``None`` selects `torch.nn.ReLU`.
+
         """
         super().__init__()
 
@@ -344,7 +496,47 @@ class LightweightMLABlock(nn.Module):
 
     @torch.autocast(device_type="cuda", enabled=False)
     def linear_attention(self, qkv_tensor: Tensor) -> Tensor:
-        """ReLU-based linear attention."""
+        r"""Compute the attention of each head at a linear cost.
+
+        The method splits the channels of ``qkv_tensor`` into groups of
+        ``3 * dimension`` channels. Each group holds the query, the key,
+        and the value of one head. The method computes the attention
+        formula that `LightweightMLABlock` shows. It pads :math:`V` with
+        a row of ones and multiplies the result with
+        :math:`\phi(K)^\top` first. The extra row then gives the
+        denominator. Thus the cost grows linearly with ``H * W``.
+
+        The method runs with CUDA autocast disabled. A ``float16`` input
+        runs in ``float32``. A ``bfloat16`` input runs in ``bfloat16``,
+        and the method converts the result to ``float32`` before the
+        division.
+
+        Args:
+            qkv_tensor (``Tensor``): Queries, keys, and values of shape
+                ``[B, G * 3 * dimension, H, W]``, where ``G`` is the
+                number of groups.
+
+        Returns:
+            ``Tensor``: Attention output of shape
+            ``[B, G * dimension, H, W]``. It is ``float32`` when the input
+            is ``float16`` or ``bfloat16``.
+
+        Example:
+            The linear and the quadratic attention give the same values.
+
+            >>> import torch
+            >>> from luxonis_train.nodes.backbones.efficientvit.blocks import (
+            ...     LightweightMLABlock,
+            ... )
+            >>> block = LightweightMLABlock(8, 8, dimension=4)
+            >>> qkv = torch.arange(96.0).reshape(1, 24, 2, 2) / 96
+            >>> linear = block.linear_attention(qkv)
+            >>> linear.shape
+            torch.Size([1, 8, 2, 2])
+            >>> torch.allclose(linear, block.quadratic_attention(qkv))
+            True
+
+        """
         batch, _, height, width = qkv_tensor.size()
 
         if qkv_tensor.dtype == torch.float16:
@@ -375,7 +567,31 @@ class LightweightMLABlock(nn.Module):
 
     @torch.autocast(device_type="cuda", enabled=False)
     def quadratic_attention(self, qkv_tensor: Tensor) -> Tensor:
-        """ReLU-based quadratic attention."""
+        r"""Compute the attention of each head with a full attention map.
+
+        The method splits the channels of ``qkv_tensor`` into groups as
+        `linear_attention` does. It builds the attention map
+        :math:`A_{ij} = \phi(K_i)^\top \phi(Q_j)` of shape
+        ``[B, G, H * W, H * W]``. It divides each column :math:`j` of the
+        map by :math:`\sum_i A_{ij} + \epsilon`. Then it returns
+        :math:`O_j = \sum_i V_i A_{ij}` with the divided map. The values
+        are the same as the values of `linear_attention`, but the cost
+        grows with the square of ``H * W``.
+
+        The method runs with CUDA autocast disabled. It normalizes a
+        ``float16`` or ``bfloat16`` attention map in ``float32`` and then
+        converts the map back to the input type.
+
+        Args:
+            qkv_tensor (``Tensor``): Queries, keys, and values of shape
+                ``[B, G * 3 * dimension, H, W]``, where ``G`` is the
+                number of groups.
+
+        Returns:
+            ``Tensor``: Attention output of shape
+            ``[B, G * dimension, H, W]``, with the type of the input.
+
+        """
         batch, _, height, width = qkv_tensor.size()
 
         qkv_tensor = qkv_tensor.reshape(
@@ -405,6 +621,24 @@ class LightweightMLABlock(nn.Module):
         return output.reshape(batch, -1, height, width)
 
     def forward(self, x: Tensor) -> Tensor:
+        """Compute the multi-scale attention and project the result.
+
+        The method runs the ``qkv`` layer and the aggregation branches,
+        and concatenates their outputs. It calls `linear_attention` when
+        ``H * W`` is larger than ``dimension``. Otherwise, it calls
+        `quadratic_attention`. It converts the result of
+        `linear_attention` back to the type of the ``qkv`` tensor. The
+        projection then maps the result to ``output_channels``. When
+        ``use_residual`` is ``True``, the method adds the input to the
+        projection output in place.
+
+        Args:
+            x (``Tensor``): Input of shape ``[B, input_channels, H, W]``.
+
+        Returns:
+            ``Tensor``: Output of shape ``[B, output_channels, H, W]``.
+
+        """
         identity = x
         qkv_output = self.qkv_layer(x)
 

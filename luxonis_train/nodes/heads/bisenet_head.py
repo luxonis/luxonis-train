@@ -1,3 +1,5 @@
+"""The BiSeNet segmentation head."""
+
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
@@ -9,6 +11,75 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class BiSeNetHead(BaseHead):
+    r"""BiSeNet segmentation head.
+
+    Inputs:
+        - ``inputs`` (``Tensor``): :math:`\left[B, C, H/s, W/s\right]`
+
+    Outputs:
+        - ``segmentation`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` logits
+
+    References:
+        - Source: Reimplemented from `BiSeNet: Bilateral Segmentation
+          Network for Real-time Semantic Segmentation
+          <https://arxiv.org/abs/1808.00897>`_.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        :math:`H` and :math:`W` are the height and the width of the
+        model input. The scale :math:`s` is a power of two that the head
+        computes from the input size and the model input size. The head
+        applies a 3x3 `luxonis_train.nodes.blocks.ConvBlock` with batch
+        norm and ReLU, and a 1x1 convolution with
+        :math:`n_{classes} \cdot s^2` output channels. A
+        `torch.nn.PixelShuffle` with the factor :math:`s` then gives the
+        logits. ``forward`` does not check the mode, so export mode also
+        gives the logits.
+
+    Variants:
+        None. Configure the node through ``params``.
+
+    See Also:
+        `The BiseNetv1 repository
+        <https://github.com/taveraantonio/BiseNetv1>`_
+
+    Example:
+        A node entry in the ``model.nodes`` section of a config:
+
+        .. code-block:: yaml
+
+            - name: BiSeNetHead
+              inputs: [ContextSpatial]
+
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+        - Required labels: ``segmentation``
+        - Losses:
+
+          - `BCEWithLogitsLoss`
+          - `CrossEntropyLoss`
+          - `OHEMLoss`
+          - `SigmoidFocalLoss`
+          - `SmoothBCEWithLogitsLoss`
+          - `SoftmaxFocalLoss`
+
+        - Metrics:
+
+          - `Accuracy`
+          - `ConfusionMatrix`
+          - `DiceCoefficient`
+          - `F1Score`
+          - `JaccardIndex`
+          - `MIoU`
+          - `Precision`
+          - `Recall`
+
+        - Visualizers: `SegmentationVisualizer`
+        - Export parser: ``SegmentationParser``
+
+    """
+
     in_height: int
     in_width: int
     in_channels: int
@@ -17,17 +88,22 @@ class BiSeNetHead(BaseHead):
     parser: str = "SegmentationParser"
 
     def __init__(self, intermediate_channels: int = 64, **kwargs):
-        """BiSeNet segmentation head.
+        """Build the convolutions and the pixel shuffle upsampling.
 
-        Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
-        @license: NOT SPECIFIED.
-        @see: U{BiseNetv1: Bilateral Segmentation Network for
-            Real-time Semantic Segmentation
-            <https://arxiv.org/abs/1808.00897>}
+        The constructor computes the scale :math:`s = 2^n`.
+        `infer_upscale_factor` gives :math:`n` from the input size and
+        the model input size. That function raises ``ValueError`` when
+        the height ratio or the width ratio is not a power of two, or
+        when the two ratios differ.
 
-        @type intermediate_channels: int
-        @param intermediate_channels: How many intermediate channels to use.
-            Defaults to C{64}.
+        Args:
+            intermediate_channels (int): The number of output channels of
+                the 3x3 convolution.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold ``original_in_shape``, ``input_shapes`` or
+                ``in_sizes``, and the class count through ``n_classes``
+                or ``dataset_metadata``.
+
         """
         super().__init__(**kwargs)
 
@@ -54,6 +130,29 @@ class BiSeNetHead(BaseHead):
         self.upscale = nn.PixelShuffle(upscale_factor)
 
     def forward(self, inputs: Tensor) -> Tensor:
+        """Compute the segmentation logits at the model input size.
+
+        Args:
+            inputs (``Tensor``): The feature map of shape
+                ``[B, C, H / s, W / s]``.
+
+        Returns:
+            ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
+            `BaseNode.run` puts them under the ``"segmentation"`` key.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import BiSeNetHead
+            >>> head = BiSeNetHead(
+            ...     n_classes=3,
+            ...     input_shapes=[{"features": [Size([1, 16, 8, 8])]}],
+            ...     original_in_shape=Size([3, 32, 32]),
+            ... )
+            >>> head(torch.zeros(1, 16, 8, 8)).shape
+            torch.Size([1, 3, 32, 32])
+
+        """
         x = self.conv_3x3(inputs)
         x = self.conv_1x1(x)
         return self.upscale(x)

@@ -1,3 +1,5 @@
+"""The embedding head of GhostFaceNet."""
+
 # Original source: https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py
 import math
 
@@ -10,6 +12,95 @@ from luxonis_train.tasks import Tasks
 
 
 class GhostFaceNetHead(BaseHead):
+    r"""GhostFaceNet embedding head.
+
+    Inputs:
+        - ``inputs`` (``Tensor``): :math:`\left[B, C, \lceil H/32
+          \rceil, \lceil W/32 \rceil\right]`
+
+    Outputs:
+        - ``embeddings`` (``Tensor``): :math:`\left[B, D\right]`, where
+          :math:`D` is ``embedding_size``
+
+    References:
+        - Source: Adapted from `Hazqeel09/ellzaf_ml
+          <https://github.com/Hazqeel09/ellzaf_ml>`_ (MIT).
+        - License: MIT
+
+    Notes:
+        :math:`H` and :math:`W` are the height and the width of the
+        model input. The last output of the `GhostFaceNet` backbone has
+        this size. The head applies these layers in order:
+
+        - A depthwise `ConvBlock` with batch norm and no activation. Its
+          kernel has the size of the input map, so the output is
+          ``1x1``.
+        - A dropout layer.
+        - A ``1x1`` convolution without bias to :math:`D` channels.
+        - A flatten step and a 1D batch norm.
+
+        ``forward`` does not check the mode, so export mode also gives
+        the embeddings. **The input map must have exactly the size
+        above.** A map of another size makes a layer raise
+        ``RuntimeError``. In training mode, a batch of one image makes
+        the batch norm of the depthwise `ConvBlock` raise ``ValueError``.
+
+    Variants:
+        None. Configure the node through ``params``.
+
+    See Also:
+        - `The GhostFaceNetsV2 code in ellzaf_ml
+          <https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py>`_
+        - `GhostFaceNets: Lightweight Face Recognition Model From Cheap
+          Operations
+          <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>`_
+
+    Example:
+        A node entry in the ``model.nodes`` section of a config:
+
+        .. code-block:: yaml
+
+            - name: GhostFaceNetHead
+              inputs: [GhostFaceNet]
+
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+        - Required labels: ``metadata/id``
+        - Used by: `EmbeddingsModel`
+        - Losses:
+
+          - ``AngularLoss``
+          - ``CircleLoss``
+          - ``ContrastiveLoss``
+          - ``DynamicSoftMarginLoss``
+          - ``FastAPLoss``
+          - ``GeneralizedLiftedStructureLoss``
+          - ``HistogramLoss``
+          - ``InstanceLoss``
+          - ``IntraPairVarianceLoss``
+          - ``LiftedStructureLoss``
+          - ``MarginLoss``
+          - ``MultiSimilarityLoss``
+          - ``NCALoss``
+          - ``NPairsLoss``
+          - ``NTXentLoss``
+          - ``PNPLoss``
+          - ``RankedListLoss``
+          - ``SignalToNoiseRatioContrastiveLoss``
+          - ``SupConLoss``
+          - ``ThresholdConsistentMarginLoss``
+          - ``TripletMarginLoss``
+          - ``TupletMarginLoss``
+
+        - Metrics:
+
+          - `ClosestIsPositiveAccuracy`
+          - `MedianDistances`
+
+        - Visualizers: `EmbeddingsVisualizer`
+
+    """
+
     in_channels: int
     in_width: int
     task = Tasks.EMBEDDINGS
@@ -21,25 +112,32 @@ class GhostFaceNetHead(BaseHead):
         dropout: float = 0.2,
         **kwargs,
     ):
-        """GhostFaceNet backbone.
+        r"""Build the layers of the head.
 
-        GhostFaceNet is a convolutional neural network architecture focused on face recognition, but it is
-        adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
+        The constructor stores ``embedding_size`` and
+        ``cross_batch_memory_size`` in attributes of the same names. The
+        embedding losses read both attributes from the node. The
+        embedding metrics read only ``cross_batch_memory_size``. The
+        kernel of the depthwise convolution is
+        :math:`\lceil H/32 \rceil \times \lceil W/32 \rceil`, with
+        :math:`H` and :math:`W` from ``original_in_shape``.
 
-        Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+        Args:
+            embedding_size (int): The number of values in each embedding.
+                It is the number of output channels of the ``1x1``
+                convolution.
+            cross_batch_memory_size (int | None): The maximum number of
+                the newest embeddings that the embedding losses and
+                metrics keep in memory across batches. ``None`` turns this
+                memory off. A loss that ``CrossBatchMemory`` does not
+                support logs a warning and ignores the value. The head
+                itself does not read the value.
+            dropout (float): The probability that the dropout layer sets
+                a value to zero in training mode, in ``[0, 1]``.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold ``original_in_shape``, and ``input_shapes`` or
+                ``in_sizes``.
 
-        @license: U{MIT License
-            <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
-
-        @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
-            <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
-
-        @type embedding_size: int
-        @param embedding_size: Size of the embedding. Defaults to 512.
-        @type cross_batch_memory_size: int | None
-        @param cross_batch_memory_size: Size of the cross-batch memory. Defaults to None.
-        @type dropout: float
-        @param dropout: Dropout rate. Defaults to 0.2.
         """
         super().__init__(**kwargs)
         self.embedding_size = embedding_size
@@ -66,10 +164,81 @@ class GhostFaceNetHead(BaseHead):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        r"""Compute the embeddings of a batch of feature maps.
+
+        Args:
+            x (``Tensor``): The last feature map of the backbone, of shape
+                ``[B, C, ceil(H / 32), ceil(W / 32)]``. ``H`` and ``W``
+                come from ``original_in_shape``.
+
+        Returns:
+            ``Tensor``: The embeddings of shape ``[B, embedding_size]``.
+            `BaseNode.run` puts them under the ``"embeddings"`` key.
+
+        Example:
+            A model input of ``100x100`` pixels gives a ``4x4`` map,
+            because :math:`\lceil 100/32 \rceil = 4`:
+
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import GhostFaceNetHead
+            >>> head = GhostFaceNetHead(
+            ...     embedding_size=16,
+            ...     input_shapes=[{"features": [Size([2, 8, 4, 4])]}],
+            ...     original_in_shape=Size([3, 100, 100]),
+            ... )
+            >>> packet = head.run([{"features": [torch.zeros(2, 8, 4, 4)]}])
+            >>> packet["embeddings"].shape
+            torch.Size([2, 16])
+
+        """
         return self.head(x)
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
+        r"""Initialize the convolutions and the 2D batch norm layers.
+
+        The method first calls `BaseNode.initialize_weights` with
+        ``method``. Then it draws the weights of every `torch.nn.Conv2d`
+        and `torch.nn.Linear` from a normal distribution with the mean
+        ``0`` and this standard deviation:
+
+        .. math::
+
+            \sigma = \sqrt{\frac{2}{n_{in} \left(1 + a^2\right)}}
+
+        :math:`n_{in}` is the fan-in of the layer, and :math:`a` is
+        ``0.25``. This is the Kaiming normal initialization for a leaky
+        ReLU with the slope ``0.25``. The biases do not change.
+
+        Every `torch.nn.BatchNorm2d` then gets ``momentum=0.9`` and
+        ``eps=1e-5``. The 1D batch norm keeps its defaults. PyTorch uses
+        ``momentum`` as the weight of the new batch in the running
+        statistics. With ``0.9``, these statistics thus follow the last
+        batches closely.
+
+        Args:
+            method (str | None): The method for
+                `BaseNode.initialize_weights`. The value has no effect on
+                this head. The head has no activation that ``"yolo"``
+                changes, and the method replaces the batch norm values of
+                ``"yolo"``.
+
+        Example:
+            The node calls the method after construction:
+
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import GhostFaceNetHead
+            >>> head = GhostFaceNetHead(
+            ...     input_shapes=[{"features": [Size([2, 8, 4, 4])]}],
+            ...     original_in_shape=Size([3, 112, 112]),
+            ...     weights="yolo",
+            ... )
+            >>> batch_norm = head.head[0].bn
+            >>> batch_norm.momentum, batch_norm.eps
+            (0.9, 1e-05)
+
+        """
         super().initialize_weights(method)
         for m in self.modules():
             if isinstance(m, nn.Conv2d | nn.Linear):

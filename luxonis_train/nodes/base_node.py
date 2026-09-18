@@ -1,3 +1,12 @@
+"""The base class every node inherits.
+
+`BaseNode` gives a node the shapes of its inputs, so that the node can
+size its layers. It maps the input packets to the parameters of
+``forward``. It also builds a node from a named variant, loads
+pretrained weights, and switches export mode.
+
+"""
+
 import inspect
 import logging
 import re
@@ -30,30 +39,81 @@ _ForwardInput = Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]
 
 
 class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
-    """A base class for all model nodes.
+    """Base class for all nodes of the model graph.
 
-    This class defines the basic interface for all nodes.
+    A node is a `torch.nn.Module` that reads packets and returns a
+    packet. A *packet* is a dictionary that maps an output name to a
+    tensor or to a list of tensors. The model calls `run` with one packet
+    for each input of the node. The packet of an input node is its
+    output. The packet of a loader input holds the tensor in a list under
+    the key ``"features"``. `run` passes the packet values to `forward`
+    and returns the result as a packet.
 
-    Furthermore, it utilizes automatic registration of defined subclasses
-    to a L{NODES} registry.
+    Every subclass registers itself in `luxonis_train.registry.NODES`
+    under its class name, so a config refers to the node by that name.
+    A ``register_name`` in the class statement replaces the class name.
+    Put ``register=False`` in the class statement to skip the
+    registration.
 
-    Inputs and outputs of nodes are defined as L{Packet}s. A L{Packet} is a dictionary
-    of lists of tensors. Each key in the dictionary represents a different output
-    from the previous node. Input to the node is a list of L{Packet}s, output is a single L{Packet}.
+    A subclass must implement `forward`. It can also do these steps:
 
-    When subclassing, the following methods should be implemented:
-        - L{forward}: Forward pass of the module.
+    - Set the class attributes ``attach_index`` and ``task``.
+    - Override `get_variants` to declare variants.
+    - Override `get_weights_url` to offer pretrained weights.
+    - Override `initialize_weights` to initialize its own layers.
+    - Annotate a property in the class body, for example
+      ``in_channels: int``. The constructor then compares the value of
+      the property with the annotation. On a mismatch, it raises
+      `IncompatibleError`. The constructor skips the check when the
+      property raises ``RuntimeError``. Any other error of the property
+      goes out of the constructor. The check reads only the annotations
+      of the nearest class that has annotations. Thus the annotations
+      of a subclass hide the annotations of its parent.
 
-    Additionally, the following class attributes can be defined:
-        - L{attach_index}: Index of previous output that this node attaches to.
-        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the
-            task of the node. Usually defined for head nodes.
+    Attributes:
+        attach_index (AttachIndexType): The output or outputs of the input
+            node that the node reads. `get_attached` applies it. The value
+            is an integer index, a tuple of two or three integers for a
+            range, or ``"all"`` for every output. ``-1`` is the last
+            output.
 
-    @type attach_index: AttachIndexType
-    @ivar attach_index: Index of previous output that this node attaches to.
-        Can be a single integer to specify a single output, a tuple of
-        two or three integers to specify a range of outputs or C{"all"} to
-        specify all outputs. Defaults to "all". Python indexing conventions apply.
+            When a subclass leaves it ``None``, the constructor infers it
+            from ``forward``. A ``forward`` with one parameter annotated
+            ``Tensor`` gives ``-1``. One parameter annotated
+            ``list[Tensor]`` gives ``"all"``. For any other ``forward``
+            with parameters, the constructor logs a warning and the index
+            stays ``None``.
+        task (Task | None): The task of the node. A head sets it. When
+            ``forward`` returns a tensor or a list of tensors, `run`
+            puts the result under the key ``task.main_output``. When the
+            task is ``None``, the key is ``"features"``.
+        task_name (str): The dataset task of the node. It is ``""`` when
+            the constructor gets no ``task_name``.
+        current_epoch (int): The number of the current training epoch,
+            from ``0``. `LuxonisLightningModule` sets it at the start of
+            each training epoch.
+
+    Example:
+        A node that sizes its layer from the input shapes. The
+        ``register=False`` keeps the example out of the registry.
+
+        >>> import torch
+        >>> from torch import Size, Tensor, nn
+        >>> from luxonis_train.nodes import BaseNode
+        >>> class Conv(BaseNode, register=False):
+        ...     def __init__(self, **kwargs):
+        ...         super().__init__(**kwargs)
+        ...         self.conv = nn.Conv2d(self.in_channels, 8, kernel_size=1)
+        ...
+        ...     def forward(self, x: Tensor) -> Tensor:
+        ...         return self.conv(x)
+        >>> node = Conv(input_shapes=[{"features": [Size([2, 3, 32, 32])]}])
+        >>> node.attach_index, node.in_channels
+        (-1, 3)
+        >>> packet = node.run([{"features": [torch.zeros(2, 3, 32, 32)]}])
+        >>> packet["features"].shape
+        torch.Size([2, 8, 32, 32])
+
     """
 
     attach_index: AttachIndexType = None
@@ -79,37 +139,62 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     ):
         """Initialize the node.
 
-        @type input_shapes: list[Packet[Size]] | None
-        @param input_shapes: List of input shapes for the module.
-        @type original_in_shape: Size | None
-        @param original_in_shape: Original input shape of the model.
-            Some nodes won't function if not provided.
-        @type dataset_metadata: L{DatasetMetadata} | None
-        @param dataset_metadata: Metadata of the dataset. Some nodes
-            won't function if not provided.
-        @type n_classes: int | None
-        @param n_classes: Number of classes in the dataset. Provide only
-            in case C{dataset_metadata} is not provided. Defaults to
-            None.
-        @type in_sizes: Size | list[Size] | None
-        @param in_sizes: List of input sizes for the node. Provide only
-            in case the C{input_shapes} were not provided.
-        @type remove_on_export: bool
-        @param remove_on_export: If set to True, the node will be removed
-            from the model during export. Defaults to False.
-        @type export_output_names: list[str] | None
-        @param export_output_names: List of output names for the export.
-        @type attach_index: AttachIndexType
-        @param attach_index: Index of previous output that this node
-            attaches to. Can be a single integer to specify a single
-            output, a tuple of two or three integers to specify a range
-            of outputs or C{"all"} to specify all outputs. Defaults to
-            "all". Python indexing conventions apply. If provided as a
-            constructor argument, overrides the class attribute.
-        @type task_name: str | None
-        @param task_name: Specifies which task group from the dataset to use
-            in case the dataset contains multiple tasks. Otherwise, the
-            task group is inferred from the dataset metadata.
+        All arguments are keyword-only and optional. Properties that
+        depend on missing metadata raise ``RuntimeError`` when accessed.
+
+        Args:
+            input_shapes (``list[Packet[Size]] | None``): One shape
+                packet for each input of the node, in the order of the
+                inputs. The shape properties, such as `in_channels`, read
+                it.
+            original_in_shape (``Size | None``): The shape of the model
+                input image, ``[C, H, W]``, without the batch dimension.
+            dataset_metadata (DatasetMetadata | None): The metadata of
+                the dataset. `n_classes`, `n_keypoints`, `classes`, and
+                `class_names` read it.
+            n_classes (int | None): The number of classes. When it is
+                set, `n_classes` returns it and does not read
+                ``dataset_metadata``.
+            n_keypoints (int | None): The number of keypoints. When it
+                is set, `n_keypoints` returns it and does not read
+                ``dataset_metadata``.
+            in_sizes (``Size | list[Size] | None``): The sizes of the
+                attached inputs. When it is set, `in_sizes` returns it
+                and does not read ``input_shapes``.
+            remove_on_export (bool): When ``True``, the model skips the
+                node in export mode, so the exported model does not
+                contain the node.
+            export_output_names (list[str] | None): The names of the
+                node outputs in the exported model. See
+                `export_output_names` for how the export uses them.
+                ``None`` keeps the default names.
+            attach_index (AttachIndexType | None): The output of the
+                input node that the node reads. A value other than
+                ``None`` replaces the class attribute and logs a
+                warning. See `attach_index` for the accepted values.
+            task_name (str | None): The dataset task of the node. It
+                selects the classes and the keypoints in
+                ``dataset_metadata``. ``None`` becomes ``""``.
+            weights (``str | Literal["download", "yolo", "none"] | None``):
+                The source or the initialization method of the weights.
+                The variant metaclass calls ``__post_init__`` after the
+                constructor. That step reads the value:
+
+                - ``"download"`` calls `load_checkpoint`, which takes the
+                  URL from `get_weights_url`.
+                - A string that contains ``"://"`` calls
+                  `load_checkpoint` with that URL.
+                - Any other string goes to `initialize_weights` as the
+                  method. A local checkpoint path also goes there, and
+                  the base implementation does not load it.
+                - ``None`` and ``""`` act as ``"none"``.
+
+        Raises:
+            AssertionError: When `attach_index` is ``None`` and
+                ``forward`` has no parameters.
+            IncompatibleError: When a property that the class body
+                annotates has a value of a different type.
+
         """
         super().__init__()
 
@@ -155,6 +240,14 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._check_type_overrides()
 
     def __post_init__(self) -> None:
+        """Load or initialize the weights that ``weights`` selects.
+
+        The variant metaclass calls it after the constructor. The value
+        ``"download"`` calls `load_checkpoint` without a checkpoint. A
+        value that contains ``"://"`` calls `load_checkpoint` with that
+        URL. Any other value goes to `initialize_weights`.
+
+        """
         if self._weights == "download":
             self.load_checkpoint()
         elif "://" in self._weights:
@@ -165,16 +258,42 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     def initialize_weights(
         self, method: Literal["yolo", "none"] | str | None = None
     ) -> None:
-        """Initialize the weights of the module.
+        """Initialize the weights of the node.
 
-        This method should be overridden in subclasses to provide custom
-        weight initialization.
+        The node calls it after construction with the ``weights``
+        argument as ``method``, unless ``weights`` asks for a checkpoint.
+        A subclass overrides it to initialize its own layers.
 
-        @type method: str | None
-        @param method: Method to use for weight initialization. If set
-            to "yolo", the weights are initialized using the YOLOv5
-            method. Defaults to None, which does not perform any
-            initialization.
+        The base implementation knows one method, ``"yolo"``. It sets
+        ``eps`` to ``0.001`` and ``momentum`` to ``0.03`` in every
+        `torch.nn.BatchNorm2d`. It also sets ``inplace`` to ``True`` in
+        every ``Hardswish``, ``LeakyReLU``, ``ReLU``, ``ReLU6``, and
+        ``SiLU`` activation. Other values change nothing.
+
+        Args:
+            method (``Literal["yolo", "none"] | str | None``): The name
+                of the initialization method. ``None`` and ``"none"``
+                change nothing.
+
+        Example:
+            The ``weights`` argument of the constructor selects the
+            method.
+
+            >>> from torch import Tensor, nn
+            >>> from luxonis_train.nodes import BaseNode
+            >>> class Node(BaseNode, register=False):
+            ...     def __init__(self, **kwargs):
+            ...         super().__init__(**kwargs)
+            ...         self.bn = nn.BatchNorm2d(4)
+            ...
+            ...     def forward(self, x: Tensor) -> Tensor:
+            ...         return self.bn(x)
+            >>> Node().bn.eps
+            1e-05
+            >>> node = Node(weights="yolo")
+            >>> node.bn.eps, node.bn.momentum
+            (0.001, 0.03)
+
         """
         if method is None or method == "none":
             return
@@ -192,35 +311,90 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Get the name of the default variant and a dictionary of
-        available model variants with their parameters.
+        """Return the default variant name and the variants of the node.
 
-        The keys are the variant names, and the values are dictionaries
-        of parameters which can be used as C{**kwargs} for the
-        predefined model constructor.
+        A node with variants overrides this static method. A call such
+        as ``Node(variant="n")`` selects a variant, and ``"default"``
+        selects the default variant. The variant metaclass then passes
+        the parameters of the variant to the constructor. An argument
+        that the call gives explicitly replaces the variant parameter of
+        the same name. A variant name that is not in the dictionary
+        makes the metaclass raise ``ValueError``.
 
-        @rtype: tuple[str, dict[str, Params]]
-        @return: A tuple containing the default variant name and a
-            dictionary of available variants with their parameters.
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name of the default
+            variant, and a dictionary that maps each variant name to its
+            constructor keyword arguments.
+
+        Raises:
+            NotImplementedError: When the node has no variants. The base
+                implementation always raises it.
+
+        Example:
+            >>> from torch import Tensor
+            >>> from luxonis_train.nodes import BaseNode
+            >>> class Node(BaseNode, register=False):
+            ...     def __init__(self, width: int = 1, **kwargs):
+            ...         super().__init__(**kwargs)
+            ...         self.width = width
+            ...
+            ...     def forward(self, x: Tensor) -> Tensor:
+            ...         return x
+            ...
+            ...     @staticmethod
+            ...     def get_variants():
+            ...         return "n", {"n": {"width": 8}, "s": {"width": 16}}
+            >>> node = Node(variant="default")
+            >>> node.variant, node.width
+            ('n', 8)
+            >>> Node(variant="s").width
+            16
+            >>> Node().width
+            1
+
         """
         raise NotImplementedError
 
     @property
     def name(self) -> str:
+        """The class name of the node.
+
+        It is not the alias of the node in the config.
+
+        """
         return self.__class__.__name__
 
     @property
     def variant(self) -> str:
+        """The name of the variant that built the node.
+
+        The variant metaclass sets it when a call selects a variant of a
+        node that overrides `get_variants`. A ``"default"`` variant
+        resolves to the name of the default variant.
+
+        Raises:
+            AttributeError: When no variant built the node. This occurs
+                for a ``variant`` of ``"none"`` or ``None``, and for
+                ``"default"`` on a node without variants.
+            RuntimeError: When the variant name is ``None``.
+
+        """
         if self._variant is None:
             raise RuntimeError(f"Variant was not set for node '{self.name}'.")
         return self._variant
 
     @property
     def n_keypoints(self) -> int:
-        """Getter for the number of keypoints.
+        """The number of keypoints of the node task.
 
-        @type: int
-        @raises ValueError: If the node does not support keypoints.
+        The ``n_keypoints`` constructor argument comes first. Without
+        it, the value comes from `dataset_metadata` for `task_name`. It
+        is ``0`` when the dataset has no keypoints for that task.
+
+        Raises:
+            RuntimeError: When the constructor got neither
+                ``n_keypoints`` nor ``dataset_metadata``.
+
         """
         if self._n_keypoints is not None:
             return self._n_keypoints
@@ -229,9 +403,16 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def n_classes(self) -> int:
-        """Getter for the number of classes.
+        """The number of classes of the node task.
 
-        @type: int
+        The ``n_classes`` constructor argument comes first. Without it,
+        the value comes from `dataset_metadata` for `task_name`.
+
+        Raises:
+            RuntimeError: When the constructor got neither ``n_classes``
+                nor ``dataset_metadata``.
+            ValueError: When the dataset has no task named `task_name`.
+
         """
         if self._n_classes is not None:
             return self._n_classes
@@ -240,17 +421,30 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def classes(self) -> bidict[str, int]:
-        """Getter for the class mappings.
+        """The class indices of the node task, keyed by class name.
 
-        @type: dict[str, int]
+        The value always comes from `dataset_metadata` for `task_name`.
+        The ``n_classes`` constructor argument does not change it. The
+        value is a new ``bidict``. Its ``inverse`` maps the class indices
+        to the class names.
+
+        Raises:
+            RuntimeError: When the constructor got no
+                ``dataset_metadata``.
+            ValueError: When the dataset has no task named `task_name`.
+
         """
         return self.dataset_metadata.classes(self.task_name)
 
     @property
     def class_names(self) -> list[str]:
-        """Getter for the class names.
+        """The class names of the node task, sorted by class index.
 
-        @type: list[str]
+        Raises:
+            RuntimeError: When the constructor got no
+                ``dataset_metadata``.
+            ValueError: When the dataset has no task named `task_name`.
+
         """
         return [
             name for name, _ in sorted(self.classes.items(), key=itemgetter(1))
@@ -258,11 +452,14 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
-        """Getter for the input shapes.
+        """The shape packets of the node inputs, one for each input.
 
-        @type: list[Packet[Size]]
-        @raises RuntimeError: If the C{input_shapes} were not set during
-            initialization.
+        The model takes the shapes from a run on zero tensors with a
+        batch size of 2, so the shapes include the batch dimension.
+
+        Raises:
+            RuntimeError: When the constructor got no ``input_shapes``.
+
         """
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
@@ -270,11 +467,14 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def original_in_shape(self) -> Size:
-        """Getter for the original input shape as [N, H, W].
+        """The shape of the model input image, ``[C, H, W]``.
 
-        @type: Size
-        @raises RuntimeError: If the C{original_in_shape} were not set
-            during initialization.
+        The shape does not include the batch dimension.
+
+        Raises:
+            RuntimeError: When the constructor got no
+                ``original_in_shape``.
+
         """
         if self._original_in_shape is None:
             raise self._non_set_error("original_in_shape")
@@ -282,11 +482,12 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def dataset_metadata(self) -> DatasetMetadata:
-        """Getter for the dataset metadata.
+        """The metadata of the dataset.
 
-        @type: L{DatasetMetadata}
-        @raises RuntimeError: If the C{dataset_metadata} were not set
-            during initialization.
+        Raises:
+            RuntimeError: When the constructor got no
+                ``dataset_metadata``.
+
         """
         if self._dataset_metadata is None:
             raise RuntimeError(self._non_set_error("dataset_metadata"))
@@ -294,27 +495,48 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def in_sizes(self) -> Size | list[Size]:
-        """Simplified getter for the input shapes.
+        """The sizes of the attached inputs.
 
-        Should work out of the box for most cases where the C{input_shapes} are
-        sufficiently simple. Otherwise, the C{input_shapes} should be used directly.
+        The property uses the first rule that applies:
 
-        In case C{in_sizes} were provided during initialization, they are returned
-        directly.
+        1. The ``in_sizes`` constructor argument, when it is set.
+        2. The ``"features"`` entry of the only input packet.
+        3. The only entry of that packet.
+        4. The entries of that packet whose keys match the names of the
+           ``forward`` parameters. Their sizes must be equal, and the
+           property uses the first one.
 
-        Example::
+        Rules 2 to 4 pass the entry through `get_attached`. The result is
+        a single size for an integer `attach_index`, and a list of sizes
+        for ``"all"`` or a range. A node with more than one input, or
+        with shapes that the rules do not fit, must read `input_shapes`
+        instead.
 
-            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
-            >>> attach_index = -1
-            >>> in_sizes = Size(3, 224, 224)
+        Raises:
+            RuntimeError: When ``input_shapes`` is missing or does not
+                hold exactly one packet. Also when no key matches a
+                ``forward`` parameter, or when the matching sizes differ.
+                Also when `attach_index` is ``None`` and the entry is a
+                list.
+            ValueError: When `attach_index` does not fit the sizes.
 
-            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
-            >>> attach_index = "all"
-            >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
+        Example:
+            >>> from torch import Size, Tensor
+            >>> from luxonis_train.nodes import BaseNode
+            >>> class Node(BaseNode, register=False):
+            ...     def forward(self, x: list[Tensor]) -> list[Tensor]:
+            ...         return x
+            >>> shapes = [
+            ...     {"features": [Size([2, 8, 64, 64]), Size([2, 16, 32, 32])]}
+            ... ]
+            >>> node = Node(input_shapes=shapes)
+            >>> node.attach_index
+            'all'
+            >>> node.in_sizes
+            [torch.Size([2, 8, 64, 64]), torch.Size([2, 16, 32, 32])]
+            >>> node.in_channels, node.in_height, node.in_width
+            ([8, 16], [64, 32], [64, 32])
 
-        @type: Size | list[Size]
-        @raises RuntimeError: If the C{input_shapes} are too complicated for
-            the default implementation.
         """
         if self._in_sizes is not None:
             return self._in_sizes
@@ -360,65 +582,79 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def in_channels(self) -> int | list[int]:
-        """Simplified getter for the number of input channels.
+        """The number of channels of the attached inputs.
 
-        Should work out of the box for most cases where the
-        C{input_shapes} are sufficiently simple. Otherwise, the
-        C{input_shapes} should be used directly. If C{attach_index} is
-        set to "all" or is a slice, returns a list of input channels,
-        otherwise returns a single value.
+        It is the third dimension from the end of `in_sizes`, so a shape
+        with or without the batch dimension gives the same value. A list
+        of sizes gives a list of channel counts.
 
-        @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated
-            for the default implementation of C{in_sizes}.
+        Raises:
+            RuntimeError: When `in_sizes` cannot find the input sizes.
+            ValueError: When `attach_index` does not fit the sizes.
+
         """
         return self._get_nth_size(-3)
 
     @property
     def in_height(self) -> int | list[int]:
-        """Simplified getter for the input height.
+        """The height of the attached inputs.
 
-        Should work out of the box for most cases where the
-        C{input_shapes} are sufficiently simple. Otherwise, the
-        C{input_shapes} should be used directly.
+        It is the second dimension from the end of `in_sizes`. A list of
+        sizes gives a list of heights.
 
-        @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated
-            for the default implementation of C{in_sizes}.
+        Raises:
+            RuntimeError: When `in_sizes` cannot find the input sizes.
+            ValueError: When `attach_index` does not fit the sizes.
+
         """
         return self._get_nth_size(-2)
 
     @property
     def in_width(self) -> int | list[int]:
-        """Simplified getter for the input width.
+        """The width of the attached inputs.
 
-        Should work out of the box for most cases where the
-        C{input_shapes} are sufficiently simple. Otherwise, the
-        C{input_shapes} should be used directly.
+        It is the last dimension of `in_sizes`. A list of sizes gives a
+        list of widths.
 
-        @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated
-            for the default implementation of C{in_sizes}.
+        Raises:
+            RuntimeError: When `in_sizes` cannot find the input sizes.
+            ValueError: When `attach_index` does not fit the sizes.
+
         """
         return self._get_nth_size(-1)
 
     def get_weights_url(self) -> str:
-        """Get the URL to the weights of the node.
+        """Return the URL of the pretrained weights of the node.
 
-        Subclasses can override this method to provide a URL to support
-        loading weights from a remote location.
+        A node with pretrained weights overrides this method. The base
+        implementation raises ``NotImplementedError``, which means that
+        the node has no pretrained weights. `load_checkpoint` calls the
+        method when it gets no checkpoint, for example for
+        ``weights="download"``.
 
-        It is possible to use several special placeholders inside the URL:
-          - C{{github}} - will be replaced with
-            C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
-            where C{{version}} is the version of used `luxonis-train` library.
-              - A version tag can be added to use a specific version. e.g. C{{github:v0.3.0}}
-          - C{{variant}} - will be replaced with the variant of the node.
-            If the node was not constructed from a variant, an error
-            is raised.
+        The URL can contain these placeholders:
 
-        The file pointed to by the URL should be a C{.ckpt} file
-        that is directly loadable using C{nn.Module.load_state_dict}.
+        - ``{github}`` becomes
+          ``https://github.com/luxonis/luxonis-train/releases/download/v0.3.10-beta/``.
+          The version is fixed. The installed version does not change
+          it.
+        - ``{github:v0.3.0}`` selects the release ``v0.3.0`` instead.
+          The version needs three numbers and can have a suffix, as in
+          ``v0.3.0-beta``.
+        - ``{variant}`` becomes the name of the variant that built the
+          node. The node must come from a variant.
+
+        The file at the URL must hold the state dictionary of the node
+        under the ``"state_dict"`` key. The keys of that dictionary must
+        be the parameter and buffer names of the node.
+
+        Returns:
+            str: The URL of the checkpoint. It can contain the
+            placeholders.
+
+        Raises:
+            NotImplementedError: When the node has no pretrained weights.
+
         """
         raise NotImplementedError
 
@@ -453,13 +689,35 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         *,
         strict: bool = True,
     ) -> None:
-        """Load checkpoint for the module.
+        """Load a checkpoint into the node.
 
-        @type ckpt: str | dict[str, Tensor] | None
-        @param ckpt: Path to local or remote .ckpt file.
-        @type strict: bool
-        @param strict: Whether to load weights strictly or not. Defaults
-            to True.
+        For a file, the method logs the path or URL. `safe_download`
+        copies a remote file into the local cache first. When the
+        download fails, the method logs a warning and leaves the weights
+        unchanged. The method reads the file with `torch.load` on the
+        CPU and with ``weights_only=False``. **Load only trusted files**,
+        because the file can run code when it loads. After the load, the
+        method logs an info message through the standard ``logging``
+        module.
+
+        Args:
+            ckpt (``str | dict[str, Tensor] | None``): A state dictionary,
+                or the local path or URL of a ``.ckpt`` file. The file
+                must hold the state dictionary under the ``"state_dict"``
+                key. ``None`` or ``""`` takes the URL from
+                `get_weights_url`.
+            strict (bool): Whether the keys of the state dictionary must
+                match the keys of the node exactly. The value goes to
+                `torch.nn.Module.load_state_dict`. With ``True``, that
+                method raises ``RuntimeError`` when the keys differ.
+
+        Raises:
+            RuntimeError: When ``ckpt`` is an empty dictionary.
+            ValueError: When ``ckpt`` is ``None`` and the node does not
+                override `get_weights_url`.
+            AttributeError: When ``ckpt`` is ``None``, the URL uses
+                ``{variant}``, and no variant built the node.
+
         """
         if isinstance(ckpt, dict) and not ckpt:
             raise RuntimeError("Provided checkpoint dictionary is empty.")
@@ -478,7 +736,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         else:
             local_path = safe_download(ckpt)
             if local_path:
-                # load explicitly to cpu, PL takes care of transferring to CUDA is needed
+                # Load on the CPU. Lightning moves the node to the device.
                 state_dict = torch.load(  # nosemgrep
                     local_path, weights_only=False, map_location="cpu"
                 )["state_dict"]
@@ -493,19 +751,31 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def export(self) -> bool:
-        """Getter for the export mode."""
+        """Whether export mode is on.
+
+        A node reads it in ``forward`` to return the outputs of the
+        exported model. An assignment calls `set_export_mode`.
+
+        """
         return self._export
 
     @export.setter
     def export(self, mode: bool) -> None:
-        """Set the module to export mode."""
+        """Switch export mode on or off with `set_export_mode`."""
         self.set_export_mode(mode)
 
     def set_export_mode(self, /, mode: bool) -> None:
-        """Set the module to export mode.
+        """Switch export mode on or off.
 
-        @type mode: bool
-        @param mode: Value to set the export mode to.
+        The method sets `export`. Then it visits the node and all its
+        submodules. With ``True``, it calls ``reparameterize`` on each
+        `Reparameterizable` module. With ``False``, it calls ``restore``
+        on each of them. It logs every call at the debug level.
+
+        Args:
+            mode (bool): ``True`` to switch export mode on, ``False`` to
+                switch it off.
+
         """
         self._export = mode
 
@@ -522,12 +792,26 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @property
     def remove_on_export(self) -> bool:
-        """Getter for the remove_on_export attribute."""
+        """Whether the model skips the node in export mode.
+
+        The exported model then does not contain the node.
+
+        """
         return self._remove_on_export
 
     @property
     def export_output_names(self) -> list[str] | None:
-        """Getter for the export_output_names attribute."""
+        """The names of the node outputs in the exported model.
+
+        The base implementation returns the ``export_output_names``
+        constructor argument. ``None`` keeps the default names.
+
+        The ONNX export uses the names only when their number matches
+        the number of node outputs. Otherwise, it logs a warning and
+        keeps the default names. The NN Archive of a head lists the
+        names as the head outputs.
+
+        """
         return self._export_output_names
 
     @abstractmethod
@@ -535,27 +819,93 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self,
         inputs: Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]],
     ) -> Tensor | list[Tensor] | Packet[Tensor]:
-        """Forward pass of the module.
+        """Compute the outputs of the node.
 
-        @type inputs: Tensor | list[Tensor] | Packet[Tensor] |
-            list[Packet[Tensor]]
-        @param inputs: Inputs to the module. Can be either a single
-            tensor, a list of tensors or a tensor packet.
-        @rtype: Tensor | list[Tensor] | Packet[Tensor]
-        @return: Result of the forward pass. Can be either a single
-            tensor, a list of tensors or a tensor packet.
+        A subclass must implement it. `run` reads the name and the type
+        annotation of each parameter to decide what the parameter gets.
+        Annotate each parameter with one of the four types of
+        ``inputs``. See `run` for the rules.
+
+        Args:
+            inputs (``Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]``):
+                The input of the node. An implementation can rename the
+                parameter and add more parameters.
+
+        Returns:
+            ``Tensor | list[Tensor] | Packet[Tensor]``: The outputs of the
+            node. `run` puts a tensor or a list of tensors into a packet.
+
         """
         ...
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
-        """Combine the forward pass with automatic wrapping and
-        unwrapping of the inputs.
+        """Run the node on the packets of its inputs.
 
-        @type inputs: list[Packet[Tensor]]
-        @param inputs: Inputs to the module.
-        @rtype: L{Packet}[Tensor]
-        @return: Outputs of the module as a packet of tensors:
-            C{{"features": [Tensor, ...], "segmentation": Tensor}}
+        The method gives each ``forward`` parameter a value, calls the
+        node, and puts the result into a packet. The type annotation and
+        the name of a parameter decide its value:
+
+        - A ``list[Packet[Tensor]]`` parameter gets all input packets. It
+          must be the only parameter.
+        - A ``Packet[Tensor]`` parameter gets the input packet at the
+          position of the parameter.
+        - A ``Tensor`` or ``list[Tensor]`` parameter can have the name
+          ``x``, ``y``, or ``z``, or a name that starts with ``input``.
+          It then gets the ``"features"`` entry of one input packet.
+          ``x``, ``y``, and ``z`` read the packets 0, 1, and 2. A number
+          after ``input`` or ``inputs``, as in ``input_1``, selects that
+          packet. Other names read packet 0. A list entry goes through
+          `get_attached`.
+        - A ``Tensor`` or ``list[Tensor]`` parameter with another name
+          gets the entry with the same key, unchanged. Special case: no
+          packet has the key, the node has one input packet, and
+          ``forward`` has one parameter. Then the parameter gets the
+          first entry of that packet through `get_attached`, and the
+          method logs a warning.
+
+        ``forward`` can return a packet, a tensor, or a list of tensors.
+        The method puts a tensor or a list under the key
+        ``task.main_output``, or under ``"features"`` when `task` is
+        ``None``.
+
+        Args:
+            inputs (``list[Packet[Tensor]]``): One packet for each input
+                of the node, in the order of the inputs.
+
+        Returns:
+            ``Packet[Tensor]``: The outputs of the node, for example
+            ``{"features": [feature_map_1, feature_map_2]}``.
+
+        Raises:
+            TypeError: When a ``forward`` parameter has an annotation
+                other than the four types above. The call to ``forward``
+                also raises it when a required parameter gets no value.
+            RuntimeError: When a ``list[Packet[Tensor]]`` parameter is
+                not the only parameter, or when the input packets are too
+                few. Also when a parameter that reads the ``"features"``
+                entry gets a packet without that key. Also when an entry has the wrong type, or when two
+                packets have the same key. Also when `get_attached` gets a list and
+                `attach_index` is ``None``.
+            ValueError: When ``forward`` returns a value of another type.
+                Also when `attach_index` does not fit an entry that goes
+                through `get_attached`.
+
+        Example:
+            >>> import torch
+            >>> from torch import Tensor
+            >>> from luxonis_train.nodes import BaseNode
+            >>> class Add(BaseNode, register=False):
+            ...     attach_index = -1
+            ...
+            ...     def forward(self, x: Tensor, y: Tensor) -> Tensor:
+            ...         return x + y
+            >>> packets = [
+            ...     {"features": [torch.ones(2)]},
+            ...     {"features": [torch.ones(2)]},
+            ... ]
+            >>> Add().run(packets)["features"].tolist()
+            [2.0, 2.0]
+
         """
         kwargs: dict[str, _ForwardInput] = {}
         for i, (name, param) in enumerate(self._signature.items()):
@@ -708,19 +1058,61 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         )
 
     T = TypeVar("T", Tensor, Size)
+    """The element type of `get_attached`: ``Tensor`` or ``Size``."""
 
     def get_attached(self, value: list[T] | T) -> list[T] | T:
-        """Get the attached elements from a list.
+        """Select the elements of a list that `attach_index` names.
 
-        This method is used to get the attached elements from a list
-        based on the C{attach_index} attribute.
+        A value that is not a list passes unchanged. The index must then
+        be ``None``, ``-1``, or ``0``. For a list, the index selects:
 
-        @type value: list[T] | T
-        @param value: List to get the attached elements from. Can be
-            either a list of tensors or a list of sizes.
-        @rtype: list[T] | T
-        @return: Attached elements. If C{attach_index} is set to
-            C{"all"} or is a slice, returns a list of attached elements.
+        - With ``"all"``, the whole list.
+        - With an integer, one element. A negative index counts from the
+          end.
+        - With a pair ``(i, j)`` or a triple ``(i, j, k)``, a slice from
+          ``i`` to ``j`` with the step ``k``. The slice includes ``i`` and
+          leaves out ``j``, as in Python. A negative index counts from
+          the end. The default step is ``-1`` when ``i > j`` and the two
+          indices are both negative or both non-negative. Otherwise, it
+          is ``1``.
+
+        **Exception:** when ``i`` and ``j`` are both negative and
+        ``i < j``, the range leaves out ``i`` and includes ``j``. The step
+        is then always ``1``. Thus ``(-3, -1)`` selects the last two
+        elements, not the Python slice ``[-3:-1]``.
+
+        Args:
+            value (``list[T] | T``): A list of tensors or sizes, or a
+                single tensor or size.
+
+        Returns:
+            ``list[T] | T``: One element for an integer index, a list for
+            ``"all"`` or a tuple, or ``value`` itself when it is not a
+            list.
+
+        Raises:
+            ValueError: When ``value`` is not a list and the index is not
+                ``None``, ``-1``, or ``0``. Also when an integer index is
+                ``len(value)`` or larger.
+            RuntimeError: When ``value`` is a list and the index is
+                ``None``.
+
+        Example:
+            >>> from torch import Tensor
+            >>> from luxonis_train.nodes import BaseNode
+            >>> class Node(BaseNode, register=False):
+            ...     def forward(self, x: Tensor) -> Tensor:
+            ...         return x
+            >>> node = Node()
+            >>> node.get_attached([1, 2, 3, 4, 5])
+            5
+            >>> node.attach_index = (1, -1)
+            >>> node.get_attached([1, 2, 3, 4, 5])
+            [2, 3, 4]
+            >>> node.attach_index = (-3, -1)
+            >>> node.get_attached([1, 2, 3, 4, 5])
+            [4, 5]
+
         """
         if not isinstance(value, list):
             if self.attach_index not in (None, -1, 0):
