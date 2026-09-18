@@ -1,3 +1,7 @@
+"""Prints the layer summary of the model, as a rich table or as plain
+text.
+"""
+
 from io import StringIO
 from typing import Any
 
@@ -10,7 +14,32 @@ from typing_extensions import override
 
 
 class LuxonisModelSummary(RichModelSummary):
+    """Callback that prints the layer summary of the model.
+
+    The callback extends the Lightning ``RichModelSummary`` and prints
+    the summary when a fit starts. With ``rich`` on, it prints ``rich``
+    tables to the console and writes a copy without terminal styling to
+    the log file. With ``rich`` off, it logs a plain ``tabulate`` table
+    and the totals. These records reach the console and the log file.
+    `LuxonisLightningModule.configure_callbacks` adds this callback with
+    ``max_depth=2``, and with ``rich`` equal to ``rich_logging`` of the
+    config.
+
+    """
+
     def __init__(self, rich: bool = True, **kwargs):
+        """Initialize the callback.
+
+        Args:
+            rich (bool): Print ``rich`` tables. ``False`` logs a plain
+                text table instead.
+            **kwargs (``Any``): Keyword arguments for the Lightning
+                ``RichModelSummary``. ``max_depth`` sets the deepest
+                level of nested modules in the table, and ``0`` turns
+                the summary off. Lightning passes every other keyword
+                to `LuxonisModelSummary.summarize`.
+
+        """
         super().__init__(**kwargs)
 
         self._rich = rich
@@ -25,6 +54,55 @@ class LuxonisModelSummary(RichModelSummary):
         *args,
         **kwargs,
     ) -> None:
+        """Print the layer summary as ``rich`` tables or as plain text.
+
+        The Lightning ``ModelSummary.on_fit_start`` hook calls this
+        method at the start of a fit, on global rank 0 only. It skips
+        the call when ``max_depth`` is ``0``.
+
+        With ``rich`` on, the method prints a ``rich`` table and a grid
+        of totals to the global ``rich`` console. It also writes both
+        without terminal styling to the log file only. With ``rich``
+        off, the method logs a ``tabulate`` table in the ``fancy_grid``
+        format and one line per total with ``logger.info``. These lines
+        reach the console and the log file.
+
+        Each column of ``summary_data`` becomes a table column, in
+        order. The method sets the headers by position: an index
+        column, ``Name``, ``Type``, ``Params``, and ``Mode``. When
+        ``summary_data`` has the columns ``In sizes`` and ``Out sizes``,
+        the ``rich`` table adds these two headers after ``Mode``.
+        Lightning puts a ``FLOPs`` column after ``Mode``. Thus these two
+        headers go over the ``FLOPs`` and ``In sizes`` data. In the
+        ``rich`` table, a data column after the last header gets no
+        header. ``tabulate`` puts the five headers over the last five
+        columns. With more than five columns, no header of the plain
+        table is over its data.
+
+        The totals are:
+
+        - the trainable, the non-trainable, and the total parameter
+          counts;
+        - the estimated size of the parameters in MB, without the
+          decimal part;
+        - the number of modules in train mode and in eval mode.
+
+        The counts and the size use a short form, for example
+        ``1.2 M``.
+
+        Args:
+            *args (``Any``): The positional arguments of the Lightning
+                hook, in order: ``summary_data``, the columns as
+                ``(header, values)`` pairs; ``total_parameters``;
+                ``trainable_parameters``; ``model_size``, in MB; and
+                ``total_training_modes``, a dictionary with the keys
+                ``"train"`` and ``"eval"``.
+            **kwargs (``Any``): The keyword arguments of the Lightning
+                hook. The ``rich`` table reads ``header_style``, which
+                is ``"bold magenta"`` when it is not given. The method
+                ignores all other keywords, such as ``total_flops``.
+
+        """
         if self._rich:
             self._rich_summarize(*args, **kwargs)
         else:
