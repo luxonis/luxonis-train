@@ -1,3 +1,5 @@
+"""The confusion matrix for classification and segmentation."""
+
 from torch import Tensor
 from torchmetrics.classification import (
     BinaryConfusionMatrix,
@@ -12,15 +14,83 @@ from .utils import compute_mcc
 
 
 class RecognitionConfusionMatrix(BaseMetric):
-    """Factory class for Recognition Confusion Matrix metrics.
+    r"""Confusion matrix for classification and semantic segmentation.
 
-    Creates the appropriate confusion matrix metric based on the number
-    of classes of the node.
+    Inputs:
+        - ``predictions`` (``Tensor``): ``[B, n_classes, ...]`` logits
+        - ``targets`` (``Tensor``): same shape, one-hot
+
+    Outputs:
+        - ``mcc`` (``Tensor``): scalar MCC of the matrix, see
+          `compute_mcc`
+        - ``confusion_matrix`` (``Tensor``): :math:`\left[n_{classes},
+          n_{classes}\right]` counts, or :math:`\left[2, 2\right]` for
+          one class, rows are targets
+
+    Formula:
+        With more than one class, the predicted class of each sample,
+        or of each pixel, is the index of the highest logit. The target
+        class is the index of the highest target value. For equal
+        values, the lowest index wins, so a target with only zeros
+        counts as class ``0``. A ``torchmetrics``
+        ``MulticlassConfusionMatrix`` counts each pair of a target class
+        and a predicted class.
+
+        With one class, a ``torchmetrics`` ``BinaryConfusionMatrix``
+        compares each prediction value with the target value at the same
+        position. When a floating point prediction of a batch is outside
+        ``[0, 1]``, it applies a sigmoid to all predictions of that
+        batch. A prediction above ``0.5`` is positive. The matrix is
+        ``[[TN, FP], [FN, TP]]``, with the counts of true negatives
+        (TN), false positives (FP), false negatives (FN), and true
+        positives (TP).
+
+    References:
+        - Source: Wraps `torchmetrics
+          <https://github.com/Lightning-AI/torchmetrics>`_ (Apache-2.0).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The metric needs a node, because it reads ``n_classes`` from the
+        node. `reset` clears the wrapped matrix, but the cached result
+        of `compute` stays until the next `update`.
+
+    Example:
+        Attached to a ``ClassificationHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: ClassificationHead
+              inputs: [ResNet]
+              metrics:
+                - name: RecognitionConfusionMatrix
+
+    Compatible with:
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
+
     """
 
     supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
 
     def __init__(self, **kwargs):
+        """Initialize the metric and the wrapped matrix.
+
+        The ``metric`` attribute holds the wrapped matrix. It is a
+        ``BinaryConfusionMatrix`` when the node has one class. Otherwise
+        it is a ``MulticlassConfusionMatrix`` with ``n_classes`` classes.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseMetric`, such as ``node``.
+
+        """
         super().__init__(**kwargs)
         if self.n_classes == 1:
             self.metric = BinaryConfusionMatrix()
@@ -29,6 +99,24 @@ class RecognitionConfusionMatrix(BaseMetric):
 
     @override
     def update(self, predictions: Tensor, targets: Tensor) -> None:
+        """Add the predictions and targets of one batch to the matrix.
+
+        With more than one class, the method takes the ``argmax`` over
+        dimension ``1`` of both tensors. With one class, it passes both
+        tensors unchanged. The class docstring describes how the wrapped
+        matrix counts them.
+
+        Args:
+            predictions (``Tensor``): The main output of the node, as
+                logits of shape ``[B, n_classes]`` for classification,
+                or ``[B, n_classes, H, W]`` for segmentation.
+            targets (``Tensor``): One-hot labels of the same shape, the
+                ``classification`` or ``segmentation`` label of the
+                task. With one class, the values must be ``0`` or ``1``.
+                Other values make ``torchmetrics`` raise
+                ``RuntimeError``.
+
+        """
         if self.n_classes > 1:
             self.metric.update(
                 predictions.argmax(dim=1), targets.argmax(dim=1)
@@ -38,10 +126,71 @@ class RecognitionConfusionMatrix(BaseMetric):
 
     @override
     def compute(self) -> dict[str, Tensor]:
+        """Return the MCC and the matrix since the last reset.
+
+        Returns:
+            ``dict[str, Tensor]``: The dictionary holds:
+
+            - ``"mcc"``: the scalar MCC of the matrix, see
+              `compute_mcc`.
+            - ``"confusion_matrix"``: the ``int64`` counts. Rows are
+              target classes and columns are predicted classes. The
+              shape is ``[n_classes, n_classes]``, or ``[2, 2]`` for one
+              class.
+
+        Example:
+            The batch has three samples and two classes. The third
+            sample has the target class ``1``, but the model predicts
+            class ``0``. A ``SimpleNamespace`` stands in for the node.
+
+            >>> import torch
+            >>> from types import SimpleNamespace
+            >>> node = SimpleNamespace(task=None, n_classes=2)
+            >>> metric = RecognitionConfusionMatrix(node=node)
+            >>> logits = torch.tensor([[2.0, 0.0], [0.0, 1.0], [3.0, 1.0]])
+            >>> targets = torch.tensor([[1, 0], [0, 1], [0, 1]])
+            >>> metric.update(logits, targets)
+            >>> result = metric.compute()
+            >>> result["confusion_matrix"].tolist()
+            [[1, 0], [1, 1]]
+            >>> result["mcc"].item()
+            0.5
+
+        """
         cm = self.metric.compute()
         mcc = compute_mcc(cm.float())
         return {"mcc": mcc, "confusion_matrix": cm}
 
     @override
     def reset(self) -> None:
+        """Reset the wrapped ``torchmetrics`` matrix.
+
+        The method does not call ``Metric.reset`` of ``torchmetrics`` on
+        this metric. The cached result of the last `compute` stays, and
+        `compute` returns it until the next `update`. In
+        `InstanceSegmentationConfusionMatrix`, the box matrix also keeps
+        its counts.
+
+        Example:
+            After the reset, `compute` returns the cached result of the
+            first batch. The next `update` clears the cache, and the new
+            result holds only the second batch.
+
+            >>> import torch
+            >>> from types import SimpleNamespace
+            >>> node = SimpleNamespace(task=None, n_classes=2)
+            >>> metric = RecognitionConfusionMatrix(node=node)
+            >>> class_0 = torch.tensor([[1.0, 0.0]])
+            >>> class_1 = torch.tensor([[0.0, 1.0]])
+            >>> metric.update(class_0, class_0)
+            >>> metric.compute()["confusion_matrix"].tolist()
+            [[1, 0], [0, 0]]
+            >>> metric.reset()
+            >>> metric.compute()["confusion_matrix"].tolist()
+            [[1, 0], [0, 0]]
+            >>> metric.update(class_1, class_1)
+            >>> metric.compute()["confusion_matrix"].tolist()
+            [[0, 0], [0, 1]]
+
+        """
         self.metric.reset()

@@ -1,3 +1,5 @@
+"""The base class every visualizer inherits."""
+
 from abc import abstractmethod
 from functools import cached_property
 from inspect import Parameter
@@ -16,19 +18,46 @@ Ts = TypeVarTuple("Ts")
 
 
 class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
-    """A base class for all visualizers.
+    """Base class for all visualizers.
 
-    This class defines the basic interface for all visualizers. It
-    utilizes automatic registration of defined subclasses to the
-    L{VISUALIZERS} registry.
+    A visualizer draws the predictions of a node, and the labels of the
+    batch, on copies of the input images. Every subclass registers
+    itself in the `VISUALIZERS` registry under its class name, so a
+    config names it as a string.
+
+    A subclass implements `forward`. `BaseAttachedModule.get_parameters`
+    describes how `run` fills its non-canvas parameters.
+
     """
 
     def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
+        """Initialize the visualizer and store the canvas scale.
+
+        Args:
+            *args (``Any``): Positional arguments forwarded to
+                `BaseAttachedModule`.
+            scale (float): Factor that `run` applies to both canvases
+                with `scale_canvas` before it calls `forward`. Defaults
+                to ``1.0``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseAttachedModule`, such as ``node``.
+
+        """
         super().__init__(*args, **kwargs)
         self._scale = scale
 
     @override
     def __getstate__(self) -> dict:
+        """Return the state to pickle, without the cached ``colormap``.
+
+        A ``ColorMap`` holds a generator, and ``pickle`` cannot
+        serialize a generator. The unpickled module creates a new map
+        on its next access to `colormap`.
+
+        Returns:
+            dict: The state of the module without the ``colormap`` key.
+
+        """
         state = super().__getstate__()
         if "colormap" in state:
             del state["colormap"]
@@ -36,6 +65,27 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     @staticmethod
     def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:
+        """Resize a batch of images by a factor with bilinear
+        interpolation.
+
+        Args:
+            canvas (``Tensor``): Images of shape ``[B, C, H, W]``.
+            scale (float): Multiplier for the height and the width.
+                Defaults to ``1.0``.
+
+        Returns:
+            ``Tensor``: Images of shape
+            ``[B, C, floor(H * scale), floor(W * scale)]``.
+
+        Example:
+            >>> import torch
+            >>> canvas = torch.zeros(1, 3, 4, 6)
+            >>> BaseVisualizer.scale_canvas(canvas, scale=0.5).shape
+            torch.Size([1, 3, 2, 3])
+            >>> BaseVisualizer.scale_canvas(canvas, scale=2.0).shape
+            torch.Size([1, 3, 8, 12])
+
+        """
         return F.interpolate(
             canvas,
             scale_factor=scale,
@@ -45,6 +95,13 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     @cached_property
     def colormap(self) -> ColorMap:
+        """A ``ColorMap`` that gives each label a distinct RGB color.
+
+        The map assigns a color on the first access to a label and
+        returns the same color afterwards. This property creates the map
+        on its first access and caches it.
+
+        """
         return ColorMap()
 
     @abstractmethod
@@ -59,30 +116,30 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         | tuple[Tensor, list[Tensor]]
         | list[Tensor]
     ):
-        """Forward pass of the visualizer.
+        """Draw the labels and the predictions on the canvases.
 
-        Takes an image and the prepared inputs from the `prepare` method and
-        produces visualizations. Visualizations can be either:
+        Implementations return one of:
 
-            - A single image (I{e.g.} for classification, weight visualization).
-            - A tuple of two images, representing (labels, predictions) (I{e.g.} for
-              bounding boxes, keypoints).
-            - A tuple of an image and a list of images,
-              representing (labels, multiple visualizations) (I{e.g.} for segmentation,
-              depth estimation).
-            - A list of images, representing unrelated visualizations.
+        - One image, as `ClassificationVisualizer` does when
+          ``include_plot`` is ``False``.
+        - A tuple ``(labels, predictions)`` of two images, as
+          `BBoxVisualizer` does.
+        - A tuple of the labels image and a list of images.
+        - A list of unrelated images.
 
-        @type target_canvas: Tensor
-        @param target_canvas: An image to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: An image to draw the predictions on.
-        @type args: Unpack[Ts]
-        @param args: Prepared inputs from the `prepare` method.
+        Args:
+            target_canvas (``Tensor``): Images to draw the labels on, of
+                shape ``[B, 3, H, W]``.
+            prediction_canvas (``Tensor``): Images to draw the
+                predictions on, of shape ``[B, 3, H, W]``.
+            *args (``Unpack[Ts]``): The predictions and labels that
+                `run` resolves from the parameter names of the
+                implementation.
 
-        @rtype: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]
-        @return: Visualizations.
+        Returns:
+            ``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]``:
+            The visualizations, in one of the four forms above.
 
-        @raise IncompatibleError: If the inputs are not compatible with the module.
         """
         ...
 
@@ -102,6 +159,27 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
+        """Scale the canvases, resolve the inputs, and call `forward`.
+
+        `BaseAttachedModule.get_parameters` documents how the remaining
+        `forward` parameters select predictions and labels.
+
+        Args:
+            prediction_canvas (``Tensor``): Images to draw the
+                predictions on, of shape ``[B, 3, H, W]``.
+            target_canvas (``Tensor``): Images to draw the labels on, of
+                shape ``[B, 3, H, W]``.
+            inputs (``Packet[Tensor]``): The output packet of the node.
+            labels (``Labels | None``): The labels of the batch, keyed
+                ``<task_name>/<label>``, or ``None`` when the batch has
+                none. Then every optional ``target`` parameter receives
+                ``None``, and a required one raises ``RuntimeError``.
+
+        Returns:
+            ``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]``:
+            What `forward` returns.
+
+        """
         prediction_canvas = self.scale_canvas(prediction_canvas, self._scale)
         target_canvas = self.scale_canvas(target_canvas, self._scale)
 
