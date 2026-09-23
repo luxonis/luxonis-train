@@ -55,6 +55,7 @@ def test_triple_lr_sgd():
     three-group layout (batch-norm weights, weights, biases) - exactly
     what the training plan builds from its rules - and driven through a
     real Lightning fit.
+
     """
 
     class DummyModel(pl.LightningModule):

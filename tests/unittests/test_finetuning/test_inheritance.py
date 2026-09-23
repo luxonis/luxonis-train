@@ -78,6 +78,7 @@ def test_optimizer_inheritance_and_override(
            bottom).
         5. Different name (AdamW) → AdamW(lr=0.04); base's wd is
            discarded but AdamW's class default of 0.01 fills in.
+
     """
     finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
@@ -144,6 +145,7 @@ def test_scheduler_inheritance_and_override(
         4. Different name (ConstantLR) → the base StepLR params are
            discarded and only the override's params
            (``factor=1.0, total_iters=2``) apply.
+
     """
     finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
@@ -215,6 +217,7 @@ def test_optimizer_and_scheduler_inheritance_together(
         3. Different name on both → SGD(lr=0.03) (base's wd dropped,
            SGD default weight_decay=0) + ConstantLR(1.0, total_iters=2)
            (base's StepLR params dropped entirely).
+
     """
     finetuning = {
         "parameters": [{"module_type": "Linear"}],
