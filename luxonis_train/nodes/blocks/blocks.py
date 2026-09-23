@@ -978,9 +978,11 @@ class CSPStackRepBlock(nn.Module):
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
-            n_blocks (int): Number of RepVGG blocks in the stack. Every
-                `BottleRep` holds two of them, so the stack has
-                ``n_blocks // 2`` bottlenecks, and at least one.
+            n_blocks (int): Controls the number of RepVGG blocks in the
+                stack. Every `BottleRep` holds two of them, so the stack
+                has ``max(1, n_blocks // 2)`` bottlenecks and
+                ``2 * max(1, n_blocks // 2)`` RepVGG blocks. Only an even
+                value of at least ``2`` gives ``n_blocks`` RepVGG blocks.
                 Defaults to ``1``.
             e (float): Fraction of ``out_channels`` that each path
                 carries. Defaults to ``0.5``.

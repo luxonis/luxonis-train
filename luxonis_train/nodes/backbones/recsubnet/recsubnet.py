@@ -30,7 +30,7 @@ class RecSubNet(BaseNode):
 
     Outputs:
         - ``reconstruction`` (``Tensor``): :math:`\left[B, out_{channels},
-          H, W\right]`
+          H', W'\right]`
         - ``original`` (``Tensor``): :math:`\left[B, C, H, W\right]`,
           the input unchanged
 
@@ -43,10 +43,11 @@ class RecSubNet(BaseNode):
     Notes:
         The encoder halves the height and the width once for each value
         of ``width_multipliers``. The decoder doubles them the same
-        number of times. Thus the reconstruction has the input size only
-        when ``H`` and ``W`` are multiples of
-        ``2 ** len(width_multipliers)``. This is ``4`` for ``"n"`` and
-        ``16`` for ``"l"``.
+        number of times. Thus ``H'`` and ``W'`` are ``H`` and ``W``
+        rounded down to a multiple of ``2 ** len(width_multipliers)``.
+        This is ``4`` for ``"n"`` and ``16`` for ``"l"``. The
+        reconstruction has the input size only when ``H`` and ``W`` are
+        such multiples.
 
     Variants:
         - ``"n"``:

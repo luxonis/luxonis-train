@@ -80,7 +80,9 @@ class RopePositionEmbedding(nn.Module):
     ):
         """Store the settings and compute the periods.
 
-        Give either ``base``, or both ``min_period`` and ``max_period``.
+        Give either ``base``, or ``base=None`` with both ``min_period``
+        and ``max_period``. When ``base`` is set, the constructor ignores
+        a single ``min_period`` or ``max_period``.
 
         Args:
             embed_dim (int): The embedding dimension of the transformer.

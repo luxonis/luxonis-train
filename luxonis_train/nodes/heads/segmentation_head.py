@@ -13,14 +13,16 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class SegmentationHead(BaseHead):
-    r"""Basic FCN segmentation head that upsamples to the image size.
+    r"""Basic FCN segmentation head with bilinear upsampling steps.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H/s, W/s\right]`
 
     Outputs:
         - ``segmentation`` (``Tensor``): :math:`\left[B, n_{classes}, H,
-          W\right]` logits
+          W\right]` logits. When :math:`s < 1`, the logits keep the size
+          of the feature map: :math:`\left[B, n_{classes}, H/s,
+          W/s\right]`.
 
     References:
         - Source: Adapted from `torchvision FCN
@@ -146,7 +148,9 @@ class SegmentationHead(BaseHead):
 
         Returns:
             ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
-            `BaseNode.run` puts them under the ``"segmentation"`` key.
+            When ``s < 1``, the logits keep the size of the feature
+            map: ``[B, n_classes, H/s, W/s]``. `BaseNode.run` puts them
+            under the ``"segmentation"`` key.
 
         Example:
             A feature map with the stride ``4`` gets two upsampling

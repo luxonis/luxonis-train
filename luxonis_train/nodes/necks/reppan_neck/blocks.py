@@ -172,10 +172,11 @@ class CSPUpBlock(PANUpBlockBase):
             in_channels_next (int): Number of channels of the finer
                 input, which the step concatenates.
             out_channels (int): Number of output channels.
-            n_repeats (int): Number of RepVGG-style blocks in the
-                `CSPStackRepBlock`. Each `BottleRep` holds two of them.
-                The stack has ``n_repeats // 2`` `BottleRep` blocks, with
-                a minimum of one.
+            n_repeats (int): Controls the number of RepVGG-style blocks
+                in the `CSPStackRepBlock`. Each `BottleRep` holds two of
+                them, so the stack has ``max(1, n_repeats // 2)``
+                `BottleRep` blocks and ``2 * max(1, n_repeats // 2)``
+                RepVGG-style blocks.
             e (float): Fraction of ``out_channels`` in each of the two
                 paths of the `CSPStackRepBlock`.
 
@@ -350,10 +351,11 @@ class CSPDownBlock(PANDownBlockBase):
             in_channels_next (int): Number of channels of the lateral
                 input, which the step concatenates.
             out_channels (int): Number of output channels.
-            n_repeats (int): Number of RepVGG-style blocks in the
-                `CSPStackRepBlock`. Each `BottleRep` holds two of them.
-                The stack has ``n_repeats // 2`` `BottleRep` blocks, with
-                a minimum of one.
+            n_repeats (int): Controls the number of RepVGG-style blocks
+                in the `CSPStackRepBlock`. Each `BottleRep` holds two of
+                them, so the stack has ``max(1, n_repeats // 2)``
+                `BottleRep` blocks and ``2 * max(1, n_repeats // 2)``
+                RepVGG-style blocks.
             e (float): Fraction of ``out_channels`` in each of the two
                 paths of the `CSPStackRepBlock`.
 
