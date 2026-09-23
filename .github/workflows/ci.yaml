@@ -125,21 +125,6 @@ jobs:
       - name: Sync docs dependencies
         run: uv sync --locked --only-group docs
 
-      - name: Install released version of LuxonisML
-        if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
-        run: uv pip install --python .venv --upgrade "luxonis-ml[utils]"
-
-      - name: Install source version of LuxonisML
-        if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
-        env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
-        run: |
-          uv pip uninstall --python .venv luxonis-ml -y
-          uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
-
-      - name: Build LuxonisML intersphinx inventory
-        run: uv run --no-sync python scripts/build_luxonis_ml_intersphinx.py
-
       - name: Build docs
         run: uv run --no-sync pydoctor
 
