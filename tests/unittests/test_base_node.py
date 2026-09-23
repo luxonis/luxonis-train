@@ -200,3 +200,17 @@ def test_non_standard_parameter_falls_back_to_the_only_input():
     features = Node().run([{"embeddings": [torch.ones(2)]}])["features"]
     assert isinstance(features, Tensor)
     assert features.tolist() == [1.0, 1.0]
+
+
+def test_variant_of_a_node_without_a_variant_is_reported():
+    with pytest.raises(RuntimeError, match="Variant was not set"):
+        _ = DummyNode().variant
+
+
+def test_variant_placeholder_needs_a_variant():
+    class Node(DummyNode, register=False):
+        def get_weights_url(self) -> str:
+            return "{github}/node_{variant}.ckpt"
+
+    with pytest.raises(ValueError, match="not constructed from a variant"):
+        Node().load_checkpoint()

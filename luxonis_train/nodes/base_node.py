@@ -373,10 +373,9 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         resolves to the name of the default variant.
 
         Raises:
-            AttributeError: When no variant built the node. This occurs
+            RuntimeError: When no variant built the node. This occurs
                 for a ``variant`` of ``"none"`` or ``None``, and for
                 ``"default"`` on a node without variants.
-            RuntimeError: When the variant name is ``None``.
 
         """
         if self._variant is None:
@@ -714,9 +713,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         Raises:
             RuntimeError: When ``ckpt`` is an empty dictionary.
             ValueError: When ``ckpt`` is ``None`` and the node does not
-                override `get_weights_url`.
-            AttributeError: When ``ckpt`` is ``None``, the URL uses
-                ``{variant}``, and no variant built the node.
+                override `get_weights_url`, or when the URL uses
+                ``{variant}`` and no variant built the node.
 
         """
         if isinstance(ckpt, dict) and not ckpt:
