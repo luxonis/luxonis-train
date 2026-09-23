@@ -425,7 +425,7 @@ loader:
 >
 > **The `inspect` command is currently only available in the CLI**
 
-For additional information about the shapes of Luxonis ML data that the loader returns, please refer to the [Loaders README](luxonis_train/loaders/README.md).
+For additional information about the shapes of Luxonis ML data that the loader returns, please refer to the [Loaders documentation](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.loaders.html).
 
 <a name="training"></a>
 
@@ -529,7 +529,7 @@ model.test(weights="path/to/checkpoint.ckpt")
 If you plan to continue using the same `LuxonisModel` run after testing, for example to call `export()` or `archive()`, use `model.test(..., finalize_tracker=False)` to keep the tracker run open and call `model.finalize_run()` once the full sequence is complete.
 
 The testing process can be started automatically at the end of the training by using the `TestOnTrainEnd` callback.
-To learn more about callbacks, see [Callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md).
+To learn more about callbacks, see [Callbacks](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.callbacks.html).
 
 <a name="inference"></a>
 
@@ -721,12 +721,12 @@ model.tune()
 
 `LuxonisTrain` is highly modular, allowing you to customize various components:
 
-- [**Loaders**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/README.md): Handles data loading and preprocessing.
+- [**Loaders**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.loaders.html): Handles data loading and preprocessing.
 - [**Nodes**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md): Represents computational units in the model architecture.
 - [**Losses**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md): Define the loss functions used to train the model.
 - [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
 - [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
-- [**Callbacks**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md): Allow custom code to be executed at different stages of training.
+- [**Callbacks**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.callbacks.html): Allow custom code to be executed at different stages of training.
 - [**Optimizers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.optimizers.html): Control how the model's weights are updated.
 - [**Schedulers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.schedulers.html): Adjust the learning rate during training.
 - [**Training Strategy**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.strategies.html): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
