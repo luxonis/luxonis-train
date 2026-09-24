@@ -1,3 +1,7 @@
+"""A segmentation head over the patch tokens of a transformer
+backbone.
+"""
+
 from typing import Any
 
 import torch.nn.functional as F
@@ -8,15 +12,73 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerSegmentationHead(BaseHead):
-    """Semantic segmentation decoder head that takes feature maps as
-    inputs.
+    r"""Semantic segmentation head for the feature maps of a transformer.
 
-    Section 6.3.2 of the DINOv3 paper (U{
-    https://arxiv.org/abs/2508.10104/})
-    mentions a ViT-adapter without the injection followed by Mask2Former.
-    In this implementation, Mask2Former is replaced by a simple convolutional head.
+    Section 6.3.2 of the `DINOv3 paper
+    <https://arxiv.org/abs/2508.10104>`_ puts a ViT-Adapter without the
+    injection and a Mask2Former decoder on the backbone. This head
+    replaces Mask2Former with a small convolutional decoder. `DinoV3`
+    gives ``depth`` feature maps of one resolution when its
+    ``return_sequence`` param is ``False``.
 
-    Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
+    Inputs:
+        - ``inputs`` (``list[Tensor]``): :math:`\left[B, C_i, h_i,
+          w_i\right]` per map, any resolution
+
+    Outputs:
+        - ``segmentation`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` logits
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        A ``1x1`` convolution, a batch norm, and a ReLU project each
+        feature map to ``256`` channels. The head resizes each projected
+        map to a quarter of the image height and width, and averages the
+        maps. A ``3x3`` convolution with ReLU and a ``1x1`` convolution
+        then give one logit map for each class. A last resize brings the
+        logits to the image size. All resizes are bilinear. The mode does
+        not change the output key or shape. This includes export mode.
+
+    Variants:
+        None. Configure the node through ``params``.
+
+    Example:
+        A node entry in the ``model.nodes`` section of a config:
+
+        .. code-block:: yaml
+
+            - name: TransformerSegmentationHead
+              inputs: [DinoV3]
+
+    Compatible with:
+        - Attach index: ``"all"``, every output of the input node
+        - Required labels: ``segmentation``
+        - Losses:
+
+          - `BCEWithLogitsLoss`
+          - `CrossEntropyLoss`
+          - `OHEMLoss`
+          - `SigmoidFocalLoss`
+          - `SmoothBCEWithLogitsLoss`
+          - `SoftmaxFocalLoss`
+
+        - Metrics:
+
+          - `Accuracy`
+          - `ConfusionMatrix`
+          - `DiceCoefficient`
+          - `F1Score`
+          - `JaccardIndex`
+          - `MIoU`
+          - `Precision`
+          - `Recall`
+
+        - Visualizers: `SegmentationVisualizer`
+        - Export parser: ``SegmentationParser``
+
     """
 
     n_classes: int
@@ -26,6 +88,25 @@ class TransformerSegmentationHead(BaseHead):
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):
+        """Build the decoder and one projection for each feature map.
+
+        The constructor reads the channel count of each map from index
+        ``1`` of its size. Each size must thus have the form
+        ``[B, C_i, h_i, w_i]``.
+
+        The class annotates `BaseNode.in_sizes` as a list. An integer
+        ``attach_index`` selects one output, so `BaseNode.in_sizes` is
+        a single size. Such an ``attach_index`` thus makes the
+        constructor raise `IncompatibleError`.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold the input sizes through ``input_shapes`` or
+                ``in_sizes``, and the class count through ``n_classes``
+                or ``dataset_metadata``. `forward` also needs
+                ``original_in_shape``.
+
+        """
         super().__init__(**kwargs)
 
         channels_list = [shape[1] for shape in self.in_sizes]
@@ -49,19 +130,41 @@ class TransformerSegmentationHead(BaseHead):
         )
 
     def forward(self, x: list[Tensor]) -> Tensor:
-        """Semantic segmentation head for feature maps from a
-        transformer backbone.
+        """Decode the feature maps into segmentation logits.
 
-        @param x: List of successive feature maps of the same dimension
-        @type x: list[Tensor]
-        @return: Segmentation logits
+        ``H`` and ``W`` are the image size from ``original_in_shape``.
+        The method does these steps:
 
-        @note: Steps:
-            1. Project each feature map to a channel dim of 256 using 1x1 convolutions.
-            2. Upsample the  feature maps to 1/4 of the image size.
-            3. Fuse the projected feature maps through summation.
-            4. Apply segmentation head.
-            5. Upsample to original input resolution.
+        - It projects each feature map to ``256`` channels.
+        - It resizes each projected map to ``[H // 4, W // 4]``.
+        - It averages the resized maps.
+        - It applies the decoder, which gives ``n_classes`` channels.
+        - It resizes the logits to ``[H, W]``.
+
+        Both resizes use bilinear interpolation.
+
+        Args:
+            x (``list[Tensor]``): The feature maps, each of shape
+                ``[B, C_i, h_i, w_i]``, in the order of the input sizes
+                of the constructor. The maps can have different sizes.
+
+        Returns:
+            ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
+            `BaseNode.run` puts them under the ``"segmentation"`` key.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import TransformerSegmentationHead
+            >>> sizes = [Size([1, 24, 4, 4]), Size([1, 12, 8, 8])]
+            >>> head = TransformerSegmentationHead(
+            ...     n_classes=3,
+            ...     input_shapes=[{"features": sizes}],
+            ...     original_in_shape=Size([3, 64, 64]),
+            ... )
+            >>> head([torch.zeros(size) for size in sizes]).shape
+            torch.Size([1, 3, 64, 64])
+
         """
         h, w = self.original_in_shape[1:]
 

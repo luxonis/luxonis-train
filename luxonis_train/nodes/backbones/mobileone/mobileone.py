@@ -1,3 +1,7 @@
+"""The MobileOne backbone, which trains with multiple branches and folds
+the branches of each block into one convolution in export mode.
+"""
+
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from typeguard import typechecked
@@ -12,43 +16,84 @@ from luxonis_train.nodes.blocks.utils import forward_gather
 
 
 class MobileOne(BaseNode):
-    """MobileOne: An efficient CNN backbone for mobile devices.
+    r"""MobileOne backbone for mobile devices.
 
-    The architecture focuses on reducing memory access costs and improving parallelism
-    while allowing aggressive parameter scaling for better representation capacity.
-    Different variants (S0-S4) offer various accuracy-latency tradeoffs.
+    The backbone is a stem and four stages. The stem is a
+    :math:`3 \times 3` `GeneralReparameterizableBlock` with a stride of
+    ``2`` and one dense branch. The four stages have 2, 8, 10, and 1
+    blocks. Each block is a :math:`3 \times 3` depthwise and a
+    :math:`1 \times 1` pointwise `GeneralReparameterizableBlock`. Both
+    have ``n_conv_branches`` dense branches. The first block of each
+    stage has a stride of ``2``. In export mode, each
+    `GeneralReparameterizableBlock` folds its branches into one
+    convolution.
 
-    Key features:
-      - Designed for low latency on mobile while maintaining high accuracy
-      - Uses re-parameterizable branches during training that get folded at inference
-      - Employs trivial over-parameterization branches for improved accuracy
-      - Simple feed-forward structure at inference with no branches/skip connections
-      - Variants achieve <1ms inference time on iPhone 12 with up to 75.9% top-1 ImageNet accuracy
-      - Outperforms other efficient architectures like MobileNets on image classification,
-          object detection and semantic segmentation tasks
-      - Uses only basic operators available across platforms (no custom activations)
+    Inputs:
+        - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
 
+    Outputs:
+        - ``features`` (``list[Tensor]``): stem and four stages; strides
+          2, 4, 8, 16, 32
 
-    Reference: U{MobileOne: An Improved One millisecond Mobile Backbone
-    <https://arxiv.org/abs/2206.04040>}
+    References:
+        - Source: Adapted from `apple/ml-mobileone
+          <https://github.com/apple/ml-mobileone>`_. Paper: `MobileOne:
+          An Improved One millisecond Mobile Backbone
+          <https://arxiv.org/abs/2206.04040>`_.
+        - License: `Apple Software License Agreement
+          <https://github.com/apple/ml-mobileone/blob/main/LICENSE>`_
 
-    Source: U{<https://github.com/apple/ml-mobileone>}
+    Notes:
+        All variants use four dense branches. Only ``"s0"`` sets
+        ``n_conv_branches``, and the constructor default is also ``4``.
+        The ``"s4"`` variant **does not run**. Its ``use_se=True`` makes
+        `forward` raise ``RuntimeError``. The ``use_se`` argument of
+        ``__init__`` gives the cause.
 
-    Variants
-    ========
-    Each variant specifies a predefined set of values for:
-      - width multipliers - A tuple of 4 float values specifying the width multipliers for each stage of the network. If the use of SE blocks is disabled, the last two values are ignored.
-      - number of convolution branches - An integer specifying the number of linear convolution branches in MobileOne block.
-      - use of SE blocks - A boolean specifying whether to use SE blocks in the network.
+    Variants:
+        - ``"s0"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(0.75, 1.0, 1.0, 2.0)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``False``
+        - ``"s1"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(1.5, 1.5, 2.0, 2.5)``
+                - ``use_se``: ``False``
+        - ``"s2"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(1.5, 2.0, 2.5, 4.0)``
+                - ``use_se``: ``False``
+        - ``"s3"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(2.0, 2.5, 3.0, 4.0)``
+                - ``use_se``: ``False``
+        - ``"s4"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(3.0, 3.5, 3.5, 4.0)``
+                - ``use_se``: ``True``
 
-    Available variants are:
-        - s0 (default): width_multipliers=(0.75, 1.0, 1.0, 2.0), n_conv_branches=4, use_se=False
-        - s1: width_multipliers=(1.5, 1.5, 2.0, 2.5)
-        - s2: width_multipliers=(1.5, 2.0, 2.5, 4.0)
-        - s3: width_multipliers=(2.0, 2.5, 3.0, 4.0)
-        - s4: width_multipliers=(3.0, 3.5, 3.5, 4.0), use_se=True
+    Example:
+        A node entry in the ``model.nodes`` section of a config:
 
-    @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
+        .. code-block:: yaml
+
+            - name: MobileOne
+              variant: s0
+
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+
     """
 
     in_channels: int
@@ -66,13 +111,30 @@ class MobileOne(BaseNode):
         use_se: bool = False,
         **kwargs,
     ):
-        """
-        @type width_multipliers: tuple[float, float, float, float]
-        @param width_multipliers: Width multipliers for each stage.
-        @type n_conv_branches: int
-        @param n_conv_branches: Number of linear convolution branches in MobileOne block.
-        @type use_se: bool
-        @param use_se: Whether to use C{Squeeze-and-Excitation} blocks in the network. Default is C{False}.
+        """Initialize the stem and the four stages.
+
+        Args:
+            width_multipliers (tuple[float, float, float, float]): The
+                channel multipliers ``w`` of the four stages. The stages
+                have ``int(64 * w[0])``, ``int(128 * w[1])``,
+                ``int(256 * w[2])``, and ``int(512 * w[3])`` output
+                channels. The stem has ``min(64, int(64 * w[0]))``
+                output channels.
+            n_conv_branches (int): The number of dense branches of each
+                depthwise and pointwise convolution in the stages. The
+                stem always has one dense branch.
+            use_se (bool): Whether to add `SqueezeExciteBlock` layers.
+                They go into the last 5 blocks of stage 3 and into the
+                only block of stage 4. Each has ``int(256 * w[2]) // 16``
+                hidden channels. The depthwise and the pointwise
+                convolution of a block share one `SqueezeExciteBlock`.
+                The pointwise convolution of stage 4 has
+                ``int(512 * w[3])`` output channels. Thus `forward`
+                raises ``RuntimeError`` unless that number is equal to
+                ``int(256 * w[2])``.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseNode`.
+
         """
         super().__init__(**kwargs)
 
@@ -116,11 +178,58 @@ class MobileOne(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """Run the stem and the four stages on a batch of images.
+
+        Args:
+            inputs (``Tensor``): The input images, of shape
+                ``[B, C, H, W]``.
+
+        Returns:
+            ``list[Tensor]``: Five feature maps: the output of the stem,
+            then the output of each stage. Their strides are 2, 4, 8,
+            16, and 32. For a height and a width that are multiples of
+            ``32``, a map with the stride ``s`` has the height ``H / s``
+            and the width ``W / s``. ``width_multipliers`` sets the
+            channels.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes.backbones import MobileOne
+            >>> shapes = [{"features": [Size([2, 3, 64, 64])]}]
+            >>> node = MobileOne(input_shapes=shapes, variant="s0")
+            >>> features = node(torch.zeros(2, 3, 64, 64))
+            >>> [tuple(feature.shape) for feature in features]
+            [(2, 48, 32, 32), (2, 48, 16, 16), (2, 128, 8, 8),
+             (2, 256, 4, 4), (2, 1024, 2, 2)]
+
+        """
         return forward_gather(inputs, self.stages)
 
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Return the default variant name and the five MobileOne variants.
+
+        The variants ``"s0"`` to ``"s4"`` set ``width_multipliers`` and
+        ``use_se``. Only ``"s0"`` sets ``n_conv_branches``. Only ``"s4"``
+        sets ``use_se`` to ``True``. The ``Variants`` section of
+        `MobileOne` lists all values. Each call builds new dictionaries.
+
+        Returns:
+            ``tuple[str, dict[str, Kwargs]]``: The name of the default
+            variant, ``"s0"``, and a dictionary that maps each variant
+            name to its constructor arguments.
+
+        Example:
+            >>> from luxonis_train.nodes.backbones import MobileOne
+            >>> default, variants = MobileOne.get_variants()
+            >>> default, sorted(variants)
+            ('s0', ['s0', 's1', 's2', 's3', 's4'])
+            >>> variants["s4"]
+            {'width_multipliers': (3.0, 3.5, 3.5, 4.0), 'use_se': True}
+
+        """
         return "s0", {
             "s0": {
                 "width_multipliers": (0.75, 1.0, 1.0, 2.0),
@@ -148,16 +257,26 @@ class MobileOne(BaseNode):
     def _make_stage(
         self, out_channels: int, n_blocks: int, n_se_blocks: int
     ) -> nn.Sequential:
-        """Build a stage of MobileOne model.
+        """Build one stage of depthwise and pointwise convolution pairs.
 
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks in this stage.
-        @type n_se_blocks: int
-        @param n_se_blocks: Number of SE blocks in this stage.
-        @rtype: nn.Sequential
-        @return: A stage of MobileOne model.
+        The method sets ``_in_channels`` to ``out_channels`` after the
+        first block.
+
+        Args:
+            out_channels (int): The number of output channels of the
+                stage.
+            n_blocks (int): The number of blocks. The first block has a
+                stride of ``2``.
+            n_se_blocks (int): The number of blocks, at the end of the
+                stage, that get a `SqueezeExciteBlock`.
+
+        Returns:
+            ``nn.Sequential``: The depthwise and the pointwise
+            convolution of each block, in order.
+
+        Raises:
+            ValueError: When ``n_se_blocks`` is larger than ``n_blocks``.
+
         """
         # Get strides for all layers
         strides = [2] + [1] * (n_blocks - 1)
