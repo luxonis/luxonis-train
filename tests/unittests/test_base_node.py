@@ -202,9 +202,9 @@ def test_non_standard_parameter_falls_back_to_the_only_input():
     assert features.tolist() == [1.0, 1.0]
 
 
-def test_variant_of_a_node_without_a_variant_is_reported():
-    with pytest.raises(RuntimeError, match="Variant was not set"):
-        _ = DummyNode().variant
+def test_variant_of_a_node_without_a_variant_is_missing():
+    # `hasattr` and `torch.jit.trace` catch only `AttributeError`.
+    assert not hasattr(DummyNode(), "variant")
 
 
 def test_variant_placeholder_needs_a_variant():

@@ -373,13 +373,17 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         resolves to the name of the default variant.
 
         Raises:
-            RuntimeError: When no variant built the node. This occurs
+            AttributeError: When no variant built the node. This occurs
                 for a ``variant`` of ``"none"`` or ``None``, and for
-                ``"default"`` on a node without variants.
+                ``"default"`` on a node without variants. Thus
+                ``hasattr(node, "variant")`` returns ``False``.
 
         """
+        # hasattr() and torch.jit.trace catch only AttributeError.
         if self._variant is None:
-            raise RuntimeError(f"Variant was not set for node '{self.name}'.")
+            raise AttributeError(
+                f"Variant was not set for node '{self.name}'."
+            )
         return self._variant
 
     @property
