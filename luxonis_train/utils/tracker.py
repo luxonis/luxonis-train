@@ -10,7 +10,7 @@ from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
-    """Lightning logger built on `luxonis_ml.tracker.LuxonisTracker`.
+    """Lightning logger built on ``luxonis_ml.tracker.LuxonisTracker``.
 
     The class adds the ``Logger`` interface of Lightning to the tracker
     of ``luxonis_ml``. A ``Trainer`` can then log to TensorBoard,
@@ -32,7 +32,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
                 ``finalize`` of Lightning stays, and the caller must call
                 ``_finalize``. `LuxonisModel.finalize_run` does this.
             **kwargs (``Any``): Keyword arguments for
-                `luxonis_ml.tracker.LuxonisTracker`, such as
+                ``luxonis_ml.tracker.LuxonisTracker``, such as
                 ``project_name``, ``run_name``, ``save_directory``, and
                 ``is_mlflow``.
 
