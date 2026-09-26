@@ -30,6 +30,7 @@ from luxonis_train.config.config import (
     FreezingConfig,
     HubAIExportConfig,
     LoaderConfig,
+    MLflowTrackerConfig,
     ModelConfig,
     NormalizeAugmentationConfig,
     OnnxExportConfig,
@@ -41,6 +42,7 @@ from luxonis_train.config.config import (
     StorageConfig,
     TrackerConfig,
     TunerConfig,
+    WandbTrackerConfig,
     _validate_quantization_mode,
 )
 from luxonis_train.config.predefined import (
@@ -182,7 +184,7 @@ def test_public_config_exports_are_importable():
     assert ArchiveConfig().upload_to_run is True
     assert BlobconverterExportConfig().version == "2022.1"
     assert OnnxExportConfig().opset_version == 16
-    assert TrackerConfig().is_tensorboard is True
+    assert TrackerConfig().tensorboard is True
     assert TunerConfig().storage.active is True
     assert StorageConfig(active=False).active is False
     assert NormalizeAugmentationConfig().active is True
@@ -1428,3 +1430,72 @@ def test_warn_when_checkpoint_model_no_longer_resolves():
         )
     assert warn.call_count == 1
     assert "RemovedModel" in warn.call_args.args[0]
+
+
+def test_tracker_config_turns_on_a_backend_with_options():
+    cfg = TrackerConfig.model_validate(
+        {
+            "wandb": {"entity": "team"},
+            "mlflow": {"tracking_uri": "http://mlflow:5000"},
+            "plugins": {"my_service": {"api_key": "key"}},
+        }
+    )
+
+    assert cfg.wandb == WandbTrackerConfig(entity="team")
+    assert cfg.mlflow == MLflowTrackerConfig(tracking_uri="http://mlflow:5000")
+    assert cfg.plugins == {"my_service": {"api_key": "key"}}
+
+
+def test_tracker_config_rejects_an_unknown_backend_option():
+    with pytest.raises(ValidationError):
+        TrackerConfig.model_validate({"wandb": {"entitty": "team"}})
+
+
+def test_tracker_config_replaces_the_deprecated_fields():
+    with patch.object(logger, "warning") as warn:
+        cfg = TrackerConfig.model_validate(
+            {
+                "is_tensorboard": False,
+                "is_wandb": True,
+                "wandb_entity": "team",
+                "is_mlflow": True,
+            }
+        )
+
+    assert cfg.tensorboard is False
+    assert cfg.wandb == WandbTrackerConfig(entity="team")
+    assert cfg.mlflow is True
+    assert warn.call_count == 1
+    assert "`is_tensorboard`" in warn.call_args.args[0]
+
+
+def test_tracker_config_prefers_a_backend_field_to_its_deprecated_field():
+    cfg = TrackerConfig.model_validate(
+        {"is_mlflow": True, "mlflow": False, "is_wandb": True, "wandb": True}
+    )
+
+    assert cfg.mlflow is False
+    assert cfg.wandb is True
+
+
+def test_tracker_config_ignores_an_entity_without_wandb():
+    cfg = TrackerConfig.model_validate(
+        {"is_wandb": False, "wandb_entity": "team"}
+    )
+
+    assert cfg.wandb is False
+
+
+def test_tracker_config_keeps_the_deprecated_attributes():
+    cfg = TrackerConfig(wandb=WandbTrackerConfig(entity="team"))
+
+    with pytest.deprecated_call():
+        assert cfg.is_tensorboard is True
+    with pytest.deprecated_call():
+        assert cfg.is_wandb is True
+    with pytest.deprecated_call():
+        assert cfg.wandb_entity == "team"
+    with pytest.deprecated_call():
+        assert cfg.is_mlflow is False
+    with pytest.deprecated_call():
+        assert TrackerConfig(wandb=True).wandb_entity is None

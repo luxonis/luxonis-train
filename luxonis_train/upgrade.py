@@ -193,6 +193,20 @@ def _apply_field_replacements(cfg: NestedDict) -> None:
     )
     if "tuner" in cfg and cfg["tuner"] is None:
         cfg.pop("tuner")
+    _migrate_tracker(cfg)
+
+
+def _migrate_tracker(cfg: NestedDict) -> None:
+    """Replace the C{is_*} flags of the tracker with the backend
+    fields.
+    """
+    entity = cfg.pop("tracker.wandb_entity", None)
+    cfg.replace("tracker.is_tensorboard", "tracker.tensorboard")
+    if cfg["tracker.is_wandb"] and entity is not None:
+        cfg.replace("tracker.is_wandb", "tracker.wandb", {"entity": entity})
+    else:
+        cfg.replace("tracker.is_wandb", "tracker.wandb")
+    cfg.replace("tracker.is_mlflow", "tracker.mlflow")
 
 
 def _migrate_nodes(cfg: NestedDict) -> dict[str, NestedDict]:

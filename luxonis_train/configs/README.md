@@ -168,23 +168,43 @@ finetuning:
 
 ## Tracker
 
-Provides experiment tracking capabilities using [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
+Provides experiment tracking capabilities using [`LuxonisTracker`](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-ml/luxonis-ml-api-reference/tracker) of `luxonis-ml`.
 
 It helps log and manage machine learning experiments by integrating with tools like **TensorBoard**, **Weights & Biases (WandB)**, and **MLFlow**, allowing users to store and organize project details, runs, and outputs efficiently.
 
 You can configure it like this:
 
-| Key              | Type          | Default value | Description                                                |
-| ---------------- | ------------- | ------------- | ---------------------------------------------------------- |
-| `project_name`   | `str \| None` | `None`        | Name of the project used for logging                       |
-| `project_id`     | `str \| None` | `None`        | ID of the project used for logging (relevant for `MLFlow`) |
-| `run_name`       | `str \| None` | `None`        | Name of the run. If empty, then it will be auto-generated  |
-| `run_id`         | `str \| None` | `None`        | ID of an already created run (relevant for `MLFLow`)       |
-| `save_directory` | `str`         | `"output"`    | Path to the save directory                                 |
-| `is_tensorboard` | `bool`        | `True`        | Whether to use `Tensorboard`                               |
-| `is_wandb`       | `bool`        | `False`       | Whether to use `WandB`                                     |
-| `wandb_entity`   | `str \| None` | `None`        | Name of `WandB` entity                                     |
-| `is_mlflow`      | `bool`        | `False`       | Whether to use `MLFlow`                                    |
+| Key              | Type           | Default value | Description                                                |
+| ---------------- | -------------- | ------------- | ---------------------------------------------------------- |
+| `project_name`   | `str \| None`  | `None`        | Name of the project used for logging                       |
+| `project_id`     | `str \| None`  | `None`        | ID of the project used for logging (relevant for `MLFlow`) |
+| `run_name`       | `str \| None`  | `None`        | Name of the run. If empty, then it will be auto-generated  |
+| `run_id`         | `str \| None`  | `None`        | ID of an already created run (relevant for `MLFLow`)       |
+| `save_directory` | `str`          | `"output"`    | Path to the save directory                                 |
+| `tensorboard`    | `bool`         | `True`        | Whether to use `TensorBoard`                               |
+| `wandb`          | `bool \| dict` | `False`       | Whether to use `WandB`, or its options (see below)         |
+| `mlflow`         | `bool \| dict` | `False`       | Whether to use `MLflow`, or its options (see below)        |
+| `plugins`        | `dict`         | `{}`          | Other tracker backends of `luxonis-ml`, keyed by name      |
+
+The options of `wandb`:
+
+| Key      | Type          | Default value | Description                                          |
+| -------- | ------------- | ------------- | ---------------------------------------------------- |
+| `entity` | `str \| None` | `None`        | Name of the `WandB` entity. `None` uses your default |
+
+The options of `mlflow`:
+
+| Key             | Type          | Default value | Description                                                   |
+| --------------- | ------------- | ------------- | ------------------------------------------------------------- |
+| `tracking_uri`  | `str \| None` | `None`        | URI of the tracking server. `None` uses `MLFLOW_TRACKING_URI` |
+| `parent_run_id` | `str \| None` | `None`        | ID of the `MLflow` run to nest this run under                 |
+
+The run stays open after training and testing, so that a later export or
+archive still uploads to it. It closes when the process exits, or when you
+call `model.tracker.close()`.
+
+The keys `is_tensorboard`, `is_wandb`, `wandb_entity` and `is_mlflow` are
+deprecated. They still work, and `luxonis_train upgrade` replaces them.
 
 **Example:**
 
@@ -192,9 +212,10 @@ You can configure it like this:
 tracker:
   project_name: "project_name"
   save_directory: "output"
-  is_tensorboard: true
-  is_wandb: false
-  is_mlflow: false
+  tensorboard: true
+  wandb:
+    entity: "my-team"
+  mlflow: false
 ```
 
 ## Loader

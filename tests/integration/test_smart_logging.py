@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.tracker import TensorBoardBackend
 from luxonis_ml.typing import Params
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -55,7 +56,7 @@ def test_smart_vis_logging(tmp_path: Path):
 
     model.test()
 
-    log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
+    log_dir = model.tracker.get_backend(TensorBoardBackend).log_dir
 
     ea = event_accumulator.EventAccumulator(str(log_dir))
     ea.Reload()

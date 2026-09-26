@@ -88,9 +88,9 @@ model:
 tracker:
   project_name: coco_test
   save_directory: output
-  is_tensorboard: true
-  is_wandb: false
-  is_mlflow: false
+  tensorboard: true
+  wandb: false
+  mlflow: false
 
 loader:
   train_view: train

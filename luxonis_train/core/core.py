@@ -264,7 +264,6 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **get_tracker_init_params(self.cfg.tracker),
         )
@@ -807,11 +806,9 @@ class LuxonisModel:
             the model will be temporarily replaced with the weights from
             the specified checkpoint.
         @type finalize_tracker: bool
-        @param finalize_tracker: If True, uploads final run metadata and
-            finalizes the tracker after testing. Set to False only when
-            the current run is expected to continue with additional
-            actions such as export or archive, in which case the caller
-            is responsible for eventually calling L{finalize_run()}.
+        @param finalize_tracker: If True, uploads the run metadata and
+            records the status of the test after testing. See
+            L{finalize_run()}.
         @rtype: Mapping[str, float] | Thread
         @return: If new_thread is False, returns a dictionary test
             results.
@@ -844,13 +841,22 @@ class LuxonisModel:
         return _run_test()
 
     def finalize_run(self, status: str = "success") -> None:
-        """Upload run metadata and finalize the tracker.
+        """Upload the run metadata, record the status of the run, and
+        write the pending data of the tracker.
+
+        The run stays open, so that a later export or archive still
+        uploads to it. It closes when the process exits, or at
+        C{model.tracker.close()}. A failed status marks the run as
+        failed.
 
         @type status: str
-        @param status: Final run status passed to the tracker.
+        @param status: The status of the training or the test, such as
+            C{"success"} or C{"failed"}.
         """
         self._upload_run_metadata()
-        self.tracker._finalize(status)
+        if status not in {"success", "finished"}:
+            self.tracker.mark_failed()
+        self.tracker.flush()
 
     def _upload_run_metadata(self) -> None:
         self.tracker.upload_artifact(self._log_file, typ="logs")
@@ -1001,6 +1007,7 @@ class LuxonisModel:
         )
 
         self._parent_tracker.log_hyperparams(study.best_params)
+        self._parent_tracker.close()
 
         self._finalize_wandb_tuning(study)
 
@@ -1020,10 +1027,7 @@ class LuxonisModel:
             tracker_params["run_name"] or self.tracker.run_name
         )
         child_tracker = LuxonisTrackerPL(
-            rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-            is_sweep=True,
-            **tracker_params,
+            rank=rank_zero_only.rank, is_sweep=True, **tracker_params
         )
 
         run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
@@ -1161,19 +1165,15 @@ class LuxonisModel:
         cfg_tracker = self.cfg.tracker
         tracker_params = get_tracker_init_params(cfg_tracker)
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
-        tracker_params["is_wandb"] = False
+        tracker_params["wandb"] = False
         tracker_params["run_name"] = (
             tracker_params["run_name"] or self.tracker.run_name
         )
         self._parent_tracker = LuxonisTrackerPL(
-            rank=rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-            is_sweep=False,
-            **tracker_params,
+            rank=rank, is_sweep=False, **tracker_params
         )
-        if self._parent_tracker.is_mlflow:  # pragma: no cover
-            # Experiment needs to be interacted with to create actual MLFlow run
-            self._parent_tracker.experiment["mlflow"].active_run()
+        # the MLflow run of the trials nests under the run that is open
+        self._parent_tracker.start()
 
     @staticmethod
     def _build_optuna_storage(cfg_tuner: TunerConfig) -> "URL | None":
@@ -1195,17 +1195,21 @@ class LuxonisModel:
         return storage
 
     def _finalize_wandb_tuning(self, study: "optuna.study.Study") -> None:
-        if self.cfg.tracker.is_wandb:  # pragma: no cover
+        if self.cfg.tracker.wandb is not False:  # pragma: no cover
             # If wandb used then init parent tracker separately at the end
-            wandb_parent_tracker = LuxonisTrackerPL(
-                rank=rank_zero_only.rank,
-                _auto_finalize=True,
-                **(
-                    get_tracker_init_params(self.cfg.tracker)
-                    | {"run_name": self._parent_tracker.run_name}
-                ),
+            # the other backends have their parent run already
+            tracker_params = get_tracker_init_params(self.cfg.tracker)
+            tracker_params.update(
+                tensorboard=False,
+                mlflow=False,
+                run_name=self._parent_tracker.run_name,
             )
-            wandb_parent_tracker.log_hyperparams(study.best_params)
+            for plugin in self.cfg.tracker.plugins:
+                tracker_params[plugin] = False
+            with LuxonisTrackerPL(
+                rank=rank_zero_only.rank, **tracker_params
+            ) as wandb_parent_tracker:
+                wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
         self,

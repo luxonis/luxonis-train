@@ -2262,7 +2262,7 @@ requires-dist = [
     { name = "grad-cam", specifier = "~=1.5" },
     { name = "hubai-sdk", specifier = ">=0.3.4" },
     { name = "lightning", specifier = "~=2.5" },
-    { name = "luxonis-ml", extras = ["data", "gcs", "mlflow", "roboflow", "s3", "tracker"], specifier = ">=0.10.0" },
+    { name = "luxonis-ml", extras = ["data", "gcs", "mlflow", "roboflow", "s3", "tensorboard", "tracker"], specifier = ">=0.10.0" },
     { name = "onnx", specifier = "~=1.19" },
     { name = "onnxruntime", specifier = "~=1.23" },
     { name = "onnxscript", specifier = "~=0.5" },

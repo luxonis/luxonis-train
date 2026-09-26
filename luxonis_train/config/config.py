@@ -42,7 +42,7 @@ from pydantic.types import (
     PositiveInt,
 )
 from pydantic_extra_types.semantic_version import SemanticVersion
-from typing_extensions import Self, override
+from typing_extensions import Self, deprecated, override
 
 import luxonis_train as lxt
 from luxonis_train.registry import NODES
@@ -447,16 +447,136 @@ class ModelConfig(BaseModelExtraForbid):
         ]
 
 
+class WandbTrackerConfig(BaseModelExtraForbid):
+    """Options of the WandB backend of the tracker.
+
+    @ivar entity: The WandB user or team. C{None} uses the default
+        entity of the logged-in user.
+    """
+
+    entity: str | None = None
+
+
+class MLflowTrackerConfig(BaseModelExtraForbid):
+    """Options of the MLflow backend of the tracker.
+
+    @ivar tracking_uri: URI of the tracking server. C{None} takes
+        C{MLFLOW_TRACKING_URI} from the environment.
+    @ivar parent_run_id: The MLflow run to nest this run under.
+    """
+
+    tracking_uri: str | None = None
+    parent_run_id: str | None = None
+
+
+_DEPRECATED_TRACKER_FIELDS = (
+    "is_tensorboard",
+    "is_wandb",
+    "wandb_entity",
+    "is_mlflow",
+)
+
+
 class TrackerConfig(BaseModelExtraForbid):
+    """Configuration of the experiment tracker.
+
+    Each backend is C{True} to turn it on with its defaults, C{False} to
+    leave it off, or a mapping of its options.
+
+    @ivar project_name: Name of the project.
+    @ivar project_id: Identifier of the project, such as an existing
+        MLflow experiment.
+    @ivar run_name: Name of the run. C{None} generates one.
+    @ivar run_id: Identifier of an existing run to continue.
+    @ivar save_directory: Root directory of the local run outputs.
+    @ivar tensorboard: Whether to log to TensorBoard.
+    @ivar wandb: Whether to log to Weights & Biases, or its options.
+    @ivar mlflow: Whether to log to MLflow, or its options.
+    @ivar plugins: The other backends of the C{luxonis_ml} tracker
+        registry, keyed by name. Each value is C{True}, C{False}, or a
+        mapping of the options of the backend.
+    """
+
     project_name: str | None = None
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
     save_directory: Annotated[Path, Field(exclude=True)] = Path("output")
-    is_tensorboard: bool = True
-    is_wandb: bool = False
-    wandb_entity: str | None = None
-    is_mlflow: bool = False
+    tensorboard: bool = True
+    wandb: WandbTrackerConfig | bool = False
+    mlflow: MLflowTrackerConfig | bool = False
+    plugins: dict[str, Params | bool] = {}
+
+    @model_validator(mode="before")
+    @classmethod
+    def replace_deprecated_fields(cls, data: Any) -> Any:
+        """Turn the deprecated C{is_*} fields into the backend fields.
+
+        A backend field that the config sets wins over its deprecated
+        field.
+        """
+        if not isinstance(data, dict) or not any(
+            key in data for key in _DEPRECATED_TRACKER_FIELDS
+        ):
+            return data
+        data = dict(data)
+        is_tensorboard = data.pop("is_tensorboard", None)
+        is_wandb = data.pop("is_wandb", None)
+        wandb_entity = data.pop("wandb_entity", None)
+        is_mlflow = data.pop("is_mlflow", None)
+        if is_tensorboard is not None:
+            data.setdefault("tensorboard", is_tensorboard)
+        if is_wandb is not None:
+            data.setdefault(
+                "wandb", {"entity": wandb_entity} if is_wandb else False
+            )
+        if is_mlflow is not None:
+            data.setdefault("mlflow", is_mlflow)
+        logger.warning(
+            "The tracker fields `is_tensorboard`, `is_wandb`, "
+            "`wandb_entity` and `is_mlflow` are deprecated. Use "
+            "`tensorboard`, `wandb` and `mlflow` instead, for example "
+            "`wandb: {entity: my-team}`."
+        )
+        return data
+
+    @property
+    @deprecated("Use `tracker.tensorboard` instead.")
+    def is_tensorboard(self) -> bool:
+        """Whether TensorBoard is on.
+
+        Deprecated, use C{tensorboard}.
+        """
+        return self.tensorboard
+
+    @property
+    @deprecated("Use `tracker.wandb` instead.")
+    def is_wandb(self) -> bool:
+        """Whether WandB is on.
+
+        Deprecated, use C{wandb}.
+        """
+        return self.wandb is not False
+
+    @property
+    @deprecated("Use `tracker.wandb.entity` instead.")
+    def wandb_entity(self) -> str | None:
+        """The WandB entity.
+
+        Deprecated, use C{wandb.entity}.
+        """
+        if isinstance(self.wandb, WandbTrackerConfig):
+            return self.wandb.entity
+        return None
+
+    @property
+    @deprecated("Use `tracker.mlflow` instead.")
+    def is_mlflow(self) -> bool:
+        """Whether MLflow is on.
+
+        Deprecated, use C{mlflow}.
+        """
+        return self.mlflow is not False
 
 
 class LoaderConfig(ConfigItem):

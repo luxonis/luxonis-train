@@ -100,7 +100,9 @@ class GracefulInterruptCallback(pl.Callback):
                 self._tracker.upload_artifact(
                     ckpt_path, typ="checkpoints", name="resume.ckpt"
                 )
-                self._tracker._finalize(status="failed")
+                # a second interrupt exits without the exit hooks, so
+                # the run is closed now
+                self._tracker.close(status="failed")
         except Exception:
             logger.exception(
                 "Failed to upload checkpoint or finalize tracker."

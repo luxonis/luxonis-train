@@ -262,11 +262,13 @@ def test_mlflow_logging_on_standalone_test(xor_dataset: LuxonisDataset):
     )[0].info.run_id
 
     all_artifacts = list_artifacts(client, run_id)
-    run = client.get_run(run_id)
 
     assert "luxonis_train.log" in all_artifacts
     assert "training_config.yaml" in all_artifacts
-    assert run.info.status == "FINISHED"
+    # the run stays open for a later export, until the process exits
+    assert client.get_run(run_id).info.status == "RUNNING"
+    model.tracker.close()
+    assert client.get_run(run_id).info.status == "FINISHED"
 
 
 def get_config(trainer_overrides: Params | None = None) -> Params:
@@ -321,7 +323,7 @@ def get_config(trainer_overrides: Params | None = None) -> Params:
             },
             "trainer": trainer_cfg,
             "tracker": {
-                "is_mlflow": True,
+                "mlflow": True,
                 "project_name": "xor_project",
                 "run_name": "xor_run",
             },

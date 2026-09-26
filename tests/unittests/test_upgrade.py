@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 import requests
+from luxonis_ml.typing import Params
 from semver import Version
 
 import luxonis_train as lxt
@@ -60,6 +61,35 @@ def test_upgrade_moves_exporter_output_names_to_the_only_head():
         },
         "exporter": {},
     }
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        (
+            {
+                "is_tensorboard": False,
+                "is_wandb": True,
+                "wandb_entity": "team",
+                "is_mlflow": True,
+            },
+            {
+                "tensorboard": False,
+                "wandb": {"entity": "team"},
+                "mlflow": True,
+            },
+        ),
+        (
+            {"is_wandb": True, "is_mlflow": False},
+            {"wandb": True, "mlflow": False},
+        ),
+        ({"wandb_entity": "team"}, {}),
+    ],
+)
+def test_upgrade_replaces_the_tracker_flags(old: Params, new: Params):
+    upgraded = upgrade_config({"version": "0.3.0", "tracker": old})
+
+    assert upgraded["tracker"] == new
 
 
 def test_get_latest_version_uses_pypi_resolved_version(

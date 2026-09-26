@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.tracker import TensorBoardBackend
 from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train.core import LuxonisModel
@@ -104,7 +105,7 @@ def test_freezing_parametrized(
     }
     model = LuxonisModel(config_file, opts)
     model.train()
-    log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
+    log_dir = model.tracker.get_backend(TensorBoardBackend).log_dir
 
     ea = event_accumulator.EventAccumulator(
         str(Path(log_dir)),

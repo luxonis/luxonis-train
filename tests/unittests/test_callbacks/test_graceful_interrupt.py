@@ -1,6 +1,6 @@
 import signal
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -56,3 +56,22 @@ def test_graceful_interrupt_restores_handlers_after_fit(
         (signal.SIGTERM, original_handlers[signal.SIGTERM]),
     ]
     assert callback._signal_handlers == {}
+
+
+def test_graceful_interrupt_uploads_the_checkpoint_and_closes_the_run(
+    tmp_path: Path,
+) -> None:
+    tracker = Mock()
+    callback = GracefulInterruptCallback(tmp_path, tracker)
+    callback._trainer = Mock()
+
+    callback._save_interrupt_checkpoint()
+
+    checkpoint = tmp_path / "resume.ckpt"
+    callback._trainer.save_checkpoint.assert_called_once_with(checkpoint)
+    assert tracker.method_calls == [
+        call.upload_artifact(
+            checkpoint, typ="checkpoints", name="resume.ckpt"
+        ),
+        call.close(status="failed"),
+    ]
