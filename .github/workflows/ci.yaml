@@ -150,7 +150,8 @@ jobs:
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis-ml#502 is released
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
           uv pip install --python .venv "luxonis-ml[data,tensorboard,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
@@ -192,7 +193,8 @@ jobs:
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis-ml#502 is released
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
           uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
@@ -245,7 +247,8 @@ jobs:
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis-ml#502 is released
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
           uv pip install --python .venv "luxonis-ml[data,tensorboard,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
