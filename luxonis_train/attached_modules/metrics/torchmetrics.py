@@ -54,14 +54,15 @@ class TorchMetricWrapper(BaseMetric):
         metric reads the ``segmentation`` label.
 
     Example:
-        Attached to a ``DiscSubNetHead`` in ``model.nodes``:
+        A subclass, here `Accuracy`, attached to a ``DiscSubNetHead`` in
+        ``model.nodes``:
 
         .. code-block:: yaml
 
             - name: DiscSubNetHead
               inputs: [RecSubNet]
               metrics:
-                - name: TorchMetricWrapper
+                - name: Accuracy
 
     Compatible with:
         - Nodes:
