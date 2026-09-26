@@ -9,7 +9,7 @@ from typing import TypeAlias
 import pytest
 import yaml
 
-from luxonis_train.config import Config
+from luxonis_train.config import Config, NodeConfig
 from luxonis_train.registry import LOSSES, METRICS, NODES, VISUALIZERS
 
 importlib.import_module("luxonis_train.nodes")
@@ -21,6 +21,13 @@ SOURCES = sorted(
     + list((ROOT / "luxonis_train" / "attached_modules").rglob("*.py"))
 )
 DIRECTIVE = ".. code-block:: yaml"
+REGISTRIES = {
+    "nodes": NODES,
+    "losses": LOSSES,
+    "metrics": METRICS,
+    "visualizers": VISUALIZERS,
+}
+ATTACHED_PLACES = ("losses", "metrics", "visualizers")
 VariantValue: TypeAlias = "bool | int | float | str | tuple[VariantValue, ...] | list[VariantValue] | None"
 
 
@@ -89,29 +96,91 @@ def test_every_component_documents_an_example():
     ids=[f"{name}-{path}" for name, path, _ in EXAMPLES],
 )
 def test_example_is_a_valid_node_graph(cls_name: str, entries: list[dict]):
-    """The examples must load as the ``model.nodes`` they claim to
-    be.
+    """The examples must load as the ``model.nodes`` they claim to be.
+
+    Every name must be in the registry of its place: ``model.nodes``,
+    or the ``losses``, ``metrics``, or ``visualizers`` of a node. The
+    example of an attached module can also be a fragment of that list,
+    with no node around it.
+
     """
-    config = Config.get_config(
-        {
-            "model": {"name": "docs", "nodes": _complete(entries)},
-            "loader": {"params": {"dataset_name": "docs"}},
-        }
+    fragment_of = _fragment_of(cls_name, entries)
+    if fragment_of is None:
+        nodes = Config.get_config(
+            {
+                "model": {"name": "docs", "nodes": _complete(entries)},
+                "loader": {"params": {"dataset_name": "docs"}},
+            }
+        ).model.nodes
+        placed = [("nodes", node.name) for node in nodes]
+    else:
+        nodes = [NodeConfig.model_validate({"name": "", fragment_of: entries})]
+        placed = []
+    placed += [
+        (place, module.name)
+        for node in nodes
+        for place in ATTACHED_PLACES
+        for module in getattr(node, place)
+    ]
+    for place, name in placed:
+        assert name in REGISTRIES[place]._module_dict, (
+            f"{name!r} is not in the {place!r} registry"
+        )
+    assert {name for _, name in placed} & _registered_names(cls_name)
+
+
+def _fragment_of(cls_name: str, entries: list[dict]) -> str | None:
+    """Return the list of a node that an example is a fragment of.
+
+    ``None`` when an entry at the top is a node, or when ``cls_name`` is
+    not an attached module.
+
+    """
+    if any(entry["name"] in NODES._module_dict for entry in entries):
+        return None
+    return next(
+        (
+            place
+            for place in ATTACHED_PLACES
+            for cls in REGISTRIES[place]._module_dict.values()
+            if cls.__name__ == cls_name
+        ),
+        None,
     )
-    mentioned = {node.name for node in config.model.nodes}
-    for node in config.model.nodes:
-        for attached in (*node.losses, *node.metrics, *node.visualizers):
-            mentioned.add(attached.name)
-    assert mentioned & _registered_names(cls_name)
+
+
+@pytest.mark.parametrize(
+    ("cls_name", "entries"),
+    [
+        (
+            "SegmentationVisualizer",
+            [
+                {
+                    "name": "DDRNetSegmentationHead",
+                    "inputs": ["DDRNet"],
+                    "metrics": [{"name": "SegmentationVisualizer"}],
+                }
+            ],
+        ),
+        (
+            "InstanceSegKeypointVisualizer",
+            [{"name": "InstanceSegKeypointVisualizer"}, {"name": "Accuracy"}],
+        ),
+    ],
+    ids=["visualizer-in-metrics", "metric-in-visualizers"],
+)
+def test_misplaced_name_fails(cls_name: str, entries: list[dict]):
+    with pytest.raises(AssertionError, match="registry"):
+        test_example_is_a_valid_node_graph(cls_name, entries)
 
 
 def _registered_names(cls_name: str) -> set[str]:
-    """Collect the config names a class is registered under."""
+    """Collect the config names of a class and of its subclasses."""
     return {
         name
-        for registry in (NODES, LOSSES, METRICS, VISUALIZERS)
+        for registry in REGISTRIES.values()
         for name, cls in registry._module_dict.items()
-        if cls.__name__ == cls_name
+        if any(base.__name__ == cls_name for base in cls.__mro__)
     }
 
 
