@@ -1,3 +1,5 @@
+"""The Dice coefficient over segmentation masks."""
+
 from typing import Literal
 
 import torch
@@ -10,7 +12,67 @@ from .base_metric import BaseMetric
 
 
 class DiceCoefficient(BaseMetric):
-    """Dice coefficient metric for SEGMENTATION tasks."""
+    r"""Dice coefficient metric for segmentation masks.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` logits
+        - ``target`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` one-hot masks
+
+    Outputs:
+        - ``Tensor``: scalar, or :math:`\left[n_{classes}\right]` when
+          ``average`` is ``"none"`` or ``None``. Without the background
+          class, the shape is :math:`\left[n_{classes} - 1\right]`. A
+          result with one element is a scalar.
+
+    Formula:
+        Each predicted pixel gets the class with the highest logit. For
+        image :math:`i` and class :math:`c`, :math:`P_{i,c}` is the set
+        of predicted pixels and :math:`T_{i,c}` the set of target
+        pixels. The per-class score is:
+
+        .. math::
+
+            D_{i,c} = \frac{2 |P_{i,c} \cap T_{i,c}|}{|P_{i,c}| + |T_{i,c}|}
+
+        ``average`` combines the classes of each image. ``"micro"`` sums
+        the numerators and the denominators of all classes before the
+        division. The result is the mean over all images. A score with
+        a zero denominator is ``NaN``, and the means skip it.
+
+    References:
+        - Source: Wraps `torchmetrics
+          <https://github.com/Lightning-AI/torchmetrics>`_ (Apache-2.0).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        When ``average`` is ``"micro"``, the ``DiceScore`` constructor
+        of ``torchmetrics`` warns about a future change of its default
+        ``average``. This class always passes ``average``, so the
+        warning does not apply.
+
+    Example:
+        Attached to a ``DDRNetSegmentationHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: DDRNetSegmentationHead
+              inputs: [DDRNet]
+              metrics:
+                - name: DiceCoefficient
+                  params:
+                    num_classes: 2
+
+    Compatible with:
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerSegmentationHead`
+
+    """
 
     supported_tasks = [Tasks.SEGMENTATION]
 
@@ -23,16 +85,30 @@ class DiceCoefficient(BaseMetric):
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):
-        """
-        @type num_classes: int
-        @param num_classes: Number of classes.
-        @type include_background: bool
-        @param include_background: Whether to include the background
-            class.
-        @type average: Literal["micro", "macro", "weighted", "none"]
-        @param average: Type of averaging.
-        @type input_format: Literal["one-hot", "index"]
-        @param input_format: Format of the input.
+        """Initialize the metric and the wrapped ``DiceScore``.
+
+        Args:
+            num_classes (int): The number of classes, the size of the
+                class dimension of the inputs.
+            include_background (bool): Whether class ``0`` counts. When
+                ``False``, the metric drops class ``0`` before it scores.
+            average (``Literal["micro", "macro", "weighted", "none"] | None``):
+                How the metric combines the classes of an image:
+
+                - ``"micro"``: one score from the summed counts of all
+                  classes.
+                - ``"macro"``: the mean of the per-class scores.
+                - ``"weighted"``: the per-class scores, weighted by the
+                  share of the target pixels of each class.
+                - ``"none"`` or ``None``: one score for each class.
+
+            input_format (``Literal["one-hot", "index"]``): How `update`
+                converts the inputs, see `convert_format`. The two
+                formats give different results only for a target pixel
+                with no class or with more than one class.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseMetric`, such as ``node``.
+
         """
         super().__init__(**kwargs)
         self._input_format = input_format
@@ -46,6 +122,42 @@ class DiceCoefficient(BaseMetric):
     def convert_format(
         self, tensor: Tensor, is_target: bool = False
     ) -> Tensor:
+        """Convert class scores to the format of ``input_format``.
+
+        - ``"index"``: return the ``argmax`` over dimension ``1``. The
+          method does this for the target too, so a target pixel with no
+          class becomes class ``0``.
+        - ``"one-hot"``, with ``is_target`` set to ``False``: return a
+          one-hot tensor of the input shape and dtype. It holds ``1`` at
+          the ``argmax`` class of each pixel.
+        - ``"one-hot"``, with ``is_target`` set to ``True``: return
+          ``tensor`` unchanged.
+
+        Args:
+            tensor (``Tensor``): Logits or masks of shape
+                ``[B, C, H, W]``.
+            is_target (bool): Whether ``tensor`` is the target.
+
+        Returns:
+            ``Tensor``: Class indices of shape ``[B, H, W]`` for
+            ``"index"``, otherwise a tensor of shape ``[B, C, H, W]``.
+
+        Examples:
+            Logits of shape ``[1, 2, 1, 2]`` become class indices:
+
+            >>> import torch
+            >>> logits = torch.tensor([[[[2.0, 0.0]], [[1.0, 3.0]]]])
+            >>> metric = DiceCoefficient(num_classes=2)
+            >>> metric.convert_format(logits).tolist()
+            [[[0, 1]]]
+
+            A target pixel with no class becomes class ``0``:
+
+            >>> empty = torch.zeros(1, 2, 1, 2)
+            >>> metric.convert_format(empty, is_target=True).tolist()
+            [[[0, 0]]]
+
+        """
         if self._input_format == "index":
             return torch.argmax(tensor, dim=1)
         if self._input_format == "one-hot" and not is_target:
@@ -56,6 +168,21 @@ class DiceCoefficient(BaseMetric):
         return tensor
 
     def update(self, predictions: Tensor, target: Tensor) -> None:
+        """Convert one batch and add it to the wrapped ``DiceScore``.
+
+        For ``"index"``, `convert_format` turns both tensors into class
+        indices. For ``"one-hot"``, it turns the predictions into
+        one-hot masks, and the method casts both tensors to ``bool``.
+        The wrapped metric stores the numerator, the denominator, and
+        the number of target pixels of each image and class.
+
+        Args:
+            predictions (``Tensor``): Logits of shape ``[B, C, H, W]``,
+                the main output of the node.
+            target (``Tensor``): One-hot masks of shape
+                ``[B, C, H, W]``, the ``segmentation`` label of the task.
+
+        """
         converted_preds = self.convert_format(predictions, is_target=False)
 
         if self._input_format == "index":
@@ -67,7 +194,40 @@ class DiceCoefficient(BaseMetric):
         self.metric.update(converted_preds, converted_target)
 
     def compute(self) -> Tensor:
+        """Return the Dice score of the images since the last reset.
+
+        Returns:
+            ``Tensor``: The mean score over the images, as a scalar. For
+            ``average`` set to ``"none"`` or ``None``, the mean score of
+            each class, of shape ``[C]``, or ``[C - 1]`` without the
+            background class. A result with one element is a scalar.
+
+        Example:
+            One image of four pixels. The target holds class ``0`` in
+            the first two pixels and class ``1`` in the last two. The
+            prediction is wrong in the second pixel. The ``"micro"``
+            average sums the numerators and the denominators of both
+            classes: :math:`(2 + 4) / (3 + 5) = 0.75`.
+
+            >>> import torch
+            >>> target = torch.tensor([[[[1, 1, 0, 0]], [[0, 0, 1, 1]]]])
+            >>> logits = torch.tensor(
+            ...     [[[[2.0, 0.0, 0.0, 0.0]], [[0.0, 1.0, 1.0, 1.0]]]]
+            ... )
+            >>> metric = DiceCoefficient(num_classes=2)
+            >>> metric.update(logits, target)
+            >>> metric.compute().item()
+            0.75
+
+        """
         return self.metric.compute()
 
     def reset(self) -> None:
+        """Reset the states of the wrapped ``DiceScore``.
+
+        The method does not call the ``reset`` of ``torchmetrics`` for
+        this metric. The cached result of the last `compute` stays, and
+        `compute` returns it until the next `update`.
+
+        """
         self.metric.reset()

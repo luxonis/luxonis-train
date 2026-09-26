@@ -197,6 +197,7 @@ unfixable = ["B905"]
 
 [tool.docformatter]
 black = true
+blank = true
 wrap-summaries = 72
 wrap-descriptions = 72
 
@@ -206,6 +207,7 @@ docformat = "google"
 project-name = "luxonis-train"
 project-url = "https://github.com/luxonis/luxonis-train"
 html-output = "apidocs"
+warnings-as-errors = true
 intersphinx = [
   "https://docs.python.org/3/objects.inv",
   "https://pytorch.org/docs/stable/objects.inv",

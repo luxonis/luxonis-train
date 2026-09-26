@@ -1,3 +1,5 @@
+"""Mean average precision over bounding boxes."""
+
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
 from typing_extensions import override
@@ -9,6 +11,72 @@ from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
+    r"""Mean average precision metric for bounding box detections.
+
+    The class is a subclass of the ``torchmetrics``
+    ``MeanAveragePrecision``, with ``iou_type="bbox"``. `update`
+    converts the boxes of the node to the input of ``torchmetrics``.
+    `compute` adds the F1 scores and splits the per-class values.
+
+    Inputs:
+        - ``boundingbox`` (``list[Tensor]``): :math:`\left[M_i,
+          6\right]` per image, ``[x1, y1, x2, y2, conf, class]``, pixels
+        - ``target_boundingbox`` (``Tensor``): :math:`\left[N,
+          6\right]`, ``[batch, class, x, y, w, h]``, ``xywh`` normalized
+
+    Outputs:
+        - ``map`` (``Tensor``): scalar, the main metric
+        - ``dict[str, Tensor]``: the other AP, AR, and F1 values, see
+          `compute`
+
+    Formula:
+        A prediction is a true positive when its IoU with a target box
+        of the same class is at least the threshold :math:`t`. For
+        class :math:`c`, :math:`\text{AP}_{c,t}` is the area under the
+        precision-recall curve. With the default thresholds
+        :math:`T = \{0.5, 0.55, \ldots, 0.95\}` and the classes
+        :math:`C`:
+
+        .. math::
+
+            \text{mAP} = \frac{1}{|C| \, |T|} \sum_{c \in C} \sum_{t \in T} \text{AP}_{c,t}
+
+        The mean average recall is the same mean over the highest
+        recall of each class and threshold.
+
+    References:
+        - Source: Wraps `torchmetrics
+          <https://github.com/Lightning-AI/torchmetrics>`_ (Apache-2.0).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The
+        `luxonis_train.attached_modules.metrics.mean_average_precision.MeanAveragePrecision`
+        factory selects the ``"faster_coco_eval"`` backend. A config
+        that names this class directly gets the ``torchmetrics``
+        default, ``"pycocotools"``. The per-class values carry the class
+        names of the node, with each space replaced by an underscore.
+
+    Example:
+        Attached to a ``EfficientBBoxHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: EfficientBBoxHead
+              inputs: [RepPANNeck]
+              metrics:
+                - name: MeanAveragePrecisionBBox
+
+    Compatible with:
+        - Nodes:
+
+          - `EfficientBBoxHead`
+          - `EfficientKeypointBBoxHead`
+          - `PrecisionBBoxHead`
+          - `PrecisionSegmentBBoxHead`
+
+    """
+
     supported_tasks = [
         Tasks.BOUNDINGBOX,
         Tasks.INSTANCE_KEYPOINTS,
@@ -17,12 +85,50 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
     ]
 
     def __init__(self, **kwargs):
+        """Initialize the metric with ``iou_type="bbox"``.
+
+        Args:
+            **kwargs (``Any``): Keyword arguments forwarded to the
+                ``torchmetrics`` ``MeanAveragePrecision``, such as
+                ``iou_thresholds``, ``max_detection_thresholds``,
+                ``class_metrics``, and ``backend``. The other arguments,
+                such as ``node``, reach `BaseMetric`. A name that no base
+                class accepts raises ``ValueError``. An ``iou_type``
+                argument raises ``TypeError``. Keep ``box_format`` at
+                ``"xyxy"``, because `update` gives all boxes in the
+                ``xyxy`` format. Keep ``extended_summary`` at ``False``.
+                With ``True``, `compute` raises ``AttributeError`` after
+                any `update`.
+
+        """
         super().__init__(iou_type="bbox", **kwargs)
 
     @override
     def update(
         self, boundingbox: list[Tensor], target_boundingbox: Tensor
     ) -> None:
+        """Convert the boxes of one batch and store them.
+
+        `luxonis_train.attached_modules.metrics.mean_average_precision.utils.compute_metric_lists`
+        builds one prediction and one target dictionary for each image.
+        It converts the target boxes to the ``xyxy`` format and scales
+        them to pixels with the height and width of
+        `BaseAttachedModule.original_in_shape`. The ``update`` method
+        of ``torchmetrics`` then checks the dictionaries and stores the
+        boxes, the scores, and the labels. It gives a ``UserWarning``
+        when one image has more predicted boxes than the largest value
+        of ``max_detection_thresholds``, ``100`` by default.
+
+        Args:
+            boundingbox (``list[Tensor]``): The predicted boxes of each
+                image, of shape ``[M_i, 6]``, as
+                ``[x1, y1, x2, y2, score, class]`` in pixels.
+            target_boundingbox (``Tensor``): The ``boundingbox`` label of
+                the batch, of shape ``[N, 6]``, as
+                ``[batch_index, class, x, y, w, h]``. The values are
+                normalized, and ``x`` and ``y`` are the top-left corner.
+
+        """
         super().update(
             *compute_metric_lists(
                 boundingbox,
@@ -33,6 +139,38 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
 
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
+        """Compute the box mAP of all batches since the last reset.
+
+        The ``compute`` method of ``torchmetrics`` runs the COCO
+        evaluation on the stored boxes. This method moves each result to
+        the device of the metric. It then gives the results to
+        `luxonis_train.attached_modules.metrics.mean_average_precision.utils.postprocess_metrics`,
+        which adds the F1 scores and splits the per-class values. A
+        value is ``-1`` when it has no data, for example ``map_small``
+        when no target box is small.
+
+        Returns:
+            ``tuple[Tensor, dict[str, Tensor]]``: The scalar ``map`` and
+            a dictionary of the other values. With the default
+            ``max_detection_thresholds``, the dictionary holds:
+
+            - ``map_50`` and ``map_75``: the mAP at the IoU thresholds
+              ``0.5`` and ``0.75``.
+            - ``map_small``, ``map_medium``, and ``map_large``: the mAP
+              for small, medium, and large objects.
+            - ``mar_1``, ``mar_10``, and ``mar_100``: the mAR with at
+              most ``1``, ``10``, and ``100`` detections per image.
+            - ``mar_small``, ``mar_medium``, and ``mar_large``: the mAR
+              for small, medium, and large objects.
+            - ``f1_small``, ``f1_medium``, and ``f1_large``: the F1
+              score of each object size.
+            - ``map_per_class_<class name>`` and
+              ``mar_100_per_class_<class name>``: the values of each
+              class. They are present only with ``class_metrics``, and
+              only when the predictions and the targets together have
+              more than one class.
+
+        """
         metrics = {k: v.to(self.device) for k, v in super().compute().items()}
         return postprocess_metrics(
             metrics, self.classes.inverse, "map", self.device

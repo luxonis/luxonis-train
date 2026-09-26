@@ -1,3 +1,13 @@
+"""Metrics that check the embedding space of `GhostFaceNetHead`.
+
+`ClosestIsPositiveAccuracy` checks whether the nearest other embedding
+has the same identity label. `MedianDistances` reports the median
+Euclidean distances between the embeddings. When the head sets
+``cross_batch_memory_size``, both metrics also score the embeddings of
+earlier batches.
+
+"""
+
 import math
 from typing import Annotated
 
@@ -15,6 +25,53 @@ from .base_metric import BaseMetric, MetricState
 
 
 class ClosestIsPositiveAccuracy(BaseMetric):
+    r"""Accuracy of nearest-neighbor identity matches for embeddings.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): :math:`\left[B, D\right]`
+          embeddings
+        - ``target`` (``Tensor``): :math:`\left[B\right]` identity
+          labels
+
+    Outputs:
+        - ``Tensor``: scalar accuracy in :math:`\left[0, 1\right]`
+
+    Formula:
+        The metric computes the Euclidean distance between each pair of
+        embeddings. An embedding counts only when at least one other
+        embedding has the same label. The accuracy is the number of
+        counted embeddings whose nearest other embedding has the same
+        label, divided by the number of counted embeddings.
+
+    References:
+        - Source: Converted to PyTorch from the TensorFlow code at
+          `omoindrot.github.io/triplet-loss
+          <https://omoindrot.github.io/triplet-loss>`_.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        When the head sets ``cross_batch_memory_size``, the metric keeps
+        the newest embeddings of all batches, up to that number. It
+        scores nothing until the memory is full. After that, it scores
+        all embeddings in the memory again on each batch. The memory
+        empties when the metric resets.
+
+    Example:
+        Attached to a ``GhostFaceNetHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: GhostFaceNetHead
+              inputs: [GhostFaceNet]
+              metrics:
+                - name: ClosestIsPositiveAccuracy
+
+    Compatible with:
+        - Used by: `EmbeddingsModel`
+        - Nodes: `GhostFaceNetHead`
+
+    """
+
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
@@ -28,6 +85,27 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
+        """Add the nearest-neighbor matches of one batch to the counts.
+
+        Without cross-batch memory, the method scores the batch alone.
+        With it, the method appends each embedding and its label to the
+        memory. It then drops the oldest entries above the memory size.
+        While the memory holds fewer entries than the size, the method
+        returns and scores nothing. Otherwise it scores all embeddings in
+        the memory.
+
+        An embedding counts only when another embedding has the same
+        label. ``correct`` grows by the counted embeddings whose nearest
+        other embedding has the same label. ``total`` grows by the
+        number of counted embeddings.
+
+        Args:
+            predictions (``Tensor``): Embeddings of shape ``[B, D]``, the
+                main output of the node.
+            target (``Tensor``): The ``metadata/id`` label of each
+                embedding, of shape ``[B]``.
+
+        """
         embeddings, labels = predictions, target
 
         if self._cross_batch_memory_size is not None:
@@ -73,10 +151,76 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
     @override
     def compute(self) -> Tensor:
+        """Return the share of counted embeddings with a correct match.
+
+        Returns:
+            ``Tensor``: ``correct / total``, a scalar from ``0`` to ``1``.
+            It is ``NaN`` when no embedding counted since the last reset.
+
+        """
         return self.correct / self.total
 
 
 class MedianDistances(BaseMetric):
+    r"""Median distances between embeddings, for diagnostics.
+
+    Inputs:
+        - ``embeddings`` (``Tensor``): :math:`\left[B, D\right]`
+        - ``target`` (``Tensor``): :math:`\left[B\right]` identity
+          labels
+
+    Outputs:
+        - ``MedianDistance``, ``MedianClosestDistance``,
+          ``MedianClosestPositiveDistance``,
+          ``MedianClosestVsClosestPositiveDistance`` (``Tensor``):
+          scalar medians
+
+    Formula:
+        The metric computes the Euclidean distance between each pair of
+        embeddings. It collects four sets of distances over all batches
+        and reports the median of each:
+
+        - ``MedianDistance``: each unordered pair of embeddings.
+        - ``MedianClosestDistance``: each embedding and its nearest
+          other embedding.
+        - ``MedianClosestPositiveDistance``: each embedding and its
+          nearest other embedding with the same label.
+        - ``MedianClosestVsClosestPositiveDistance``: the nearest
+          same-label distance minus the nearest distance, for each
+          embedding.
+
+        The last two sets skip an embedding when no other embedding has
+        its label. For an even number of values, ``torch.median``
+        returns the lower of the two middle values.
+
+    References:
+        - Source: Converted to PyTorch from the TensorFlow code at
+          `omoindrot.github.io/triplet-loss
+          <https://omoindrot.github.io/triplet-loss>`_.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        The cross-batch memory of the head works as in
+        `ClosestIsPositiveAccuracy`. All four values are ``NaN`` when
+        the metric scored no batch. The result holds only sub-metrics,
+        so this metric cannot be the main metric.
+
+    Example:
+        Attached to a ``GhostFaceNetHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: GhostFaceNetHead
+              inputs: [GhostFaceNet]
+              metrics:
+                - name: MedianDistances
+
+    Compatible with:
+        - Used by: `EmbeddingsModel`
+        - Nodes: `GhostFaceNetHead`
+
+    """
+
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
@@ -92,6 +236,28 @@ class MedianDistances(BaseMetric):
 
     @override
     def update(self, embeddings: Tensor, target: Tensor) -> None:
+        """Add the distances of one batch to the four distance lists.
+
+        The cross-batch memory works as in
+        `ClosestIsPositiveAccuracy.update`. While the memory is not
+        full, the method stores the batch and adds nothing to the lists.
+
+        The method appends one tensor to each list:
+
+        - ``all_distances``: the distance of each unordered pair.
+        - ``closest_distances``: the nearest distance of each embedding.
+        - ``positive_distances``: the nearest same-label distance of
+          each embedding that has another embedding with its label.
+        - ``closest_vs_positive_distances``: the nearest same-label
+          distance minus the nearest distance, for the same embeddings.
+
+        Args:
+            embeddings (``Tensor``): Embeddings of shape ``[B, D]``, the
+                ``embeddings`` output of the node.
+            target (``Tensor``): The ``metadata/id`` label of each
+                embedding, of shape ``[B]``.
+
+        """
         if self._cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(
                 list(zip(embeddings, target, strict=True))
@@ -143,6 +309,17 @@ class MedianDistances(BaseMetric):
 
     @override
     def compute(self) -> dict[str, Tensor]:
+        """Return the median of each distance list.
+
+        Returns:
+            ``dict[str, Tensor]``: Scalar medians under the keys
+            ``"MedianDistance"``, ``"MedianClosestDistance"``,
+            ``"MedianClosestPositiveDistance"``, and
+            ``"MedianClosestVsClosestPositiveDistance"``. All four are
+            ``NaN`` when `update` added nothing since the last reset. A
+            list that holds only empty tensors also gives ``NaN``.
+
+        """
         if len(self.all_distances) == 0:
             return {
                 "MedianDistance": torch.tensor(math.nan),
@@ -171,13 +348,26 @@ class MedianDistances(BaseMetric):
 
 
 def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
-    """Compute the 2D matrix of distances between all the embeddings.
+    """Compute the Euclidean distance between each pair of embeddings.
 
-    @type embeddings: Tensor
-    @param embeddings: Tensor of shape (batch_size, embed_dim)
-    @rtype: Tensor
-    @return: pairwise_distances: tensor of shape (batch_size,
-        batch_size)
+    The function derives the squared distances from the dot products and
+    clamps negative rounding errors to ``0``. Before the square root, it
+    adds ``1e-16`` to each zero entry, and after it, it sets these
+    entries back to ``0``. This keeps the gradient of the square root
+    finite.
+
+    Args:
+        embeddings (``Tensor``): Embeddings of shape ``[N, D]``.
+
+    Returns:
+        ``Tensor``: The distances, of shape ``[N, N]``.
+
+    Example:
+        >>> import torch
+        >>> points = torch.tensor([[0.0, 0.0], [3.0, 4.0], [6.0, 8.0]])
+        >>> _get_pairwise_distances(points).tolist()
+        [[0.0, 5.0, 10.0], [5.0, 0.0, 5.0], [10.0, 5.0, 0.0]]
+
     """
     dot_product = embeddings @ embeddings.T
 
@@ -195,6 +385,21 @@ def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
 
 
 def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:
+    """Mark the pairs of two different samples with the same label.
+
+    Args:
+        labels (``Tensor``): Labels of shape ``[N]``.
+
+    Returns:
+        ``Tensor``: A ``uint8`` mask of shape ``[N, N]``. An entry is
+        ``1`` when ``i != j`` and ``labels[i] == labels[j]``, else ``0``.
+
+    Example:
+        >>> import torch
+        >>> _get_anchor_positive_triplet_mask(torch.tensor([7, 7, 3])).tolist()
+        [[0, 1, 0], [1, 0, 0], [0, 0, 0]]
+
+    """
     indices_equal = torch.eye(
         labels.shape[0], dtype=torch.uint8, device=labels.device
     )

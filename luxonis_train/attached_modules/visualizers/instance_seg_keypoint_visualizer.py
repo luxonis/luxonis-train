@@ -1,3 +1,5 @@
+"""Draws instance masks, boxes, and keypoints on the same images."""
+
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers.base_visualizer import (
@@ -14,6 +16,58 @@ from luxonis_train.tasks import Tasks
 
 
 class InstanceSegKeypointVisualizer(BaseVisualizer):
+    r"""Visualizer for instance masks, boxes, keypoints, and targets.
+
+    .. figure::
+       https://raw.githubusercontent.com/luxonis/luxonis-train/e542cf0efa20a0fc5c781ff505d699031cb0d228/media/example_viz/instance_seg_keypoints.png
+       :width: 700px
+       :height: 262px
+       :loading: embed
+
+       The left image shows the targets. The right image shows the
+       predictions.
+
+    Inputs:
+        - ``prediction_canvas``, ``target_canvas`` (``Tensor``):
+          :math:`\left[B, 3, H, W\right]`
+        - ``boundingbox`` (``list[Tensor]``): :math:`\left[M_i,
+          6\right]` per image, ``[x1, y1, x2, y2, conf, class]``, pixels
+        - ``instance_segmentation`` (``list[Tensor]``):
+          :math:`\left[M_i, H, W\right]` per image, binary
+        - ``keypoints`` (``list[Tensor]``): :math:`\left[M_i,
+          n_{keypoints}, 3\right]` per image, ``(x, y, conf)``, pixels
+        - ``target_boundingbox`` (``Tensor | None``): :math:`\left[N,
+          6\right]`, ``[batch, class, x, y, w, h]``, ``xywh`` normalized
+        - ``target_instance_segmentation`` (``Tensor | None``):
+          :math:`\left[N, H, W\right]`, one per target box
+        - ``target_keypoints`` (``Tensor | None``): :math:`\left[N, 1 +
+          3 * n_{keypoints}\right]`, ``[batch, x, y, v, ...]``,
+          normalized
+
+    Outputs:
+        - ``Tensor | tuple[Tensor, Tensor]``: :math:`\left[B, 3, H,
+          W\right]`, a ``(targets, predictions)`` pair when any target
+          is given
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        Calls the drawing methods of `InstanceSegmentationVisualizer`
+        for the masks and boxes, then those of `KeypointVisualizer` for
+        the keypoints on top. The visualizer stores the ``fill``,
+        ``font``, and ``font_size`` options but does not use them.
+
+    Example:
+        An entry in the ``visualizers`` list of a node:
+
+        .. code-block:: yaml
+
+            - name: InstanceSegKeypointVisualizer
+
+    """
+
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION_KEYPOINTS]
 
     def __init__(
@@ -35,38 +89,57 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         draw_indices: bool = False,
         **kwargs,
     ):
-        """
-        @type labels: dict[int, str] | list[str] | None
-        @param labels: Dictionary mapping class indices to class labels.
-        @type draw_labels: bool
-        @param draw_labels: Whether to draw class labels.
-        @type draw_scores: bool
-        @param draw_scores: Whether to append prediction confidence
-            scores to the rendered labels. Defaults to C{False}.
-        @type colors: dict[str, L{Color}] | list[L{Color}] | None
-        @param colors: Dictionary mapping class labels to colors.
-        @type fill: bool
-        @param fill: Whether to fill bounding boxes.
-        @type width: int | None
-        @param width: Width of the bounding box lines.
-        @type font: str | None
-        @param font: TrueType font filename.
-        @type font_size: int | None
-        @param font_size: Font size for labels.
-        @type alpha: float
-        @param alpha: Alpha value for segmentation masks.
-        @type visibility_threshold: float
-        @param visibility_threshold: Threshold for keypoint visibility.
-        @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: Keypoint skeleton connections.
-        @type visible_color: L{Color}
-        @param visible_color: Color for visible keypoints.
-        @type nonvisible_color: L{Color} | None
-        @param nonvisible_color: Color for non-visible keypoints.
-        @type radius: int | None
-        @param radius: Keypoint radius.
-        @type draw_indices: bool
-        @param draw_indices: Whether to draw keypoint indices.
+        """Initialize the visualizer and resolve the class names and
+        colors.
+
+        Args:
+            labels (dict[int, str] | list[str] | None): Class names to
+                draw. A dictionary maps a class index to a name. A list
+                maps by position. When ``None`` or empty, the names come
+                from the ``classes`` of the node, so the visualizer then
+                needs a ``node``.
+            draw_labels (bool): Whether to draw the class name next to
+                each box. Applies to the predictions and the targets.
+            draw_scores (bool): Whether to write the confidence of each
+                predicted box, with two decimals, in its label. Applies
+                to the predictions only. Without ``draw_labels``, the
+                label is the confidence alone.
+            colors (dict[str, Color] | list[Color] | None): Colors of
+                the masks and the boxes. A dictionary maps a class name
+                to a color. A list maps by class index. When ``None``,
+                each class gets a distinct color from `get_color`,
+                seeded with its index.
+            fill (bool): The drawing methods do not read it.
+            width (int | None): Line width of the boxes, in pixels. When
+                ``None`` or ``0``, the width is one percent of the
+                smaller canvas side, rounded down, and at least ``1``.
+            font (str | None): The drawing methods do not read it.
+            font_size (int | None): The drawing methods do not read it.
+            alpha (float): Opacity of the masks, from ``0``
+                (transparent) to ``1`` (opaque).
+            visibility_threshold (float): The lowest confidence of a
+                visible predicted keypoint.
+                `KeypointVisualizer.draw_predictions` tells how the
+                visualizer draws the other keypoints.
+            connectivity (list[tuple[int, int]] | None): Pairs of
+                keypoint indices to connect with lines, the skeleton.
+                Applies to the predictions and the targets. ``None``
+                draws no lines.
+            visible_color (Color): Color of the visible predicted
+                keypoints, and of all target keypoints.
+            nonvisible_color (Color | None): Color of the predicted
+                keypoints below ``visibility_threshold``. When ``None``,
+                the visualizer does not draw them at their coordinates.
+            radius (int | None): Radius of a keypoint, in pixels. When
+                ``None``, `forward` picks it from the size of each
+                canvas.
+            draw_indices (bool): Whether to write the index of each
+                keypoint next to it. `KeypointVisualizer.draw_targets`
+                tells when this raises ``RuntimeError`` for the target
+                keypoints.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseVisualizer`, such as ``scale`` and ``node``.
+
         """
         super().__init__(**kwargs)
 
@@ -111,6 +184,81 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         target_instance_segmentation: Tensor | None,
         target_keypoints: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
+        """Draw the predicted masks, boxes, and keypoints, and the
+        targets when given.
+
+        `InstanceSegmentationVisualizer.draw_predictions` draws the
+        masks and boxes, and `KeypointVisualizer.draw_predictions` draws
+        the keypoints on top. The targets start from ``target_canvas``:
+
+        - When both ``target_boundingbox`` and
+          ``target_instance_segmentation`` are set,
+          `InstanceSegmentationVisualizer.draw_targets` draws the masks
+          and boxes.
+        - When ``target_keypoints`` is set,
+          `KeypointVisualizer.draw_targets` draws the keypoints on top,
+          in ``visible_color``.
+
+        When ``radius`` is ``None``, the radius comes from the size
+        of each canvas. It is ``1`` when both sides are below ``96``
+        pixels, ``5`` when a side is above ``512`` pixels, and ``2``
+        otherwise.
+
+        Args:
+            prediction_canvas (``Tensor``): ``uint8`` images of shape
+                ``[B, 3, H, W]`` to draw the predictions on.
+            target_canvas (``Tensor``): ``uint8`` images of shape
+                ``[B, 3, H, W]`` to draw the targets on.
+            boundingbox (``list[Tensor]``): One tensor per image, of
+                shape ``[M_i, 6]`` with rows
+                ``[x1, y1, x2, y2, conf, class]`` in pixels.
+            instance_segmentation (``list[Tensor]``): One tensor per
+                image, of shape ``[M_i, H_0, W_0]``, with one binary
+                mask for each box. ``H_0`` and ``W_0`` are the image
+                size before the ``scale`` resize.
+            keypoints (``list[Tensor]``): One tensor per image, of shape
+                ``[M_i, K, 3]``. Each keypoint is ``(x, y, confidence)``,
+                with ``x`` and ``y`` in pixels.
+            target_boundingbox (``Tensor | None``): Boxes of shape
+                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
+                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
+                batch has no ``boundingbox`` labels.
+            target_instance_segmentation (``Tensor | None``): Binary
+                masks of shape ``[N, H_0, W_0]``, one for each target
+                box. ``None`` when the batch has no
+                ``instance_segmentation`` labels.
+            target_keypoints (``Tensor | None``): Keypoints of shape
+                ``[N, 1 + 3 * K]`` with rows
+                ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
+                coordinates are normalized to ``[0, 1]``. ``None`` when
+                the batch has no ``keypoints`` labels.
+
+        Returns:
+            ``tuple[Tensor, Tensor] | Tensor``: The pair
+            ``(targets, predictions)`` of drawn images when any of the
+            three targets is set; otherwise only the predictions image.
+            When only one of ``target_boundingbox`` and
+            ``target_instance_segmentation`` is set and
+            ``target_keypoints`` is ``None``, the targets image is
+            ``target_canvas`` itself.
+
+        Example:
+            >>> import torch
+            >>> visualizer = InstanceSegKeypointVisualizer(
+            ...     labels=["person"], colors=["red"]
+            ... )
+            >>> canvas = torch.zeros(1, 3, 16, 16, dtype=torch.uint8)
+            >>> boxes = [torch.tensor([[4.0, 4.0, 12.0, 12.0, 0.9, 0.0]])]
+            >>> masks = torch.ones(1, 16, 16, dtype=torch.uint8)
+            >>> keypoints = [torch.tensor([[[8.0, 8.0, 0.9]]])]
+            >>> args = (canvas, canvas, boxes, [masks], keypoints)
+            >>> visualizer(*args, None, None, None).shape
+            torch.Size([1, 3, 16, 16])
+            >>> targets = torch.tensor([[0, 0.5, 0.5, 2.0]])
+            >>> len(visualizer(*args, None, None, targets))
+            2
+
+        """
         # Draw predictions: masks + bboxes + keypoints
         pred_viz = InstanceSegmentationVisualizer.draw_predictions(
             prediction_canvas,
