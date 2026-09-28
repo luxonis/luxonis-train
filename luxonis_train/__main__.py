@@ -147,8 +147,8 @@ def _yield_visualizations(
             remap_keypoints = getattr(loader, "_remap_keypoints", None)
             if (
                 getattr(loader, "kpts_mapping_per_task", None) is not None
-                and remap_keypoints is not None
-            ):
+                or getattr(loader, "kpts_mapping_per_class", None) is not None
+            ) and remap_keypoints is not None:
                 np_labels = remap_keypoints(np_labels)
 
             return np_images, np_labels

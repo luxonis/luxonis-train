@@ -31,6 +31,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         bbox_area_threshold: float = 0.0004,
         class_order_per_task: dict[str, list[str]] | None = None,
         kpts_mapping_per_task: dict[str, list[int]] | None = None,
+        kpts_mapping_per_class: dict[str, list[int]] | None = None,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -87,6 +88,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             If provided, the classes for the specified tasks will be reordered.
         @type kpts_mapping_per_task: dict[str, list[int]] | None
         @param kpts_mapping_per_task: Dictionary mapping task names to custom keypoint mappings. If provided, the keypoints for the specified tasks will be reordered.
+        @type kpts_mapping_per_class: dict[str, list[int]] | None
+        @param kpts_mapping_per_class: Dictionary mapping class names to custom
+            keypoint mappings. This reorders matching instances in any
+            keypoint task without modifying the stored dataset.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -107,9 +112,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if class_order_per_task is not None:
             self.dataset.set_class_order_per_task(class_order_per_task)
 
-        if kpts_mapping_per_task is not None:
+        if (
+            kpts_mapping_per_task is not None
+            or kpts_mapping_per_class is not None
+        ):
             dataset_tasks = self.dataset.get_tasks()
-            for task, new_mapping in kpts_mapping_per_task.items():
+            task_mappings = kpts_mapping_per_task or {}
+            class_mappings = kpts_mapping_per_class or {}
+
+            for task in task_mappings:
                 if task not in dataset_tasks:
                     raise KeyError(
                         f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
@@ -118,12 +129,48 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                     raise KeyError(
                         f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
                     )
+
+            for task, new_mapping in task_mappings.items():
                 if len(new_mapping) != len(set(new_mapping)):
                     logger.warning(
                         f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
                     )
 
+            classes_per_task = self.dataset.get_classes()
+            keypoint_classes = {
+                class_name
+                for task, classes in classes_per_task.items()
+                if "keypoints" in dataset_tasks[task]
+                for class_name in classes
+            }
+            missing_classes = class_mappings.keys() - keypoint_classes
+            if missing_classes:
+                raise KeyError(
+                    "Classes specified in kpts_mapping_per_class are not present "
+                    f"in a keypoint task: {sorted(missing_classes)}"
+                )
+            for class_name, new_mapping in class_mappings.items():
+                if len(new_mapping) != len(set(new_mapping)):
+                    logger.warning(
+                        "Duplicate indices detected in keypoint mapping for "
+                        f"class `{class_name}`. Verify that training on repeated "
+                        "keypoints is intentional."
+                    )
+
+            conflicting_tasks = {
+                task
+                for task in task_mappings
+                if class_mappings.keys() & classes_per_task[task].keys()
+            }
+            if conflicting_tasks:
+                raise ValueError(
+                    "Task-wide and class-specific keypoint mappings overlap for "
+                    f"tasks: {sorted(conflicting_tasks)}"
+                )
+
         self.kpts_mapping_per_task = kpts_mapping_per_task
+        self.kpts_mapping_per_class = kpts_mapping_per_class
+        self._class_ids_per_task = self.dataset.get_classes()
 
         self.loader = LuxonisLoader(
             dataset=self.dataset,
@@ -164,7 +211,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
 
-        if self.kpts_mapping_per_task is not None:
+        if (
+            self.kpts_mapping_per_task is not None
+            or self.kpts_mapping_per_class is not None
+        ):
             labels = self._remap_keypoints(labels)
 
         img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
@@ -179,7 +229,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         """Remap keypoint labels in `labels` using the configured
         mappings.
         """
-        for task, new_mapping in self.kpts_mapping_per_task.items():  # type: ignore
+        for task, new_mapping in (self.kpts_mapping_per_task or {}).items():
             key = f"{task}/keypoints"
             if key not in labels:
                 continue
@@ -198,6 +248,52 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 )
 
             labels[key] = kpts[:, new_mapping, :].reshape(n_samples, flat_dim)
+
+        for task, class_ids_for_task in self._class_ids_per_task.items():
+            key = f"{task}/keypoints"
+            bbox_key = f"{task}/boundingbox"
+            mappings = {
+                class_name: mapping
+                for class_name, mapping in (
+                    self.kpts_mapping_per_class or {}
+                ).items()
+                if class_name in class_ids_for_task
+            }
+            if not mappings or key not in labels:
+                continue
+            if bbox_key not in labels:
+                raise KeyError(
+                    f"Class-specific keypoint mapping for task '{task}' "
+                    "requires bounding-box labels."
+                )
+
+            original = labels[key]
+            if original.size == 0:
+                continue
+
+            bboxes = labels[bbox_key]
+            if len(original) != len(bboxes):
+                raise ValueError(
+                    f"Keypoint and bounding-box instance counts differ for task "
+                    f"'{task}': {len(original)} != {len(bboxes)}."
+                )
+
+            n_samples, flat_dim = original.shape
+            kpts = original.reshape(n_samples, -1, 3).copy()
+            class_ids = bboxes[:, 0].astype(int)
+
+            for class_name, new_mapping in mappings.items():
+                expected, got = kpts.shape[1], len(new_mapping)
+                if expected != got:
+                    raise ValueError(
+                        f"Invalid keypoint mapping for class '{class_name}' in "
+                        f"task '{task}': expected {expected} indices, got {got}."
+                    )
+                class_id = class_ids_for_task[class_name]
+                mask = class_ids == class_id
+                kpts[mask] = kpts[mask][:, new_mapping, :]
+
+            labels[key] = kpts.reshape(n_samples, flat_dim)
 
         return labels
 
