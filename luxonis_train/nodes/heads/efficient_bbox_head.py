@@ -226,7 +226,7 @@ class EfficientBBoxHead(BaseDetectionHead):
                 `LuxonisLightningModule` also gives a state dictionary,
                 and the base method loads it directly. ``None`` or ``""``
                 takes the URL from `get_weights_url`. That call fails
-                when no variant built the node.
+                for input channels without a checkpoint.
             strict (bool): Whether the keys of the checkpoint must match
                 the keys of the head exactly. Defaults to ``False``.
 
@@ -383,13 +383,31 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_weights_url(self) -> str:
-        """Return the COCO checkpoint URL for the selected variant.
+        """Select the COCO checkpoint from the input channels.
 
-        This base head defines no variants itself; only subclasses with
-        variants can use the URL.
+        The head has no variants. The input channels of the ``"n"``,
+        ``"s"``, and ``"l"`` variants of `RepPANNeck` select the
+        checkpoint of the same size. The checkpoints hold no class
+        branch, so any ``n_classes`` can load them.
+
+        Raises:
+            NotImplementedError: When the input channels are not
+                ``[32, 64, 128]``, ``[64, 128, 256]``, or
+                ``[128, 256, 512]``.
 
         """
-        return f"{{github}}/efficientbbox_head_{self.variant[0]}_coco.ckpt"
+        sizes: dict[tuple[int, ...], str] = {
+            (32, 64, 128): "n",
+            (64, 128, 256): "s",
+            (128, 256, 512): "l",
+        }
+        size = sizes.get(tuple(self.in_channels))
+        if size is None:
+            raise NotImplementedError(
+                f"No online weights available for '{self.name}' "
+                f"with the input channels {self.in_channels}."
+            )
+        return f"{{github}}/efficientbbox_head_{size}_coco.ckpt"
 
     @property
     @override

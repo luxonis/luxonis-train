@@ -100,6 +100,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         - Visualizers: `KeypointVisualizer`
         - Export parser: ``YOLOExtendedParser``
+        - Pretrained weights: the box branches of `EfficientBBoxHead`,
+          through ``weights: download``
 
     """
 
