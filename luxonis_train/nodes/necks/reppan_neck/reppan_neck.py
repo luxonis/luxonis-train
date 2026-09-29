@@ -100,7 +100,8 @@ class RepPANNeck(BaseNode):
           - `InstanceSegmentationModel`
           - `KeypointDetectionModel`
 
-        - Pretrained weights: available through ``weights: download``
+        - Pretrained weights: available for the ``"n"``, ``"s"``, and
+          ``"l"`` variants through ``weights: download``
 
     """
 
@@ -189,8 +190,8 @@ class RepPANNeck(BaseNode):
                 selects ``0.5``. Defaults to ``None``.
             weights (str): Source or initialization method of the weights,
                 as in `BaseNode`. ``"download"`` loads the COCO checkpoint
-                from `get_weights_url`. The download needs a variant,
-                because the URL holds the variant name. Defaults to
+                from `get_weights_url`. Only the ``"n"``, ``"s"``, and
+                ``"l"`` variants have a checkpoint. Defaults to
                 ``"yolo"``.
             **kwargs (``Any``): Keyword arguments for `BaseNode`, such as
                 ``input_shapes`` and ``original_in_shape``.
@@ -433,7 +434,19 @@ class RepPANNeck(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        return f"{{github}}/reppanneck_{self.variant[0]}_coco.ckpt"
+        """Return the URL of the COCO checkpoint of the variant.
+
+        Raises:
+            ValueError: When no variant built the node, or for the
+                ``"m"`` variant, which has no checkpoint.
+
+        """
+        if self._variant is None or self._variant[0] == "m":
+            raise ValueError(
+                f"Online weights are available for '{self.name}' only "
+                "with the variants 'n', 's', and 'l'."
+            )
+        return f"{{github}}/reppanneck_{self._variant[0]}_coco.ckpt"
 
     @override
     @staticmethod

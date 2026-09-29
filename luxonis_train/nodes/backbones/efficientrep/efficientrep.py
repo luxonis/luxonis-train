@@ -98,7 +98,8 @@ class EfficientRep(BaseNode):
           - `InstanceSegmentationModel`
           - `KeypointDetectionModel`
 
-        - Pretrained weights: available through ``weights: download``
+        - Pretrained weights: available for the ``"n"``, ``"s"``, and
+          ``"l"`` variants through ``weights: download``
 
     """
 
@@ -145,7 +146,8 @@ class EfficientRep(BaseNode):
                 does not use it.
             weights (str): The weights argument of `BaseNode`.
                 ``"yolo"`` applies the YOLO initialization. ``"download"``
-                loads the COCO weights from `get_weights_url`.
+                loads the COCO weights from `get_weights_url`. Only the
+                ``"n"``, ``"s"``, and ``"l"`` variants have them.
             **kwargs (``Any``): Keyword arguments forwarded to
                 `BaseNode`.
 
@@ -235,7 +237,19 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        return f"{{github}}/efficientrep_{self.variant[0]}_coco.ckpt"
+        """Return the URL of the COCO checkpoint of the variant.
+
+        Raises:
+            ValueError: When no variant built the node, or for the
+                ``"m"`` variant, which has no checkpoint.
+
+        """
+        if self._variant is None or self._variant[0] == "m":
+            raise ValueError(
+                f"Online weights are available for '{self.name}' only "
+                "with the variants 'n', 's', and 'l'."
+            )
+        return f"{{github}}/efficientrep_{self._variant[0]}_coco.ckpt"
 
     @staticmethod
     @override
