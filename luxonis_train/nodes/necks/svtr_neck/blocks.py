@@ -1,3 +1,5 @@
+"""The token mixers and the transformer block of the SVTR neck."""
+
 import math
 from typing import Literal
 
@@ -11,6 +13,22 @@ from luxonis_train.nodes.blocks import DropPath
 
 
 class ConvMixer(nn.Module):
+    """Token mixer of `SVTRBlock` that uses a grouped convolution.
+
+    The mixer reshapes a sequence of tokens into a map of ``height`` by
+    ``width`` tokens. A convolution with ``n_heads`` groups and a bias
+    mixes each token with its neighbors. The mixer then flattens the map
+    back into a sequence, row by row.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.necks.svtr_neck.blocks import ConvMixer
+        >>> mixer = ConvMixer(8, height=2, width=4, n_heads=2)
+        >>> mixer(torch.zeros(1, 8, 8)).shape
+        torch.Size([1, 8, 8])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -20,6 +38,19 @@ class ConvMixer(nn.Module):
         n_heads: int,
         kernel_size: tuple[int, int] = (3, 3),
     ):
+        """Build the grouped convolution.
+
+        Args:
+            dim (int): The number of channels of each token. It must be a
+                multiple of ``n_heads``.
+            height (int): The height of the token map.
+            width (int): The width of the token map.
+            n_heads (int): The number of groups of the convolution.
+            kernel_size (tuple[int, int]): The height and the width of
+                the kernel. The padding is half of each value, rounded
+                down. Thus only odd values keep the size of the map.
+
+        """
         super().__init__()
         self._height = height
         self._width = width
@@ -35,6 +66,18 @@ class ConvMixer(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Mix each token with its neighbors in the token map.
+
+        Args:
+            x (``Tensor``): The tokens, of shape
+                ``[B, height * width, dim]``. With another number of
+                tokens, ``reshape`` raises ``RuntimeError``.
+
+        Returns:
+            ``Tensor``: The mixed tokens, of the shape of ``x`` for an odd
+            kernel size.
+
+        """
         x = x.permute(0, 2, 1).reshape(
             [x.size(0), self._dim, self._height, self._width]
         )
@@ -43,6 +86,49 @@ class ConvMixer(nn.Module):
 
 
 class Attention(nn.Module):
+    r"""Multi-head self-attention over a sequence of tokens.
+
+    One linear layer computes the queries :math:`Q`, the keys :math:`K`,
+    and the values :math:`V` of all heads. Each head computes
+
+    .. math::
+
+        \text{softmax}\left(s \, Q K^T + M\right) V
+
+    where :math:`s` is the scale and :math:`M` is the mask. A linear
+    layer then merges the heads. Dropout follows the softmax and the
+    merge.
+
+    The ``"global"`` mixer has no mask, so each token attends to every
+    token. The ``"local"`` mixer lets a token attend only to the tokens
+    in a window of ``kernel_size`` around it. For odd sizes, the window
+    is centered on the token. The mask is ``0`` in the window and
+    :math:`-\infty` outside. It has the shape ``[1, 1, N, N]``, where
+    ``N`` is ``height * width``.
+
+    **Warning:** The mask is a plain attribute, not a buffer.
+    `torch.nn.Module.to` does not move it, and the state dictionary does
+    not hold it. The mask stays on the CPU, so the ``"local"`` mixer
+    works only for an input on the CPU.
+
+    Example:
+        With a ``3x3`` window, token ``7`` in row ``1`` and column ``2``
+        sees three columns of the ``3x5`` map. Only the tokens that it
+        sees get a gradient from its output:
+
+        >>> import torch
+        >>> from luxonis_train.nodes.necks.svtr_neck.blocks import Attention
+        >>> attention = Attention(
+        ...     8, height=3, width=5, n_heads=2, mixer="local", kernel_size=3
+        ... )
+        >>> tokens = torch.randn(1, 15, 8, requires_grad=True)
+        >>> attention(tokens)[0, 7].sum().backward()
+        >>> seen = tokens.grad[0].abs().sum(dim=1) > 0
+        >>> seen.view(3, 5).int().tolist()
+        [[0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0]]
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -56,6 +142,40 @@ class Attention(nn.Module):
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
     ):
+        r"""Build the linear layers and the mask of the local mixer.
+
+        Args:
+            dim (int): The number of channels of each token. It must be a
+                multiple of ``n_heads``. When ``qk_scale`` is ``None`` or
+                ``0``, a value below ``n_heads`` makes the constructor
+                raise ``ZeroDivisionError``.
+            height (int | None): The height of the token map. The
+                ``"local"`` mixer needs it. The ``"global"`` mixer
+                ignores it.
+            width (int | None): The width of the token map. The
+                ``"local"`` mixer needs it. The ``"global"`` mixer ignores
+                it.
+            n_heads (int): The number of attention heads. Each head gets
+                ``dim // n_heads`` channels.
+            mixer (``Literal["global", "local"]``): The attention type.
+                ``"global"`` has no mask. ``"local"`` builds the window
+                mask.
+            kernel_size (``tuple[int, int] | int``): The height and the
+                width of the window of the ``"local"`` mixer. An integer
+                gives a square window. The ``"global"`` mixer ignores it.
+            qk_scale (float | None): The scale :math:`s` of the queries.
+                ``None`` or ``0`` gives :math:`1 / \sqrt{d}`, where
+                :math:`d` is ``dim // n_heads``.
+            attn_drop (float): The dropout probability of the attention
+                weights.
+            proj_drop (float): The dropout probability after the linear
+                layer that merges the heads.
+
+        Raises:
+            ValueError: When ``mixer`` is ``"local"`` and ``height`` or
+                ``width`` is ``None``.
+
+        """
         super().__init__()
 
         if isinstance(kernel_size, int):
@@ -107,6 +227,18 @@ class Attention(nn.Module):
             self._mask = mask.unsqueeze(0).unsqueeze(0)
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the self-attention to a sequence of tokens.
+
+        Args:
+            x (``Tensor``): The tokens, of shape ``[B, N, dim]``. With the
+                ``"local"`` mixer, ``N`` must be ``height * width``, and
+                ``x`` must be on the CPU. On another device, the addition
+                of the CPU mask raises ``RuntimeError``.
+
+        Returns:
+            ``Tensor``: The attended tokens, of shape ``[B, N, dim]``.
+
+        """
         batch_size = x.shape[0]
         qkv = (
             self.qkv(x)
@@ -127,6 +259,40 @@ class Attention(nn.Module):
 
 
 class SVTRBlock(nn.Module):
+    r"""Transformer block of SVTR with a token mixer and an MLP.
+
+    The block has two residual branches. The first branch runs the
+    mixer:
+
+    - ``"global"`` and ``"local"`` build an `Attention`.
+    - ``"conv"`` builds a `ConvMixer`.
+
+    The second branch runs an MLP: a linear layer to
+    ``int(dim * mlp_ratio)`` features, ``act_layer``, dropout, a linear
+    layer back to ``dim``, and dropout. When ``drop_path`` is above
+    ``0``, `DropPath` drops each branch for random samples in training
+    mode.
+
+    ``prenorm`` sets the place of the two norm layers. :math:`f` is a
+    branch:
+
+    - ``True``: after each residual sum,
+      :math:`x \leftarrow \text{norm}\left(x + f(x)\right)`.
+    - ``False``: before each branch,
+      :math:`x \leftarrow x + f\left(\text{norm}(x)\right)`.
+
+    **The flag name does not match the usual term:** ``prenorm=True``
+    puts the norm layers after the sums.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
+        >>> block = SVTRBlock(8, n_heads=2, mixer="conv", height=2, width=4)
+        >>> block(torch.zeros(1, 8, 8)).shape
+        torch.Size([1, 8, 8])
+
+    """
+
     @typechecked
     def __init__(
         self,
@@ -146,6 +312,50 @@ class SVTRBlock(nn.Module):
         epsilon: float = 1e-6,
         prenorm: bool = True,
     ):
+        r"""Build the mixer, the MLP, and the two norm layers.
+
+        Args:
+            dim (int): The number of channels of each token. It must be a
+                multiple of ``n_heads``.
+            n_heads (int): The number of attention heads, or the number
+                of convolution groups of the ``"conv"`` mixer.
+            height (int | None): The height of the token map. The
+                ``"local"`` and ``"conv"`` mixers need it.
+            width (int | None): The width of the token map. The
+                ``"local"`` and ``"conv"`` mixers need it.
+            mixer (``Literal["global", "local", "conv"]``): The token
+                mixer. `Attention` raises ``ValueError`` for ``"local"``
+                without ``height`` and ``width``.
+            mixer_kernel_size (tuple[int, int]): The window of the
+                ``"local"`` mixer, or the kernel of the ``"conv"`` mixer.
+                The ``"global"`` mixer ignores it.
+            mlp_ratio (float): The number of hidden features of the MLP,
+                as a multiple of ``dim``.
+            qk_scale (float | None): The scale of the attention queries.
+                ``None`` or ``0`` gives :math:`1 / \sqrt{d}`, where
+                :math:`d` is ``dim // n_heads``. The ``"conv"`` mixer
+                ignores it.
+            dropout (float): The dropout probability of the two dropout
+                layers of the MLP. The ``"global"`` and ``"local"`` mixers
+                also apply it to their output.
+            attn_drop (float): The dropout probability of the attention
+                weights. The ``"conv"`` mixer ignores it.
+            drop_path (float): The probability that `DropPath` drops a
+                branch for a sample in training mode. ``0.0`` adds no
+                `DropPath`.
+            act_layer (``type[nn.Module]``): The activation class of the
+                MLP. The MLP calls it without arguments.
+            norm_layer (``type[nn.Module]``): The norm class. The block
+                calls it as ``norm_layer(dim, eps=epsilon)``.
+            epsilon (float): The ``eps`` of both norm layers.
+            prenorm (bool): ``True`` puts the norm layers after the
+                residual sums. ``False`` puts them before the branches.
+
+        Raises:
+            ValueError: When ``mixer`` is ``"conv"`` and ``height`` or
+                ``width`` is ``None``.
+
+        """
         super().__init__()
         self.norm1 = norm_layer(dim, eps=epsilon)
         if mixer in ("global", "local"):
@@ -188,6 +398,18 @@ class SVTRBlock(nn.Module):
         self._prenorm = prenorm
 
     def forward(self, x: Tensor) -> Tensor:
+        """Run the mixer branch and then the MLP branch.
+
+        Args:
+            x (``Tensor``): The tokens, of shape ``[B, N, dim]``. The
+                ``"local"`` and ``"conv"`` mixers need ``N`` to be
+                ``height * width``.
+
+        Returns:
+            ``Tensor``: The tokens after both residual branches, of shape
+            ``[B, N, dim]``.
+
+        """
         if self._prenorm:
             x = self.norm1(x + self.drop_path(self.mixer(x)))
             x = self.norm2(x + self.drop_path(self.mlp(x)))

@@ -722,7 +722,7 @@ model.tune()
 `LuxonisTrain` is highly modular, allowing you to customize various components:
 
 - [**Loaders**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.loaders.html): Handles data loading and preprocessing.
-- [**Nodes**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md): Represents computational units in the model architecture.
+- [**Nodes**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.nodes.html): Represents computational units in the model architecture.
 - [**Losses**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md): Define the loss functions used to train the model.
 - [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
 - [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.

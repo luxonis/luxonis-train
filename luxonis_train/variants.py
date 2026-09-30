@@ -35,8 +35,8 @@ class VariantMeta(AutoRegisterMeta):
     ``_variant``. Then it calls ``__init__`` with the parameters of the
     variant and the other arguments. A keyword argument of the call
     replaces the variant parameter of the same name, and the metaclass
-    logs an info message for it. Without a selected variant, the
-    instance has no ``_variant`` attribute.
+    logs an info message for it. Without a selected variant,
+    ``_variant`` keeps its class default ``None``.
 
     After ``__init__``, the metaclass calls the ``__post_init__`` method
     of the instance when the class defines one. The class registration
@@ -183,12 +183,12 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
 
     Attributes:
         _variant (str | None): The name of the selected variant.
-            `VariantMeta` sets it only when a call selects a variant, so
-            the attribute does not exist otherwise.
+            `VariantMeta` sets it only when a call selects a variant.
+            Otherwise it is ``None``.
 
     """
 
-    _variant: str | None
+    _variant: str | None = None
 
     @staticmethod
     @abstractmethod

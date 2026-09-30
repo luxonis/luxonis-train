@@ -45,3 +45,15 @@ def test_init_error_is_not_chained_to_the_variant_lookup():
         Remote(variant="default")
 
     assert exc_info.value.__context__ is None
+
+
+def test_variant_is_none_without_a_selected_variant():
+    class Sized(VariantBase, register=False):
+        @staticmethod
+        def get_variants() -> tuple[str, dict[str, Kwargs]]:
+            return "small", {"small": {}}
+
+    assert Sized()._variant is None
+    # `VariantMeta` takes `variant`, so pyright does not see it.
+    assert Sized(variant="none")._variant is None  # type: ignore
+    assert Sized(variant="default")._variant == "small"  # type: ignore

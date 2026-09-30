@@ -1,3 +1,19 @@
+"""Layer blocks that the nodes build on.
+
+The package holds convolution blocks and stacks, RepVGG-style blocks,
+attention and pooling blocks, and parts of the detection and
+segmentation heads. It also holds the ResNet blocks and the U-Net
+encoder and decoder blocks.
+
+`GeneralReparameterizableBlock` subclasses `Reparameterizable`. It
+trains with parallel branches and fuses them into a single convolution
+when its node enters export mode.
+
+When ``aimet_torch`` is installed, the import of the package tells its
+quantization to ignore `DropPath` and `UpscaleOnline`.
+
+"""
+
 from contextlib import suppress
 
 from .blocks import (

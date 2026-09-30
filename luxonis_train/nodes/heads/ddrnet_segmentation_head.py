@@ -1,3 +1,5 @@
+"""The segmentation head of DDRNet."""
+
 from typing import Literal
 
 import torch
@@ -11,6 +13,92 @@ from luxonis_train.utils.general import infer_upscale_factor
 
 
 class DDRNetSegmentationHead(BaseHead):
+    r"""DDRNet segmentation head.
+
+    Inputs:
+        - ``inputs`` (``Tensor``): :math:`\left[B, C, H/s, W/s\right]`
+
+    Outputs:
+        - train, eval:
+
+          - ``segmentation`` (``Tensor``): :math:`\left[B, n_{classes},
+            H, W\right]` logits
+
+        - export:
+
+          - ``segmentation`` (``Tensor``): :math:`\left[B, H, W\right]`
+            ``int32`` class indices, or :math:`\left[B, 1, H, W\right]`
+            with the values ``0`` and ``1`` when ``n_classes == 1``
+
+    References:
+        - Source: Adapted from `Deci-AI/super-gradients
+          <https://github.com/Deci-AI/super-gradients>`_ (Apache-2.0).
+        - License: Apache-2.0
+
+    Notes:
+        :math:`H` and :math:`W` are the height and the width of the
+        model input. The scale :math:`s` is a power of two that the head
+        computes from the input size and the model input size. The
+        `DDRNet` backbone gives :math:`s = 8`.
+
+        The head applies batch norm and ReLU, a 3x3 convolution, batch
+        norm and ReLU, and a 1x1 convolution to :math:`n_{classes}`
+        channels. An upsampling layer then scales the result by
+        :math:`s`. In export mode, the head converts the logits to class
+        indices.
+
+        **Warning:** With ``inter_mode="pixel_shuffle"``, the 1x1
+        convolution keeps ``inter_channels`` channels. The number of
+        output channels is then ``inter_channels`` divided by
+        :math:`s^2`, not :math:`n_{classes}`.
+
+    Variants:
+        None. Configure the node through ``params``.
+
+    See Also:
+        - `DDRNet in super-gradients
+          <https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py>`_
+        - `The original DDRNet code <https://github.com/ydhongHIT/DDRNet>`_
+        - `The DDRNet paper <https://arxiv.org/pdf/2101.06085.pdf>`_
+
+    Example:
+        A node entry in the ``model.nodes`` section of a config:
+
+        .. code-block:: yaml
+
+            - name: DDRNetSegmentationHead
+              inputs: [DDRNet]
+
+    Compatible with:
+        - Attach index: ``-1``, the last output of the input node
+        - Required labels: ``segmentation``
+        - Used by: `SegmentationModel`
+        - Losses:
+
+          - `BCEWithLogitsLoss`
+          - `CrossEntropyLoss`
+          - `OHEMLoss`
+          - `SigmoidFocalLoss`
+          - `SmoothBCEWithLogitsLoss`
+          - `SoftmaxFocalLoss`
+
+        - Metrics:
+
+          - `Accuracy`
+          - `ConfusionMatrix`
+          - `DiceCoefficient`
+          - `F1Score`
+          - `JaccardIndex`
+          - `MIoU`
+          - `Precision`
+          - `Recall`
+
+        - Visualizers: `SegmentationVisualizer`
+        - Export parser: ``SegmentationParser``
+        - Pretrained weights: available through ``weights: download``
+
+    """
+
     in_height: int
     in_width: int
     in_channels: int
@@ -32,21 +120,33 @@ class DDRNetSegmentationHead(BaseHead):
         ] = "bilinear",
         **kwargs,
     ):
-        """DDRNet segmentation head.
+        """Build the layers and the upsampling of the head.
 
-        @see: U{Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src
-            /super_gradients/training/models/segmentation_models/ddrnet.py>}
-        @see: U{Original code <https://github.com/ydhongHIT/DDRNet>}
-        @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
-        @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
-            gradients/blob/master/LICENSE.md>}
-        @type inter_channels: int
-        @param inter_channels: Width of internal conv. Must be a multiple of
-            scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-        @type inter_mode: str
-        @param inter_mode: Upsampling method. One of nearest, linear, bilinear, bicubic,
-            trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle
-            is used for scaling. Defaults to "bilinear".
+        The constructor computes the scale :math:`s = 2^n`.
+        `infer_upscale_factor` gives :math:`n` from the input size and
+        the model input size. That function raises ``ValueError`` when
+        the height ratio or the width ratio is not a power of two, or
+        when the two ratios differ.
+
+        Args:
+            inter_channels (int): The number of output channels of the
+                3x3 convolution. With ``"pixel_shuffle"``, it must be a
+                multiple of :math:`s^2`.
+            inter_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]``):
+                The upsampling method. ``"pixel_shuffle"`` uses
+                `torch.nn.PixelShuffle`. The other values are the
+                ``mode`` of `torch.nn.Upsample`. With ``"linear"`` or
+                ``"trilinear"``, `forward` raises ``NotImplementedError``,
+                because these modes need a 3D or a 5D input.
+            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
+                must hold ``original_in_shape``, ``input_shapes`` or
+                ``in_sizes``, and the class count through ``n_classes``
+                or ``dataset_metadata``.
+
+        Raises:
+            ValueError: When ``inter_mode`` is ``"pixel_shuffle"`` and
+                ``inter_channels`` is not a multiple of :math:`s^2`.
+
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]
@@ -93,10 +193,42 @@ class DDRNetSegmentationHead(BaseHead):
     def load_checkpoint(
         self, path: str | None = None, strict: bool = False
     ) -> None:
+        """Load a checkpoint, with a non-strict key match by default.
+
+        The method passes ``path`` as ``ckpt`` to
+        `BaseNode.load_checkpoint`. The override renames the first
+        parameter and sets the default of ``strict`` to ``False``.
+
+        **Warning:** The override has no ``ckpt`` parameter. After
+        construction, the node calls ``load_checkpoint(ckpt=...)`` for a
+        ``weights`` URL. Thus, a call such as
+        ``DDRNetSegmentationHead(weights="https://...")`` raises
+        ``TypeError``. For ``weights="download"``, the node calls the
+        method without arguments, so that value does not fail this way.
+
+        Args:
+            path (str | None): Local path or URL of a ``.ckpt`` file.
+                `LuxonisLightningModule` also gives a state dictionary,
+                and the base method loads it directly. ``None`` or ``""``
+                takes the URL from `get_weights_url`.
+            strict (bool): Whether the keys of the checkpoint must match
+                the keys of the head exactly.
+
+        """
         return super().load_checkpoint(path, strict=strict)
 
     @override
     def get_weights_url(self) -> str:
+        """Select the COCO checkpoint from the input channel count.
+
+        The 128-channel ``23-slim`` backbone uses the slim checkpoint;
+        the 256-channel ``23`` backbone uses the full checkpoint.
+
+        Raises:
+            NotImplementedError: If the input has neither 128 nor 256
+                channels.
+
+        """
         if self.in_channels == 128:
             variant = "slim"
         elif self.in_channels == 256:
@@ -109,6 +241,38 @@ class DDRNetSegmentationHead(BaseHead):
         return f"{{github}}/ddrnet_head_23{variant}_coco.ckpt"
 
     def forward(self, inputs: Tensor) -> Tensor:
+        """Compute the logits, or the class indices in export mode.
+
+        Args:
+            inputs (``Tensor``): The feature map of shape
+                ``[B, C, H / s, W / s]``.
+
+        Returns:
+            ``Tensor``: Outside export mode, the logits of shape
+            ``[B, n_classes, H, W]``. In export mode, an ``int32``
+            tensor. It holds the class index with the highest logit for
+            each pixel, of shape ``[B, H, W]``. With ``n_classes == 1``,
+            it holds ``1`` where the logit is above ``0``, of shape
+            ``[B, 1, H, W]``. `BaseNode.run` puts the result under the
+            ``"segmentation"`` key.
+
+        Example:
+            >>> import torch
+            >>> from torch import Size
+            >>> from luxonis_train.nodes import DDRNetSegmentationHead
+            >>> head = DDRNetSegmentationHead(
+            ...     n_classes=3,
+            ...     input_shapes=[{"features": [Size([1, 8, 4, 4])]}],
+            ...     original_in_shape=Size([3, 32, 32]),
+            ... )
+            >>> head.eval()(torch.zeros(1, 8, 4, 4)).shape
+            torch.Size([1, 3, 32, 32])
+            >>> head.export = True
+            >>> out = head(torch.zeros(1, 8, 4, 4))
+            >>> out.shape, out.dtype
+            (torch.Size([1, 32, 32]), torch.int32)
+
+        """
         x: Tensor = self.relu(self.bn1(inputs))
         x = self.conv1(x)
         x = self.relu(self.bn2(x))
