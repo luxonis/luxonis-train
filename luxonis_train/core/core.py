@@ -1150,13 +1150,12 @@ class LuxonisModel:
         ``infer_from_directory``. It replaces an existing local dataset
         of that name, and the method deletes it afterwards. Each head
         among the output nodes turns its outputs into records with
-        `BaseHead.annotate`, and the records go into a `LuxonisDataset
-        <luxonis_ml.data.datasets.LuxonisDataset>` named
-        ``dataset_name``. The method skips a record with a bounding box
-        outside the clipping range. A non-empty dataset gets the splits
-        ``train``, ``val``, and ``test`` in the ratio 0.8, 0.1, and 0.1.
-        An empty one logs a warning. The method prints the dataset info
-        at the end.
+        `BaseHead.annotate`, and the records go into a
+        ``LuxonisDataset`` named ``dataset_name``. The method skips a
+        record with a bounding box outside the clipping range. A
+        non-empty dataset gets the splits ``train``, ``val``, and
+        ``test`` in the ratio 0.8, 0.1, and 0.1. An empty one logs a
+        warning. The method prints the dataset info at the end.
 
         Args:
             dir_path (``PathType``): The directory that holds the images.

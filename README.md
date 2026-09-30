@@ -723,9 +723,9 @@ model.tune()
 
 - [**Loaders**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.loaders.html): Handles data loading and preprocessing.
 - [**Nodes**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.nodes.html): Represents computational units in the model architecture.
-- [**Losses**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md): Define the loss functions used to train the model.
-- [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
-- [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
+- [**Losses**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.attached_modules.losses.html): Define the loss functions used to train the model.
+- [**Metrics**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.attached_modules.metrics.html): Measure the model's performance during training.
+- [**Visualizers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.attached_modules.visualizers.html): Visualize the model's predictions during training.
 - [**Callbacks**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.callbacks.html): Allow custom code to be executed at different stages of training.
 - [**Optimizers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.optimizers.html): Control how the model's weights are updated.
 - [**Schedulers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.schedulers.html): Adjust the learning rate during training.

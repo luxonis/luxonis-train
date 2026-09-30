@@ -1,3 +1,5 @@
+"""Mean intersection over union over segmentation masks."""
+
 from typing import Literal
 
 import torch
@@ -10,7 +12,66 @@ from .base_metric import BaseMetric
 
 
 class MIoU(BaseMetric):
-    """Mean IoU metric for SEGMENTATION tasks."""
+    r"""Mean intersection over union metric for segmentation masks.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` logits
+        - ``target`` (``Tensor``): :math:`\left[B, n_{classes}, H,
+          W\right]` one-hot masks
+
+    Outputs:
+        - ``Tensor``: scalar mean IoU
+        - ``MIoU_<class name>`` (``Tensor``): scalar IoU of each class,
+          when ``per_class`` is ``True`` and more than one class counts
+
+    Formula:
+        Each predicted pixel gets the class with the highest logit. For
+        image :math:`i` and class :math:`c`, :math:`P_{i,c}` is the set
+        of predicted pixels and :math:`T_{i,c}` the set of target
+        pixels:
+
+        .. math::
+
+            \text{IoU}_{i,c} = \frac{|P_{i,c} \cap T_{i,c}|}{|P_{i,c} \cup T_{i,c}|}
+
+        The metric skips each pair of an image and a class with an empty
+        union. Without ``per_class``, the result is the mean over all
+        remaining pairs. With ``per_class``, the IoU of a class is the
+        mean over its remaining images, and the main value is the mean
+        over the classes.
+
+    References:
+        - Source: Wraps `torchmetrics
+          <https://github.com/Lightning-AI/torchmetrics>`_ (Apache-2.0).
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        With ``per_class``, the class names come from the node. A class
+        with no predicted and no target pixels in any image gets the IoU
+        ``-1``, and the main value includes this ``-1``.
+
+    Example:
+        Attached to a ``DDRNetSegmentationHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: DDRNetSegmentationHead
+              inputs: [DDRNet]
+              metrics:
+                - name: MIoU
+                  params:
+                    num_classes: 2
+
+    Compatible with:
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerSegmentationHead`
+
+    """
 
     supported_tasks = [Tasks.SEGMENTATION]
     predefined_model_params_aliases = {"per_class_metrics": "per_class"}
@@ -23,16 +84,25 @@ class MIoU(BaseMetric):
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):
-        """
-        @type num_classes: int
-        @param num_classes: Number of classes.
-        @type include_background: bool
-        @param include_background: Whether to include the background
-            class.
-        @type per_class: bool
-        @param per_class: Whether to compute the IoU per class.
-        @type input_format: Literal["one-hot", "index"]
-        @param input_format: Format of the input.
+        """Initialize the metric and the wrapped ``MeanIoU``.
+
+        Args:
+            num_classes (int): The number of classes, the size of the
+                class dimension of the inputs.
+            include_background (bool): Whether class ``0`` counts. When
+                ``False``, the metric drops class ``0`` before it scores,
+                and `compute` leaves out the first class name.
+            per_class (bool): Whether `compute` also returns the IoU of
+                each class. It also changes the main value, see the
+                formula of the class. A predefined model sets it through
+                ``per_class_metrics``.
+            input_format (``Literal["one-hot", "index"]``): How `update`
+                converts the inputs, see `convert_format`. The two
+                formats give different results only for a target pixel
+                with no class or with more than one class.
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseMetric`, such as ``node``.
+
         """
         super().__init__(**kwargs)
         self._input_format = input_format
@@ -48,6 +118,36 @@ class MIoU(BaseMetric):
     def convert_format(
         self, tensor: Tensor, is_target: bool = False
     ) -> Tensor:
+        """Convert class scores to the format of ``input_format``.
+
+        - ``"index"``: return the ``argmax`` over dimension ``1``. The
+          method does this for the target too, so a target pixel with no
+          class becomes class ``0``.
+        - ``"one-hot"``, with ``is_target`` set to ``False``: return a
+          one-hot tensor of the input shape and dtype. It holds ``1`` at
+          the ``argmax`` class of each pixel.
+        - ``"one-hot"``, with ``is_target`` set to ``True``: return
+          ``tensor`` unchanged.
+
+        Args:
+            tensor (``Tensor``): Logits or masks of shape
+                ``[B, C, H, W]``.
+            is_target (bool): Whether ``tensor`` is the target.
+
+        Returns:
+            ``Tensor``: Class indices of shape ``[B, H, W]`` for
+            ``"index"``, otherwise a tensor of shape ``[B, C, H, W]``.
+
+        Example:
+            >>> import torch
+            >>> logits = torch.tensor([[[[2.0, 0.0]], [[1.0, 3.0]]]])
+            >>> metric = MIoU(num_classes=2, input_format="one-hot")
+            >>> metric.convert_format(logits).tolist()
+            [[[[1.0, 0.0]], [[0.0, 1.0]]]]
+            >>> metric.convert_format(logits, is_target=True) is logits
+            True
+
+        """
         if self._input_format == "index":
             return torch.argmax(tensor, dim=1)
         if self._input_format == "one-hot" and not is_target:
@@ -58,6 +158,22 @@ class MIoU(BaseMetric):
         return tensor
 
     def update(self, predictions: Tensor, target: Tensor) -> None:
+        """Convert one batch and add it to the wrapped ``MeanIoU``.
+
+        For ``"index"``, `convert_format` turns both tensors into class
+        indices. For ``"one-hot"``, it turns the predictions into
+        one-hot masks, and the method casts both tensors to ``bool``.
+        The wrapped metric computes the IoU of each image and class. It
+        adds the IoU and the count of each pair with a non-empty union
+        to its running sums.
+
+        Args:
+            predictions (``Tensor``): Logits of shape ``[B, C, H, W]``,
+                the main output of the node.
+            target (``Tensor``): One-hot masks of shape
+                ``[B, C, H, W]``, the ``segmentation`` label of the task.
+
+        """
         converted_preds = self.convert_format(predictions, is_target=False)
 
         if self._input_format == "index":
@@ -69,6 +185,51 @@ class MIoU(BaseMetric):
         self.metric.update(converted_preds, converted_target)
 
     def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
+        """Return the mean IoU of the images since the last reset.
+
+        Without ``per_class``, the method returns the scalar result of
+        the wrapped ``MeanIoU``. The result is ``NaN`` when no pair of an
+        image and a class had a non-empty union since the last reset.
+
+        With ``per_class``, the wrapped metric returns the IoU of each
+        class. A class with no predicted and no target pixels since the
+        last reset gets ``-1``. When only one class counts, the method
+        returns this IoU as a scalar. Otherwise it returns the mean of
+        the class values, together with the IoU of each class.
+
+        The class names come from `BaseAttachedModule.classes`, in the
+        order of the class indices. When ``include_background`` is
+        ``False``, the method drops the first name.
+
+        Returns:
+            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The scalar mean
+            IoU. With ``per_class`` and more than one class, a tuple of
+            the mean over the classes and a dictionary. The dictionary
+            maps ``"MIoU_<class name>"`` to the scalar IoU of each class.
+
+        Raises:
+            ValueError: When ``per_class`` is ``True`` and the node has a
+                different number of class names than the metric has
+                classes.
+
+        Example:
+            One image of four pixels. The target holds class ``0`` in
+            the first two pixels and class ``1`` in the last two. The
+            prediction is wrong in the second pixel. Class ``0`` has the
+            IoU ``1 / 2``, and class ``1`` has the IoU ``2 / 3``. The
+            result is the mean of the two values.
+
+            >>> import torch
+            >>> target = torch.tensor([[[[1, 1, 0, 0]], [[0, 0, 1, 1]]]])
+            >>> logits = torch.tensor(
+            ...     [[[[2.0, 0.0, 0.0, 0.0]], [[0.0, 1.0, 1.0, 1.0]]]]
+            ... )
+            >>> metric = MIoU(num_classes=2)
+            >>> metric.update(logits, target)
+            >>> round(metric.compute().item(), 4)
+            0.5833
+
+        """
         x = self.metric.compute()
         if not self._per_class or x.ndim == 0 or x.numel() == 1:
             return x
@@ -88,4 +249,11 @@ class MIoU(BaseMetric):
         }
 
     def reset(self) -> None:
+        """Reset the states of the wrapped ``MeanIoU``.
+
+        The method does not call the ``reset`` of ``torchmetrics`` for
+        this metric. The cached result of the last `compute` stays, and
+        `compute` returns it until the next `update`.
+
+        """
         self.metric.reset()

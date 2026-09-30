@@ -1,3 +1,5 @@
+"""Binary cross entropy with label smoothing."""
+
 from typing import Literal
 
 import torch
@@ -10,6 +12,61 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 
 class SmoothBCEWithLogitsLoss(BaseLoss):
+    r"""Binary cross entropy on logits, with label smoothing.
+
+    The loss moves each target toward the opposite class. It then
+    computes `BCEWithLogitsLoss` on the new targets.
+
+    Inputs:
+        - ``predictions`` (``Tensor``): ``[B, C, ...]`` logits
+        - ``target`` (``Tensor``): same shape, float values in
+          ``[0, 1]``
+
+    Outputs:
+        - ``Tensor``: scalar, or ``[B, C, ...]`` when ``reduction`` is
+          ``"none"``
+
+    Formula:
+        For the smoothing factor :math:`s`, the target :math:`y` becomes
+
+        .. math::
+
+            y' = (1 - s) \, y + s \, (1 - y)
+
+        A target of ``1`` thus becomes :math:`1 - s`, and a target of
+        ``0`` becomes :math:`s`. The loss is `BCEWithLogitsLoss` of the
+        logits and :math:`y'`, with ``bce_pow`` as its ``pos_weight``.
+
+    References:
+        - Source: This project.
+        - License: Apache-2.0 (this project)
+
+    Notes:
+        ``bce_pow`` is not an exponent. It is the factor of the positive
+        term of the binary cross entropy.
+
+    Example:
+        Attached to a ``DDRNetSegmentationHead`` in ``model.nodes``:
+
+        .. code-block:: yaml
+
+            - name: DDRNetSegmentationHead
+              inputs: [DDRNet]
+              losses:
+                - name: SmoothBCEWithLogitsLoss
+
+    Compatible with:
+        - Nodes:
+
+          - `BiSeNetHead`
+          - `ClassificationHead`
+          - `DDRNetSegmentationHead`
+          - `SegmentationHead`
+          - `TransformerClassificationHead`
+          - `TransformerSegmentationHead`
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -20,26 +77,30 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         reduction: Literal["mean", "sum", "none"] = "mean",
         **kwargs,
     ):
-        """BCE with logits loss and label smoothing.
+        """Initialize the loss and the wrapped `BCEWithLogitsLoss`.
 
-        @type label_smoothing: float
-        @param label_smoothing: Label smoothing factor. Defaults to
-            C{0.0}.
-        @type bce_pow: float
-        @param bce_pow: Weight for positive samples. Defaults to C{1.0}.
-        @type weight: list[float] | None
-        @param weight: a manual rescaling weight given to the loss of
-            each batch element. If given, it has to be a list of length
-            C{nbatch}.
-        @type reduction: Literal["mean", "sum", "none"]
-        @param reduction: Specifies the reduction to apply to the
-            output: C{'none'} | C{'mean'} | C{'sum'}. C{'none'}: no
-            reduction will be applied, C{'mean'}: the sum of the output
-            will be divided by the number of elements in the output,
-            C{'sum'}: the output will be summed. Note: C{size_average}
-            and C{reduce} are in the process of being deprecated, and in
-            the meantime, specifying either of those two args will
-            override C{reduction}. Defaults to C{'mean'}.
+        Args:
+            label_smoothing (float): The smoothing factor :math:`s`. A
+                target of ``1`` becomes ``1 - label_smoothing``, and a
+                target of ``0`` becomes ``label_smoothing``. ``0.0``
+                keeps the targets unchanged.
+            bce_pow (float): The factor of the positive term of the
+                loss, the same for all classes. It becomes the
+                ``pos_weight`` of the wrapped loss.
+            weight (list[float] | None): Factors for the loss of the
+                elements. The wrapped loss turns the list into a tensor
+                that broadcasts against the loss, aligned at the last
+                dimension. ``None`` gives every element the factor ``1``.
+            reduction (``Literal["mean", "sum", "none"]``): How to
+                reduce the loss of the elements:
+
+                - ``"none"``: return the loss of each element.
+                - ``"mean"``: return the mean over all elements.
+                - ``"sum"``: return the sum over all elements.
+
+            **kwargs (``Any``): Keyword arguments forwarded to
+                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+
         """
         super().__init__(**kwargs)
         self._positive_smooth_const = 1.0 - label_smoothing
@@ -51,14 +112,37 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Compute the BCE loss with label smoothing.
+        """Smooth the targets and compute the binary cross entropy.
 
-        @type predictions: Tensor
-        @param predictions: Network predictions of shape (N, C, ...)
-        @type target: Tensor
-        @param target: A tensor of the same shape as predictions.
-        @rtype: Tensor
-        @return: A scalar tensor.
+        Args:
+            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
+                the main output of the node.
+            target (``Tensor``): Float targets in ``[0, 1]``, of the
+                same shape as ``predictions``.
+
+        Returns:
+            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
+            reductions. For ``"none"``, the loss of each element, of
+            shape ``[B, C, ...]``.
+
+        Raises:
+            RuntimeError: When ``predictions`` and ``target`` have
+                different shapes.
+
+        Example:
+            A smoothing factor of ``0.1`` turns the targets ``1`` and
+            ``0`` into ``0.9`` and ``0.1``:
+
+            >>> import torch
+            >>> import torch.nn.functional as F
+            >>> logits = torch.tensor([[2.0, -1.0]])
+            >>> target = torch.tensor([[1.0, 0.0]])
+            >>> loss = SmoothBCEWithLogitsLoss(label_smoothing=0.1)
+            >>> smoothed = torch.tensor([[0.9, 0.1]])
+            >>> bce = F.binary_cross_entropy_with_logits(logits, smoothed)
+            >>> torch.allclose(loss(logits, target), bce)
+            True
+
         """
         if predictions.shape != target.shape:
             raise RuntimeError(
