@@ -1,3 +1,7 @@
+"""Pre-annotation of a directory of images with a trained model, into a
+new dataset.
+"""
+
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -30,25 +34,44 @@ def annotate_from_directory(
     delete_remote: bool = True,
     team_id: str | None = None,
 ) -> LuxonisDataset:
-    """Annotate images from a directory using the specified model and
-    create a LuxonisDataset.
+    """Annotate image files with a model into a new dataset.
 
-    @param model: The LuxonisModel to use for annotation.
-    @type model: lxt.LuxonisModel
-    @param img_paths: Iterable of image paths to annotate.
-    @type img_paths: Iterable[PathType]
-    @param dataset_name: Name of the dataset to create.
-    @type dataset_name: str
-    @param bucket_storage: Storage type for the dataset, either 'local'
-        or 'gcs'.
-    @type bucket_storage: Literal['local', 'gcs']
-    @param delete_local: Whether to delete local files after processing.
-    @type delete_local: bool
-    @param delete_remote: Whether to delete remote files after
-        processing.
-    @type delete_remote: bool
-    @param team_id: Optional team ID for the dataset.
-    @type team_id: str | None
+    The function runs these steps:
+
+    - It builds a loader over ``img_paths`` with
+      `create_loader_from_directory`, with a batch size of ``1``. That
+      function replaces a local dataset named ``infer_from_directory``.
+    - It creates the dataset ``dataset_name`` and adds the records of
+      `annotated_dataset_generator` to it.
+    - It splits a non-empty dataset into ``train``, ``val``, and
+      ``test`` in the ratio 0.8, 0.1, and 0.1. For an empty dataset, it
+      logs a warning.
+    - It deletes the local copy of the ``infer_from_directory``
+      dataset.
+
+    The function does not load weights. `LuxonisModel.annotate` loads
+    them before the call.
+
+    Args:
+        model (LuxonisModel): The model that predicts the annotations.
+            The loader applies its ``trainer.preprocessing``.
+        img_paths (``Iterable[PathType]``): The image files to annotate.
+        dataset_name (str): The name of the new dataset.
+        bucket_storage (``Literal["local", "gcs"]``): The storage
+            backend of the new dataset.
+        delete_local (bool): Delete the local files of an existing
+            dataset named ``dataset_name`` before the function creates
+            the new dataset. With ``False`` and ``"local"`` storage, the
+            records go into the existing dataset.
+        delete_remote (bool): Delete the remote files of an existing
+            dataset named ``dataset_name``. The value has an effect only
+            with ``"gcs"`` storage.
+        team_id (str | None): The team that owns the dataset. ``None``
+            reads ``LUXONISML_TEAM_ID`` from the environment.
+
+    Returns:
+        ``LuxonisDataset``: The new dataset with the annotations.
+
     """
     img_paths = list(img_paths)
 
@@ -81,8 +104,36 @@ def annotate_from_directory(
 def annotated_dataset_generator(
     model: "lxt.LuxonisModel", loader: torch_data.DataLoader
 ) -> DatasetIterator:
-    """Create a generator that yields annotations for images processed
-    by the model.
+    """Yield the dataset records that the heads of a model predict.
+
+    The generator puts the Lightning module of ``model`` in eval mode.
+    For each batch of ``loader``, it runs
+    `LuxonisLightningModule.full_forward` without gradients. For each
+    output node that is a `BaseHead`, it calls `BaseHead.annotate`. The
+    call gets the outputs of the head, the image paths from the
+    ``"path"`` sample metadata, and the ``trainer.preprocessing`` of the
+    config. The generator skips the other output nodes.
+
+    A record from ``annotate`` that is a dictionary becomes a
+    ``DatasetRecord``. When the only validation error of a record is a
+    bounding box outside the clipping range, the generator skips the
+    record and logs a debug message.
+
+    Args:
+        model (LuxonisModel): The model that predicts the annotations.
+        loader (torch.utils.data.DataLoader): A loader whose batches hold
+            the inputs, the labels, and a list with the metadata of each
+            sample, as `create_loader_from_directory` builds with
+            ``return_sample_metadata=True``.
+
+    Yields:
+        ``DatasetRecord``: The records that the heads give for the
+        images.
+
+    Raises:
+        ValidationError: When a record fails the validation of
+            ``DatasetRecord`` for another reason.
+
     """
     lt_module = model.lightning_module.eval()
 

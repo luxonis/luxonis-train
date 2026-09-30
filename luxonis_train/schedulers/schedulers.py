@@ -1,3 +1,14 @@
+"""The registration of the ``torch.optim.lr_scheduler`` schedulers.
+
+Importing the module registers these schedulers in the ``SCHEDULERS``
+registry, under their class names: ``LambdaLR``, ``MultiplicativeLR``,
+``StepLR``, ``MultiStepLR``, ``ConstantLR``, ``LinearLR``,
+``ExponentialLR``, ``PolynomialLR``, ``CosineAnnealingLR``,
+``ChainedScheduler``, ``SequentialLR``, ``ReduceLROnPlateau``,
+``CyclicLR``, ``OneCycleLR``, and ``CosineAnnealingWarmRestarts``.
+
+"""
+
 from torch.optim import lr_scheduler
 
 from luxonis_train.registry import SCHEDULERS

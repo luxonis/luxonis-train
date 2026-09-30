@@ -1,3 +1,16 @@
+"""The progress bars of the trainer, and the optimizer summary.
+
+`LuxonisRichProgressBar` and `LuxonisTQDMProgressBar` show the batch
+progress and print the results of each evaluation epoch. Both bars
+mirror the printed results to the log file.
+
+`build_optimizer_summary` and `log_optimizer_summary` report how the
+parameters of the model are split across the optimizers and their
+parameter groups. The summary shows the effect of the finetuning rules
+and of the training strategy of the config.
+
+"""
+
 import json
 import time
 from abc import ABC, abstractmethod
@@ -31,12 +44,42 @@ from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
+    """Base class for the progress bars of the trainer.
+
+    The class drops the ``v_num`` item from the bar and adds the
+    running mean of the train loss as ``Loss``. A subclass prints the
+    results of an evaluation epoch with
+    `BaseLuxonisProgressBar.print_results` and
+    `BaseLuxonisProgressBar.print_table`. The subclasses also write one
+    summary line per train epoch to the log file.
+
+    """
+
     _epoch_start_time: float
 
     @override
     def get_metrics(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> dict[str, int | str | float | dict[str, float]]:
+        """Return the items shown at the end of the progress bar.
+
+        The items are the metrics that the model logs with
+        ``prog_bar=True``, as ``ProgressBar.get_metrics`` collects
+        them, without the ``v_num`` entry. When the train loss
+        accumulator of ``pl_module`` holds a ``"loss"`` entry, the
+        method adds it as ``Loss``. That value is the running mean of
+        the total loss over the batches of the current epoch so far.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer.
+            pl_module (LuxonisLightningModule): The model. Its train
+                loss accumulator provides the ``Loss`` value.
+
+        Returns:
+            dict[str, int | str | float | dict[str, float]]: The items
+            to show, keyed by name.
+
+        """
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
         if "loss" in pl_module._loss_accumulators["train"]:
@@ -51,20 +94,22 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
         matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
-        """Print the results to the console.
+        """Print the results of an evaluation epoch.
 
-        This includes the stage name, loss value, and tables with
-        metrics.
+        An implementation must print the stage name, the loss, one
+        table per node in ``metrics``, and one table per matrix in
+        ``matrices``.
 
-        @type stage: str
-        @param stage: Stage name.
-        @type loss: float
-        @param loss: Loss value.
-        @type metrics: Mapping[str, Mapping[str, int | str | float]]
-        @param metrics: Metrics in format {table_name: table}.
-        @type matrices: Mapping[str, Mapping[str, Mapping[str, Any]]]
-        @param matrices: Matrices in format {table_name: {name:
-            matrix}}.
+        Args:
+            stage (str): Name of the stage, for example ``"Validation"``.
+            loss (float): Mean loss of the epoch.
+            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
+                Scalar metrics as ``{node_name: {metric_name: value}}``.
+            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
+                Matrix metrics as ``{node_name: {metric_name: matrix}}``.
+                Each matrix is a dictionary in the format of
+                `BaseLuxonisProgressBar.format_matrix_for_printing`.
+
         """
         ...
 
@@ -75,15 +120,18 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         table: Iterable[tuple[str | int | float, ...]],
         column_names: list[str],
     ) -> None:
-        """Print a table to the console.
+        """Print one table.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
+        An implementation must print ``title``, then a table with one
+        header per entry of ``column_names`` and one row per tuple of
+        ``table``.
+
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
+                Each row is a tuple with one value per column.
+            column_names (list[str]): Names of the columns.
+
         """
         ...
 
@@ -93,7 +141,8 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
             if hasattr(self, "_epoch_start_time")
             else 0.0
         )
-        # Get last loss
+        # The module logs `train/loss` after this hook, so this is the
+        # value of the previous epoch, or `None` in the first one.
         metrics = trainer.callback_metrics
         loss = metrics.get("train/loss")
         loss_str = f"{loss:.4f}" if loss else "N/A"
@@ -106,6 +155,47 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     def format_matrix_for_printing(
         self, node: Any, name: str, value: Tensor
     ) -> dict[str, Any]:
+        """Convert a matrix metric into a printable dictionary.
+
+        The row and column labels are the class names of ``node`` when
+        the matrix has one row (column) per class. When the matrix has
+        one extra row (column), the labels are the class names plus
+        ``"no match"``. Otherwise the labels are the indices as
+        strings. When the class names of ``node`` raise a
+        ``RuntimeError``, for example because the node has no dataset
+        metadata, the class names count as empty. Any other exception
+        of that lookup propagates.
+
+        The result has the keys ``"values"`` (the matrix as a nested
+        list), ``"row_labels"``, ``"col_labels"``, ``"row_axis"``
+        (``"GT"``), and ``"col_axis"`` (``"Pred"``).
+
+        Args:
+            node (``Any``): The node the metric is attached to. When
+                the object has a ``module`` attribute, as a
+                `NodeWrapper` has, the method reads the class names
+                from that attribute.
+            name (str): Name of the metric. Unused.
+            value (``Tensor``): The matrix, of shape ``[R, C]``.
+
+        Returns:
+            ``dict[str, Any]``: The matrix values and their labels.
+
+        Example:
+            >>> import torch
+            >>> from types import SimpleNamespace
+            >>> bar = LuxonisTQDMProgressBar()
+            >>> node = SimpleNamespace(class_names=["cat", "dog"])
+            >>> matrix = torch.tensor([[3, 1, 0], [0, 2, 1]])
+            >>> info = bar.format_matrix_for_printing(node, "cm", matrix)
+            >>> info["row_labels"], info["col_labels"]
+            (['cat', 'dog'], ['cat', 'dog', 'no match'])
+            >>> info["values"]
+            [[3, 1, 0], [0, 2, 1]]
+            >>> info["row_axis"], info["col_axis"]
+            ('GT', 'Pred')
+
+        """
         matrix = value.detach().cpu()
         rows, cols = matrix.shape
 
@@ -139,11 +229,22 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
 
 @CALLBACKS.register()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
-    """Custom text progress bar based on TQDMProgressBar from Pytorch
-    Lightning.
+    """Progress bar that prints plain text with ``tqdm``.
+
+    `LuxonisModel` uses this bar when ``rich_logging`` is ``False`` in
+    the config. The bar prints the results of an evaluation epoch as
+    ``tabulate`` grids through the logger, so that the console and the
+    log file receive the same text.
+
     """
 
     def __init__(self):
+        """Initialize the bar with ``leave=True``.
+
+        The finished train bar stays in the terminal at the end of each
+        epoch, and the next epoch gets a new bar.
+
+        """
         super().__init__(leave=True)
 
     @override
@@ -154,6 +255,33 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
         matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
+        """Print the results of an evaluation epoch through the logger.
+
+        The output starts with a rule that holds the stage name, then
+        the loss and a ``Metrics:`` heading. Each node in ``metrics``
+        gets a rule with its name and a ``tabulate`` grid with the
+        columns ``Name`` and ``Value``. The matrices of that node
+        follow its grid. The matrices of the nodes that have no scalar
+        metrics come last, under the title ``<node>/<matrix title>``.
+        The title of a matrix is its name in title case, with spaces
+        for underscores. A matrix prints as a rule with its title and
+        a grid. The header of the grid holds the
+        ``row_axis`` and ``col_axis`` names of the matrix and the
+        column labels. Each row starts with its row label. A closing
+        rule ends the output. Every line goes through ``logger.info``,
+        so it reaches the console and the log file.
+
+        Args:
+            stage (str): Name of the stage, for example ``"Validation"``.
+            loss (float): Mean loss of the epoch.
+            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
+                Scalar metrics as ``{node_name: {metric_name: value}}``.
+            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
+                Matrix metrics as ``{node_name: {metric_name: matrix}}``,
+                in the format of
+                `BaseLuxonisProgressBar.format_matrix_for_printing`.
+
+        """
         self._rule(stage)
         logger.info(f"Loss: {loss}")
         logger.info("Metrics:")
@@ -188,15 +316,17 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         table: Iterable[tuple[str | int | float, ...]],
         column_names: list[str],
     ) -> None:
-        """Print a table to the console using tabulate.
+        """Print one table as a ``tabulate`` grid through the logger.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
+        The output is a rule with ``title``, then the table in the
+        ``fancy_grid`` format with right-aligned numbers.
+
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
+                Each row is a tuple with one value per column.
+            column_names (list[str]): Names of the columns.
+
         """
         self._rule(title)
         formatted = tabulate(
@@ -233,23 +363,75 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
     def on_train_epoch_start(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        """Start a new train bar and record the epoch start time.
+
+        Lightning calls this hook at the start of every train epoch.
+        The Lightning ``TQDMProgressBar`` base class creates a new bar,
+        because ``leave`` is ``True``, and sets its description to
+        ``Epoch N``. The start time feeds the duration in
+        `LuxonisTQDMProgressBar.on_train_epoch_end`.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer.
+            pl_module (LuxonisLightningModule): The model. Unused.
+
+        """
         super().on_train_epoch_start(trainer, pl_module)
         self._epoch_start_time = time.time()
 
     def on_train_epoch_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        """Close the train bar and log the epoch summary.
+
+        Lightning calls this hook at the end of every train epoch. The
+        Lightning ``TQDMProgressBar`` base class sets the postfix of an
+        enabled bar from `BaseLuxonisProgressBar.get_metrics` and closes
+        the bar. Then one summary line goes to the log file only, in
+        the form
+        ``[Epoch <n>/<max>] Duration: <s>s | Train Loss: <loss>``. The
+        duration is the time since
+        `LuxonisTQDMProgressBar.on_train_epoch_start`, the validation
+        of the epoch included. The loss is the ``train/loss`` value of
+        ``trainer.callback_metrics``.
+
+        Lightning runs this hook before
+        `LuxonisLightningModule.on_train_epoch_end`, which logs
+        ``train/loss``. So the line shows the value of the previous
+        epoch. It shows ``N/A`` when the value is missing or zero, as
+        in the first epoch.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer.
+            pl_module (LuxonisLightningModule): The model. The base
+                class reads its metrics for the bar postfix.
+
+        """
         super().on_train_epoch_end(trainer, pl_module)
         super()._log_progress(trainer)
 
 
 @CALLBACKS.register()
 class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
-    """Custom rich text progress bar based on RichProgressBar from
-    Pytorch Lightning.
+    """Progress bar that prints styled text with ``rich``.
+
+    `LuxonisModel` uses this bar when ``rich_logging`` is ``True`` in
+    the config. The bar prints the results of an evaluation epoch as
+    ``rich`` tables on the console. It renders the same tables without
+    terminal styling into a buffer and writes the buffer to the log file
+    only.
+
     """
 
     def __init__(self):
+        """Initialize the bar with ``leave=True`` and a log console.
+
+        The finished train bar stays in the terminal at the end of each
+        epoch. The log console writes into an in-memory buffer without
+        terminal styling. `LuxonisRichProgressBar.print_results` writes
+        the buffer to the log file and clears it.
+
+        """
         super().__init__(leave=True)
         self._log_buffer = StringIO()
         self._log_console = Console(
@@ -258,6 +440,18 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
 
     @property
     def console(self) -> Console:
+        """The ``rich`` console that the bar prints to.
+
+        The Lightning ``RichProgressBar`` base class creates the
+        console when a stage starts and the bar is enabled. A bar that
+        is disabled when the stage starts gets no console.
+
+        Raises:
+            RuntimeError: When the console does not exist yet. The
+                message asks the user to set ``rich_logging`` to
+                ``False`` in the config.
+
+        """
         if self._console is None:  # pragma: no cover
             raise RuntimeError(
                 "Console is not initialized for the `LuxonisRichProgressBar`. "
@@ -273,6 +467,37 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
         matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
+        """Print the results of an evaluation epoch.
+
+        On the console, the output starts with a magenta rule that
+        holds the stage name, then the loss and a ``Metrics:`` heading.
+        Each node in ``metrics`` gets a ``rich`` table with its name as
+        the title and the columns ``Name`` and ``Value``. The matrices
+        of that node follow its table. The matrices of the nodes that
+        have no scalar metrics come last, under the title
+        ``<node>/<matrix title>``. The title of a matrix is its name in
+        title case, with spaces for underscores. A matrix prints as a
+        table. Its header holds the ``row_axis`` and ``col_axis`` names
+        of the matrix and the column labels. Each row starts with its
+        row label. A closing rule ends the output. The same output,
+        without terminal styling, goes to the log file only. The
+        method then clears the log buffer.
+
+        Args:
+            stage (str): Name of the stage, for example ``"Validation"``.
+            loss (float): Mean loss of the epoch.
+            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
+                Scalar metrics as ``{node_name: {metric_name: value}}``.
+            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
+                Matrix metrics as ``{node_name: {metric_name: matrix}}``,
+                in the format of
+                `BaseLuxonisProgressBar.format_matrix_for_printing`.
+
+        Raises:
+            RuntimeError: When the console of the bar does not exist
+                yet, see `LuxonisRichProgressBar.console`.
+
+        """
         # Terminal output
         self.console.rule(f"{stage}", style="bold magenta")
         self.console.print(
@@ -330,18 +555,27 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         column_names: list[str],
         console: Console | None = None,
     ) -> None:
-        """Print a table to the console using rich text.
+        """Print one table as a ``rich`` table.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Iterable[tuple[str | int | float, ...]]
-        @param table: Table to print as an iterable of rows, where each
-            row is a tuple of values.
-        @type column_names: list[str]
-        @param column_names: Names of the columns in the table
-        @param console: Console instance to use, if None use default
-            console. Defaults to None.
-        @type console: Console | None
+        The title is bold and the headers are bold magenta. The first
+        column is magenta and the other columns are white. ``str``
+        converts the first element of each row. A ``float`` in the
+        other elements prints with five decimals. Any other element
+        prints with ``str``.
+
+        Args:
+            title (str): Title of the table.
+            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
+                Each row is a tuple with one value per column.
+            column_names (list[str]): Names of the columns.
+            console (``Console | None``): The console to print to.
+                ``None`` means the console of the bar, the terminal.
+
+        Raises:
+            RuntimeError: When ``console`` is ``None`` and the console
+                of the bar does not exist yet, see
+                `LuxonisRichProgressBar.console`.
+
         """
         console = console or self.console
         rich_table = Table(
@@ -401,12 +635,53 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
     def on_train_epoch_start(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        """Start the train task and record the epoch start time.
+
+        Lightning calls this hook at the start of every train epoch.
+        The Lightning ``RichProgressBar`` base class adds a train task
+        named after the epoch. From the second epoch on, it first stops
+        the current display and starts a new one, because ``leave`` is
+        ``True``. A disabled bar skips all of that. The start time
+        feeds the duration in
+        `LuxonisRichProgressBar.on_train_epoch_end`.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer.
+            pl_module (LuxonisLightningModule): The model. Unused.
+
+        """
         super().on_train_epoch_start(trainer, pl_module)
         self._epoch_start_time = time.time()
 
     def on_train_epoch_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        """Refresh the train task and log the epoch summary.
+
+        Lightning calls this hook at the end of every train epoch. The
+        Lightning ``RichProgressBar`` base class updates the metrics
+        column of an enabled display and refreshes the display. The
+        items come from `BaseLuxonisProgressBar.get_metrics`, with
+        every tensor replaced by its ``item()`` value. Then one
+        summary line goes to the log file only, in the form
+        ``[Epoch <n>/<max>] Duration: <s>s | Train Loss: <loss>``. The
+        duration is the time since
+        `LuxonisRichProgressBar.on_train_epoch_start`, the validation
+        of the epoch included. The loss is the ``train/loss`` value of
+        ``trainer.callback_metrics``.
+
+        Lightning runs this hook before
+        `LuxonisLightningModule.on_train_epoch_end`, which logs
+        ``train/loss``. So the line shows the value of the previous
+        epoch. It shows ``N/A`` when the value is missing or zero, as
+        in the first epoch.
+
+        Args:
+            trainer (``pl.Trainer``): The trainer.
+            pl_module (LuxonisLightningModule): The model. The base
+                class reads its metrics for the metrics column.
+
+        """
         super().on_train_epoch_end(trainer, pl_module)
         super()._log_progress(trainer)
 
@@ -416,23 +691,107 @@ def build_optimizer_summary(
     schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
     modules: Mapping[str, nn.Module],
 ) -> dict[str, Any]:
-    """Build the serializable optimizer / parameter-group summary.
+    """Build the summary of the optimizers and their parameter groups.
 
-    Two different denominators are used, chosen so that percentages sum
-    naturally in the axis the reader cares about:
+    The summary is a nested dictionary that `log_optimizer_summary`
+    renders and writes as JSON to the log file. Each parameter group
+    lists its hyperparameters and its *owners*, the modules of
+    ``modules`` whose parameters it holds.
 
-        - B{Group-level} percentages are relative to all model parameters,
-          so summing across all groups of all optimizers gives 100% (modulo
-          unclaimed / external parameters).
-        - B{Owner-level} percentages inside each group are relative to all
-          parameters belonging to that owner, so summing all appearances of
-          a single owner across the optimizers gives 100% — telling the
-          reader how each node's parameters were split across groups.
+    Two denominators are in use:
 
-    Frozen parameters remain assigned to optimizer groups by the static
-    training plan. Assignment percentages therefore include them, while
-    every group separately reports how much of its assignment is currently
-    trainable or frozen.
+    - The group-level percentages ``tensors_pct_of_model`` and
+      ``params_pct_of_model`` are relative to all parameters of the
+      model. The sum over all groups of all optimizers is 100% minus
+      the share of the parameters that no group holds. A parameter
+      that two groups hold counts twice in that sum.
+    - The owner-level percentages ``tensors_pct_of_owner`` and
+      ``params_pct_of_owner`` are relative to all parameters of that
+      owner. Over all appearances of one owner they add up to 100%
+      when every parameter of the owner is in exactly one group. This
+      shows how the parameters of a node are split across groups.
+
+    A frozen parameter counts in its group like any other parameter.
+    The percentages include frozen parameters, and each group and
+    owner reports its trainable and frozen counts separately.
+
+    The owner ``"<external>"`` collects the parameters that a group
+    holds but that no module in ``modules`` owns. A parameter that
+    several modules share belongs to the first module of ``modules``
+    that lists it. In every count, ``*_tensors`` is a number of
+    parameter tensors and ``*_params`` is a number of elements. A
+    percentage is ``0.0`` when its denominator is zero.
+
+    The result has these keys:
+
+    - ``n_optimizers``: Number of optimizers.
+    - ``model_tensors``, ``model_params``: Totals over all owners,
+      external ones included.
+    - ``trainable_tensors``, ``trainable_params``, ``frozen_tensors``,
+      ``frozen_params``: The totals split by ``requires_grad``.
+    - ``optimizers``: One entry per optimizer with ``index``,
+      ``optimizer`` and ``scheduler`` (class names), ``n_groups``, and
+      ``groups``.
+
+    Each group holds ``index``, ``n_tensors``, ``n_params``, the
+    trainable and frozen counts, ``tensors_pct_of_model``,
+    ``params_pct_of_model``, ``hyperparams``, and ``owners``.
+    ``hyperparams`` holds the entries of the parameter group except
+    ``params``, callables, lists, tuples, and dictionaries. ``owners``
+    lists the owners in descending order of their ``n_params`` in the
+    group. Each owner holds ``name``, ``n_tensors``,
+    ``n_tensors_of_owner``, ``tensors_pct_of_owner``, ``n_params``,
+    ``n_params_of_owner``, ``params_pct_of_owner``, and the trainable
+    and frozen counts.
+
+    Args:
+        optimizers (``Sequence[Optimizer]``): The optimizers, in order.
+        schedulers (``Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]``):
+            One entry per optimizer. A dictionary contributes the
+            class name of its ``"scheduler"`` entry, as a Lightning
+            scheduler config dictionary holds one. Any other object
+            contributes its own class name, so ``None`` for an
+            optimizer without a scheduler shows as ``"NoneType"``. A
+            Lightning ``LRSchedulerConfig`` dataclass is not a
+            dictionary, so it shows as ``"LRSchedulerConfig"``.
+        modules (``Mapping[str, nn.Module]``): The owner modules keyed by
+            name, usually the nodes of the model keyed by node name.
+
+    Returns:
+        ``dict[str, Any]``: The summary described above.
+
+    Raises:
+        ValueError: When ``optimizers`` and ``schedulers`` differ in
+            length.
+
+    Example:
+        >>> from torch import nn
+        >>> from torch.optim import SGD
+        >>> from torch.optim.lr_scheduler import ConstantLR
+        >>> backbone = nn.Linear(4, 8)
+        >>> head = nn.Linear(8, 2)
+        >>> optimizer = SGD(
+        ...     [
+        ...         {"params": backbone.parameters()},
+        ...         {"params": head.parameters(), "lr": 0.1},
+        ...     ],
+        ...     lr=0.01,
+        ... )
+        >>> summary = build_optimizer_summary(
+        ...     [optimizer],
+        ...     [ConstantLR(optimizer, factor=1.0)],
+        ...     {"backbone": backbone, "head": head},
+        ... )
+        >>> summary["n_optimizers"], summary["model_params"]
+        (1, 58)
+        >>> group = summary["optimizers"][0]["groups"][0]
+        >>> group["hyperparams"]["lr"]
+        0.01
+        >>> round(group["params_pct_of_model"], 1)
+        69.0
+        >>> [owner["name"] for owner in group["owners"]]
+        ['backbone']
+
     """
     stats = _collect_owner_stats(modules, optimizers)
     return {
@@ -455,11 +814,24 @@ def build_optimizer_summary(
 def log_optimizer_summary(
     summary: dict[str, Any], use_rich: bool = True
 ) -> None:
-    """Render the optimizer / parameter-group summary.
+    """Log the summary from `build_optimizer_summary`.
 
-    Emits a pretty console version (nested rich panels, or a plaintext
-    indented-list fallback) and dumps an equivalent JSON payload to the
-    log file via ``logger.bind(file_only=True)``.
+    With ``use_rich``, the summary goes to the global ``rich`` console
+    as nested panels. A header panel holds the totals. Then one panel
+    per optimizer holds one panel per group. A group panel holds one
+    panel with the hyperparameters and one with the owners. Without
+    ``use_rich``, the summary goes through ``logger.info`` as an
+    indented plain-text list, which reaches the console and the log
+    file. In both cases the function also writes the summary as JSON
+    to the log file only, with ``str`` for a value that JSON cannot
+    encode.
+
+    Args:
+        summary (``dict[str, Any]``): The summary from
+            `build_optimizer_summary`.
+        use_rich (bool): Whether to render the summary with ``rich``
+            panels.
+
     """
     if use_rich:
         _render_optimizer_summary_rich(summary)
@@ -509,9 +881,7 @@ class _OptimizerInfo(TypedDict):
 
 
 class _OwnerStats:
-    """Per-owner parameter tallies, deduplicated by parameter
-    identity.
-    """
+    """Parameter tallies per owner, with each parameter counted once."""
 
     def __init__(self):
         self.param_owner: dict[int, str] = {}

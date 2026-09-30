@@ -1,3 +1,5 @@
+"""Creates an NN Archive when training ends."""
+
 import lightning.pytorch as pl
 from loguru import logger
 
@@ -9,13 +11,50 @@ from .needs_checkpoint import NeedsCheckpoint
 
 @CALLBACKS.register()
 class ArchiveOnTrainEnd(NeedsCheckpoint):
+    """Create an NN Archive when training ends.
+
+    The callback archives the ONNX file of an earlier export, for
+    example the file of an `ExportOnTrainEnd` that comes before it in
+    ``trainer.callbacks``. Without such a file, it exports the best
+    checkpoint first. The ``preferred_checkpoint`` parameter of
+    `NeedsCheckpoint` selects the best main metric or the lowest
+    validation loss.
+
+    `ConvertOnTrainEnd` also builds the archive. When
+    ``trainer.callbacks`` lists an active `ConvertOnTrainEnd`, the
+    config deactivates this callback. A `ConvertOnTrainEnd` that
+    ``trainer.smart_cfg_auto_populate`` adds does not deactivate it.
+
+    """
+
     def on_train_end(
         self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
-        """Archive the model on train end.
+        """Build an NN Archive from the ONNX file of the model.
 
-        @type pl_module: L{lxt.LuxonisLightningModule}
-        @param pl_module: Pytorch Lightning module.
+        Lightning calls this hook once when ``trainer.fit`` ends. The
+        hook takes the last ONNX file that `LuxonisModel.export` wrote
+        for ``pl_module.core``. When no ONNX export ran, the hook selects
+        a checkpoint with `NeedsCheckpoint.get_checkpoint` and exports it
+        to ONNX first. It then passes the ONNX file to
+        `LuxonisModel.archive`, which writes the archive to
+        ``<run_save_dir>/archive``. That method also uploads the archive
+        to the run when ``archiver.upload_to_run`` is set.
+
+        When no ONNX export ran and no checkpoint exists, the hook logs a
+        warning and builds no archive. It logs an error and builds no
+        archive when its own export produced no ONNX file.
+
+        The export of the hook loads the checkpoint into ``pl_module``
+        only for the export. When the `LuxonisModel` constructor or
+        ``model.weights`` of the config gives weights,
+        `LuxonisModel.archive` loads them only for the archive. After the
+        hook, ``pl_module`` holds its earlier weights again.
+
+        Args:
+            _ (``pl.Trainer``): The trainer. Unused.
+            pl_module (LuxonisLightningModule): The model to archive.
+
         """
         onnx_path = pl_module.core._exported_models.get("onnx")
         if onnx_path is None:  # pragma: no cover
