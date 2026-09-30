@@ -28,6 +28,7 @@ def test_unknown_optimizer_or_scheduler_name_raises(
     Cases:
         1. Rule references a non-existent optimizer name.
         2. Rule references a non-existent scheduler name.
+
     """
     with pytest.raises(KeyError):
         build_snapshot(config([tiny_head_node(finetuning)]), opts)
@@ -40,6 +41,7 @@ def test_invalid_optimizer_parameter_group_keys_raise(opts: Params):
     An unknown key surfaces as a ``TypeError`` naming the offending
     optimizer — this matters because torch would otherwise silently pass
     unknown keys through into internal state.
+
     """
     with pytest.raises(
         TypeError,
@@ -109,6 +111,7 @@ def test_selector_validation_error_messages(
     The message wording is the only signal users get when a rule they
     wrote is malformed, so pinning them here catches accidental
     rewordings that would break tutorials and docs.
+
     """
     with pytest.raises(expected_error, match=match):
         build_snapshot(config([tiny_head_node(finetuning)]), opts)

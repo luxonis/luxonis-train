@@ -241,6 +241,7 @@ def test_triple_lr_optimizer_count_omits_strategy_when_finetuning_claims_all(
     Expected result:
         The accumulation callback is installed (it always is now) and
         only one optimizer - the AdamW from the rule - is built.
+
     """
     model = _build_model(
         config(
@@ -289,6 +290,7 @@ def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):
         (inheriting the strategy base's lr=0.031 and momentum=0.25)
         with a StepLR(step_size=11, gamma=0.6), and a second AdamW
         from the strategy's rule carrying every remaining parameter.
+
     """
     snapshot = build_snapshot(
         config(
@@ -362,6 +364,7 @@ def test_strategy_rules_claim_exactly_the_unclaimed_parameters(
           (from the strategy's rule) holding just the Linear params.
         - The strategy's claimed set is exactly the complement of the
           union of both Conv2d rules' claims.
+
     """
     snapshot = build_snapshot(
         config(
@@ -442,6 +445,7 @@ def test_triple_lr_strategy_optimizer_contains_only_remaining_trainable_params(
         tiny model has no batch-norm layers, so no batch-norm group
         is created). The strategy receives handles for its two
         non-empty groups.
+
     """
     snapshot = build_snapshot(
         config(
@@ -495,6 +499,7 @@ def test_triple_lr_strategy_optimizer_is_omitted_when_finetuning_claims_all(
         One optimizer, an AdamW from the finetuning rule, with the
         strategy's LambdaLR scheduling applied. The strategy's SGD
         drops out because it has zero parameters to optimize.
+
     """
     snapshot = build_snapshot(
         config(
@@ -568,6 +573,7 @@ def test_strategy_override_warning_only_when_optimizer_explicitly_set():
     makes it fire for every strategy-based config, including the shipped
     ones that never mention an optimizer. Only the fields the user
     actually set should be reported.
+
     """
     assert _override_warnings(_strategy_config({})) == []
 

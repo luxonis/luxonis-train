@@ -133,6 +133,7 @@ def test_representative_finetuning_builds_expected_optimizer_groups(
            name).
         4. Adam / StepLR — remaining Head Conv2d (same optimizer as #1
            but a different scheduler splits it into its own optimizer).
+
     """
     snapshot = build_snapshot(representative_config, opts)
 
@@ -201,6 +202,7 @@ def test_no_finetuning_uses_single_default_optimizer_for_all_trainable_params(
         code path is bypassed entirely — the fast default in
         ``_extract_optimizer_params`` short-circuits and collects all
         params in one pass.
+
     """
     snapshot = build_snapshot(
         config(
@@ -338,6 +340,7 @@ def test_grouping_matrix(
            Optimizer name and scheduler are unchanged, so all 5 groups
            merge into a single Adam optimizer with distinct
            per-group hyperparameters.
+
     """
     snapshot = build_snapshot(
         config(
@@ -393,6 +396,7 @@ def test_same_optimizer_scheduler_keeps_distinct_hyperparameter_groups(
         each carrying its own learning rate. Only one ConstantLR
         scheduler is created — schedulers are per-optimizer, not
         per-group.
+
     """
     snapshot = build_snapshot(
         config(
@@ -448,6 +452,7 @@ def test_same_scheduler_name_with_different_params_uses_distinct_optimizers(
         Two Adam optimizers, each with its own StepLR (parameters
         preserved verbatim). This is what makes distinct schedules per
         parameter subset actually possible.
+
     """
     snapshot = build_snapshot(
         config(
@@ -516,6 +521,7 @@ def test_cosine_annealing_lr_t_max_is_supplied_without_mutating_config(
         — the auto-fill goes into the constructed scheduler, not back
         into the config object (mutating it would corrupt later
         rebuilds and any serialization round-trip).
+
     """
     snapshot = build_snapshot(
         config(
@@ -558,6 +564,7 @@ def test_reduce_on_plateau_monitor_uses_formatted_main_metric_name(
         payload, not a bare scheduler) with
         ``monitor='val/metric/classification-Head/Accuracy'`` — the
         exact key Lightning logs during validation.
+
     """
     node_cfg = tiny_head_node(
         {
@@ -597,6 +604,7 @@ def test_overlapping_rules_claim_parameters_once(opts: Params):
         Both rules end up in a single Adam optimizer (same
         optimizer+scheduler key), each with the correct lr on its own
         group.
+
     """
     snapshot = build_snapshot(
         config(
@@ -649,6 +657,7 @@ def test_default_optimizer_receives_unclaimed_trainable_parameters(
         trainable parameter* (from the implicit default rule),
         carrying the trainer's ``lr=0.004``. This is what lets users
         override only a subset without having to enumerate the rest.
+
     """
     snapshot = build_snapshot(
         config(
@@ -692,6 +701,7 @@ def test_sequential_lr_scheduler_chains_sub_schedulers(opts: Params):
     Expected: a real `SequentialLR` wrapping both sub-schedulers over
     the built optimizer, with the first sub-scheduler's factor applied
     immediately and the milestone switching to the second one.
+
     """
     snapshot = build_snapshot(
         config(

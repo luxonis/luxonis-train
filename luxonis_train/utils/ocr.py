@@ -1,3 +1,7 @@
+"""The CTC encoder and decoder between text and the class indices that
+the OCR head predicts.
+"""
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -5,7 +9,14 @@ from torch import Tensor
 
 
 class OCRDecoder:
-    """OCR decoder for converting model predictions to text."""
+    """Greedy CTC decoder that turns class scores into text.
+
+    The decoder takes the most probable class at each step of a
+    sequence. It drops the ignored classes and, optionally, the steps
+    that repeat the class of the previous step. A call of the decoder
+    runs `decode`.
+
+    """
 
     def __init__(
         self,
@@ -13,31 +24,54 @@ class OCRDecoder:
         ignored_tokens: list[int] | None = None,
         is_remove_duplicate: bool = True,
     ):
-        """Initialize the OCR decoder.
+        """Invert the character mapping and store the options.
 
-        @type char_to_int: dict
-        @param char_to_int: A dictionary mapping characters to integers.
-        @type ignored_tokens: list[int]
-        @param ignored_tokens: A list of tokens to ignore when decoding.
-            Defaults to [0].
-        @type is_remove_duplicate: bool
-        @param is_remove_duplicate: Whether to remove duplicate
-            characters. Defaults to True.
+        Args:
+            char_to_int (dict): The class index of each character, as
+                `OCREncoder` builds it.
+            ignored_tokens (list[int] | None): The class indices to drop.
+                ``None`` selects ``[0]``, the CTC blank. An empty list
+                keeps every class.
+            is_remove_duplicate (bool): Whether to drop a step whose class
+                equals the class of the previous step.
+
         """
-        if ignored_tokens is None:
-            self._ignored_tokens = [0]
+        self._ignored_tokens = (
+            [0] if ignored_tokens is None else ignored_tokens
+        )
 
         self._int_to_char = {v: k for k, v in char_to_int.items()}
         self._is_remove_duplicate = is_remove_duplicate
 
     def decode(self, preds: Tensor) -> list[tuple[str, float]]:
-        """Decode the model predictions to text.
+        """Decode the class scores of each sequence into text.
 
-        @type preds: Tensor
-        @param preds: A tensor containing the model predictions.
-        @rtype: list[tuple[str, float]]
-        @return: A list of tuples containing the decoded text and
-            confidence score.
+        The method applies a softmax over the classes and takes the most
+        probable class at each step. It drops each step whose class is
+        in ``ignored_tokens``. With ``is_remove_duplicate``, it also
+        drops a step whose class equals the class of the previous step.
+        The comparison uses the previous step also when the method
+        dropped that step. Thus a blank between two equal characters
+        keeps both characters.
+
+        Args:
+            preds (``Tensor``): The logits of shape ``[B, T, n_classes]``.
+
+        Returns:
+            list[tuple[str, float]]: One ``(text, confidence)`` pair for
+            each sequence. The confidence is the mean probability of the
+            kept steps, and ``nan`` for an empty text.
+
+        Example:
+            >>> import torch
+            >>> from luxonis_train.utils import OCRDecoder
+            >>> decoder = OCRDecoder({"": 0, "a": 1, "b": 2})
+            >>> classes = torch.tensor([[1, 1, 0, 1, 2]])
+            >>> logits = torch.nn.functional.one_hot(classes, 3) * 10.0
+            >>> text, confidence = decoder.decode(logits)[0]
+            >>> text, round(confidence, 3)
+            ('aab', 1.0)
+
         """
         preds = F.softmax(preds, dim=-1)
         pred_probs, pred_ids = torch.max(preds, dim=-1)
@@ -70,20 +104,53 @@ class OCRDecoder:
         return result_list
 
     def __call__(self, preds: Tensor) -> list[tuple[str, float]]:
+        """Decode the class scores with `decode`.
+
+        Args:
+            preds (``Tensor``): The logits of shape ``[B, T, n_classes]``.
+
+        Returns:
+            list[tuple[str, float]]: The result of `decode`.
+
+        """
         return self.decode(preds)
 
 
 class OCREncoder:
-    """OCR encoder for converting text to model targets."""
+    """CTC encoder that turns text labels into class indices.
+
+    Class ``0`` is the CTC blank ``""``. The sorted unique characters of
+    the alphabet follow. With ``ignore_unknown=False``, ``"<UNK>"`` is
+    the last class. A call of the encoder runs `encode`.
+
+    Attributes:
+        char_to_int (dict): The class index of each character.
+
+    Example:
+        >>> import torch
+        >>> from luxonis_train.utils import OCREncoder
+        >>> encoder = OCREncoder(["b", "a"])
+        >>> [str(char) for char in encoder.alphabet], encoder.n_classes
+        (['', 'a', 'b'], 3)
+        >>> codes = torch.tensor([[ord("b"), ord("x"), ord("a"), 0]])
+        >>> encoder.encode(codes).tolist()
+        [[2, 1, 0, 0]]
+        >>> strict_encoder = OCREncoder(["b", "a"], ignore_unknown=False)
+        >>> strict_encoder.encode(codes).tolist()
+        [[2, 3, 1, 0]]
+
+    """
 
     def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
-        """Initialize the OCR encoder.
+        """Build the alphabet and the class index of each character.
 
-        @type alphabet: list[str]
-        @param alphabet: A list of characters in the alphabet.
-        @type ignore_unknown: bool
-        @param ignore_unknown: Whether to ignore unknown characters.
-            Defaults to True.
+        Args:
+            alphabet (list[str]): The characters of the labels. The
+                encoder sorts them and drops the duplicates.
+            ignore_unknown (bool): Whether `encode` drops a character that
+                is not in ``alphabet``. With ``False``, the encoder adds
+                the class ``"<UNK>"`` and maps such a character to it.
+
         """
         self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
@@ -94,12 +161,22 @@ class OCREncoder:
             self.char_to_int["<UNK>"] = len(self.char_to_int)
 
     def encode(self, targets: Tensor) -> Tensor:
-        """Encode the text targets to model targets.
+        """Convert the character codes of the labels into class indices.
 
-        @type targets: list[int]
-        @param targets: A list of text targets.
-        @rtype: Tensor
-        @return: A tensor containing the encoded targets.
+        The value ``0`` is padding and gives the blank class ``0``. With
+        ``ignore_unknown``, the method drops a character that is not in
+        the alphabet. The later characters move to the left, and ``0``
+        fills the end of the row. Otherwise the character gets the
+        ``"<UNK>"`` class.
+
+        Args:
+            targets (``Tensor``): The Unicode code points of the labels,
+                of shape ``[N, L]``.
+
+        Returns:
+            ``Tensor``: The class indices of shape ``[N, L]``, as
+            ``int64``.
+
         """
         encoded_targets = []
         for target in targets:
@@ -122,12 +199,30 @@ class OCREncoder:
         return torch.tensor(encoded_targets)
 
     def __call__(self, targets: Tensor) -> Tensor:
+        """Convert the character codes with `encode`.
+
+        Args:
+            targets (``Tensor``): The Unicode code points of the labels,
+                of shape ``[N, L]``.
+
+        Returns:
+            ``Tensor``: The result of `encode`.
+
+        """
         return self.encode(targets)
 
     @property
     def alphabet(self) -> list[str]:
+        """The character of each class, in the order of the indices.
+
+        The blank ``""`` comes first. The sorted unique characters
+        follow, then ``"<UNK>"`` when ``ignore_unknown`` is ``False``.
+        The sorted characters are ``np.str_`` values.
+
+        """
         return self._alphabet
 
     @property
     def n_classes(self) -> int:
+        """The number of classes, the length of `alphabet`."""
         return len(self._alphabet)

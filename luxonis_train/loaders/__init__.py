@@ -1,3 +1,5 @@
+__docformat__ = "epytext"
+
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 from .dummy_loader import DummyLoader
 from .luxonis_loader_torch import LuxonisLoaderTorch

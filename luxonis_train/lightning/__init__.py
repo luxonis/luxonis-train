@@ -1,3 +1,5 @@
+__docformat__ = "epytext"
+
 from .luxonis_lightning import LuxonisLightningModule
 from .luxonis_output import LuxonisOutput
 

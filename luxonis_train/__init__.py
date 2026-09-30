@@ -1,3 +1,15 @@
+"""Train computer vision models for Luxonis cameras from a YAML config.
+
+A config describes the loader, model graph, attached modules, and export
+settings. Components are referenced by their registered names; see
+`luxonis_train.registry` and `luxonis_train.config.config`.
+
+Importing the package registers the built-in components and configures
+logging. The command-line entry point defers those imports until it
+needs to build a model, which keeps startup fast.
+
+"""
+
 import sys
 from typing import Final
 
@@ -7,8 +19,8 @@ __version__: Final[str] = "0.5.0"
 __semver__: Final[SemanticVersion] = SemanticVersion.parse(__version__)
 
 
-# Do not run imports when first importing from within the CLI
-# This is to make the CLI more responsive
+# The first import from the CLI skips the submodule imports, so that
+# the CLI starts fast.
 if (
     "_unlocked" in locals()
     or "--source" in sys.argv

@@ -8,6 +8,7 @@ in the axis the reader cares about:
 - Owner-level ``*_pct_of_owner`` sums to 100% across every appearance
   of a single owner in the summary — telling the reader how a node's
   parameters were split across groups.
+
 """
 
 import io
@@ -310,6 +311,7 @@ def test_plain_optimizer_summary_renders_all_optimizers():
     It must render every optimizer, group, hyperparameter and owner as
     indented plaintext, since that is the only record of how the
     parameters were split when rich output is unavailable.
+
     """
     backbone = _tiny_module(4, 8)
     head = _tiny_module(8, 2)
@@ -362,6 +364,7 @@ def test_rich_optimizer_summary_panels_fit_their_content():
     Anything laid out with `rich.columns.Columns` measures as wide as
     the console, which silently defeats the enclosing `Panel.fit` and
     blows every panel up to the full width.
+
     """
     backbone = _tiny_module(4, 8)
     optimizer = SGD(backbone.parameters(), lr=0.01)

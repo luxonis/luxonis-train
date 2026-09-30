@@ -1,3 +1,5 @@
+__docformat__ = "epytext"
+
 from .config import (
     AttachedModuleConfig,
     Config,
