@@ -260,8 +260,8 @@ def test_parameter_pattern_matching_is_unanchored(
     parameter_name: str,
     expected: bool,
 ):
-    """Pins the unanchored `re.search` semantics that
-    `configs/README.md` documents.
+    """Pins the unanchored `re.search` semantics that `ParameterPattern`
+    documents.
 
     Cases (in the order listed above):
         1. `module_type` unset imposes no constraint.

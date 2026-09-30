@@ -291,7 +291,7 @@ trainer:
 
 ### 📚 Configuration Reference
 
-**For a complete reference of all available configuration options, see our [Configuration Documentation](luxonis_train/configs/README.md).**
+**For a complete reference of all available configuration options, see our [Configuration Documentation](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.config.config.html).**
 
 > [!TIP]
 > We provide a set of predefined configuration files for common computer vision tasks in the `luxonis_train/configs` directory.
@@ -591,7 +591,7 @@ model.infer(
 
 Export your trained models to `ONNX` for downstream conversion and deployment.
 
-To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
+To configure the exporter, you can specify the [exporter](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.config.config.ExportConfig.html) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
 
 You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_export.yaml).
 
@@ -651,7 +651,7 @@ Convert is the unified flow for deployment. It performs:
 1. **Archive**: `.onnx` -> `.tar.xz` (NN Archive)
 1. **Platform-specific conversion** (optional): NN Archive -> platform NN Archive via HubAI SDK (recommended) or `blobconverter` (deprecated, RVC2 legacy `.blob`)
 
-Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
+Configure conversion via the [exporter](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.config.config.ExportConfig.html) section (`exporter.hubai` or `exporter.blobconverter`).
 
 **CLI:**
 
@@ -685,7 +685,7 @@ Optimize your model's performance using hyperparameter tuning powered by [`Optun
 
 **Configuration:**
 
-Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#tuner) section in your configuration file. A full example is available [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_tuning.yaml).
+Include a [`tuner`](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.config.config.TunerConfig.html) section in your configuration file. A full example is available [here](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/example_tuning.yaml).
 
 ```yaml
 
@@ -727,9 +727,9 @@ model.tune()
 - [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
 - [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
 - [**Callbacks**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md): Allow custom code to be executed at different stages of training.
-- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#optimizer): Control how the model's weights are updated.
-- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#scheduler): Adjust the learning rate during training.
-- [**Training Strategy**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/configs/README.md#training-strategy): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
+- [**Optimizers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.optimizers.html): Control how the model's weights are updated.
+- [**Schedulers**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.schedulers.html): Adjust the learning rate during training.
+- [**Training Strategy**](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.strategies.html): Specify a custom combination of optimizer and scheduler to tailor the training process for specific use cases.
 
 **Creating Custom Components:**
 

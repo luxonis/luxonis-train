@@ -1,3 +1,5 @@
+"""The instance keypoint detection model."""
+
 from luxonis_ml.typing import Params
 from typing_extensions import override
 
@@ -7,6 +9,50 @@ from luxonis_train.config.predefined_models.base_predefined_model import (
 
 
 class KeypointDetectionModel(SimplePredefinedModel):
+    """Instance keypoint detection, which predicts a box and its
+    keypoints together.
+
+    Throughput:
+        Frames per second at 384x512.
+
+        - ``light``: 45 on RVC2, 137 on RVC4
+        - ``medium``: 24 on RVC2, 120 on RVC4
+        - ``heavy``: 7 on RVC2, 101 on RVC4
+
+    Notes:
+        Set ``per_class_metrics`` to log ``kpt_map``, ``kpt_mar``, and
+        ``kpt_f1`` for each class.
+
+    Example:
+        The ``model`` section of a config:
+
+        .. code-block:: yaml
+
+            model:
+              predefined_model:
+                name: KeypointDetectionModel
+                params:
+                  variant: light
+
+    Components:
+        - Nodes: `EfficientRep` -> `RepPANNeck` -> `EfficientKeypointBBoxHead`
+        - Losses: `EfficientKeypointBBoxLoss`
+        - Metrics:
+
+          - `ConfusionMatrix`
+          - `MeanAveragePrecision`
+          - `ObjectKeypointSimilarity`
+
+        - Visualizers: `KeypointVisualizer`
+        - Main metric: `MeanAveragePrecision`
+        - Variants:
+
+          - ``light``
+          - ``medium``
+          - ``heavy``
+
+    """
+
     def __init__(self, **kwargs):
         super().__init__(
             **{
@@ -28,6 +74,35 @@ class KeypointDetectionModel(SimplePredefinedModel):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Params]]:
+        """Get the default variant name and the available variants.
+
+        The default is ``light``. Each variant sets ``backbone_variant``
+        and ``neck_variant`` to one size:
+
+        - ``light``: ``"n"``
+        - ``medium``: ``"s"``
+        - ``heavy``: ``"l"``
+
+        Each variant also sets ``weights`` to ``"download"`` in
+        ``backbone_params`` and ``neck_params``. Both nodes then
+        download and load the COCO checkpoint of their variant. The
+        variants do not set ``head_params``, so the head starts without a
+        checkpoint. A ``backbone_params`` or ``neck_params`` given in the
+        config replaces the whole dictionary of the variant. Set
+        ``weights`` in it again to keep the COCO checkpoint.
+
+        Returns:
+            ``tuple[str, dict[str, Params]]``: ``"light"`` and the three
+            variants with their constructor arguments.
+
+        Example:
+            >>> default, variants = KeypointDetectionModel.get_variants()
+            >>> default
+            'light'
+            >>> variants["medium"]["backbone_variant"]
+            's'
+
+        """
         return "light", {
             "light": {
                 "backbone_params": {"weights": "download"},

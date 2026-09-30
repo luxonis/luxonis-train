@@ -1,3 +1,5 @@
+"""The FOMO detection model."""
+
 from luxonis_ml.typing import Params
 from typing_extensions import override
 
@@ -7,7 +9,66 @@ from luxonis_train.config.predefined_models.base_predefined_model import (
 
 
 class FOMOModel(SimplePredefinedModel):
+    """FOMO, which predicts one point for each object instead of a box.
+
+    The head predicts a heatmap with one channel for each class. Each cell
+    of the heatmap covers a patch of the image, and a high value marks the
+    center of an object. The dataset needs bounding box labels, and the loss
+    takes the centers of the boxes as targets.
+
+    Throughput:
+        Frames per second at 384x512.
+
+        - ``light``: 140 on RVC2, 243 on RVC4
+        - ``heavy``: 34 on RVC2, 230 on RVC4
+
+    Notes:
+        ``object_weight`` in ``loss_params`` multiplies the loss of the
+        cells that hold an object, and its default is ``500``. A larger
+        value raises the recall and also the number of false positives.
+
+        ``use_nms`` in ``head_params`` is on by default. At evaluation,
+        the head then keeps only the cells that are the maximum of their
+        3x3 window. This removes some false positives, and also some true
+        positives when two objects sit close together. At export, the
+        head applies a 3x3 max pooling to the heatmap.
+
+        ``attach_index`` in ``head_params`` selects the backbone stage the
+        head reads, and its default is ``1``. ``0`` reads the stage before
+        it. That stage gives a larger heatmap and a more precise position,
+        and the model runs slower.
+
+    Example:
+        The ``model`` section of a config:
+
+        .. code-block:: yaml
+
+            model:
+              predefined_model:
+                name: FOMOModel
+                params:
+                  variant: light
+
+    Components:
+        - Nodes: `EfficientRep` -> `FOMOHead`
+        - Losses: `FOMOLocalizationLoss`
+        - Metrics: `ConfusionMatrix`
+        - Visualizers: `FOMOVisualizer`
+        - Main metric: `ConfusionMatrix`
+        - Variants:
+
+          - ``light``
+          - ``heavy``
+
+    """
+
     def __init__(self, **kwargs):
+        """Initialize the model with its default components.
+
+        ``ConfusionMatrix`` is already the main metric, so set
+        ``enable_confusion_matrix=False`` to avoid adding a second one.
+
+        """
         super().__init__(
             **{
                 "backbone": "EfficientRep",
@@ -23,6 +84,32 @@ class FOMOModel(SimplePredefinedModel):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, Params]]:
+        """Get the default variant name and the available variants.
+
+        The default is ``light``. The variants differ in the backbone:
+
+        - ``light``: `EfficientRep` with the ``"n"`` variant;
+        - ``heavy``: `MobileNetV2` without a variant.
+
+        Both variants set ``n_conv_layers`` to ``2`` and
+        ``conv_channels`` to ``16`` in ``head_params``. A
+        ``head_params`` given in the config replaces the whole
+        dictionary of the variant. The head then takes its own defaults
+        for the keys the dictionary leaves out.
+
+        Returns:
+            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
+            variants with their constructor arguments.
+
+        Example:
+            >>> default, variants = FOMOModel.get_variants()
+            >>> default
+            'light'
+            >>> variants["heavy"]
+            {'backbone': 'MobileNetV2',
+             'head_params': {'n_conv_layers': 2, 'conv_channels': 16}}
+
+        """
         return "light", {
             "light": {
                 "backbone": "EfficientRep",
