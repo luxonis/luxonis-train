@@ -5,18 +5,11 @@ on:
     - cron: "0 0 1 * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   update-github-actions:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          token: ${{ secrets.WORKFLOW_SECRET }}
-
-      - name: Run GitHub Actions Version Updater
-        uses: saadmk11/github-actions-version-updater@v0.9.0
-        with:
-          token: ${{ secrets.WORKFLOW_SECRET }}
-          update_version_with: "release-commit-sha"
-          pull_request_labels: "automated"
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-actions-update.yaml@59ca6fe93e5c854289dba1e4dede0700ee57d658
+    secrets:
+      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
