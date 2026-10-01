@@ -549,10 +549,10 @@ class DummyTracker:
     def log_image(
         self,
         name: str,
-        img: object,
+        image: object,
         step: int,
     ) -> None:
-        self.images.append({"name": name, "img": img, "step": step})
+        self.images.append({"name": name, "image": image, "step": step})
 
     def log_matrix(self, *args: object, **kwargs: object) -> None:
         del args, kwargs
@@ -908,7 +908,7 @@ def test_log_metric_artifacts_survives_tracker_failure() -> None:
     metric = make_updated_metric()
 
     class FailingTracker(DummyTracker):
-        def log_image(self, name: str, img: object, step: int) -> None:
+        def log_image(self, name: str, image: object, step: int) -> None:
             raise RuntimeError("tracker image logging failed")
 
     tracker = FailingTracker()
