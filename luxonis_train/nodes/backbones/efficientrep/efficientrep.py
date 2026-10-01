@@ -126,30 +126,27 @@ class EfficientRep(BaseNode):
         explicit argument replaces the value that a variant sets.
 
         Args:
-            channels_list (list[int] | None): The output channels of the
-                stem and the four stages, before ``width_multiplier``.
-                ``None`` or an empty list selects
-                ``[64, 128, 256, 512, 1024]``.
-            n_repeats (list[int] | None): The block counts of the stem
-                and the four stages, before ``depth_multiplier``. The
-                stem does not use its entry. ``None`` or an empty list
-                selects ``[1, 6, 12, 18, 6]``.
-            depth_multiplier (float): The scale of the block counts.
-            width_multiplier (float): The scale of the channel counts.
-            block (``Literal["RepBlock", "CSPStackRepBlock"]``): The
-                block type of the stages. ``"RepBlock"`` stacks as many
-                `GeneralReparameterizableBlock` blocks as the block
-                count. ``"CSPStackRepBlock"`` uses one `CSPStackRepBlock`
-                with the block count as ``n_blocks``.
-            csp_e (float): The fraction of the output channels on each
-                of the two paths of a `CSPStackRepBlock`. ``"RepBlock"``
-                does not use it.
-            weights (str): The weights argument of `BaseNode`.
-                ``"yolo"`` applies the YOLO initialization. ``"download"``
-                loads the COCO weights from `get_weights_url`. Only the
+            channels_list: The output channels of the stem and the four
+                stages, before ``width_multiplier``. ``None`` or an
+                empty list selects ``[64, 128, 256, 512, 1024]``.
+            n_repeats: The block counts of the stem and the four stages,
+                before ``depth_multiplier``. The stem does not use its
+                entry. ``None`` or an empty list selects
+                ``[1, 6, 12, 18, 6]``.
+            depth_multiplier: The scale of the block counts.
+            width_multiplier: The scale of the channel counts.
+            block: The block type of the stages. ``"RepBlock"`` stacks
+                as many `GeneralReparameterizableBlock` blocks as the
+                block count. ``"CSPStackRepBlock"`` uses one
+                `CSPStackRepBlock` with the block count as ``n_blocks``.
+            csp_e: The fraction of the output channels on each of the
+                two paths of a `CSPStackRepBlock`. ``"RepBlock"`` does
+                not use it.
+            weights: The weights argument of `BaseNode`. ``"yolo"``
+                applies the YOLO initialization. ``"download"`` loads
+                the COCO weights from `get_weights_url`. Only the
                 ``"n"``, ``"s"``, and ``"l"`` variants have them.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(weights=weights, **kwargs)
@@ -210,13 +207,12 @@ class EfficientRep(BaseNode):
         """Run the stem and return the output of each stage.
 
         Args:
-            inputs (``Tensor``): Image batch of shape
-                ``[B, in_channels, H, W]``.
+            inputs: Image batch of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The outputs of the four stages, at the
-            strides 4, 8, 16, and 32. Their channels are the last four
-            entries of the scaled ``channels_list``.
+            The outputs of the four stages, at the strides 4, 8, 16, and
+            32. Their channels are the last four entries of the scaled
+            ``channels_list``.
 
         Example:
             >>> import torch
@@ -263,9 +259,8 @@ class EfficientRep(BaseNode):
         same dictionaries as ``"n"``, ``"s"``, ``"m"``, and ``"l"``.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
-            dictionary that maps each variant name and alias to its
-            constructor arguments.
+            The name ``"n"``, and a dictionary that maps each variant
+            name and alias to its constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes import EfficientRep

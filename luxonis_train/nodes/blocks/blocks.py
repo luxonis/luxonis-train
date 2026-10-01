@@ -47,17 +47,15 @@ class PreciseDecoupledBlock(nn.Module):
         """Initialize the classification and regression branches.
 
         Args:
-            in_channels (int): Number of channels of the input feature
-                map.
-            reg_channels (int): Number of hidden channels of the
-                regression branch.
-            cls_channels (int): Number of hidden channels of the
+            in_channels: Number of channels of the input feature map.
+            reg_channels: Number of hidden channels of the regression
+                branch.
+            cls_channels: Number of hidden channels of the
                 classification branch.
-            n_classes (int): Number of classes, which is the number of
-                output channels of the classification branch.
-            reg_max (int): Number of distance bins for each side of a
-                box. The regression branch outputs ``4 * reg_max``
-                channels.
+            n_classes: Number of classes, which is the number of output
+                channels of the classification branch.
+            reg_max: Number of distance bins for each side of a box. The
+                regression branch outputs ``4 * reg_max`` channels.
 
         """
         super().__init__()
@@ -100,16 +98,15 @@ class PreciseDecoupledBlock(nn.Module):
         """Run both branches on one feature map.
 
         Args:
-            x (``Tensor``): Feature map of shape
-                ``[B, in_channels, H, W]``.
+            x: Feature map of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor]``: The tuple ``(features,
-            classes, regressions)``. ``regressions`` holds the distance
-            bin logits, of shape ``[B, 4 * reg_max, H, W]``. ``classes``
-            holds the class logits, of shape ``[B, n_classes, H, W]``.
-            ``features`` is ``regressions`` and ``classes`` concatenated
-            along the channel axis, of shape
+            The tuple ``(features, classes, regressions)``.
+            ``regressions`` holds the distance bin logits, of shape
+            ``[B, 4 * reg_max, H, W]``. ``classes`` holds the class
+            logits, of shape ``[B, n_classes, H, W]``. ``features`` is
+            ``regressions`` and ``classes`` concatenated along the
+            channel axis, of shape
             ``[B, 4 * reg_max + n_classes, H, W]``.
 
         """
@@ -143,11 +140,11 @@ class EfficientDecoupledBlock(nn.Module):
         """Initialize the decoder and the two branches.
 
         Args:
-            in_channels (int): Number of channels of the input feature
-                map. The decoder and the hidden layer of each branch
-                keep this width.
-            n_classes (int): Number of classes, which is the number of
-                output channels of the classification branch.
+            in_channels: Number of channels of the input feature map.
+                The decoder and the hidden layer of each branch keep
+                this width.
+            n_classes: Number of classes, which is the number of output
+                channels of the classification branch.
 
         """
         super().__init__()
@@ -195,16 +192,14 @@ class EfficientDecoupledBlock(nn.Module):
         """Decode one feature map and run both branches on it.
 
         Args:
-            x (``Tensor``): Feature map of shape
-                ``[B, in_channels, H, W]``.
+            x: Feature map of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor]``: The tuple ``(features,
-            classes, regressions)``. ``features`` is the decoded map,
-            of shape ``[B, in_channels, H, W]``. ``classes`` holds the
-            class logits, of shape ``[B, n_classes, H, W]``.
-            ``regressions`` holds the box regression, of shape
-            ``[B, 4, H, W]``.
+            The tuple ``(features, classes, regressions)``. ``features``
+            is the decoded map, of shape ``[B, in_channels, H, W]``.
+            ``classes`` holds the class logits, of shape
+            ``[B, n_classes, H, W]``. ``regressions`` holds the box
+            regression, of shape ``[B, 4, H, W]``.
 
         """
         features = self.decoder(x)
@@ -239,11 +234,11 @@ class SegProto(nn.Sequential):
         """Initialize the prototype stack.
 
         Args:
-            in_channels (int): Number of input channels.
-            mid_channels (int): Number of channels of the three hidden
-                layers. Defaults to ``256``.
-            out_channels (int): Number of prototype masks, which is the
-                number of output channels. Defaults to ``32``.
+            in_channels: Number of input channels.
+            mid_channels: Number of channels of the three hidden layers.
+                Defaults to ``256``.
+            out_channels: Number of prototype masks, which is the number
+                of output channels. Defaults to ``32``.
 
         """
         super().__init__(
@@ -318,8 +313,8 @@ class DFL(nn.Module):
         """Initialize the decoder and freeze its projection weights.
 
         Args:
-            reg_max (int): Number of distance bins for each side of a
-                box. Defaults to ``16``.
+            reg_max: Number of distance bins for each side of a box.
+                Defaults to ``16``.
 
         """
         super().__init__()
@@ -334,13 +329,12 @@ class DFL(nn.Module):
         """Decode the bin logits of every side into a distance.
 
         Args:
-            x (``Tensor``): Logits of shape ``[B, 4 * reg_max, H, W]``.
-                The channels hold the ``reg_max`` bins of the first
-                side, then the bins of the second side, and so on.
+            x: Logits of shape ``[B, 4 * reg_max, H, W]``. The channels
+                hold the ``reg_max`` bins of the first side, then the
+                bins of the second side, and so on.
 
         Returns:
-            ``Tensor``: Expected distance of each side, of shape
-            ``[B, 4, H, W]``.
+            Expected distance of each side, of shape ``[B, 4, H, W]``.
 
         """
         n, _, h, w = x.size()
@@ -357,12 +351,10 @@ class ConvBlock(nn.Module):
     when it fuses the block.
 
     Attributes:
-        conv (``nn.Conv2d``): The convolution.
-        bn (``nn.BatchNorm2d | None``): The batch norm, or ``None`` when
-            ``use_norm`` is ``False``.
-        activation (``Callable[[Tensor], Tensor]``): The activation that
-            runs last. `torch.nn.Identity` when the constructor got
-            ``False`` or ``None``.
+        conv: The convolution.
+        bn: The batch norm, or ``None`` when ``use_norm`` is ``False``.
+        activation: The activation that runs last. ``torch.nn.Identity``
+            when the constructor got ``False`` or ``None``.
 
     Example:
         >>> import torch
@@ -392,28 +384,25 @@ class ConvBlock(nn.Module):
         """Build the convolution, the batch norm, and the activation.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            kernel_size (int | tuple[int, int]): Size of the kernel.
-            stride (int | tuple[int, int]): Stride of the convolution.
-                Defaults to ``1``.
-            padding (int | tuple[int, int] | str): Padding of the
-                convolution, or the string ``"same"`` or ``"valid"``.
-                Defaults to ``0``.
-            dilation (int | tuple[int, int]): Dilation of the kernel.
-                Defaults to ``1``.
-            groups (int): Number of groups of the convolution. Defaults
-                to ``1``.
-            bias (bool): Whether the convolution has a bias term.
-                Defaults to ``False``.
-            activation (``Callable[[Tensor], Tensor] | bool | None``):
-                The activation. ``True`` selects `torch.nn.ReLU`.
-                ``False`` or ``None`` selects `torch.nn.Identity`. Any
-                other callable runs unchanged. Defaults to ``True``.
-            use_norm (bool): Whether to add a batch norm after the
-                convolution. Defaults to ``True``.
-            norm_momentum (float): Momentum of the batch norm. Defaults
-                to ``0.1``.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Size of the kernel.
+            stride: Stride of the convolution. Defaults to ``1``.
+            padding: Padding of the convolution, or the string
+                ``"same"`` or ``"valid"``. Defaults to ``0``.
+            dilation: Dilation of the kernel. Defaults to ``1``.
+            groups: Number of groups of the convolution. Defaults to
+                ``1``.
+            bias: Whether the convolution has a bias term. Defaults to
+                ``False``.
+            activation: The activation. ``True`` selects
+                ``torch.nn.ReLU``. ``False`` or ``None`` selects
+                ``torch.nn.Identity``. Any other callable runs unchanged.
+                Defaults to ``True``.
+            use_norm: Whether to add a batch norm after the convolution.
+                Defaults to ``True``.
+            norm_momentum: Momentum of the batch norm. Defaults to
+                ``0.1``.
 
         """
         super().__init__()
@@ -454,12 +443,12 @@ class ConvBlock(nn.Module):
         """Apply the convolution, the batch norm, and the activation.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``.
-            The kernel size, stride, padding, and dilation set ``H'``
-            and ``W'`` as in `torch.nn.Conv2d`.
+            Output of shape ``[B, out_channels, H', W']``. The kernel
+            size, stride, padding, and dilation set ``H'`` and ``W'`` as
+            in ``torch.nn.Conv2d``.
 
         """
         x = self.conv(x)
@@ -500,16 +489,14 @@ class SqueezeExciteBlock(nn.Sequential):
         """Initialize the squeeze-and-excite layers.
 
         Args:
-            in_channels (int): Number of input channels, which the block
-                also outputs.
-            intermediate_channels (int): Number of channels between the
-                two ``1x1`` convolutions.
-            hard_sigmoid (bool): Whether to gate with
-                `torch.nn.Hardsigmoid` instead of `torch.nn.Sigmoid`.
-                Defaults to ``False``.
-            activation (``nn.Module | None``): Activation between the
-                two convolutions. ``None`` selects `torch.nn.ReLU`.
-                Defaults to ``None``.
+            in_channels: Number of input channels, which the block also
+                outputs.
+            intermediate_channels: Number of channels between the two
+                ``1x1`` convolutions.
+            hard_sigmoid: Whether to gate with ``torch.nn.Hardsigmoid``
+                instead of ``torch.nn.Sigmoid``. Defaults to ``False``.
+            activation: Activation between the two convolutions.
+                ``None`` selects ``torch.nn.ReLU``. Defaults to ``None``.
 
         """
         super().__init__(
@@ -534,10 +521,10 @@ class SqueezeExciteBlock(nn.Sequential):
         """Scale every channel of ``x`` by its excitation gate.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: ``x`` multiplied by gates of shape
+            ``x`` multiplied by gates of shape
             ``[B, in_channels, 1, 1]``, so of the same shape as ``x``.
 
         """
@@ -566,18 +553,16 @@ class GeneralReparameterizableBlock(Reparameterizable):
     leaves it.
 
     Attributes:
-        branches (list[ConvBlock]): The dense branches, stored in a
-            `torch.nn.ModuleList`.
-        scale_layer (ConvBlock | None): The ``1x1`` scale branch, or
-            ``None`` when ``use_scale_layer`` is ``False``.
-        skip_layer (``nn.BatchNorm2d | None``): The identity branch, or
-            ``None`` when the block has no identity branch.
-        refine_block (``nn.Module``): The block that runs on the sum of
-            the branches. `torch.nn.Identity` when the constructor got
-            ``None``.
-        activation (``nn.Module``): The final activation.
-        fused_branch (``nn.Conv2d | None``): The fused convolution, or
-            ``None`` before `reparameterize` and after `restore`.
+        branches: The dense branches, stored in a ``torch.nn.ModuleList``.
+        scale_layer: The ``1x1`` scale branch, or ``None`` when
+            ``use_scale_layer`` is ``False``.
+        skip_layer: The identity branch, or ``None`` when the block has
+            no identity branch.
+        refine_block: The block that runs on the sum of the branches.
+            ``torch.nn.Identity`` when the constructor got ``None``.
+        activation: The final activation.
+        fused_branch: The fused convolution, or ``None`` before
+            `reparameterize` and after `restore`.
 
     See Also:
         `RepVGG reference implementation <https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py>`_.
@@ -619,38 +604,33 @@ class GeneralReparameterizableBlock(Reparameterizable):
         """Initialize the branches, the refinement, and the activation.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Size of the dense kernels. Defaults to
-                ``3``.
-            stride (int): Stride of the dense and scale branches. The
-                identity branch exists only when the stride is ``1``.
-                Defaults to ``1``.
-            padding (int): Padding of the dense branches. Defaults to
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Size of the dense kernels. Defaults to ``3``.
+            stride: Stride of the dense and scale branches. The identity
+                branch exists only when the stride is ``1``. Defaults to
                 ``1``.
-            groups (int): Number of groups of every convolution.
-                Defaults to ``1``.
-            n_branches (int): Number of dense branches. `reparameterize`
-                fuses all of them into one convolution. Defaults to
+            padding: Padding of the dense branches. Defaults to ``1``.
+            groups: Number of groups of every convolution. Defaults to
                 ``1``.
-            refine_block (``nn.Module | Literal["se"] | None``): Block
-                that runs on the sum of the branches, before the
-                activation. A module runs unchanged. The string
-                ``"se"`` builds a `SqueezeExciteBlock` with
+            n_branches: Number of dense branches. `reparameterize` fuses
+                all of them into one convolution. Defaults to ``1``.
+            refine_block: Block that runs on the sum of the branches,
+                before the activation. A module runs unchanged. The
+                string ``"se"`` builds a `SqueezeExciteBlock` with
                 ``out_channels // 16`` intermediate channels. ``None``
                 applies no refinement. Defaults to ``None``.
-            use_scale_layer (bool): Whether to add the ``1x1`` scale
-                branch. Defaults to ``True``.
-            scale_layer_padding (int | tuple[int, int] | None): Padding
-                of the scale branch. ``None`` or ``0`` selects
-                ``padding - kernel_size // 2``. For an odd
-                ``kernel_size``, this gives the scale branch the same
-                output size as the dense branches. Defaults to
+            use_scale_layer: Whether to add the ``1x1`` scale branch.
+                Defaults to ``True``.
+            scale_layer_padding: Padding of the scale branch. ``None``
+                or ``0`` selects ``padding - kernel_size // 2``. For an
+                odd ``kernel_size``, this gives the scale branch the
+                same output size as the dense branches. Defaults to
                 ``None``.
-            activation (``nn.Module | bool | None``): The final
-                activation. ``True`` selects `torch.nn.ReLU`. ``False``
-                or ``None`` selects `torch.nn.Identity`. Any other
-                module runs unchanged. Defaults to ``True``.
+            activation: The final activation. ``True`` selects
+                ``torch.nn.ReLU``. ``False`` or ``None`` selects
+                ``torch.nn.Identity``. Any other module runs unchanged.
+                Defaults to ``True``.
 
         """
         super().__init__()
@@ -713,15 +693,14 @@ class GeneralReparameterizableBlock(Reparameterizable):
         """Run the block in its current state.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``.
-            The kernel size, stride, and padding of the dense branches
-            set ``H'`` and ``W'`` as in `torch.nn.Conv2d`. Before
-            `reparameterize`, the output is the activation of the
-            refined sum of all branches. After it, the fused convolution
-            replaces the sum.
+            Output of shape ``[B, out_channels, H', W']``. The kernel
+            size, stride, and padding of the dense branches set ``H'``
+            and ``W'`` as in ``torch.nn.Conv2d``. Before `reparameterize`,
+            the output is the activation of the refined sum of all
+            branches. After it, the fused convolution replaces the sum.
 
         """
         if self.fused_branch is None:
@@ -760,7 +739,7 @@ class GeneralReparameterizableBlock(Reparameterizable):
           batch norm folded in.
 
         The scale fold needs an odd ``kernel_size``. ``fused_branch`` is
-        a `torch.nn.Conv2d` with the geometry of the first dense branch.
+        a ``torch.nn.Conv2d`` with the geometry of the first dense branch.
         Its weight is the sum of these kernels. Its bias is the sum of
         these biases. `forward` then uses ``fused_branch`` instead of
         the branches. The training branches stay in the module
@@ -925,14 +904,13 @@ class BlockRepeater(nn.Sequential):
         """Build the blocks and register them in order.
 
         Args:
-            module (``Callable[..., nn.Module]``): Factory that returns
-                one block. The stack calls it once for each block.
-            n_repeats (int): Number of blocks. A value below ``1`` still
+            module: Factory that returns one block. The stack calls it
+                once for each block.
+            n_repeats: Number of blocks. A value below ``1`` still
                 builds one block.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                ``module``. When they contain ``out_channels``, the
-                blocks after the first receive ``in_channels`` equal to
-                ``out_channels``.
+            **kwargs: Keyword arguments forwarded to ``module``. When
+                they contain ``out_channels``, the blocks after the
+                first receive ``in_channels`` equal to ``out_channels``.
 
         """
         blocks = [module(**kwargs)]
@@ -976,16 +954,16 @@ class CSPStackRepBlock(nn.Module):
         """Initialize the three convolutions and the stack.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            n_blocks (int): Controls the number of RepVGG blocks in the
-                stack. Every `BottleRep` holds two of them, so the stack
-                has ``max(1, n_blocks // 2)`` bottlenecks and
-                ``2 * max(1, n_blocks // 2)`` RepVGG blocks. Only an even
-                value of at least ``2`` gives ``n_blocks`` RepVGG blocks.
-                Defaults to ``1``.
-            e (float): Fraction of ``out_channels`` that each path
-                carries. Defaults to ``0.5``.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            n_blocks: Controls the number of RepVGG blocks in the stack.
+                Every `BottleRep` holds two of them, so the stack has
+                ``max(1, n_blocks // 2)`` bottlenecks and
+                ``2 * max(1, n_blocks // 2)`` RepVGG blocks. Only an
+                even value of at least ``2`` gives ``n_blocks`` RepVGG
+                blocks. Defaults to ``1``.
+            e: Fraction of ``out_channels`` that each path carries.
+                Defaults to ``0.5``.
 
         """
         super().__init__()
@@ -1019,10 +997,10 @@ class CSPStackRepBlock(nn.Module):
         """Run both paths and merge them.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H, W]``.
+            Output of shape ``[B, out_channels, H, W]``.
 
         """
         out_1 = self.conv_1(x)
@@ -1062,19 +1040,17 @@ class BottleRep(nn.Module):
         """Initialize the two blocks and the shortcut weight.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels of both
-                blocks.
-            module (ModuleFactory): Factory of the two blocks. The
-                first block maps ``in_channels`` to ``out_channels``,
-                the second keeps ``out_channels``. Defaults to
+            in_channels: Number of input channels.
+            out_channels: Number of output channels of both blocks.
+            module: Factory of the two blocks. The first block maps
+                ``in_channels`` to ``out_channels``, the second keeps
+                ``out_channels``. Defaults to
                 `GeneralReparameterizableBlock`.
-            weight (bool): Whether ``alpha`` is a learnable
-                ``nn.Parameter`` of shape ``[1]`` with the initial value
-                ``1.0``. Otherwise ``alpha`` is the constant ``1.0``.
-                Defaults to ``True``.
-            **kwargs (``Any``): Keyword arguments forwarded to both
-                calls of ``module``.
+            weight: Whether ``alpha`` is a learnable ``nn.Parameter`` of
+                shape ``[1]`` with the initial value ``1.0``. Otherwise
+                ``alpha`` is the constant ``1.0``. Defaults to ``True``.
+            **kwargs: Keyword arguments forwarded to both calls of
+                ``module``.
 
         """
         super().__init__()
@@ -1091,12 +1067,12 @@ class BottleRep(nn.Module):
         """Apply both blocks and add the weighted shortcut.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: ``conv_2(conv_1(x)) + alpha * x`` when the
-            channel counts match, else ``conv_2(conv_1(x))``. With the
-            default blocks the shape is ``[B, out_channels, H, W]``.
+            ``conv_2(conv_1(x)) + alpha * x`` when the channel counts
+            match, else ``conv_2(conv_1(x))``. With the default blocks
+            the shape is ``[B, out_channels, H, W]``.
 
         """
         out = self.conv_1(x)
@@ -1130,12 +1106,12 @@ class SpatialPyramidPoolingBlock(nn.Module):
         """Initialize the two convolutions and the max-pool.
 
         Args:
-            in_channels (int): Number of input channels. The hidden
-                width is ``in_channels // 2``.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Size of the max-pool window. The pool
-                uses stride ``1`` and padding ``kernel_size // 2``, so an
-                odd size keeps the spatial size. Defaults to ``5``.
+            in_channels: Number of input channels. The hidden width is
+                ``in_channels // 2``.
+            out_channels: Number of output channels.
+            kernel_size: Size of the max-pool window. The pool uses
+                stride ``1`` and padding ``kernel_size // 2``, so an odd
+                size keeps the spatial size. Defaults to ``5``.
 
         """
         super().__init__()
@@ -1151,11 +1127,11 @@ class SpatialPyramidPoolingBlock(nn.Module):
         """Pool at three scales and merge the results.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H, W]`` for
-            an odd ``kernel_size``.
+            Output of shape ``[B, out_channels, H, W]`` for an odd
+            ``kernel_size``.
 
         """
         x = self.conv1(x)
@@ -1192,8 +1168,8 @@ class AttentionRefinementBlock(nn.Module):
         """Initialize the convolution and the attention branch.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
 
         """
         super().__init__()
@@ -1219,10 +1195,10 @@ class AttentionRefinementBlock(nn.Module):
         """Convolve ``x`` and scale the result by its channel gates.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H, W]``.
+            Output of shape ``[B, out_channels, H, W]``.
 
         """
         x = self.conv(x)
@@ -1265,14 +1241,13 @@ class FeatureFusionBlock(nn.Module):
         """Initialize the fusion convolution and the attention branch.
 
         Args:
-            in_channels (int): Number of channels of both inputs
-                together.
-            out_channels (int): Number of output channels.
-            reduction (int): Divisor of ``out_channels`` inside the
-                attention branch. Only ``1`` works. Any other value
-                makes `forward` fail, because the second attention
-                convolution expects ``out_channels`` input channels.
-                Defaults to ``1``.
+            in_channels: Number of channels of both inputs together.
+            out_channels: Number of output channels.
+            reduction: Divisor of ``out_channels`` inside the attention
+                branch. Only ``1`` works. Any other value makes
+                `forward` fail, because the second attention convolution
+                expects ``out_channels`` input channels. Defaults to
+                ``1``.
 
         """
         super().__init__()
@@ -1298,12 +1273,12 @@ class FeatureFusionBlock(nn.Module):
         """Fuse two feature maps of the same spatial size.
 
         Args:
-            x1 (``Tensor``): First map of shape ``[B, C1, H, W]``.
-            x2 (``Tensor``): Second map of shape ``[B, C2, H, W]``, with
-                ``C1 + C2`` equal to ``in_channels``.
+            x1: First map of shape ``[B, C1, H, W]``.
+            x2: Second map of shape ``[B, C2, H, W]``, with ``C1 + C2``
+                equal to ``in_channels``.
 
         Returns:
-            ``Tensor``: Fused map of shape ``[B, out_channels, H, W]``.
+            Fused map of shape ``[B, out_channels, H, W]``.
 
         """
         fusion = torch.cat([x1, x2], dim=1)
@@ -1333,8 +1308,8 @@ class UpscaleOnline(nn.Module):
         """Store the interpolation mode.
 
         Args:
-            mode (str): Interpolation mode of
-                `torch.nn.functional.interpolate`, for example
+            mode: Interpolation mode of
+                ``torch.nn.functional.interpolate``, for example
                 ``"nearest"`` or ``"bilinear"``. Defaults to
                 ``"bilinear"``.
 
@@ -1348,13 +1323,12 @@ class UpscaleOnline(nn.Module):
         """Resize ``x`` to ``output_height`` by ``output_width``.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, C, H, W]``.
-            output_height (int): Height of the output.
-            output_width (int): Width of the output.
+            x: Input of shape ``[B, C, H, W]``.
+            output_height: Height of the output.
+            output_width: Width of the output.
 
         Returns:
-            ``Tensor``: Output of shape
-            ``[B, C, output_height, output_width]``.
+            Output of shape ``[B, C, output_height, output_width]``.
 
         """
         return F.interpolate(
@@ -1399,9 +1373,9 @@ class DropPath(nn.Module):
         """Store the drop probability and the scaling flag.
 
         Args:
-            drop_prob (float): Probability that the module zeroes a
-                sample, in ``[0, 1]``. Defaults to ``0.0``.
-            scale_by_keep (bool): Whether to divide the kept samples by
+            drop_prob: Probability that the module zeroes a sample, in
+                ``[0, 1]``. Defaults to ``0.0``.
+            scale_by_keep: Whether to divide the kept samples by
                 ``1 - drop_prob``. Defaults to ``True``.
 
         """
@@ -1413,14 +1387,14 @@ class DropPath(nn.Module):
         """Drop samples regardless of the training state.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, ...]``.
+            x: Input of shape ``[B, ...]``.
 
         Returns:
-            ``Tensor``: ``x`` multiplied by a mask of shape
-            ``[B, 1, ..., 1]``. Each mask entry is ``0`` with
-            probability ``drop_prob``. Otherwise it is
-            ``1 / (1 - drop_prob)`` when ``scale_by_keep`` is ``True``
-            and ``drop_prob`` is below ``1.0``, else ``1``.
+            ``x`` multiplied by a mask of shape ``[B, 1, ..., 1]``. Each
+            mask entry is ``0`` with probability ``drop_prob``.
+            Otherwise it is ``1 / (1 - drop_prob)`` when
+            ``scale_by_keep`` is ``True`` and ``drop_prob`` is below
+            ``1.0``, else ``1``.
 
         """
         keep_prob = 1 - self._drop_prob
@@ -1434,12 +1408,11 @@ class DropPath(nn.Module):
         """Apply `drop_path` in the training state only.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, ...]``.
+            x: Input of shape ``[B, ...]``.
 
         Returns:
-            ``Tensor``: ``x`` unchanged when ``drop_prob`` is ``0.0`` or
-            the module is in the eval state. Otherwise the result of
-            `drop_path`.
+            ``x`` unchanged when ``drop_prob`` is ``0.0`` or the module
+            is in the eval state. Otherwise the result of `drop_path`.
 
         """
         if self._drop_prob == 0.0 or not self.training:
@@ -1469,10 +1442,9 @@ class ConvStack(BlockRepeater):
         """Build the stack through `BlockRepeater`.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            n_repeats (int): Number of `ConvBlock` layers. Defaults to
-                ``2``.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            n_repeats: Number of `ConvBlock` layers. Defaults to ``2``.
 
         """
         super().__init__(

@@ -92,12 +92,12 @@ class OCRAccuracy(BaseMetric):
         raises `IncompatibleError`.
 
         Args:
-            blank_class (int): The class index of the CTC blank. The
-                decoding removes it from the predictions, and the metric
-                pads the targets with it. Keep ``0``, the blank of the
-                encoder of `OCRCTCHead`.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            blank_class: The class index of the CTC blank. The decoding
+                removes it from the predictions, and the metric pads the
+                targets with it. Keep ``0``, the blank of the encoder of
+                `OCRCTCHead`.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -113,10 +113,10 @@ class OCRAccuracy(BaseMetric):
         docstring describes the decoding and the comparison.
 
         Args:
-            predictions (``Tensor``): The logits of shape ``[B, T, C]``,
-                the main output of the node.
-            target (``Tensor``): The character codes of the texts, of
-                shape ``[B, S]``, padded with ``0``. It is the
+            predictions: The logits of shape ``[B, T, C]``, the main
+                output of the node.
+            target: The character codes of the texts, of shape
+                ``[B, S]``, padded with ``0``. It is the
                 ``metadata/text`` label of the task.
 
         """
@@ -154,12 +154,11 @@ class OCRAccuracy(BaseMetric):
         """Divide the counts by the number of texts.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The share of exact
-            matches, and a dictionary with the keys ``"rank_0"``,
-            ``"rank_1"``, and ``"rank_2"``. ``"rank_k"`` is the share of
-            the texts with exactly ``k`` wrong characters. All values
-            are scalars. They are ``NaN`` when no `update` ran since the
-            last ``reset``.
+            The share of exact matches, and a dictionary with the keys
+            ``"rank_0"``, ``"rank_1"``, and ``"rank_2"``. ``"rank_k"``
+            is the share of the texts with exactly ``k`` wrong
+            characters. All values are scalars. They are ``NaN`` when no
+            `update` ran since the last ``reset``.
 
         Example:
             The alphabet ``["a", "b"]`` gives the classes blank, ``"a"``,

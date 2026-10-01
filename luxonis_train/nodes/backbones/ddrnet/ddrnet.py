@@ -126,62 +126,58 @@ class DDRNet(BaseNode):
         these statistics.
 
         Args:
-            channels (int): Number of stem channels of the backbone.
+            channels: Number of stem channels of the backbone.
                 ``layer2``, ``layer3``, and ``layer4`` have 2, 4, and 8
                 times as many channels. A selected variant sets it,
                 unless the call gives it explicitly.
-            high_resolution_channels (int): Number of channels of the
+            high_resolution_channels: Number of channels of the
                 high-resolution branch. A selected variant sets it,
                 unless the call gives it explicitly.
-            use_aux_heads (bool): Whether `forward` also returns the
+            use_aux_heads: Whether `forward` also returns the
                 high-resolution features after the last ``layer3``
                 fusion, for an auxiliary head. Defaults to ``True``.
-            upscale_module (``nn.Module | None``): Module that resizes
-                the low-resolution features to 1/8 of the input size. The
-                node calls it as ``upscale_module(x, height, width)``.
-                ``None`` selects `UpscaleOnline` in the ``"bilinear"``
-                mode.
-            spp_width (int): Number of output channels of each `DAPPM`
-                branch. Defaults to ``128``.
-            ssp_interpolation_mode (str): Interpolation mode of the
-                `DAPPM` branches. Defaults to ``"bilinear"``.
-            segmentation_interpolation_mode (str): Value of the attribute
+            upscale_module: Module that resizes the low-resolution
+                features to 1/8 of the input size. The node calls it as
+                ``upscale_module(x, height, width)``. ``None`` selects
+                `UpscaleOnline` in the ``"bilinear"`` mode.
+            spp_width: Number of output channels of each `DAPPM` branch.
+                Defaults to ``128``.
+            ssp_interpolation_mode: Interpolation mode of the `DAPPM`
+                branches. Defaults to ``"bilinear"``.
+            segmentation_interpolation_mode: Value of the attribute
                 ``segmentation_interpolation_mode``. The node does not
                 use it. Defaults to ``"bilinear"``.
-            block (``type[nn.Module]``): Block class of ``layer1`` to
-                ``layer4`` in the `BasicDDRBackbone`. Defaults to
+            block: Block class of ``layer1`` to ``layer4`` in the
+                `BasicDDRBackbone`. Defaults to `ResNetBlock`.
+            skip_block: Block class of the high-resolution stages
+                ``layer3_skip`` and ``layer4_skip``. Defaults to
                 `ResNetBlock`.
-            skip_block (``type[nn.Module]``): Block class of the
-                high-resolution stages ``layer3_skip`` and
-                ``layer4_skip``. Defaults to `ResNetBlock`.
-            layer5_block (``type[nn.Module]``): Block class of
-                ``layer5`` and ``layer5_skip``. Defaults to
-                `ResNetBottleneck`.
-            layer5_bottleneck_expansion (int): Expansion factor of the
+            layer5_block: Block class of ``layer5`` and ``layer5_skip``.
+                Defaults to `ResNetBottleneck`.
+            layer5_bottleneck_expansion: Expansion factor of the
                 ``layer5`` and ``layer5_skip`` blocks. The final output
-                has ``high_resolution_channels * layer5_bottleneck_expansion``
+                has
+                ``high_resolution_channels * layer5_bottleneck_expansion``
                 channels. Defaults to ``2``.
-            spp_kernel_sizes (list[int] | None): Kernel size of each
-                `DAPPM` branch. It must have the length of
-                ``spp_strides``. Otherwise, `DAPPM` raises ``ValueError``.
-                ``None`` or an empty list selects ``[1, 5, 9, 17, 0]``.
-            spp_strides (list[int] | None): Stride of each `DAPPM`
-                branch. ``None`` or an empty list selects
-                ``[1, 2, 4, 8, 0]``.
-            layer3_repeats (int): Number of ``layer3`` stages. A fusion
-                of the two branches follows each stage. With a value
-                below ``1``, `forward` skips ``layer3``. ``layer4`` then
-                gets the wrong number of channels, and `forward` fails.
+            spp_kernel_sizes: Kernel size of each `DAPPM` branch. It
+                must have the length of ``spp_strides``. Otherwise,
+                `DAPPM` raises ``ValueError``. ``None`` or an empty list
+                selects ``[1, 5, 9, 17, 0]``.
+            spp_strides: Stride of each `DAPPM` branch. ``None`` or an
+                empty list selects ``[1, 2, 4, 8, 0]``.
+            layer3_repeats: Number of ``layer3`` stages. A fusion of the
+                two branches follows each stage. With a value below
+                ``1``, `forward` skips ``layer3``. ``layer4`` then gets
+                the wrong number of channels, and `forward` fails.
                 Defaults to ``1``.
-            layers (list[int] | None): Number of blocks in each stage, as
-                eight entries: ``layer1``, ``layer2``, ``layer3``,
-                ``layer4``, ``layer5``, ``layer3_skip``, ``layer4_skip``,
-                and ``layer5_skip``. The ``layer3`` and ``layer3_skip``
+            layers: Number of blocks in each stage, as eight entries:
+                ``layer1``, ``layer2``, ``layer3``, ``layer4``,
+                ``layer5``, ``layer3_skip``, ``layer4_skip``, and
+                ``layer5_skip``. The ``layer3`` and ``layer3_skip``
                 entries apply to each of the ``layer3_repeats`` stages.
                 ``None`` or an empty list selects
                 ``[2, 2, 2, 2, 1, 2, 2, 1]``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -340,18 +336,18 @@ class DDRNet(BaseNode):
         convolution.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, C, H, W]``.
-                ``H`` and ``W`` must be multiples of ``8``. Other sizes
-                make the fusion fail.
+            inputs: Image batch of shape ``[B, C, H, W]``. ``H`` and
+                ``W`` must be multiples of ``8``. Other sizes make the
+                fusion fail.
 
         Returns:
-            ``list[Tensor]``: ``[features]``. ``features`` has the shape
+            ``[features]``. ``features`` has the shape
             ``[B, C_out, H / 8, W / 8]``, where ``C_out`` is
             ``high_resolution_channels * layer5_bottleneck_expansion``.
             When ``use_aux_heads`` is ``True``, the list is
             ``[aux_features, features]``. ``aux_features`` holds the
-            high-resolution features after the last ``layer3`` fusion, of
-            shape ``[B, high_resolution_channels, H / 8, W / 8]``.
+            high-resolution features after the last ``layer3`` fusion,
+            of shape ``[B, high_resolution_channels, H / 8, W / 8]``.
 
         Example:
             The batch has two images. In the training state, a batch
@@ -419,9 +415,9 @@ class DDRNet(BaseNode):
     def initialize_weights(self, method: str | None = None) -> None:
         """Initialize the convolutions and the batch norms of the node.
 
-        Every `torch.nn.Conv2d` gets Kaiming normal weights with
+        Every ``torch.nn.Conv2d`` gets Kaiming normal weights with
         ``mode="fan_out"`` and ``nonlinearity="relu"``, and a zero bias
-        when it has a bias. Every `torch.nn.BatchNorm2d` gets the weight
+        when it has a bias. Every ``torch.nn.BatchNorm2d`` gets the weight
         ``1`` and the bias ``0``. The method does not change the running
         statistics of the batch norms.
 
@@ -431,10 +427,9 @@ class DDRNet(BaseNode):
         a local checkpoint path, and it does not load that checkpoint.
 
         Args:
-            method (str | None): Not used. Every value gives the same
-                initialization. The method does not call
-                `BaseNode.initialize_weights`, so ``"yolo"`` has no
-                effect.
+            method: Not used. Every value gives the same initialization.
+                The method does not call `BaseNode.initialize_weights`,
+                so ``"yolo"`` has no effect.
 
         """
         for m in self.modules():
@@ -468,9 +463,8 @@ class DDRNet(BaseNode):
         values, to ``64`` and ``128``.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"23-slim"``, and
-            a dictionary that maps each variant name to its constructor
-            keyword arguments.
+            The name ``"23-slim"``, and a dictionary that maps each
+            variant name to its constructor keyword arguments.
 
         Example:
             >>> from luxonis_train.nodes import DDRNet

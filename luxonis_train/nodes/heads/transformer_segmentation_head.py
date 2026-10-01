@@ -100,8 +100,8 @@ class TransformerSegmentationHead(BaseHead):
         constructor raise `IncompatibleError`.
 
         Args:
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold the input sizes through ``input_shapes`` or
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                the input sizes through ``input_shapes`` or
                 ``in_sizes``, and the class count through ``n_classes``
                 or ``dataset_metadata``. `forward` also needs
                 ``original_in_shape``.
@@ -144,13 +144,13 @@ class TransformerSegmentationHead(BaseHead):
         Both resizes use bilinear interpolation.
 
         Args:
-            x (``list[Tensor]``): The feature maps, each of shape
-                ``[B, C_i, h_i, w_i]``, in the order of the input sizes
-                of the constructor. The maps can have different sizes.
+            x: The feature maps, each of shape ``[B, C_i, h_i, w_i]``,
+                in the order of the input sizes of the constructor. The
+                maps can have different sizes.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
-            `BaseNode.run` puts them under the ``"segmentation"`` key.
+            The logits of shape ``[B, n_classes, H, W]``. `BaseNode.run`
+            puts them under the ``"segmentation"`` key.
 
         Example:
             >>> import torch

@@ -46,8 +46,8 @@ class ExportOnTrainEnd(NeedsCheckpoint):
         again.
 
         Args:
-            _ (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model to export.
+            _: The trainer. Unused.
+            pl_module: The model to export.
 
         """
         checkpoint = self.get_checkpoint(pl_module)

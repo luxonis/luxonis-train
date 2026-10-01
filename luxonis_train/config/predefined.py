@@ -39,11 +39,10 @@ class ResolvedPredefinedConfig(NamedTuple):
     """A packaged config file and the overrides that go with it.
 
     Attributes:
-        path (``Path``): The path of the packaged YAML file.
-        opts (list[str]): Config overrides as alternating keys and
-            values, such as ``model.predefined_model.variant`` followed
-            by ``medium``. The list is empty when the file needs no
-            override.
+        path: The path of the packaged YAML file.
+        opts: Config overrides as alternating keys and values, such as
+            ``model.predefined_model.variant`` followed by ``medium``.
+            The list is empty when the file needs no override.
 
     """
 
@@ -58,13 +57,12 @@ def parse_model_spec(model: str) -> tuple[str, str | None]:
     ``latest``.
 
     Args:
-        model (str): The model name, as ``"<name>"``,
-            ``"<name>:v<N>"``, or ``"<name>:latest"``.
+        model: The model name, as ``"<name>"``, ``"<name>:v<N>"``, or
+            ``"<name>:latest"``.
 
     Returns:
-        tuple[str, str | None]: The name, and the version. The
-        version is the digits without ``v``, ``"latest"``, or ``None``
-        when ``model`` has no ``:``.
+        The name, and the version. The version is the digits without
+        ``v``, ``"latest"``, or ``None`` when ``model`` has no ``:``.
 
     Raises:
         ValueError: When the text after ``:`` is neither ``v`` with
@@ -95,7 +93,7 @@ def configs_dir() -> Path:
     """Return the directory of the packaged config files.
 
     Returns:
-        ``Path``: The directory of the `luxonis_train.configs` package.
+        The directory of the `luxonis_train.configs` package.
 
     Example:
         >>> configs_dir().name
@@ -159,9 +157,9 @@ def list_predefined_models() -> dict[str, list[str | None]]:
     class declares. `list_variants` adds them.
 
     Returns:
-        dict[str, list[str | None]]: Each model name mapped to its
-        variants, in the order of `VARIANT_ORDER`. The first variant is
-        the default. The models are in alphabetical order.
+        Each model name mapped to its variants, in the order of
+        `VARIANT_ORDER`. The first variant is the default. The models
+        are in alphabetical order.
 
     Example:
         >>> models = list_predefined_models()
@@ -182,11 +180,10 @@ def _default_variant(model: str) -> str | None:
     """Return the variant that applies when ``--variant`` is omitted.
 
     Args:
-        model (str): The model name, without a version suffix.
+        model: The model name, without a version suffix.
 
     Returns:
-        str | None: The first variant of the model in
-        `list_predefined_models`.
+        The first variant of the model in `list_predefined_models`.
 
     Raises:
         KeyError: When ``model`` is not a packaged model.
@@ -202,10 +199,10 @@ def default_config_path(model: str) -> Path:
     `list_predefined_models` gives for ``model``.
 
     Args:
-        model (str): The model name, without a version suffix.
+        model: The model name, without a version suffix.
 
     Returns:
-        ``Path``: The path of the packaged YAML file.
+        The path of the packaged YAML file.
 
     Raises:
         KeyError: When ``model`` is not a packaged model.
@@ -225,13 +222,13 @@ def class_family(model: str) -> str | None:
     `default_config_path`.
 
     Args:
-        model (str): The model name, without a version suffix.
+        model: The model name, without a version suffix.
 
     Returns:
-        str | None: The value of ``model.predefined_model.name``.
-        ``None`` when ``model`` is not a packaged model. Also ``None``
-        when the function cannot read the file, when the file is not
-        valid YAML, or when the file has no such key.
+        The value of ``model.predefined_model.name``. ``None`` when
+        ``model`` is not a packaged model. Also ``None`` when the
+        function cannot read the file, when the file is not valid YAML,
+        or when the file has no such key.
 
     Example:
         >>> class_family("keypoint_bbox")
@@ -251,12 +248,12 @@ def _model_class(model: str) -> "type[BasePredefinedModel] | None":
     """Resolve the latest version of the class of a packaged model.
 
     Args:
-        model (str): The model name, without a version suffix.
+        model: The model name, without a version suffix.
 
     Returns:
-        ``type[BasePredefinedModel] | None``: The class that
-        `class_family` names. ``None`` when ``model`` is not a packaged
-        model, or when the class name is missing or not registered.
+        The class that `class_family` names. ``None`` when ``model`` is
+        not a packaged model, or when the class name is missing or not
+        registered.
 
     """
     if model not in list_predefined_models():
@@ -288,12 +285,12 @@ def list_variants(model: str) -> list[str | None]:
     variants, the list holds only the variants with a file.
 
     Args:
-        model (str): The model name, without a version suffix.
+        model: The model name, without a version suffix.
 
     Returns:
-        list[str | None]: The variants in the order of `VARIANT_ORDER`.
-        ``None`` stands for a file without a variant name. The list is
-        empty when ``model`` is not a packaged model.
+        The variants in the order of `VARIANT_ORDER`. ``None`` stands
+        for a file without a variant name. The list is empty when
+        ``model`` is not a packaged model.
 
     Example:
         >>> list_variants("detection")
@@ -342,14 +339,13 @@ def resolve_predefined_config(
     the file sets.
 
     Args:
-        model (str): The model name, with an optional version suffix,
-            as in `parse_model_spec`.
-        variant (str | None): The variant. ``None`` selects the default
-            config file and adds no variant override.
+        model: The model name, with an optional version suffix, as in
+            `parse_model_spec`.
+        variant: The variant. ``None`` selects the default config file
+            and adds no variant override.
 
     Returns:
-        ResolvedPredefinedConfig: The path of the file and the
-        overrides.
+        The path of the file and the overrides.
 
     Raises:
         ValueError: When the version suffix is malformed, when ``model``

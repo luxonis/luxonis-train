@@ -45,32 +45,30 @@ class DepthWiseSeparableConv(nn.Module):
         """Build the depthwise and the pointwise convolutions.
 
         Args:
-            in_channels (int): Number of input channels. The depthwise
+            in_channels: Number of input channels. The depthwise
                 convolution keeps this number of channels.
-            out_channels (int): Number of output channels of the
-                pointwise convolution.
-            kernel_size (int): Kernel size of the depthwise convolution.
+            out_channels: Number of output channels of the pointwise
+                convolution.
+            kernel_size: Kernel size of the depthwise convolution.
                 Defaults to ``3``.
-            stride (int): Stride of the depthwise convolution. Defaults
-                to ``1``.
-            depthwise_bias (bool): Whether the depthwise convolution has
-                a bias term. Defaults to ``False``.
-            pointwise_bias (bool): Whether the pointwise convolution has
-                a bias term. Defaults to ``False``.
-            depthwise_activation (``nn.Module | None``): The activation
-                after the depthwise convolution. ``None`` selects
-                `torch.nn.ReLU6`.
-            pointwise_activation (``nn.Module | None``): The activation
-                after the pointwise convolution. ``None`` selects no
-                activation.
-            padding (int | str | None): Padding of the depthwise
-                convolution, or the string ``"same"`` or ``"valid"``.
-                ``None`` selects ``kernel_size // 2``. This value keeps
-                the size only for an odd kernel size, a stride of ``1``,
-                and a dilation of ``1``.
-            dilation (int | tuple[int, int]): Dilation of the depthwise
-                convolution. Defaults to ``1``.
-            use_residual (bool): Whether `forward` adds the input to the
+            stride: Stride of the depthwise convolution. Defaults to
+                ``1``.
+            depthwise_bias: Whether the depthwise convolution has a bias
+                term. Defaults to ``False``.
+            pointwise_bias: Whether the pointwise convolution has a bias
+                term. Defaults to ``False``.
+            depthwise_activation: The activation after the depthwise
+                convolution. ``None`` selects ``torch.nn.ReLU6``.
+            pointwise_activation: The activation after the pointwise
+                convolution. ``None`` selects no activation.
+            padding: Padding of the depthwise convolution, or the string
+                ``"same"`` or ``"valid"``. ``None`` selects
+                ``kernel_size // 2``. This value keeps the size only for
+                an odd kernel size, a stride of ``1``, and a dilation of
+                ``1``.
+            dilation: Dilation of the depthwise convolution. Defaults to
+                ``1``.
+            use_residual: Whether `forward` adds the input to the
                 output. The input and the output must then have the same
                 shape. Defaults to ``False``.
 
@@ -102,15 +100,15 @@ class DepthWiseSeparableConv(nn.Module):
         r"""Apply the depthwise and the pointwise convolutions.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. With
-            the default padding, an odd kernel size, and a dilation of
+            Output of shape ``[B, out_channels, H', W']``. With the
+            default padding, an odd kernel size, and a dilation of
             ``1``, :math:`H' = \lceil H / s \rceil` and
             :math:`W' = \lceil W / s \rceil`, where :math:`s` is
-            ``stride``. When ``use_residual`` is ``True``, the method adds
-            the input to the result.
+            ``stride``. When ``use_residual`` is ``True``, the method
+            adds the input to the result.
 
         """
         identity = x
@@ -159,27 +157,25 @@ class MobileBottleneckBlock(nn.Module):
         layers.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Kernel size of the depthwise convolution.
-                The padding is ``kernel_size // 2``. Defaults to ``3``.
-            stride (int): Stride of the depthwise convolution. Defaults
-                to ``1``.
-            expand_ratio (float): Channel expansion factor. The hidden
-                layers have ``round(in_channels * expand_ratio)``
-                channels. Defaults to ``6``.
-            use_bias (list[bool] | None): Whether each layer has a bias
-                term, as three values for the expansion, the depthwise,
-                and the projection layers. ``None`` selects
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Kernel size of the depthwise convolution. The
+                padding is ``kernel_size // 2``. Defaults to ``3``.
+            stride: Stride of the depthwise convolution. Defaults to
+                ``1``.
+            expand_ratio: Channel expansion factor. The hidden layers
+                have ``round(in_channels * expand_ratio)`` channels.
+                Defaults to ``6``.
+            use_bias: Whether each layer has a bias term, as three
+                values for the expansion, the depthwise, and the
+                projection layers. ``None`` selects
                 ``[False, False, False]``.
-            use_norm (list[bool] | None): Whether each layer has a batch
-                norm, in the same order. ``None`` selects
-                ``[True, True, True]``.
-            activation (``list[nn.Module] | None``): The activation after
-                each layer, in the same order. ``None`` selects
-                `torch.nn.ReLU6`, `torch.nn.ReLU6`, and
-                `torch.nn.Identity`.
-            use_residual (bool): Whether `forward` adds the input to the
+            use_norm: Whether each layer has a batch norm, in the same
+                order. ``None`` selects ``[True, True, True]``.
+            activation: The activation after each layer, in the same
+                order. ``None`` selects ``torch.nn.ReLU6``,
+                ``torch.nn.ReLU6``, and ``torch.nn.Identity``.
+            use_residual: Whether `forward` adds the input to the
                 output. The input and the output must then have the same
                 shape. Defaults to ``False``.
 
@@ -229,14 +225,14 @@ class MobileBottleneckBlock(nn.Module):
         r"""Apply the expansion, the depthwise, and the projection layers.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. For
-            an odd kernel size, :math:`H' = \lceil H / s \rceil` and
+            Output of shape ``[B, out_channels, H', W']``. For an odd
+            kernel size, :math:`H' = \lceil H / s \rceil` and
             :math:`W' = \lceil W / s \rceil`, where :math:`s` is
-            ``stride``. When ``use_residual`` is ``True``, the method adds
-            the input to the result.
+            ``stride``. When ``use_residual`` is ``True``, the method
+            adds the input to the result.
 
         """
         identity = x
@@ -281,26 +277,25 @@ class EfficientViTBlock(nn.Module):
         The attention part is a `LightweightMLABlock` with a batch norm
         only after its projection. The convolution part is a
         `MobileBottleneckBlock` with a ``3x3`` kernel. Its expansion and
-        depthwise layers have a bias term and a `torch.nn.Hardswish`
+        depthwise layers have a bias term and a ``torch.nn.Hardswish``
         activation. Only its projection layer has a batch norm.
 
         Args:
-            n_channels (int): Number of input and output channels.
-            attention_ratio (float): Factor for the number of attention
-                heads. The attention part has
+            n_channels: Number of input and output channels.
+            attention_ratio: Factor for the number of attention heads.
+                The attention part has
                 ``int(n_channels // head_dim * attention_ratio)`` heads.
                 The number of heads must be at least ``1``. With ``0``
                 heads and at least one aggregation scale,
-                `torch.nn.Conv2d` raises ``ValueError``. Defaults to
+                ``torch.nn.Conv2d`` raises ``ValueError``. Defaults to
                 ``1.0``.
-            head_dim (int): Number of channels of the query, the key, and
-                the value of each attention head. Defaults to ``32``.
-            expansion_factor (float): Channel expansion factor of the
+            head_dim: Number of channels of the query, the key, and the
+                value of each attention head. Defaults to ``32``.
+            expansion_factor: Channel expansion factor of the
                 convolution part. Defaults to ``4.0``.
-            aggregation_scales (``tuple[int, ...]``): Kernel size of the
-                depthwise convolution of each multi-scale aggregation
-                branch of the attention part. The values must be odd.
-                Defaults to ``(5,)``.
+            aggregation_scales: Kernel size of the depthwise convolution
+                of each multi-scale aggregation branch of the attention
+                part. The values must be odd. Defaults to ``(5,)``.
 
         """
         super().__init__()
@@ -329,10 +324,10 @@ class EfficientViTBlock(nn.Module):
         """Apply the attention part and then the convolution part.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, n_channels, H, W]``.
+            x: Input of shape ``[B, n_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, n_channels, H, W]``.
+            Output of shape ``[B, n_channels, H, W]``.
 
         """
         return self.feature_module(self.attention_module(x))
@@ -393,44 +388,42 @@ class LightweightMLABlock(nn.Module):
         projection.
 
         Args:
-            input_channels (int): Number of input channels.
-            output_channels (int): Number of output channels. It must be
-                equal to ``input_channels`` when ``use_residual`` is
-                ``True``.
-            n_heads (int | None): Number of attention heads. ``None`` or
-                ``0`` selects
+            input_channels: Number of input channels.
+            output_channels: Number of output channels. It must be equal
+                to ``input_channels`` when ``use_residual`` is ``True``.
+            n_heads: Number of attention heads. ``None`` or ``0``
+                selects
                 ``int(input_channels // dimension * head_ratio)``. The
                 number of heads must be at least ``1``. With ``0`` heads
-                and at least one aggregation branch, `torch.nn.Conv2d`
+                and at least one aggregation branch, ``torch.nn.Conv2d``
                 raises ``ValueError``.
-            head_ratio (float): Factor for the number of heads when
-                ``n_heads`` is ``None`` or ``0``. Defaults to ``1.0``.
-            dimension (int): Number of channels of the query, the key,
-                and the value of each head. Defaults to ``8``.
-            use_bias (list[bool] | None): Whether the layers have a bias
-                term, as two values. The first value applies to the
-                ``qkv`` layer and to the convolutions of the aggregation
-                branches. The second value applies to the projection.
-                ``None`` selects ``[False, False]``.
-            use_norm (list[bool] | None): Whether the ``qkv`` layer and
-                the projection have a batch norm, as two values. ``None``
-                selects ``[False, True]``.
-            activations (``list[nn.Module] | None``): The activations
-                after the ``qkv`` layer and after the projection. ``None``
-                selects two `torch.nn.Identity` modules.
-            scale_factors (``tuple[int, ...]``): Kernel size of the
-                depthwise convolution of each aggregation branch. The
-                block has one branch for each value. The values must be
-                odd. An even value changes the height and the width of
-                the branch output, and `forward` fails. Defaults to
-                ``(5,)``.
-            epsilon (float): Value that the attention adds to its
-                denominator. Defaults to ``1e-15``.
-            use_residual (bool): Whether `forward` adds the input to the
+            head_ratio: Factor for the number of heads when ``n_heads``
+                is ``None`` or ``0``. Defaults to ``1.0``.
+            dimension: Number of channels of the query, the key, and the
+                value of each head. Defaults to ``8``.
+            use_bias: Whether the layers have a bias term, as two
+                values. The first value applies to the ``qkv`` layer and
+                to the convolutions of the aggregation branches. The
+                second value applies to the projection. ``None`` selects
+                ``[False, False]``.
+            use_norm: Whether the ``qkv`` layer and the projection have
+                a batch norm, as two values. ``None`` selects
+                ``[False, True]``.
+            activations: The activations after the ``qkv`` layer and
+                after the projection. ``None`` selects two
+                ``torch.nn.Identity`` modules.
+            scale_factors: Kernel size of the depthwise convolution of
+                each aggregation branch. The block has one branch for
+                each value. The values must be odd. An even value
+                changes the height and the width of the branch output,
+                and `forward` fails. Defaults to ``(5,)``.
+            epsilon: Value that the attention adds to its denominator.
+                Defaults to ``1e-15``.
+            use_residual: Whether `forward` adds the input to the
                 output. Defaults to ``True``.
-            kernel_activation (``nn.Module | None``): The kernel function
-                :math:`\phi` that runs on the queries and the keys.
-                ``None`` selects `torch.nn.ReLU`.
+            kernel_activation: The kernel function :math:`\phi` that
+                runs on the queries and the keys. ``None`` selects
+                ``torch.nn.ReLU``.
 
         """
         super().__init__()
@@ -512,14 +505,14 @@ class LightweightMLABlock(nn.Module):
         division.
 
         Args:
-            qkv_tensor (``Tensor``): Queries, keys, and values of shape
+            qkv_tensor: Queries, keys, and values of shape
                 ``[B, G * 3 * dimension, H, W]``, where ``G`` is the
                 number of groups.
 
         Returns:
-            ``Tensor``: Attention output of shape
-            ``[B, G * dimension, H, W]``. It is ``float32`` when the input
-            is ``float16`` or ``bfloat16``.
+            Attention output of shape ``[B, G * dimension, H, W]``. It
+            is ``float32`` when the input is ``float16`` or
+            ``bfloat16``.
 
         Example:
             The linear and the quadratic attention give the same values.
@@ -583,13 +576,13 @@ class LightweightMLABlock(nn.Module):
         converts the map back to the input type.
 
         Args:
-            qkv_tensor (``Tensor``): Queries, keys, and values of shape
+            qkv_tensor: Queries, keys, and values of shape
                 ``[B, G * 3 * dimension, H, W]``, where ``G`` is the
                 number of groups.
 
         Returns:
-            ``Tensor``: Attention output of shape
-            ``[B, G * dimension, H, W]``, with the type of the input.
+            Attention output of shape ``[B, G * dimension, H, W]``, with
+            the type of the input.
 
         """
         batch, _, height, width = qkv_tensor.size()
@@ -633,10 +626,10 @@ class LightweightMLABlock(nn.Module):
         projection output in place.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, input_channels, H, W]``.
+            x: Input of shape ``[B, input_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, output_channels, H, W]``.
+            Output of shape ``[B, output_channels, H, W]``.
 
         """
         identity = x

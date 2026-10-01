@@ -56,14 +56,13 @@ class GracefulInterruptCallback(pl.Callback):
         """Initialize the callback.
 
         Args:
-            save_dir (``Path``): The directory for ``resume.ckpt``. The
-                callback converts the value to a `pathlib.Path`, so a
-                ``str`` is also valid.
-            tracker (LuxonisTrackerPL | None): The tracker that receives
-                ``resume.ckpt`` on the first interrupt. The first
-                interrupt also finalizes its run with the status
-                ``"failed"``. ``None`` skips the upload and the
-                finalization.
+            save_dir: The directory for ``resume.ckpt``. The callback
+                converts the value to a ``pathlib.Path``, so a ``str`` is
+                also valid.
+            tracker: The tracker that receives ``resume.ckpt`` on the
+                first interrupt. The first interrupt also finalizes its
+                run with the status ``"failed"``. ``None`` skips the
+                upload and the finalization.
 
         """
         super().__init__()
@@ -94,11 +93,9 @@ class GracefulInterruptCallback(pl.Callback):
         logs ``Added GracefulInterrupt callback`` at the ``INFO`` level.
 
         Args:
-            trainer (``pl.Trainer``): The trainer to save and stop on an
-                interrupt.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            stage (str | None): The stage that starts, for example
-                ``"fit"``.
+            trainer: The trainer to save and stop on an interrupt.
+            pl_module: The model. Unused.
+            stage: The stage that starts, for example ``"fit"``.
 
         """
         self._trainer = trainer
@@ -130,9 +127,9 @@ class GracefulInterruptCallback(pl.Callback):
         callback stays installed.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            stage (str | None): The stage that ends.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
+            stage: The stage that ends.
 
         """
         if stage != "fit":
@@ -209,8 +206,8 @@ class GracefulInterruptCallback(pl.Callback):
         hooks.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
 
         Raises:
             SystemExit: With the code ``0``, when an interrupt stopped

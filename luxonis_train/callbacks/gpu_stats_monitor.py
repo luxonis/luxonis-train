@@ -111,18 +111,18 @@ class GPUStatsMonitor(pl.Callback):
         for a logger and for CUDA.
 
         Args:
-            memory_utilization (bool): Log ``memory.used``,
-                ``memory.free``, and ``utilization.memory`` at the start
-                and at the end of a batch.
-            gpu_utilization (bool): Log ``utilization.gpu`` at the start
-                and at the end of a batch.
-            intra_step_time (bool): Log the time from the start to the
-                end of a batch as ``batch_time/intra_step (ms)``.
-            inter_step_time (bool): Log the time from the end of a batch
-                to the start of the next batch as
+            memory_utilization: Log ``memory.used``, ``memory.free``,
+                and ``utilization.memory`` at the start and at the end
+                of a batch.
+            gpu_utilization: Log ``utilization.gpu`` at the start and at
+                the end of a batch.
+            intra_step_time: Log the time from the start to the end of a
+                batch as ``batch_time/intra_step (ms)``.
+            inter_step_time: Log the time from the end of a batch to the
+                start of the next batch as
                 ``batch_time/inter_step (ms)``.
-            fan_speed (bool): Log ``fan.speed`` at the end of a batch.
-            temperature (bool): Log ``temperature.gpu`` and
+            fan_speed: Log ``fan.speed`` at the end of a batch.
+            temperature: Log ``temperature.gpu`` and
                 ``temperature.memory`` at the end of a batch.
 
         Raises:
@@ -163,7 +163,7 @@ class GPUStatsMonitor(pl.Callback):
         method. They do their own checks and raise an error instead.
 
         Returns:
-            bool: ``True`` when the ``nvidia-smi`` executable is on the
+            ``True`` when the ``nvidia-smi`` executable is on the
             ``PATH`` and the Lightning ``CUDAAccelerator`` reports CUDA
             as available.
 
@@ -187,10 +187,9 @@ class GPUStatsMonitor(pl.Callback):
         is not set, each GPU ID is equal to its index.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. It must have a
-                logger.
-            pl_module (``pl.LightningModule``): The model. Unused.
-            stage (str | None): The stage that starts. Unused.
+            trainer: The trainer. It must have a logger.
+            pl_module: The model. Unused.
+            stage: The stage that starts. Unused.
 
         Raises:
             MisconfigurationException: When ``trainer`` has no logger,
@@ -223,8 +222,8 @@ class GPUStatsMonitor(pl.Callback):
         logs no ``batch_time/inter_step (ms)`` value.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model. Unused.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
 
         """
         self._snap_intra_step_time: float | None = None
@@ -253,11 +252,10 @@ class GPUStatsMonitor(pl.Callback):
         ``trainer.logger.log_metrics`` at ``trainer.global_step``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Its logger receives
-                the values.
-            pl_module (``pl.LightningModule``): The model. Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
+            trainer: The trainer. Its logger receives the values.
+            pl_module: The model. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
 
         """
         if self._log_stats.intra_step_time:
@@ -305,13 +303,11 @@ class GPUStatsMonitor(pl.Callback):
         ``trainer.logger.log_metrics`` at ``trainer.global_step``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Its logger receives
-                the values.
-            pl_module (``pl.LightningModule``): The model. Unused.
-            outputs (``STEP_OUTPUT``): The output of the training step.
-                Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
+            trainer: The trainer. Its logger receives the values.
+            pl_module: The model. Unused.
+            outputs: The output of the training step. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
 
         """
         if self._log_stats.inter_step_time:

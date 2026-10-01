@@ -124,32 +124,31 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         An argument of a wrong type raises ``typeguard.TypeCheckError``.
 
         Args:
-            sigmas (list[float] | None): The OKS sigma of each keypoint,
-                see the formula of the class. A larger sigma tolerates a
-                larger distance. ``None`` selects the defaults of
-                `get_sigmas`: the COCO sigmas for ``17`` keypoints, else
-                ``0.04`` for each keypoint. `get_sigmas` then logs a
-                warning for the COCO sigmas and an info message for
-                ``0.04``. A list with a length other than
-                ``n_keypoints`` makes `get_sigmas` raise ``ValueError``.
-            area_factor (float | None): The factor that scales the area
-                of a box to the area of the object. ``None`` selects
-                ``0.53`` and logs an info message.
-            max_dets (int): The maximum number of predictions of one
-                class in one image that the evaluation keeps, the ones
-                with the highest scores.
-            box_format (``Literal["xyxy", "xywh", "cxcywh"]``): The
-                format that `update` converts to ``xywh``, for both the
-                predicted and the target boxes. `update` gives the
-                target boxes in the ``xyxy`` format, so only ``"xyxy"``
-                gives correct target boxes.
-            class_metrics (bool): Whether `compute` also returns the AP,
-                the AR, and the F1 score of each class. The predefined
-                model parameter ``per_class_metrics`` sets it.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``. The method reads
-                ``n_keypoints`` from the node, so it raises
-                ``RuntimeError`` when ``node`` is not given.
+            sigmas: The OKS sigma of each keypoint, see the formula of
+                the class. A larger sigma tolerates a larger distance.
+                ``None`` selects the defaults of `get_sigmas`: the COCO
+                sigmas for ``17`` keypoints, else ``0.04`` for each
+                keypoint. `get_sigmas` then logs a warning for the COCO
+                sigmas and an info message for ``0.04``. A list with a
+                length other than ``n_keypoints`` makes `get_sigmas`
+                raise ``ValueError``.
+            area_factor: The factor that scales the area of a box to the
+                area of the object. ``None`` selects ``0.53`` and logs
+                an info message.
+            max_dets: The maximum number of predictions of one class in
+                one image that the evaluation keeps, the ones with the
+                highest scores.
+            box_format: The format that `update` converts to ``xywh``,
+                for both the predicted and the target boxes. `update`
+                gives the target boxes in the ``xyxy`` format, so only
+                ``"xyxy"`` gives correct target boxes.
+            class_metrics: Whether `compute` also returns the AP, the
+                AR, and the F1 score of each class. The predefined model
+                parameter ``per_class_metrics`` sets it.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``. The method reads ``n_keypoints`` from the
+                node, so it raises ``RuntimeError`` when ``node`` is not
+                given.
 
         """
         super().__init__(**kwargs)
@@ -192,17 +191,17 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
           ``xywh``.
 
         Args:
-            keypoints (``list[Tensor]``): The predicted keypoints of each
-                image, of shape ``[M_i, n_keypoints, 3]``, as
-                ``(x, y, score)`` in pixels.
-            boundingbox (``list[Tensor]``): The predicted boxes of each
-                image, of shape ``[M_i, 6]``, as
-                ``[x1, y1, x2, y2, score, class]`` in pixels.
-            target_keypoints (``Tensor``): The ``keypoints`` label of the
-                batch, of shape ``[N, 1 + 3 * n_keypoints]``, as
+            keypoints: The predicted keypoints of each image, of shape
+                ``[M_i, n_keypoints, 3]``, as ``(x, y, score)`` in
+                pixels.
+            boundingbox: The predicted boxes of each image, of shape
+                ``[M_i, 6]``, as ``[x1, y1, x2, y2, score, class]`` in
+                pixels.
+            target_keypoints: The ``keypoints`` label of the batch, of
+                shape ``[N, 1 + 3 * n_keypoints]``, as
                 ``[batch_index, x, y, visibility, ...]``, normalized.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``, normalized, in the
                 row order of ``target_keypoints``.
 
@@ -259,22 +258,21 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         then splits these values per class.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The scalar ``kpt_map``
-            and a dictionary of the other values:
+            The scalar ``kpt_map`` and a dictionary of the other values.
 
-            - ``kpt_map_50`` and ``kpt_map_75``: the AP at the OKS
+            - ``kpt_map_50`` and ``kpt_map_75`` hold the AP at the OKS
               thresholds ``0.5`` and ``0.75``.
-            - ``kpt_map_medium`` and ``kpt_map_large``: the AP for
+            - ``kpt_map_medium`` and ``kpt_map_large`` hold the AP for
               medium and large objects.
             - ``kpt_mar``, ``kpt_mar_50``, ``kpt_mar_75``,
-              ``kpt_mar_medium``, and ``kpt_mar_large``: the AR at the
-              same settings as the AP.
+              ``kpt_mar_medium``, and ``kpt_mar_large`` hold the AR at
+              the same settings as the AP.
             - ``kpt_f1``, ``kpt_f1_50``, ``kpt_f1_75``,
-              ``kpt_f1_medium``, and ``kpt_f1_large``: the F1 score of
-              each pair of AP and AR.
+              ``kpt_f1_medium``, and ``kpt_f1_large`` hold the F1 score
+              of each pair of AP and AR.
             - ``kpt_map_per_class_<class name>``,
               ``kpt_mar_per_class_<class name>``, and
-              ``kpt_f1_per_class_<class name>``: the values of each
+              ``kpt_f1_per_class_<class name>`` hold the values of each
               class of the targets. They are present only with
               ``class_metrics`` and more than one class in the targets.
 
@@ -390,19 +388,19 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         and targets.
 
         Args:
-            bboxes_list (``list[Tensor]``): The boxes of each image, of
-                shape ``[M_i, 4]``, in the ``xywh`` format.
-            keypoints_list (``list[Tensor]``): The keypoints of each
-                image, of shape ``[M_i, 3 * n_keypoints]``.
-            classes_list (``list[Tensor]``): The class of each object,
-                of shape ``[M_i]``, for each image.
-            scores_list (``list[Tensor] | None``): The score of each
-                predicted object, of shape ``[M_i]``, for each image.
-                ``None`` for the targets, which have no scores.
+            bboxes_list: The boxes of each image, of shape ``[M_i, 4]``,
+                in the ``xywh`` format.
+            keypoints_list: The keypoints of each image, of shape
+                ``[M_i, 3 * n_keypoints]``.
+            classes_list: The class of each object, of shape ``[M_i]``,
+                for each image.
+            scores_list: The score of each predicted object, of shape
+                ``[M_i]``, for each image. ``None`` for the targets,
+                which have no scores.
 
         Returns:
-            ``COCO``: The indexed ``COCO`` object with the annotations,
-            the images, and the categories.
+            The indexed ``COCO`` object with the annotations, the
+            images, and the categories.
 
         """
         annotations = []
@@ -442,8 +440,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         """Return the classes of the stored objects as COCO categories.
 
         Returns:
-            list[dict]: One category for each unique class of the
-            stored predictions and targets, sorted by class, as
+            One category for each unique class of the stored predictions
+            and targets, sorted by class, as
             ``{"id": class, "name": str(class)}``.
 
         """

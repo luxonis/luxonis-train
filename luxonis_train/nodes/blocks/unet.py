@@ -38,11 +38,11 @@ class EncoderBlock(nn.Sequential):
         """Build the pooling and the convolution stack.
 
         Args:
-            in_channels (int): The number of input channels.
-            out_channels (int): The number of output channels.
-            n_repeats (int): The number of ``3x3`` `ConvBlock` layers in
-                the stack.
-            max_pool (bool): Whether a ``2x2`` max pool with stride ``2``
+            in_channels: The number of input channels.
+            out_channels: The number of output channels.
+            n_repeats: The number of ``3x3`` `ConvBlock` layers in the
+                stack.
+            max_pool: Whether a ``2x2`` max pool with stride ``2``
                 halves the size before the stack. Otherwise the step
                 keeps the size.
 
@@ -92,14 +92,13 @@ class SimpleEncoder(nn.Sequential):
         """Build the encoder steps.
 
         Args:
-            in_channels (int): The number of input channels.
-            base_hidden_channels (int): The base width. Each step
-                multiplies it by its entry of ``width_multipliers``.
-            width_multipliers (list[float]): The width factor of each
-                step. An empty list makes the constructor raise
-                ``IndexError``.
-            n_convolutions (int): The number of ``3x3`` `ConvBlock`
-                layers in each step.
+            in_channels: The number of input channels.
+            base_hidden_channels: The base width. Each step multiplies
+                it by its entry of ``width_multipliers``.
+            width_multipliers: The width factor of each step. An empty
+                list makes the constructor raise ``IndexError``.
+            n_convolutions: The number of ``3x3`` `ConvBlock` layers in
+                each step.
 
         """
         blocks = []
@@ -139,12 +138,12 @@ class UNetEncoder(SimpleEncoder):
         """Run the steps in order and collect every output.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``list[Tensor]``: One feature map for each step, from the
-            largest to the smallest. The map of step ``i`` has
-            :math:`2^i` times smaller height and width than ``x``.
+            One feature map for each step, from the largest to the
+            smallest. The map of step ``i`` has :math:`2^i` times
+            smaller height and width than ``x``.
 
         """
         return forward_gather(x, self)
@@ -157,8 +156,8 @@ class BaseDecoderBlock(nn.Module):
     `UNetDecoderBlock` add it.
 
     Attributes:
-        up (UpBlock): The block that upsamples the input.
-        conv (ConvStack): The convolution stack after the upsampling.
+        up: The block that upsamples the input.
+        conv: The convolution stack after the upsampling.
 
     """
 
@@ -179,21 +178,20 @@ class BaseDecoderBlock(nn.Module):
         """Build the upsampling block and the convolution stack.
 
         Args:
-            in_channels (int): The number of input channels.
-            out_channels (int): The number of output channels of the
+            in_channels: The number of input channels.
+            out_channels: The number of output channels of the
                 upsampling block and of the stack.
-            conv_in_channels (int): The number of input channels of the
-                stack.
-            kernel_size (int): The kernel size of `UpBlock`. Only
+            conv_in_channels: The number of input channels of the stack.
+            kernel_size: The kernel size of `UpBlock`. Only
                 ``"conv_transpose"`` uses it.
-            use_norm (bool): Whether the ``3x3`` `ConvBlock` of `UpBlock`
-                has a batch norm. The stack always has batch norms.
-            align_corners (bool): The ``align_corners`` option of the
+            use_norm: Whether the ``3x3`` `ConvBlock` of `UpBlock` has a
+                batch norm. The stack always has batch norms.
+            align_corners: The ``align_corners`` option of the
                 interpolation in `UpBlock`.
-            upsample_mode (``Literal["simple_upsample", "conv_upsample", "conv_transpose"]``):
-                The upsampling method of `UpBlock`. The factor is ``2``.
-            n_repeats (int): The number of ``3x3`` `ConvBlock` layers in
-                the stack.
+            upsample_mode: The upsampling method of `UpBlock`. The
+                factor is ``2``.
+            n_repeats: The number of ``3x3`` `ConvBlock` layers in the
+                stack.
 
         """
         super().__init__()
@@ -236,18 +234,17 @@ class SimpleDecoderBlock(BaseDecoderBlock):
         The stack maps ``out_channels`` channels to ``out_channels``.
 
         Args:
-            in_channels (int): The number of input channels.
-            out_channels (int): The number of output channels.
-            kernel_size (int): The kernel size of `UpBlock`. Only
+            in_channels: The number of input channels.
+            out_channels: The number of output channels.
+            kernel_size: The kernel size of `UpBlock`. Only
                 ``"conv_transpose"`` uses it.
-            use_norm (bool): Whether the ``3x3`` `ConvBlock` of `UpBlock`
-                has a batch norm.
-            align_corners (bool): The ``align_corners`` option of the
+            use_norm: Whether the ``3x3`` `ConvBlock` of `UpBlock` has a
+                batch norm.
+            align_corners: The ``align_corners`` option of the
                 interpolation in `UpBlock`.
-            upsample_mode (``Literal["simple_upsample", "conv_upsample", "conv_transpose"]``):
-                The upsampling method of `UpBlock`.
-            n_repeats (int): The number of ``3x3`` `ConvBlock` layers in
-                the stack.
+            upsample_mode: The upsampling method of `UpBlock`.
+            n_repeats: The number of ``3x3`` `ConvBlock` layers in the
+                stack.
 
         """
         super().__init__(
@@ -265,11 +262,11 @@ class SimpleDecoderBlock(BaseDecoderBlock):
         """Upsample the input and run the convolution stack.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape ``[B, out_channels, 2H, 2W]``
-            for the interpolation modes. `UpBlock` gives the size for
+            The output of shape ``[B, out_channels, 2H, 2W]`` for the
+            interpolation modes. `UpBlock` gives the size for
             ``"conv_transpose"``.
 
         """
@@ -322,19 +319,18 @@ class UNetDecoderBlock(BaseDecoderBlock):
         ``out_channels``.
 
         Args:
-            in_channels (int): The number of channels of the input and
-                of the skip feature map.
-            out_channels (int): The number of output channels.
-            kernel_size (int): The kernel size of `UpBlock`. Only
+            in_channels: The number of channels of the input and of the
+                skip feature map.
+            out_channels: The number of output channels.
+            kernel_size: The kernel size of `UpBlock`. Only
                 ``"conv_transpose"`` uses it.
-            use_norm (bool): Whether the ``3x3`` `ConvBlock` of `UpBlock`
-                has a batch norm.
-            align_corners (bool): The ``align_corners`` option of the
+            use_norm: Whether the ``3x3`` `ConvBlock` of `UpBlock` has a
+                batch norm.
+            align_corners: The ``align_corners`` option of the
                 interpolation in `UpBlock`.
-            upsample_mode (``Literal["simple_upsample", "conv_upsample", "conv_transpose"]``):
-                The upsampling method of `UpBlock`.
-            n_repeats (int): The number of ``3x3`` `ConvBlock` layers in
-                the stack.
+            upsample_mode: The upsampling method of `UpBlock`.
+            n_repeats: The number of ``3x3`` `ConvBlock` layers in the
+                stack.
 
         """
         super().__init__(
@@ -352,12 +348,12 @@ class UNetDecoderBlock(BaseDecoderBlock):
         """Upsample ``x``, concatenate ``skip_x``, and run the stack.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
-            skip_x (``Tensor``): The encoder feature map of shape
+            x: The input of shape ``[B, in_channels, H, W]``.
+            skip_x: The encoder feature map of shape
                 ``[B, in_channels, 2H, 2W]``.
 
         Returns:
-            ``Tensor``: The output of shape ``[B, out_channels, 2H, 2W]``.
+            The output of shape ``[B, out_channels, 2H, 2W]``.
 
         """
         x = self.up(x)
@@ -381,9 +377,9 @@ class BaseDecoder(nn.Module):
     `SimpleDecoder` and `UNetDecoder` add it.
 
     Attributes:
-        blocks (``nn.ModuleList``): The decoder steps, from the smallest
-            size to the largest.
-        final_conv (``nn.Conv2d``): The ``3x3`` output convolution.
+        blocks: The decoder steps, from the smallest size to the
+            largest.
+        final_conv: The ``3x3`` output convolution.
 
     """
 
@@ -399,14 +395,13 @@ class BaseDecoder(nn.Module):
         """Build the decoder steps and the output convolution.
 
         Args:
-            base_width (int): The ``base_hidden_channels`` of the encoder.
-            out_channels (int): The number of output channels.
-            encoder_width_multipliers (list[float]): The
-                ``width_multipliers`` of the encoder.
-            n_convolutions (int): The number of ``3x3`` `ConvBlock`
-                layers in the stack of each step.
-            block (type[SimpleDecoderBlock | UNetDecoderBlock]): The class
-                of the decoder steps.
+            base_width: The ``base_hidden_channels`` of the encoder.
+            out_channels: The number of output channels.
+            encoder_width_multipliers: The ``width_multipliers`` of the
+                encoder.
+            n_convolutions: The number of ``3x3`` `ConvBlock` layers in
+                the stack of each step.
+            block: The class of the decoder steps.
 
         """
         super().__init__()
@@ -463,16 +458,14 @@ class SimpleDecoder(BaseDecoder):
         r"""Run the decoder steps and the output convolution.
 
         Args:
-            x (``Tensor``): The output of `SimpleEncoder`, of shape
-                ``[B, C, h, w]``, with
-                :math:`C = \lfloor m \cdot w_b \rfloor`. Here :math:`m`
-                is the last multiplier and :math:`w_b` is
+            x: The output of `SimpleEncoder`, of shape ``[B, C, h, w]``,
+                with :math:`C = \lfloor m \cdot w_b \rfloor`. Here
+                :math:`m` is the last multiplier and :math:`w_b` is
                 ``base_width``.
 
         Returns:
-            ``Tensor``: The output of shape
-            ``[B, out_channels, h * 2^n, w * 2^n]``, where ``n`` is the
-            number of multipliers.
+            The output of shape ``[B, out_channels, h * 2^n, w * 2^n]``,
+            where ``n`` is the number of multipliers.
 
         """
         for block in self.blocks:
@@ -527,14 +520,14 @@ class UNetDecoder(BaseDecoder):
         **Warning:** The method removes the last element of ``inputs``.
 
         Args:
-            inputs (``list[Tensor]``): The feature maps of `UNetEncoder`,
-                from the largest to the smallest. The list must hold one
-                map more than the decoder has steps. Otherwise ``zip``
-                raises ``ValueError``.
+            inputs: The feature maps of `UNetEncoder`, from the largest
+                to the smallest. The list must hold one map more than
+                the decoder has steps. Otherwise ``zip`` raises
+                ``ValueError``.
 
         Returns:
-            ``Tensor``: The output of shape ``[B, out_channels, H, W]``,
-            where ``H`` and ``W`` are the size of the first map.
+            The output of shape ``[B, out_channels, H, W]``, where ``H``
+            and ``W`` are the size of the first map.
 
         """
         x = inputs.pop()
@@ -548,15 +541,15 @@ class UpBlock(nn.Sequential):
 
     ``upsample_mode`` selects the upsampling:
 
-    - ``"conv_transpose"``: a `torch.nn.ConvTranspose2d` from
+    - ``"conv_transpose"``: a ``torch.nn.ConvTranspose2d`` from
       ``in_channels`` to ``out_channels``, with ``kernel_size``,
       ``stride``, and no padding. The output size is
       :math:`(H - 1) \cdot s + k`, with the stride :math:`s` and the
       kernel size :math:`k`.
-    - ``"simple_upsample"``: a `torch.nn.Upsample` by ``stride``. The
+    - ``"simple_upsample"``: a ``torch.nn.Upsample`` by ``stride``. The
       `ConvBlock` then maps ``in_channels`` to ``out_channels``.
-    - ``"conv_upsample"``: the same `torch.nn.Upsample`, then a ``1x1``
-      `torch.nn.Conv2d` from ``in_channels`` to ``out_channels``.
+    - ``"conv_upsample"``: the same ``torch.nn.Upsample``, then a ``1x1``
+      ``torch.nn.Conv2d`` from ``in_channels`` to ``out_channels``.
 
     The `ConvBlock` keeps the size and gives ``out_channels`` channels.
 
@@ -596,26 +589,25 @@ class UpBlock(nn.Sequential):
         """Build the upsampling layers and the convolution block.
 
         Args:
-            in_channels (int): The number of input channels.
-            out_channels (int): The number of output channels.
-            upsample_mode (``Literal["simple_upsample", "conv_upsample", "conv_transpose"]``):
-                The upsampling method. The class description lists the
-                layers of each method.
-            kernel_size (int): The kernel size of the transposed
-                convolution. The other methods ignore it.
-            use_norm (bool): Whether the `ConvBlock` has a batch norm.
-            align_corners (bool): The ``align_corners`` option of
-                `torch.nn.Upsample`. ``"conv_transpose"`` ignores it.
-            stride (int): The upsampling factor.
-            activation (``nn.Module | bool | None``): The activation of
-                the `ConvBlock`. ``True`` selects `torch.nn.ReLU`.
-                ``False`` or ``None`` selects `torch.nn.Identity`.
-            interpolation_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear"]``):
-                The mode of `torch.nn.Upsample`. ``"conv_transpose"``
-                ignores it. **Warning:** only ``"bilinear"`` and
-                ``"bicubic"`` work on a 4D input. ``"nearest"`` rejects
-                any ``align_corners`` value. ``"linear"`` needs a 3D
-                input, and ``"trilinear"`` needs a 5D input.
+            in_channels: The number of input channels.
+            out_channels: The number of output channels.
+            upsample_mode: The upsampling method. The class description
+                lists the layers of each method.
+            kernel_size: The kernel size of the transposed convolution.
+                The other methods ignore it.
+            use_norm: Whether the `ConvBlock` has a batch norm.
+            align_corners: The ``align_corners`` option of
+                ``torch.nn.Upsample``. ``"conv_transpose"`` ignores it.
+            stride: The upsampling factor.
+            activation: The activation of the `ConvBlock`. ``True``
+                selects ``torch.nn.ReLU``. ``False`` or ``None`` selects
+                ``torch.nn.Identity``.
+            interpolation_mode: The mode of ``torch.nn.Upsample``.
+                ``"conv_transpose"`` ignores it. **Warning:** only
+                ``"bilinear"`` and ``"bicubic"`` work on a 4D input.
+                ``"nearest"`` rejects any ``align_corners`` value.
+                ``"linear"`` needs a 3D input, and ``"trilinear"`` needs
+                a 5D input.
 
         """
         layers = []

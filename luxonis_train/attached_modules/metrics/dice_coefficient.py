@@ -88,12 +88,12 @@ class DiceCoefficient(BaseMetric):
         """Initialize the metric and the wrapped ``DiceScore``.
 
         Args:
-            num_classes (int): The number of classes, the size of the
-                class dimension of the inputs.
-            include_background (bool): Whether class ``0`` counts. When
-                ``False``, the metric drops class ``0`` before it scores.
-            average (``Literal["micro", "macro", "weighted", "none"] | None``):
-                How the metric combines the classes of an image:
+            num_classes: The number of classes, the size of the class
+                dimension of the inputs.
+            include_background: Whether class ``0`` counts. When
+                ``False``, the metric drops class ``0`` before it
+                scores.
+            average: How the metric combines the classes of an image:
 
                 - ``"micro"``: one score from the summed counts of all
                   classes.
@@ -102,12 +102,12 @@ class DiceCoefficient(BaseMetric):
                   share of the target pixels of each class.
                 - ``"none"`` or ``None``: one score for each class.
 
-            input_format (``Literal["one-hot", "index"]``): How `update`
-                converts the inputs, see `convert_format`. The two
-                formats give different results only for a target pixel
-                with no class or with more than one class.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            input_format: How `update` converts the inputs, see
+                `convert_format`. The two formats give different results
+                only for a target pixel with no class or with more than
+                one class.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -134,13 +134,12 @@ class DiceCoefficient(BaseMetric):
           ``tensor`` unchanged.
 
         Args:
-            tensor (``Tensor``): Logits or masks of shape
-                ``[B, C, H, W]``.
-            is_target (bool): Whether ``tensor`` is the target.
+            tensor: Logits or masks of shape ``[B, C, H, W]``.
+            is_target: Whether ``tensor`` is the target.
 
         Returns:
-            ``Tensor``: Class indices of shape ``[B, H, W]`` for
-            ``"index"``, otherwise a tensor of shape ``[B, C, H, W]``.
+            Class indices of shape ``[B, H, W]`` for ``"index"``,
+            otherwise a tensor of shape ``[B, C, H, W]``.
 
         Examples:
             Logits of shape ``[1, 2, 1, 2]`` become class indices:
@@ -177,10 +176,10 @@ class DiceCoefficient(BaseMetric):
         the number of target pixels of each image and class.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, H, W]``,
-                the main output of the node.
-            target (``Tensor``): One-hot masks of shape
-                ``[B, C, H, W]``, the ``segmentation`` label of the task.
+            predictions: Logits of shape ``[B, C, H, W]``, the main
+                output of the node.
+            target: One-hot masks of shape ``[B, C, H, W]``, the
+                ``segmentation`` label of the task.
 
         """
         converted_preds = self.convert_format(predictions, is_target=False)
@@ -197,10 +196,10 @@ class DiceCoefficient(BaseMetric):
         """Return the Dice score of the images since the last reset.
 
         Returns:
-            ``Tensor``: The mean score over the images, as a scalar. For
-            ``average`` set to ``"none"`` or ``None``, the mean score of
-            each class, of shape ``[C]``, or ``[C - 1]`` without the
-            background class. A result with one element is a scalar.
+            The mean score over the images, as a scalar. For ``average``
+            set to ``"none"`` or ``None``, the mean score of each class,
+            of shape ``[C]``, or ``[C - 1]`` without the background
+            class. A result with one element is a scalar.
 
         Example:
             One image of four pixels. The target holds class ``0`` in

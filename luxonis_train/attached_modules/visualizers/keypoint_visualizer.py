@@ -90,28 +90,26 @@ class KeypointVisualizer(BBoxVisualizer):
         """Initialize the visualizer and store the keypoint options.
 
         Args:
-            visibility_threshold (float): The lowest confidence of a
-                visible predicted keypoint. `draw_predictions` tells how
-                the visualizer draws the other keypoints.
-            connectivity (list[tuple[int, int]] | None): Pairs of
-                keypoint indices to connect with lines, the skeleton.
-                Applies to the predictions and the targets. ``None``
-                draws no lines.
-            visible_color (Color): Color of the visible predicted
-                keypoints, and of all target keypoints. A color name
-                such as ``"red"`` or an RGB tuple.
-            nonvisible_color (Color | None): Color of the predicted
-                keypoints below ``visibility_threshold``. When ``None``,
-                the visualizer does not draw them at their coordinates.
-            radius (int | None): Radius of a keypoint, in pixels. When
-                ``None``, `forward` picks it from the size of each
-                canvas.
-            draw_indices (bool): Whether to write the index of each
-                keypoint next to it. `draw_targets` tells when this
-                raises ``RuntimeError`` for the target keypoints.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BBoxVisualizer`, such as ``labels``, ``colors``,
-                ``width``, ``scale``, and ``node``.
+            visibility_threshold: The lowest confidence of a visible
+                predicted keypoint. `draw_predictions` tells how the
+                visualizer draws the other keypoints.
+            connectivity: Pairs of keypoint indices to connect with
+                lines, the skeleton. Applies to the predictions and the
+                targets. ``None`` draws no lines.
+            visible_color: Color of the visible predicted keypoints, and
+                of all target keypoints. A color name such as ``"red"``
+                or an RGB tuple.
+            nonvisible_color: Color of the predicted keypoints below
+                ``visibility_threshold``. When ``None``, the visualizer
+                does not draw them at their coordinates.
+            radius: Radius of a keypoint, in pixels. When ``None``,
+                `forward` picks it from the size of each canvas.
+            draw_indices: Whether to write the index of each keypoint
+                next to it. `draw_targets` tells when this raises
+                ``RuntimeError`` for the target keypoints.
+            **kwargs: Keyword arguments forwarded to `BBoxVisualizer`,
+                such as ``labels``, ``colors``, ``width``, ``scale``,
+                and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -127,12 +125,12 @@ class KeypointVisualizer(BBoxVisualizer):
         """Return the keypoint radius for the size of a canvas.
 
         Args:
-            canvas (``Tensor``): Images whose last two dimensions are
-                the height and the width.
+            canvas: Images whose last two dimensions are the height and
+                the width.
 
         Returns:
-            int: ``1`` when both sides are below ``96`` pixels, ``5``
-            when a side is above ``512`` pixels, and ``2`` otherwise.
+            ``1`` when both sides are below ``96`` pixels, ``5`` when a
+            side is above ``512`` pixels, and ``2`` otherwise.
 
         """
         height = canvas.size(-2)
@@ -179,33 +177,32 @@ class KeypointVisualizer(BBoxVisualizer):
         `draw_keypoint_indices_pil`, in the color of the pass.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            predictions (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, K, 3]``. Each keypoint is
-                ``(x, y, confidence)``. The coordinates are pixels of the
-                unscaled image.
-            draw_indices (bool): Whether to write the index of each
-                keypoint next to it.
-            nonvisible_color (Color | None): Color of the second pass.
-                ``None`` skips the second pass.
-            visible_color (Color): Color of the first pass. A ``colors``
-                key in ``kwargs`` replaces it for the keypoints, but not
-                for the indices.
-            visibility_threshold (float): The lowest confidence of a
-                visible keypoint.
-            radius (int | None): Radius of a keypoint, in pixels. When
-                it is ``None``, ``torchvision`` raises ``TypeError`` for
-                an image with at least one keypoint.
-            scale (float): Multiplier for the coordinates. Pass the
-                factor that scaled the canvas.
-            **kwargs (``Any``): Keyword arguments for
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            predictions: One tensor per image, of shape ``[M_i, K, 3]``.
+                Each keypoint is ``(x, y, confidence)``. The coordinates
+                are pixels of the unscaled image.
+            draw_indices: Whether to write the index of each keypoint
+                next to it.
+            nonvisible_color: Color of the second pass. ``None`` skips
+                the second pass.
+            visible_color: Color of the first pass. A ``colors`` key in
+                ``kwargs`` replaces it for the keypoints, but not for
+                the indices.
+            visibility_threshold: The lowest confidence of a visible
+                keypoint.
+            radius: Radius of a keypoint, in pixels. When it is
+                ``None``, ``torchvision`` raises ``TypeError`` for an
+                image with at least one keypoint.
+            scale: Multiplier for the coordinates. Pass the factor that
+                scaled the canvas.
+            **kwargs: Keyword arguments for
                 ``torchvision.utils.draw_keypoints``, such as
                 ``connectivity`` and ``width``.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``
-            with the keypoints drawn.
+            A new tensor of the same shape as ``canvas`` with the
+            keypoints drawn.
 
         Examples:
             A visible keypoint stays at its coordinates:
@@ -308,21 +305,19 @@ class KeypointVisualizer(BBoxVisualizer):
         the next: down-left, down-right, up-right, and up-left.
 
         Args:
-            canvas (``Tensor``): One ``uint8`` image of shape
-                ``[3, H, W]``. PIL raises ``TypeError`` for a floating
-                point image.
-            keypoints (``Tensor``): Pixel keypoints with three values per
-                keypoint, such as ``[M, K, 3]`` or ``[M, 3 * K]``. The
-                method calls ``view``, so a tensor that it cannot view
-                as ``[-1, 3]`` raises ``RuntimeError``.
-            offset (tuple[int, int]): The vertical and the horizontal
-                shift of a label, in pixels.
-            colors (Color): Text color.
+            canvas: One ``uint8`` image of shape ``[3, H, W]``. PIL
+                raises ``TypeError`` for a floating point image.
+            keypoints: Pixel keypoints with three values per keypoint,
+                such as ``[M, K, 3]`` or ``[M, 3 * K]``. The method
+                calls ``view``, so a tensor that it cannot view as
+                ``[-1, 3]`` raises ``RuntimeError``.
+            offset: The vertical and the horizontal shift of a label, in
+                pixels.
+            colors: Text color.
 
         Returns:
-            ``Tensor``: A new ``float32`` image of shape ``[3, H, W]`` on
-            the CPU, with values from ``0`` to ``255`` and the indices
-            drawn.
+            A new ``float32`` image of shape ``[3, H, W]`` on the CPU,
+            with values from ``0`` to ``255`` and the indices drawn.
 
         Example:
             >>> import torch
@@ -392,23 +387,23 @@ class KeypointVisualizer(BBoxVisualizer):
         every keypoint, whatever its visibility.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            targets (``Tensor``): Keypoints of shape ``[N, 1 + 3 * K]``
-                with rows ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            targets: Keypoints of shape ``[N, 1 + 3 * K]`` with rows
+                ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
                 coordinates are normalized to ``[0, 1]``.
-            draw_indices (bool): Whether to write the index of each
-                keypoint next to it with `draw_keypoint_indices_pil`.
-                The method **fails** with ``RuntimeError`` when an image
-                has more than one instance and ``K`` is more than ``1``.
-            colors (Color): Color of the keypoints and the indices.
-            **kwargs (``Any``): Keyword arguments for
+            draw_indices: Whether to write the index of each keypoint
+                next to it with `draw_keypoint_indices_pil`. The method
+                **fails** with ``RuntimeError`` when an image has more
+                than one instance and ``K`` is more than ``1``.
+            colors: Color of the keypoints and the indices.
+            **kwargs: Keyword arguments for
                 ``torchvision.utils.draw_keypoints``, such as ``radius``
                 and ``connectivity``.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``
-            with the keypoints drawn.
+            A new tensor of the same shape as ``canvas`` with the
+            keypoints drawn.
 
         Example:
             >>> import torch
@@ -464,29 +459,27 @@ class KeypointVisualizer(BBoxVisualizer):
         otherwise.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the predictions on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the targets on.
-            keypoints (``list[Tensor]``): One tensor per image, of shape
-                ``[M_i, K, 3]``. Each keypoint is ``(x, y, confidence)``,
-                with ``x`` and ``y`` in pixels. `draw_predictions` scales
-                the coordinates by the ``scale`` factor.
-            boundingbox (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]`` in pixels.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the targets on.
+            keypoints: One tensor per image, of shape ``[M_i, K, 3]``.
+                Each keypoint is ``(x, y, confidence)``, with ``x`` and
+                ``y`` in pixels. `draw_predictions` scales the
+                coordinates by the ``scale`` factor.
+            boundingbox: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]`` in pixels.
                 `BBoxVisualizer.draw_predictions` scales them by the
                 ``scale`` factor.
-            target_keypoints (``Tensor | None``): Keypoints of shape
-                ``[N, 1 + 3 * K]`` with rows
-                ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
+            target_keypoints: Keypoints of shape ``[N, 1 + 3 * K]`` with
+                rows ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
                 coordinates are normalized to ``[0, 1]``. ``None`` when
                 the batch has no ``keypoints`` labels.
-            target_boundingbox (``Tensor | None``): Boxes of shape
-                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
-                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
-                batch has no ``boundingbox`` labels.
-            **kwargs (``Any``): Keyword arguments for
+            target_boundingbox: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``, ``xywh``
+                normalized to ``[0, 1]``. ``None`` when the batch has no
+                ``boundingbox`` labels.
+            **kwargs: Keyword arguments for
                 ``torchvision.utils.draw_keypoints``, such as ``width``.
                 The method passes them to `draw_predictions` and to
                 `draw_targets`. A key that the method also passes by
@@ -494,8 +487,7 @@ class KeypointVisualizer(BBoxVisualizer):
                 ``TypeError``. `BaseVisualizer.run` does not pass any.
 
         Returns:
-            ``tuple[Tensor, Tensor] | Tensor``: The pair
-            ``(targets, predictions)`` of drawn images when
+            The pair ``(targets, predictions)`` of drawn images when
             ``target_keypoints`` or ``target_boundingbox`` is set;
             otherwise only the predictions image.
 

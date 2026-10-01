@@ -39,7 +39,7 @@ def check_aimet_available() -> None:
     """Raise an error when the ``aimet_torch`` package is not installed.
 
     The function looks for the package with
-    `importlib.util.find_spec`. It does not import the package.
+    ``importlib.util.find_spec``. It does not import the package.
 
     Raises:
         ImportError: When ``aimet_torch`` is not installed. The message
@@ -76,22 +76,20 @@ def get_ptq_calibration_loader(
     dataset and keeps the last incomplete batch.
 
     Args:
-        val_dataset (``torch_data.Dataset[LuxonisLoaderTorchOutput]``):
-            The dataset of the validation view. It must support ``len``
-            when ``max_calibration_images`` is not ``None``.
-        collate_fn (``Callable[[list[LuxonisLoaderTorchOutput]], Any]``):
-            The function that merges a list of samples into a batch,
-            such as `BaseLoaderTorch.collate_fn`.
-        batch_size (int): The number of samples in a batch.
-        num_workers (int): The number of worker processes of the
-            loader. ``0`` loads the samples in the main process.
-        pin_memory (bool): Copy the tensors of each batch into pinned
-            memory before the loader returns them.
-        max_calibration_images (int | None): The maximum number of
-            samples to read. ``None`` reads all samples.
+        val_dataset: The dataset of the validation view. It must support
+            ``len`` when ``max_calibration_images`` is not ``None``.
+        collate_fn: The function that merges a list of samples into a
+            batch, such as `BaseLoaderTorch.collate_fn`.
+        batch_size: The number of samples in a batch.
+        num_workers: The number of worker processes of the loader. ``0``
+            loads the samples in the main process.
+        pin_memory: Copy the tensors of each batch into pinned memory
+            before the loader returns them.
+        max_calibration_images: The maximum number of samples to read.
+            ``None`` reads all samples.
 
     Returns:
-        torch.utils.data.DataLoader: The calibration loader.
+        The calibration loader.
 
     Example:
         The example turns the logger off, so the info message does not
@@ -191,48 +189,44 @@ def post_training_quantization(
     cross-layer equalization, and the sequential MSE.
 
     Args:
-        model (LuxonisLightningModule): The module to quantize.
-        dummy_inputs (``Tensor``): An input batch for the graph traces,
-            such as a random tensor of shape ``[1, C, H, W]``.
-        val_loader (torch.utils.data.DataLoader): The calibration
-            loader, such as the result of `get_ptq_calibration_loader`.
-            Each batch is a pair of the inputs and the labels.
-        save_dir (``Path``): The directory for the AdaRound files.
-        quant_scheme (``QuantScheme | None``): The AIMET quantization
-            scheme. ``None`` selects ``QuantScheme.min_max``.
-        default_output_bw (int): The bit width of the activations.
-        default_param_bw (int): The bit width of the parameters.
-        default_data_type (``QuantizationDataType | None``): The data
-            type of a quantized value. ``None`` selects
-            ``QuantizationDataType.int``.
-        config_file (str | None): The path of an AIMET config JSON file.
-            ``None`` with ``batch_norm_reestimation`` selects the
-            per-channel config of AIMET.
-        adaround (bool): Apply AdaRound.
-        adaround_iterations (int | None): The number of AdaRound
-            iterations, passed to ``AdaroundParameters``.
-        adaround_reg_param (float): The AdaRound regularization
-            parameter.
-        adaround_beta_range (tuple[int, int]): The start and the end of
-            the AdaRound beta annealing.
-        adaround_warm_start (float): The share of the AdaRound
-            iterations during which the rounding loss has no effect.
-        fold_batch_norms (bool): Fold the batch norms before
-            quantization. It has no effect with
-            ``batch_norm_reestimation``, because
+        model: The module to quantize.
+        dummy_inputs: An input batch for the graph traces, such as a
+            random tensor of shape ``[1, C, H, W]``.
+        val_loader: The calibration loader, such as the result of
+            `get_ptq_calibration_loader`. Each batch is a pair of the
+            inputs and the labels.
+        save_dir: The directory for the AdaRound files.
+        quant_scheme: The AIMET quantization scheme. ``None`` selects
+            ``QuantScheme.min_max``.
+        default_output_bw: The bit width of the activations.
+        default_param_bw: The bit width of the parameters.
+        default_data_type: The data type of a quantized value. ``None``
+            selects ``QuantizationDataType.int``.
+        config_file: The path of an AIMET config JSON file. ``None``
+            with ``batch_norm_reestimation`` selects the per-channel
+            config of AIMET.
+        adaround: Apply AdaRound.
+        adaround_iterations: The number of AdaRound iterations, passed
+            to ``AdaroundParameters``.
+        adaround_reg_param: The AdaRound regularization parameter.
+        adaround_beta_range: The start and the end of the AdaRound beta
+            annealing.
+        adaround_warm_start: The share of the AdaRound iterations during
+            which the rounding loss has no effect.
+        fold_batch_norms: Fold the batch norms before quantization. It
+            has no effect with ``batch_norm_reestimation``, because
             `quantization_aware_training` then folds them.
-        cross_layer_equalization (bool): Apply cross-layer
-            equalization.
-        batch_norm_reestimation (bool): Whether
-            `quantization_aware_training` re-estimates the batch norms.
-            With ``True``, the function skips the batch norm folding.
-            It also selects the per-channel config of AIMET when
-            ``config_file`` is ``None``.
-        sequential_mse (bool): Apply sequential MSE.
+        cross_layer_equalization: Apply cross-layer equalization.
+        batch_norm_reestimation: Whether `quantization_aware_training`
+            re-estimates the batch norms. With ``True``, the function
+            skips the batch norm folding. It also selects the
+            per-channel config of AIMET when ``config_file`` is
+            ``None``.
+        sequential_mse: Apply sequential MSE.
 
     Returns:
-        ``QuantizationSimModel``: The simulation, with the computed
-        encodings. Its ``model`` is the quantized module.
+        The simulation, with the computed encodings. Its ``model`` is
+        the quantized module.
 
     Raises:
         ImportError: When ``aimet_torch`` is not installed.
@@ -388,26 +382,22 @@ def quantization_aware_training(
     module, the function logs a warning and skips the folding.
 
     Args:
-        sim (``QuantizationSimModel``): The simulation from
-            `post_training_quantization`.
-        dummy_inputs (``Tensor``): An input batch for the graph trace of
-            the batch norm folding.
-        train_loader (torch.utils.data.DataLoader): The training loader.
-            Each batch is a pair of the inputs and the labels.
-        optimizer (``Optimizer``): The optimizer of the parameters of
-            ``sim.model``.
-        scheduler (``LRScheduler``): The learning rate scheduler of
-            ``optimizer``.
-        epochs (int): The number of passes over ``train_loader``.
-        fold_batch_norms (bool): Fold the batch norms after the
-            re-estimation. It has no effect without
-            ``batch_norm_reestimation``.
-        batch_norm_reestimation (bool): Re-estimate the batch norm
-            statistics after the training.
+        sim: The simulation from `post_training_quantization`.
+        dummy_inputs: An input batch for the graph trace of the batch
+            norm folding.
+        train_loader: The training loader. Each batch is a pair of the
+            inputs and the labels.
+        optimizer: The optimizer of the parameters of ``sim.model``.
+        scheduler: The learning rate scheduler of ``optimizer``.
+        epochs: The number of passes over ``train_loader``.
+        fold_batch_norms: Fold the batch norms after the re-estimation.
+            It has no effect without ``batch_norm_reestimation``.
+        batch_norm_reestimation: Re-estimate the batch norm statistics
+            after the training.
 
     Returns:
-        LuxonisLightningModule: ``sim.model`` after the training. The
-        function does not put it back in eval mode.
+        ``sim.model`` after the training. The function does not put it
+        back in eval mode.
 
     Raises:
         ImportError: When ``aimet_torch`` is not installed.

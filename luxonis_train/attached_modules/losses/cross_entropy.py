@@ -96,28 +96,26 @@ class CrossEntropyLoss(BaseLoss):
         r"""Initialize the loss and the wrapped ``nn.CrossEntropyLoss``.
 
         Args:
-            weight (list[float] | None): The factor :math:`w_c` of each
-                class, one value for each class. ``None`` gives every
-                class the factor ``1``.
-            ignore_index (int): A class index that adds nothing to the
-                loss and to the gradient. A one-hot target becomes
-                indices from ``0`` to ``C - 1``. The default ``-100``
-                therefore affects only a target of class indices.
-            reduction (``Literal["none", "mean", "sum"]``): How to
-                reduce the loss of the elements:
+            weight: The factor :math:`w_c` of each class, one value for
+                each class. ``None`` gives every class the factor ``1``.
+            ignore_index: A class index that adds nothing to the loss
+                and to the gradient. A one-hot target becomes indices
+                from ``0`` to ``C - 1``. The default ``-100`` therefore
+                affects only a target of class indices.
+            reduction: How to reduce the loss of the elements:
 
                 - ``"none"``: return the loss of each element.
                 - ``"mean"``: return the weighted mean, as the class
                   formula describes.
                 - ``"sum"``: return the sum over all elements.
 
-            label_smoothing (float): The value :math:`\varepsilon`, in
+            label_smoothing: The value :math:`\varepsilon`, in
                 ``[0, 1]``. The target keeps :math:`1 - \varepsilon` of
                 its mass and spreads :math:`\varepsilon` evenly over all
-                classes, as in `Rethinking the Inception Architecture
-                for Computer Vision <https://arxiv.org/abs/1512.00567>`_.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+                classes, as in
+                `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -143,17 +141,16 @@ class CrossEntropyLoss(BaseLoss):
         highest value.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
-                the main output of the node.
-            target (``Tensor``): One-hot targets of shape
-                ``[B, C, ...]``, or class indices of shape ``[B, ...]``.
-                The ``classification`` and ``segmentation`` labels have
-                the shape ``[B, C, ...]``.
+            predictions: Logits of shape ``[B, C, ...]``, the main
+                output of the node.
+            target: One-hot targets of shape ``[B, C, ...]``, or class
+                indices of shape ``[B, ...]``. The ``classification``
+                and ``segmentation`` labels have the shape
+                ``[B, C, ...]``.
 
         Returns:
-            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
-            reductions. For ``"none"``, the loss of each element, of
-            shape ``[B, ...]``.
+            A scalar for the ``"mean"`` and ``"sum"`` reductions. For
+            ``"none"``, the loss of each element, of shape ``[B, ...]``.
 
         Raises:
             RuntimeError: When ``target`` has neither the number of

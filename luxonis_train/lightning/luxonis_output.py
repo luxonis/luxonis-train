@@ -19,17 +19,13 @@ class LuxonisOutput:
     does not show the metrics.
 
     Attributes:
-        outputs (``dict[str, Packet[Tensor]]``): The output packet of each
-            output node.
-        losses (``dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]``):
-            The value of each loss of a node, keyed by loss name. A
+        outputs: The output packet of each output node.
+        losses: The value of each loss of a node, keyed by loss name. A
             value is a tensor, or a tuple of the tensor and its
             sub-losses.
-        visualizations (``dict[str, dict[str, Tensor]]``): The image
-            batch of each visualizer of a node, keyed by visualizer
-            name.
-        metrics (``dict[str, dict[str, Tensor]]``): The metric values of
-            each node, keyed by metric name.
+        visualizations: The image batch of each visualizer of a node,
+            keyed by visualizer name.
+        metrics: The metric values of each node, keyed by metric name.
             `LuxonisLightningModule.full_forward` leaves it empty.
 
     Example:

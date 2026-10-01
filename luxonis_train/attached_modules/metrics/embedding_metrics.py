@@ -100,10 +100,10 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         number of counted embeddings.
 
         Args:
-            predictions (``Tensor``): Embeddings of shape ``[B, D]``, the
-                main output of the node.
-            target (``Tensor``): The ``metadata/id`` label of each
-                embedding, of shape ``[B]``.
+            predictions: Embeddings of shape ``[B, D]``, the main output
+                of the node.
+            target: The ``metadata/id`` label of each embedding, of
+                shape ``[B]``.
 
         """
         embeddings, labels = predictions, target
@@ -154,8 +154,8 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         """Return the share of counted embeddings with a correct match.
 
         Returns:
-            ``Tensor``: ``correct / total``, a scalar from ``0`` to ``1``.
-            It is ``NaN`` when no embedding counted since the last reset.
+            ``correct / total``, a scalar from ``0`` to ``1``. It is
+            ``NaN`` when no embedding counted since the last reset.
 
         """
         return self.correct / self.total
@@ -252,10 +252,10 @@ class MedianDistances(BaseMetric):
           distance minus the nearest distance, for the same embeddings.
 
         Args:
-            embeddings (``Tensor``): Embeddings of shape ``[B, D]``, the
+            embeddings: Embeddings of shape ``[B, D]``, the
                 ``embeddings`` output of the node.
-            target (``Tensor``): The ``metadata/id`` label of each
-                embedding, of shape ``[B]``.
+            target: The ``metadata/id`` label of each embedding, of
+                shape ``[B]``.
 
         """
         if self._cross_batch_memory_size is not None:
@@ -312,8 +312,8 @@ class MedianDistances(BaseMetric):
         """Return the median of each distance list.
 
         Returns:
-            ``dict[str, Tensor]``: Scalar medians under the keys
-            ``"MedianDistance"``, ``"MedianClosestDistance"``,
+            Scalar medians under the keys ``"MedianDistance"``,
+            ``"MedianClosestDistance"``,
             ``"MedianClosestPositiveDistance"``, and
             ``"MedianClosestVsClosestPositiveDistance"``. All four are
             ``NaN`` when `update` added nothing since the last reset. A
@@ -357,10 +357,10 @@ def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
     finite.
 
     Args:
-        embeddings (``Tensor``): Embeddings of shape ``[N, D]``.
+        embeddings: Embeddings of shape ``[N, D]``.
 
     Returns:
-        ``Tensor``: The distances, of shape ``[N, N]``.
+        The distances, of shape ``[N, N]``.
 
     Example:
         >>> import torch
@@ -388,11 +388,11 @@ def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:
     """Mark the pairs of two different samples with the same label.
 
     Args:
-        labels (``Tensor``): Labels of shape ``[N]``.
+        labels: Labels of shape ``[N]``.
 
     Returns:
-        ``Tensor``: A ``uint8`` mask of shape ``[N, N]``. An entry is
-        ``1`` when ``i != j`` and ``labels[i] == labels[j]``, else ``0``.
+        A ``uint8`` mask of shape ``[N, N]``. An entry is ``1`` when
+        ``i != j`` and ``labels[i] == labels[j]``, else ``0``.
 
     Example:
         >>> import torch

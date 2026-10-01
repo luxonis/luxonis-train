@@ -87,21 +87,21 @@ class MIoU(BaseMetric):
         """Initialize the metric and the wrapped ``MeanIoU``.
 
         Args:
-            num_classes (int): The number of classes, the size of the
-                class dimension of the inputs.
-            include_background (bool): Whether class ``0`` counts. When
-                ``False``, the metric drops class ``0`` before it scores,
-                and `compute` leaves out the first class name.
-            per_class (bool): Whether `compute` also returns the IoU of
-                each class. It also changes the main value, see the
-                formula of the class. A predefined model sets it through
+            num_classes: The number of classes, the size of the class
+                dimension of the inputs.
+            include_background: Whether class ``0`` counts. When
+                ``False``, the metric drops class ``0`` before it
+                scores, and `compute` leaves out the first class name.
+            per_class: Whether `compute` also returns the IoU of each
+                class. It also changes the main value, see the formula
+                of the class. A predefined model sets it through
                 ``per_class_metrics``.
-            input_format (``Literal["one-hot", "index"]``): How `update`
-                converts the inputs, see `convert_format`. The two
-                formats give different results only for a target pixel
-                with no class or with more than one class.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            input_format: How `update` converts the inputs, see
+                `convert_format`. The two formats give different results
+                only for a target pixel with no class or with more than
+                one class.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -130,13 +130,12 @@ class MIoU(BaseMetric):
           ``tensor`` unchanged.
 
         Args:
-            tensor (``Tensor``): Logits or masks of shape
-                ``[B, C, H, W]``.
-            is_target (bool): Whether ``tensor`` is the target.
+            tensor: Logits or masks of shape ``[B, C, H, W]``.
+            is_target: Whether ``tensor`` is the target.
 
         Returns:
-            ``Tensor``: Class indices of shape ``[B, H, W]`` for
-            ``"index"``, otherwise a tensor of shape ``[B, C, H, W]``.
+            Class indices of shape ``[B, H, W]`` for ``"index"``,
+            otherwise a tensor of shape ``[B, C, H, W]``.
 
         Example:
             >>> import torch
@@ -168,10 +167,10 @@ class MIoU(BaseMetric):
         to its running sums.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, H, W]``,
-                the main output of the node.
-            target (``Tensor``): One-hot masks of shape
-                ``[B, C, H, W]``, the ``segmentation`` label of the task.
+            predictions: Logits of shape ``[B, C, H, W]``, the main
+                output of the node.
+            target: One-hot masks of shape ``[B, C, H, W]``, the
+                ``segmentation`` label of the task.
 
         """
         converted_preds = self.convert_format(predictions, is_target=False)
@@ -202,10 +201,10 @@ class MIoU(BaseMetric):
         ``False``, the method drops the first name.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The scalar mean
-            IoU. With ``per_class`` and more than one class, a tuple of
-            the mean over the classes and a dictionary. The dictionary
-            maps ``"MIoU_<class name>"`` to the scalar IoU of each class.
+            The scalar mean IoU. With ``per_class`` and more than one
+            class, a tuple of the mean over the classes and a
+            dictionary. The dictionary maps ``"MIoU_<class name>"`` to
+            the scalar IoU of each class.
 
         Raises:
             ValueError: When ``per_class`` is ``True`` and the node has a

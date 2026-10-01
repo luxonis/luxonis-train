@@ -98,20 +98,18 @@ class LuxonisLightningModule(pl.LightningModule):
     and attaches it to a trainer.
 
     Attributes:
-        cfg (Config): The config the module was built from.
-        image_source (str): The name of the loader input that holds
-            the image, from ``cfg.loader.image_source``.
-        dataset_metadata (DatasetMetadata): The metadata of the
-            dataset. An empty `DatasetMetadata` when the constructor
-            got none.
-        save_dir (``Path``): The directory where the checkpoints and
-            the logs go.
-        outputs (list[str]): The names of the output nodes, from
+        cfg: The config the module was built from.
+        image_source: The name of the loader input that holds the image,
+            from ``cfg.loader.image_source``.
+        dataset_metadata: The metadata of the dataset. An empty
+            `DatasetMetadata` when the constructor got none.
+        save_dir: The directory where the checkpoints and the logs go.
+        outputs: The names of the output nodes, from
             ``cfg.model.outputs``.
-        nodes (Nodes): The node wrappers, keyed by node name.
-        training_strategy (BaseTrainingStrategy | None): The strategy
-            that ``cfg.trainer.training_strategy`` names, or ``None``
-            when the config names none. A strategy that predates the
+        nodes: The node wrappers, keyed by node name.
+        training_strategy: The strategy that
+            ``cfg.trainer.training_strategy`` names, or ``None`` when
+            the config names none. A strategy that predates the
             rule-based API comes wrapped in a `LegacyStrategyAdapter`.
 
     """
@@ -153,20 +151,17 @@ class LuxonisLightningModule(pl.LightningModule):
           as hyperparameters.
 
         Args:
-            cfg (Config): The config that defines the model, the
-                loader, and the trainer.
-            save_dir (``PathType``): The directory where the
-                checkpoints and the logs go, as a string or a
-                `pathlib.Path`.
-            input_shapes (``dict[str, Size]``): The shape of every
-                loader input, keyed by input name and without the
-                batch dimension.
-            dataset_metadata (DatasetMetadata | None): The metadata of
-                the dataset. ``None`` builds an empty
-                `DatasetMetadata`.
-            _core (LuxonisModel | None): The `LuxonisModel` that owns
-                this module. `core` raises without it.
-            **kwargs (``Any``): Extra keyword arguments for the
+            cfg: The config that defines the model, the loader, and the
+                trainer.
+            save_dir: The directory where the checkpoints and the logs
+                go, as a string or a ``pathlib.Path``.
+            input_shapes: The shape of every loader input, keyed by
+                input name and without the batch dimension.
+            dataset_metadata: The metadata of the dataset. ``None``
+                builds an empty `DatasetMetadata`.
+            _core: The `LuxonisModel` that owns this module. `core`
+                raises without it.
+            **kwargs: Extra keyword arguments for the
                 ``LightningModule`` constructor.
 
         """
@@ -218,7 +213,7 @@ class LuxonisLightningModule(pl.LightningModule):
         checkpoint, with ``strict`` set to the ``strict_loading`` of
         the module, ``True`` by default. When
         ``cfg.trainer.resume_training`` is off, the method behaves
-        like `torch.nn.Module.load_state_dict`.
+        like ``torch.nn.Module.load_state_dict``.
 
         When ``cfg.trainer.resume_training`` is on:
 
@@ -234,16 +229,14 @@ class LuxonisLightningModule(pl.LightningModule):
           any other missing or unexpected key.
 
         Args:
-            state_dict (``Mapping[str, Tensor]``): The parameters and
-                the buffers to load, keyed by their name in this
-                module.
-            strict (bool): Whether every key must match. Ignored when
-                a run resumes.
+            state_dict: The parameters and the buffers to load, keyed by
+                their name in this module.
+            strict: Whether every key must match. Ignored when a run
+                resumes.
 
         Returns:
-            ``_IncompatibleKeys``: The ``missing_keys`` and the
-            ``unexpected_keys`` of the load. Both are empty after a
-            strict resume.
+            The ``missing_keys`` and the ``unexpected_keys`` of the
+            load. Both are empty after a strict resume.
 
         Raises:
             RuntimeError: When a run resumes with strict weight
@@ -345,13 +338,11 @@ class LuxonisLightningModule(pl.LightningModule):
         dimension. The export uses a batch of one.
 
         Args:
-            inputs (``dict[str, Tensor] | Tensor``): The loader inputs,
-                keyed by input name. A bare tensor is the input named
-                ``image_source``.
+            inputs: The loader inputs, keyed by input name. A bare
+                tensor is the input named ``image_source``.
 
         Returns:
-            ``tuple[Tensor, ...]``: The flattened outputs of the output
-            nodes.
+            The flattened outputs of the output nodes.
 
         """
         outputs = self.full_forward(
@@ -406,27 +397,24 @@ class LuxonisLightningModule(pl.LightningModule):
           batch.
 
         Args:
-            inputs (``dict[str, Tensor] | Tensor``): The loader inputs,
-                keyed by input name. A bare tensor is the input named
-                ``image_source``. The tensors move to the device of
-                the module.
-            labels (Labels | None): The labels of the batch, keyed as
+            inputs: The loader inputs, keyed by input name. A bare
+                tensor is the input named ``image_source``. The tensors
+                move to the device of the module.
+            labels: The labels of the batch, keyed as
                 ``<task>/<label>``. The tensors move to the device of
                 the module. ``None`` skips the losses and the metrics.
-            images (``Tensor | None``): The denormalized images of the
-                batch, of shape ``[B, C, H, W]``, that the visualizers
-                draw on. ``None`` skips the visualizations.
-            compute_loss (bool): Whether to run the losses.
-            compute_metrics (bool): Whether to update the metrics.
-            compute_visualizations (bool): Whether to run the
-                visualizers.
+            images: The denormalized images of the batch, of shape
+                ``[B, C, H, W]``, that the visualizers draw on. ``None``
+                skips the visualizations.
+            compute_loss: Whether to run the losses.
+            compute_metrics: Whether to update the metrics.
+            compute_visualizations: Whether to run the visualizers.
 
         Returns:
-            LuxonisOutput: ``outputs`` holds the packet of every
-            output node that ran, keyed by node name. ``losses`` holds
-            the value of every loss, keyed by node name and loss name;
-            a value is a tensor, or a tuple of the tensor and its
-            sub-losses.
+            ``outputs`` holds the packet of every output node that ran,
+            keyed by node name. ``losses`` holds the value of every
+            loss, keyed by node name and loss name; a value is a tensor,
+            or a tuple of the tensor and its sub-losses.
             ``visualizations`` holds the image batch of every
             visualizer, of shape ``[B, C, H, W]``, keyed by node name
             and visualizer name. ``metrics`` stays empty.
@@ -478,17 +466,17 @@ class LuxonisLightningModule(pl.LightningModule):
     def train(self, mode: bool = True) -> Self:
         """Set the training mode of the module and of every node.
 
-        Besides the recursion of `torch.nn.Module.train`, the method
+        Besides the recursion of ``torch.nn.Module.train``, the method
         calls ``train`` on every `NodeWrapper`. The wrapper passes the
         mode to the node and to the losses, the metrics, and the
         visualizers attached to it.
 
         Args:
-            mode (bool): ``True`` for training mode, ``False`` for
-                evaluation mode.
+            mode: ``True`` for training mode, ``False`` for evaluation
+                mode.
 
         Returns:
-            ``Self``: The module.
+            The module.
 
         """
         super().train(mode)
@@ -506,11 +494,10 @@ class LuxonisLightningModule(pl.LightningModule):
         the call restores those blocks.
 
         Args:
-            mode (bool): ``True`` to enter export mode, ``False`` to
-                leave it.
+            mode: ``True`` to enter export mode, ``False`` to leave it.
 
         Returns:
-            ``Self``: The module.
+            The module.
 
         """
         for module in self.modules():
@@ -527,7 +514,7 @@ class LuxonisLightningModule(pl.LightningModule):
         quantization.
 
         Returns:
-            ``Self``: The module.
+            The module.
 
         """
         for module in self.modules():
@@ -554,14 +541,13 @@ class LuxonisLightningModule(pl.LightningModule):
         to ``False``.
 
         Args:
-            save_path (``PathType``): The path of the ONNX file, as a
-                string or a `pathlib.Path`.
-            **kwargs (``Any``): Extra keyword arguments for
-                `torch.onnx.export`, such as ``opset_version`` and
-                ``dynamic_axes``.
+            save_path: The path of the ONNX file, as a string or a
+                ``pathlib.Path``.
+            **kwargs: Extra keyword arguments for ``torch.onnx.export``,
+                such as ``opset_version`` and ``dynamic_axes``.
 
         Returns:
-            ``Path``: ``save_path`` as a `pathlib.Path`.
+            ``save_path`` as a ``pathlib.Path``.
 
         """
         device = self.device
@@ -609,13 +595,11 @@ class LuxonisLightningModule(pl.LightningModule):
         training loss accumulator that `on_train_epoch_end` logs.
 
         Args:
-            train_batch (``tuple[dict[str, Tensor] | Tensor, Labels]``):
-                The loader inputs and the labels of the batch.
+            train_batch: The loader inputs and the labels of the batch.
 
         Returns:
-            ``Tensor``: The sum of every loss, each already scaled by
-            its config ``weight``, of shape ``[1]`` on the device of
-            the module.
+            The sum of every loss, each already scaled by its config
+            ``weight``, of shape ``[1]`` on the device of the module.
 
         Raises:
             ValueError: When no node produced a loss.
@@ -639,11 +623,10 @@ class LuxonisLightningModule(pl.LightningModule):
         and backpropagates the returned loss.
 
         Args:
-            train_batch (``tuple[dict[str, Tensor] | Tensor, Labels]``):
-                The loader inputs and the labels of the batch.
+            train_batch: The loader inputs and the labels of the batch.
 
         Returns:
-            ``Tensor``: The total loss from `compute_training_loss`.
+            The total loss from `compute_training_loss`.
 
         """
         return self.compute_training_loss(train_batch)
@@ -666,13 +649,11 @@ class LuxonisLightningModule(pl.LightningModule):
         the first images of the epoch.
 
         Args:
-            val_batch (``tuple[dict[str, Tensor] | Tensor, Labels]``):
-                The loader inputs and the labels of the batch.
+            val_batch: The loader inputs and the labels of the batch.
 
         Returns:
-            ``dict[str, Tensor]``: The loss values of the batch on the
-            CPU, keyed ``"loss"`` for the total,
-            ``"loss/<node>/<loss>"`` for each loss, and
+            The loss values of the batch on the CPU, keyed ``"loss"``
+            for the total, ``"loss/<node>/<loss>"`` for each loss, and
             ``"loss/<node>/<loss>/<sub>"`` for each sub-loss when
             ``cfg.trainer.log_sub_losses`` is on.
 
@@ -690,12 +671,11 @@ class LuxonisLightningModule(pl.LightningModule):
         ``test`` loss accumulator and the ``test`` image prefix.
 
         Args:
-            test_batch (``tuple[dict[str, Tensor] | Tensor, Labels]``):
-                The loader inputs and the labels of the batch.
+            test_batch: The loader inputs and the labels of the batch.
 
         Returns:
-            ``dict[str, Tensor]``: The loss values of the batch on the
-            CPU, keyed as in `validation_step`.
+            The loss values of the batch on the CPU, keyed as in
+            `validation_step`.
 
         """
         return self._evaluation_step("test", *test_batch)
@@ -712,13 +692,11 @@ class LuxonisLightningModule(pl.LightningModule):
         images, the visualizers on, and the losses and the metrics off.
 
         Args:
-            batch (``tuple[dict[str, Tensor] | Tensor, Labels]``): The
-                loader inputs and the labels of the batch.
+            batch: The loader inputs and the labels of the batch.
 
         Returns:
-            LuxonisOutput: The packet of every output node and the
-            image of every visualizer. ``losses`` and ``metrics`` are
-            empty.
+            The packet of every output node and the image of every
+            visualizer. ``losses`` and ``metrics`` are empty.
 
         """
         inputs, labels = batch
@@ -758,8 +736,8 @@ class LuxonisLightningModule(pl.LightningModule):
         configured interval.
 
         Args:
-            stage (str): The stage that starts: ``"fit"``,
-                ``"validate"``, ``"test"``, or ``"predict"``.
+            stage: The stage that starts: ``"fit"``, ``"validate"``,
+                ``"test"``, or ``"predict"``.
 
         """
         if getattr(stage, "value", stage) != "fit":
@@ -900,8 +878,8 @@ class LuxonisLightningModule(pl.LightningModule):
         which leaves the module in evaluation mode.
 
         Args:
-            checkpoint (``dict[str, Any]``): The checkpoint dictionary
-                that Lightning is about to write.
+            checkpoint: The checkpoint dictionary that Lightning is
+                about to write.
 
         """
         super().on_save_checkpoint(checkpoint)
@@ -929,7 +907,7 @@ class LuxonisLightningModule(pl.LightningModule):
           callback of that class is present yet.
 
         Returns:
-            ``list[pl.Callback]``: The callbacks, in that order.
+            The callbacks, in that order.
 
         """
         return self.nodes.build_callbacks(self.save_dir)
@@ -957,7 +935,6 @@ class LuxonisLightningModule(pl.LightningModule):
         any other mode the scheduler monitors ``val/loss``.
 
         Returns:
-            ``tuple[Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]]``:
             A list with the one optimizer of the plan, which is a
             `CompositeOptimizer` when the plan has several inner
             optimizers, and the scheduler configs of the plan.
@@ -1031,9 +1008,9 @@ class LuxonisLightningModule(pl.LightningModule):
         evaluation mode.
 
         Args:
-            ckpt (``PathType | dict[str, Any] | None``): A path to a
-                checkpoint file, or a loaded checkpoint dictionary
-                with a ``state_dict`` key. ``None`` loads nothing.
+            ckpt: A path to a checkpoint file, or a loaded checkpoint
+                dictionary with a ``state_dict`` key. ``None`` loads
+                nothing.
 
         Raises:
             ValueError: When the checkpoint has no ``state_dict`` key.
@@ -1172,14 +1149,13 @@ class LuxonisLightningModule(pl.LightningModule):
         main metric when the config defines one.
 
         Args:
-            stage (str): The name of the stage, ``"Validation"`` or
+            stage: The name of the stage, ``"Validation"`` or
                 ``"Test"``.
-            loss (float): The mean total loss of the epoch.
-            metrics (dict[str, dict[str, float]]): The scalar metric
-                values, keyed by node name and metric name.
-            matrices (``dict[str, dict[str, dict[str, Any]]]``): The
-                matrix metrics, keyed by node name and metric name, in
-                the format of
+            loss: The mean total loss of the epoch.
+            metrics: The scalar metric values, keyed by node name and
+                metric name.
+            matrices: The matrix metrics, keyed by node name and metric
+                name, in the format of
                 `BaseLuxonisProgressBar.format_matrix_for_printing`.
 
         """
@@ -1252,8 +1228,8 @@ class LuxonisLightningModule(pl.LightningModule):
           ``cfg.model.name``.
 
         Returns:
-            dict[str, list[str]]: The ``"metrics"`` and the
-            ``"artifacts"`` lists, each sorted.
+            The ``"metrics"`` and the ``"artifacts"`` lists, each
+            sorted.
 
         """
         val_eval_epochs, test_eval_epoch = _evaluation_epochs(self.cfg)
@@ -1305,15 +1281,14 @@ class LuxonisLightningModule(pl.LightningModule):
         position.
 
         Args:
-            node_name (str): The identifier of the node.
-            old_order (list[str]): The execution order of the
-                checkpoint.
-            new_order (list[str]): The execution order of the model.
+            node_name: The identifier of the node.
+            old_order: The execution order of the checkpoint.
+            new_order: The execution order of the model.
 
         Returns:
-            dict[str, str]: Each old module name of the node, without
-            the ``nodes.<node>.`` or ``nodes.<node>.module.`` prefix,
-            mapped to the new one.
+            Each old module name of the node, without the
+            ``nodes.<node>.`` or ``nodes.<node>.module.`` prefix, mapped
+            to the new one.
 
         Raises:
             RuntimeError: When the two orders hold a different number
@@ -1642,13 +1617,12 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
     """Dump a predefined model with ``latest`` resolved to a version.
 
     Args:
-        cfg (Config): The config of the module.
+        cfg: The config of the module.
 
     Returns:
-        ``dict[str, Any] | None``: The dump of
-        ``cfg.model.predefined_model``. A ``version`` of ``"latest"``
-        becomes the version number of the resolved class. ``None`` when
-        the config names no predefined model.
+        The dump of ``cfg.model.predefined_model``. A ``version`` of
+        ``"latest"`` becomes the version number of the resolved class.
+        ``None`` when the config names no predefined model.
 
     """
     predefined_model = cfg.model.predefined_model

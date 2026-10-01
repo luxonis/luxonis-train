@@ -25,14 +25,13 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     ``precision`` through ``kwargs``.
 
     Args:
-        cfg (TrainerConfig): The ``trainer`` section of the config.
-        **kwargs (``Any``): More keyword arguments for the trainer, such
-            as ``logger``, ``callbacks``, or ``precision``. A key that
-            the function already sets from ``cfg`` raises
-            ``TypeError``.
+        cfg: The ``trainer`` section of the config.
+        **kwargs: More keyword arguments for the trainer, such as
+            ``logger``, ``callbacks``, or ``precision``. A key that the
+            function already sets from ``cfg`` raises ``TypeError``.
 
     Returns:
-        ``pl.Trainer``: The trainer.
+        The trainer.
 
     """
     return pl.Trainer(

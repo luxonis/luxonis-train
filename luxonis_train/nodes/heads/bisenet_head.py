@@ -33,7 +33,7 @@ class BiSeNetHead(BaseHead):
         applies a 3x3 `luxonis_train.nodes.blocks.ConvBlock` with batch
         norm and ReLU, and a 1x1 convolution with
         :math:`n_{classes} \cdot s^2` output channels. A
-        `torch.nn.PixelShuffle` with the factor :math:`s` then gives the
+        ``torch.nn.PixelShuffle`` with the factor :math:`s` then gives the
         logits. ``forward`` does not check the mode, so export mode also
         gives the logits.
 
@@ -97,12 +97,12 @@ class BiSeNetHead(BaseHead):
         when the two ratios differ.
 
         Args:
-            intermediate_channels (int): The number of output channels of
-                the 3x3 convolution.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``original_in_shape``, ``input_shapes`` or
-                ``in_sizes``, and the class count through ``n_classes``
-                or ``dataset_metadata``.
+            intermediate_channels: The number of output channels of the
+                3x3 convolution.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``original_in_shape``, ``input_shapes`` or ``in_sizes``,
+                and the class count through ``n_classes`` or
+                ``dataset_metadata``.
 
         """
         super().__init__(**kwargs)
@@ -133,12 +133,11 @@ class BiSeNetHead(BaseHead):
         """Compute the segmentation logits at the model input size.
 
         Args:
-            inputs (``Tensor``): The feature map of shape
-                ``[B, C, H / s, W / s]``.
+            inputs: The feature map of shape ``[B, C, H / s, W / s]``.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
-            `BaseNode.run` puts them under the ``"segmentation"`` key.
+            The logits of shape ``[B, n_classes, H, W]``. `BaseNode.run`
+            puts them under the ``"segmentation"`` key.
 
         Example:
             >>> import torch

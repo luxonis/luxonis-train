@@ -107,20 +107,20 @@ class ObjectKeypointSimilarity(BaseMetric):
         ``sigmas`` does not have one value for each keypoint.
 
         Args:
-            sigmas (list[float] | None): One sigma for each keypoint. A
-                larger sigma tolerates a larger distance. ``None``
-                selects the COCO person sigmas for ``17`` keypoints, and
-                ``0.04`` for each keypoint otherwise. `get_sigmas` then
-                logs the selection.
-            area_factor (float | None): The factor that scales the area
-                of a target box to the pose area. ``None`` selects
-                ``0.53`` and logs an info message.
-            use_cocoeval_oks (bool): When ``True``, use the formula of
-                the COCO evaluation code. When ``False``, use the formula
-                of the COCO keypoint definition. `compute_pose_oks`
-                shows both formulas.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            sigmas: One sigma for each keypoint. A larger sigma
+                tolerates a larger distance. ``None`` selects the COCO
+                person sigmas for ``17`` keypoints, and ``0.04`` for
+                each keypoint otherwise. `get_sigmas` then logs the
+                selection.
+            area_factor: The factor that scales the area of a target box
+                to the pose area. ``None`` selects ``0.53`` and logs an
+                info message.
+            use_cocoeval_oks: When ``True``, use the formula of the COCO
+                evaluation code. When ``False``, use the formula of the
+                COCO keypoint definition. `compute_pose_oks` shows both
+                formulas.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -149,15 +149,14 @@ class ObjectKeypointSimilarity(BaseMetric):
         values.
 
         Args:
-            keypoints (``list[Tensor]``): The predicted keypoints of each
-                image, of shape ``[M_i, n_keypoints, 3]``, in pixels.
-                `FOMOHead` gives the shape ``[M_i, 1, 4]``. Only ``x``
-                and ``y`` count.
-            target_boundingbox (``Tensor``): The target boxes of the
-                batch, of shape ``[N, 6]``, as
-                ``[batch, class, x, y, w, h]`` with normalized values.
-            target_keypoints (``Tensor | None``): The target keypoints of
-                the batch, of shape ``[N, 1 + 3 * n_keypoints]``, as
+            keypoints: The predicted keypoints of each image, of shape
+                ``[M_i, n_keypoints, 3]``, in pixels. `FOMOHead` gives
+                the shape ``[M_i, 1, 4]``. Only ``x`` and ``y`` count.
+            target_boundingbox: The target boxes of the batch, of shape
+                ``[N, 6]``, as ``[batch, class, x, y, w, h]`` with
+                normalized values.
+            target_keypoints: The target keypoints of the batch, of
+                shape ``[N, 1 + 3 * n_keypoints]``, as
                 ``[batch, x, y, v, ...]`` with normalized coordinates.
                 For ``Tasks.FOMO``, the method uses the centers of the
                 target boxes instead.
@@ -202,8 +201,8 @@ class ObjectKeypointSimilarity(BaseMetric):
         method also moves ``sigmas`` to the device of the metric.
 
         Returns:
-            ``Tensor``: The mean score of the stored images, a scalar in
-            ``[0, 1]``. It is ``0`` when no image had targets.
+            The mean score of the stored images, a scalar in ``[0, 1]``.
+            It is ``0`` when no image had targets.
 
         Example:
             The first image has two targets and one exact prediction.

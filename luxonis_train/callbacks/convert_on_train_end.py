@@ -60,9 +60,9 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
         its earlier weights again.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads its
-                progress bar callback.
-            pl_module (LuxonisLightningModule): The model to convert.
+            trainer: The trainer. The hook reads its progress bar
+                callback.
+            pl_module: The model to convert.
 
         """
         checkpoint = self.get_checkpoint(pl_module)

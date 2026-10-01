@@ -71,13 +71,13 @@ class EmbeddingsVisualizer(BaseVisualizer):
         """Initialize the visualizer and store the outlier threshold.
 
         Args:
-            z_score_threshold (float): Limit for the absolute z-score of
-                a projected point. `forward` keeps a point only when the
+            z_score_threshold: Limit for the absolute z-score of a
+                projected point. `forward` keeps a point only when the
                 absolute z-score of each of its two coordinates is below
                 the limit. The z-scores use the mean and the standard
                 deviation of the batch on each axis. Defaults to ``3``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -88,10 +88,10 @@ class EmbeddingsVisualizer(BaseVisualizer):
         scaled to ``[0, 1]``.
 
         Args:
-            label (int): Identity label.
+            label: Identity label.
 
         Returns:
-            tuple[float, float, float]: RGB components for Matplotlib.
+            RGB components for Matplotlib.
 
         """
         r, g, b = self.colormap[label]
@@ -123,16 +123,15 @@ class EmbeddingsVisualizer(BaseVisualizer):
         Logs the number of dropped outliers at the ``INFO`` level.
 
         Args:
-            prediction_canvas (``Tensor``): Ignored.
-            target_canvas (``Tensor``): Ignored.
-            predictions (``Tensor``): Embeddings of shape ``[B, D]``.
-            target (``Tensor``): The ``id`` metadata label of each
-                embedding, of shape ``[B]``. The method casts it to
-                ``int``.
+            prediction_canvas: Ignored.
+            target_canvas: Ignored.
+            predictions: Embeddings of shape ``[B, D]``.
+            target: The ``id`` metadata label of each embedding, of
+                shape ``[B]``. The method casts it to ``int``.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The KDE plot and the scatter plot,
-            each a ``uint8`` image of shape ``[1, 3, 512, 512]``.
+            The KDE plot and the scatter plot, each a ``uint8`` image of
+            shape ``[1, 3, 512, 512]``.
 
         """
         embeddings_np = predictions.detach().cpu().numpy()
@@ -170,12 +169,11 @@ class EmbeddingsVisualizer(BaseVisualizer):
         Logs the number of dropped points at the ``INFO`` level.
 
         Args:
-            points (``np.ndarray``): Projected points of shape ``[N, 2]``.
-            ids (``np.ndarray``): Labels of shape ``[N]``.
+            points: Projected points of shape ``[N, 2]``.
+            ids: Labels of shape ``[N]``.
 
         Returns:
-            ``tuple[np.ndarray, np.ndarray]``: The kept points and their
-            labels.
+            The kept points and their labels.
 
         """
         mean = np.mean(points, axis=0)
@@ -199,16 +197,14 @@ class EmbeddingsVisualizer(BaseVisualizer):
         hides the axes, and converts the figure with `figure_to_torch`.
 
         Args:
-            embeddings_2d (``np.ndarray``): Projected points of shape
-                ``[N, 2]``. May be empty; then the axis limits stay at
-                their defaults.
-            ids_np (``np.ndarray``): Labels of shape ``[N]``.
-            plot_func (``Callable[[plt.Axes, np.ndarray, np.ndarray], None]``):
-                Draws on the axes it receives, for example `kde_plot` or
-                `scatter_plot`.
+            embeddings_2d: Projected points of shape ``[N, 2]``. May be
+                empty; then the axis limits stay at their defaults.
+            ids_np: Labels of shape ``[N]``.
+            plot_func: Draws on the axes it receives, for example
+                `kde_plot` or `scatter_plot`.
 
         Returns:
-            ``Tensor``: A ``uint8`` image of shape ``[1, 3, 512, 512]``.
+            A ``uint8`` image of shape ``[1, 3, 512, 512]``.
 
         Example:
             >>> import numpy as np
@@ -243,10 +239,9 @@ class EmbeddingsVisualizer(BaseVisualizer):
         whose points cannot form a density.
 
         Args:
-            ax (``plt.Axes``): Axes to draw on.
-            emb (``np.ndarray``): Projected points of shape ``[N, 2]``.
-            labels (``np.ndarray``): Label of each point, of shape
-                ``[N]``.
+            ax: Axes to draw on.
+            emb: Projected points of shape ``[N, 2]``.
+            labels: Label of each point, of shape ``[N]``.
 
         """
         for label in np.unique(labels):
@@ -272,10 +267,9 @@ class EmbeddingsVisualizer(BaseVisualizer):
         each label to its color in `BaseVisualizer.colormap`.
 
         Args:
-            ax (``plt.Axes``): Axes to draw on.
-            emb (``np.ndarray``): Projected points of shape ``[N, 2]``.
-            labels (``np.ndarray``): Label of each point, of shape
-                ``[N]``.
+            ax: Axes to draw on.
+            emb: Projected points of shape ``[N, 2]``.
+            labels: Label of each point, of shape ``[N]``.
 
         """
         unique_labels = np.unique(labels)

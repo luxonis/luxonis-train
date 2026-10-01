@@ -48,17 +48,16 @@ def get_prediction_labels(
     separates the two parts.
 
     Args:
-        prediction (``Tensor``): Boxes of shape ``[M, 6]``, with rows
+        prediction: Boxes of shape ``[M, 6]``, with rows
             ``[x1, y1, x2, y2, conf, class]``.
-        label_dict (``Mapping[int, str] | None``): Class names by class
-            index. A class without a name, or every class when ``None``,
-            gets its index as the name.
-        draw_labels (bool): Whether the labels hold the class names.
-        draw_scores (bool): Whether the labels hold the confidences.
+        label_dict: Class names by class index. A class without a name,
+            or every class when ``None``, gets its index as the name.
+        draw_labels: Whether the labels hold the class names.
+        draw_scores: Whether the labels hold the confidences.
 
     Returns:
-        list[str] | None: One label for each box, or ``None`` when both
-        ``draw_labels`` and ``draw_scores`` are ``False``.
+        One label for each box, or ``None`` when both ``draw_labels``
+        and ``draw_scores`` are ``False``.
 
     Example:
         >>> import torch
@@ -105,12 +104,12 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
     ``height``. It then closes the figure with ``plt.close``.
 
     Args:
-        fig (``Figure``): The matplotlib figure to render.
-        width (int): The width of the image, in pixels.
-        height (int): The height of the image, in pixels.
+        fig: The matplotlib figure to render.
+        width: The width of the image, in pixels.
+        height: The height of the image, in pixels.
 
     Returns:
-        ``Tensor``: A ``uint8`` image of shape ``[3, height, width]``.
+        A ``uint8`` image of shape ``[3, height, width]``.
 
     Example:
         >>> import matplotlib.pyplot as plt
@@ -140,15 +139,14 @@ def torch_img_to_numpy(
     truncates it to integers. It clips all values to ``[0, 255]``.
 
     Args:
-        img (``Tensor``): An image of shape ``[C, H, W]``. A floating
-            point image has values in ``[0, 1]``.
-        reverse_colors (bool): Whether to swap the first and the third
-            channel, for example from RGB to BGR. The image must then
-            have three channels.
+        img: An image of shape ``[C, H, W]``. A floating point image has
+            values in ``[0, 1]``.
+        reverse_colors: Whether to swap the first and the third channel,
+            for example from RGB to BGR. The image must then have three
+            channels.
 
     Returns:
-        ``npt.NDArray[np.uint8]``: A new contiguous image of shape
-        ``[H, W, C]``.
+        A new contiguous image of shape ``[H, W, C]``.
 
     Example:
         >>> import torch
@@ -175,10 +173,10 @@ def numpy_to_torch_img(img: np.ndarray) -> Tensor:
     The result shares its memory with ``img`` and keeps its dtype.
 
     Args:
-        img (``np.ndarray``): An image of shape ``[H, W, C]``.
+        img: An image of shape ``[H, W, C]``.
 
     Returns:
-        ``Tensor``: A view of shape ``[C, H, W]``.
+        A view of shape ``[C, H, W]``.
 
     Example:
         >>> import numpy as np
@@ -202,14 +200,14 @@ def preprocess_images(
     ``[0, 255]``.
 
     Args:
-        imgs (``Tensor``): Images of shape ``[B, C, H, W]``.
-        mean (list[float] | float | None): The mean of the normalization,
-            one value for each channel or one value for all channels.
-        std (list[float] | float | None): The standard deviation of the
-            normalization, in the same form as ``mean``.
+        imgs: Images of shape ``[B, C, H, W]``.
+        mean: The mean of the normalization, one value for each channel
+            or one value for all channels.
+        std: The standard deviation of the normalization, in the same
+            form as ``mean``.
 
     Returns:
-        ``Tensor``: A new ``uint8`` tensor of shape ``[B, C, H, W]``.
+        A new ``uint8`` tensor of shape ``[B, C, H, W]``.
 
     Example:
         >>> import torch
@@ -245,20 +243,18 @@ def draw_segmentation_targets(
     one mask gets the color black before the blend.
 
     Args:
-        image (``Tensor``): An RGB image of shape ``[3, H, W]``, of dtype
-            ``uint8``, or floating point with values in ``[0, 1]``.
-        target (``Tensor``): Masks of shape ``[N, H, W]``, or one mask of
-            shape ``[H, W]``. Every non-zero value marks a pixel of the
-            mask.
-        alpha (float): The opacity of the masks, from ``0`` for
-            transparent to ``1`` for opaque.
-        colors (``Color | list[Color] | None``): One color for each
-            mask, or one color for all masks. When ``None``,
-            ``torchvision`` selects the colors.
+        image: An RGB image of shape ``[3, H, W]``, of dtype ``uint8``,
+            or floating point with values in ``[0, 1]``.
+        target: Masks of shape ``[N, H, W]``, or one mask of shape
+            ``[H, W]``. Every non-zero value marks a pixel of the mask.
+        alpha: The opacity of the masks, from ``0`` for transparent to
+            ``1`` for opaque.
+        colors: One color for each mask, or one color for all masks.
+            When ``None``, ``torchvision`` selects the colors.
 
     Returns:
-        ``Tensor``: A new image on the CPU, of the same shape and dtype
-        as ``image``. When ``target`` holds no masks, ``torchvision``
+        A new image on the CPU, of the same shape and dtype as
+        ``image``. When ``target`` holds no masks, ``torchvision``
         issues a warning, and the function returns the image unchanged.
 
     Example:
@@ -287,16 +283,15 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     It does not change ``label``.
 
     Args:
-        img (``Tensor``): A ``uint8`` image of shape ``[C, H, W]``.
-        label (``Tensor``): Boxes of shape ``[N, 4]``, with rows
-            ``[x, y, w, h]`` normalized to ``[0, 1]``.
-        **kwargs (``Any``): Keyword arguments forwarded to
+        img: A ``uint8`` image of shape ``[C, H, W]``.
+        label: Boxes of shape ``[N, 4]``, with rows ``[x, y, w, h]``
+            normalized to ``[0, 1]``.
+        **kwargs: Keyword arguments forwarded to
             ``draw_bounding_boxes``, such as ``labels``, ``colors``, and
             ``width``.
 
     Returns:
-        ``Tensor``: A new image of the same shape as ``img``, with the
-        boxes drawn.
+        A new image of the same shape as ``img``, with the boxes drawn.
 
     Example:
         The box ``[0.25, 0.25, 0.5, 0.5]`` on an image of width ``8``
@@ -331,18 +326,16 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     the ``x`` and ``y`` values of ``label`` in place.
 
     Args:
-        img (``Tensor``): A ``uint8`` image of shape ``[C, H, W]``.
-        label (``Tensor``): Keypoints of shape ``[N, 3K]``, with rows
+        img: A ``uint8`` image of shape ``[C, H, W]``.
+        label: Keypoints of shape ``[N, 3K]``, with rows
             ``[x_1, y_1, v_1, ..., x_K, y_K, v_K]``. The coordinates are
             normalized to ``[0, 1]``.
-        **kwargs (``Any``): Keyword arguments forwarded to
-            ``draw_keypoints``, such as ``colors``, ``radius``, and
-            ``connectivity``.
+        **kwargs: Keyword arguments forwarded to ``draw_keypoints``,
+            such as ``colors``, ``radius``, and ``connectivity``.
 
     Returns:
-        ``Tensor``: A new image of the same shape as ``img``, with the
-        keypoints drawn. ``img`` itself when ``label`` holds no
-        keypoints.
+        A new image of the same shape as ``img``, with the keypoints
+        drawn. ``img`` itself when ``label`` holds no keypoints.
 
     Example:
         The keypoint lands on the pixel in row ``1`` and column ``2``.
@@ -392,19 +385,16 @@ def denormalize(
     ``[0, 255]``, and truncates it to ``uint8``.
 
     Args:
-        img (``Tensor``): A normalized image of shape ``[C, H, W]``.
-        mean (list[float] | float | None): The mean of the normalization,
-            one value for each channel or one ``float`` for all channels.
-            ``None`` selects ``0``.
-        std (list[float] | float | None): The standard deviation of the
-            normalization, in the same form as ``mean``. ``None`` selects
-            ``1``.
-        to_uint8 (bool): Whether to scale the result to a ``uint8``
-            image.
+        img: A normalized image of shape ``[C, H, W]``.
+        mean: The mean of the normalization, one value for each channel
+            or one ``float`` for all channels. ``None`` selects ``0``.
+        std: The standard deviation of the normalization, in the same
+            form as ``mean``. ``None`` selects ``1``.
+        to_uint8: Whether to scale the result to a ``uint8`` image.
 
     Returns:
-        ``Tensor``: A new image of shape ``[C, H, W]``, of dtype ``uint8``
-        with ``to_uint8``.
+        A new image of shape ``[C, H, W]``, of dtype ``uint8`` with
+        ``to_uint8``.
 
     Example:
         >>> import torch
@@ -448,12 +438,12 @@ def get_denormalized_images(cfg: Config, images: Tensor) -> Tensor:
     maps on it.
 
     Args:
-        cfg (Config): The config of the model.
-        images (``Tensor``): The input images of shape ``[B, C, H, W]``,
-            as the loader returns them.
+        cfg: The config of the model.
+        images: The input images of shape ``[B, C, H, W]``, as the
+            loader returns them.
 
     Returns:
-        ``Tensor``: A new ``uint8`` tensor of shape ``[B, C, H, W]``.
+        A new ``uint8`` tensor of shape ``[B, C, H, W]``.
 
     """
     normalize_params = cfg.trainer.preprocessing.normalize.params
@@ -472,11 +462,11 @@ def number_to_hsl(seed: int) -> tuple[float, float, float]:
     and the lightness is ``0.5``.
 
     Args:
-        seed (int): The integer to map.
+        seed: The integer to map.
 
     Returns:
-        tuple[float, float, float]: The hue in degrees, in ``[0, 360)``,
-        the saturation, and the lightness.
+        The hue in degrees, in ``[0, 360)``, the saturation, and the
+        lightness.
 
     Example:
         >>> number_to_hsl(3)
@@ -497,13 +487,11 @@ def hsl_to_rgb(hsl: tuple[float, float, float]) -> Color:
     The function truncates each channel to an integer.
 
     Args:
-        hsl (tuple[float, float, float]): The hue in degrees, in
-            ``[0, 360)``, and the saturation and the lightness, in
-            ``[0, 1]``.
+        hsl: The hue in degrees, in ``[0, 360)``, and the saturation and
+            the lightness, in ``[0, 1]``.
 
     Returns:
-        tuple[int, int, int]: The red, green, and blue values, in
-        ``[0, 255]``.
+        The red, green, and blue values, in ``[0, 255]``.
 
     Example:
         >>> hsl_to_rgb((0, 1.0, 0.5))
@@ -523,11 +511,10 @@ def get_color(seed: int) -> Color:
     class index as ``seed``.
 
     Args:
-        seed (int): The integer that selects the color.
+        seed: The integer that selects the color.
 
     Returns:
-        tuple[int, int, int]: The red, green, and blue values, in
-        ``[0, 255]``.
+        The red, green, and blue values, in ``[0, 255]``.
 
     Example:
         >>> get_color(0)
@@ -558,17 +545,16 @@ def dynamically_determine_font_scale(
     more keeps ``thickness``.
 
     Args:
-        height (int): The image height, in pixels.
-        width (int): The image width, in pixels.
-        thickness (int): The line thickness for a scale of ``1`` or
-            more.
-        font_scale (float | None): A fixed font scale. ``None`` selects
-            the computed scale.
-        scale_factor (float): The effective image size, in pixels, that
-            gives the scale ``1``.
+        height: The image height, in pixels.
+        width: The image width, in pixels.
+        thickness: The line thickness for a scale of ``1`` or more.
+        font_scale: A fixed font scale. ``None`` selects the computed
+            scale.
+        scale_factor: The effective image size, in pixels, that gives
+            the scale ``1``.
 
     Returns:
-        tuple[float, int]: The font scale and the line thickness.
+        The font scale and the line thickness.
 
     Example:
         >>> dynamically_determine_font_scale(500, 500, thickness=2)
@@ -600,14 +586,13 @@ def potentially_upscale_masks(
     a factor of ``1``, the function returns ``image_masks`` unchanged.
 
     Args:
-        image_masks (``Tensor``): Masks of shape ``[N, H, W]``. Every
-            non-zero value marks a pixel of a mask.
-        scale (float): The resize factor.
+        image_masks: Masks of shape ``[N, H, W]``. Every non-zero value
+            marks a pixel of a mask.
+        scale: The resize factor.
 
     Returns:
-        ``Tensor``: Boolean masks of shape
-        ``[N, int(H * scale), int(W * scale)]``, or ``image_masks``
-        itself when ``scale`` is ``1``.
+        Boolean masks of shape ``[N, int(H * scale), int(W * scale)]``,
+        or ``image_masks`` itself when ``scale`` is ``1``.
 
     Example:
         >>> import torch
@@ -688,15 +673,13 @@ def combine_visualizations(
       ``NotImplementedError``.
 
     Args:
-        visualization (``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]``):
-            The output of a visualizer. The images have the shape
-            ``[B, C, H, W]``, and the two batches of a pair have the same
-            ``B`` and ``C``.
+        visualization: The output of a visualizer. The images have the
+            shape ``[B, C, H, W]``, and the two batches of a pair have
+            the same ``B`` and ``C``.
 
     Returns:
-        ``Tensor``: The images of shape ``[B, C, H, W]``. For a pair,
-        ``H`` is the larger height and ``W`` is the sum of the resized
-        widths.
+        The images of shape ``[B, C, H, W]``. For a pair, ``H`` is the
+        larger height and ``W`` is the sum of the resized widths.
 
     Raises:
         NotImplementedError: When the second item is a list or a tuple
@@ -806,17 +789,14 @@ def _resize_to_match(
     height.
 
     Args:
-        fst (``Tensor``): The first image, of shape ``[..., H, W]``.
-        snd (``Tensor``): The second image, of shape ``[..., H, W]``.
-        keep_size (``Literal["larger", "smaller", "first", "second"]``):
-            The rule for the target size.
-        resize_along (``Literal["width", "height", "exact"]``): The
-            dimension that the images share.
-        keep_aspect_ratio (bool): Whether each image keeps its aspect
-            ratio.
+        fst: The first image, of shape ``[..., H, W]``.
+        snd: The second image, of shape ``[..., H, W]``.
+        keep_size: The rule for the target size.
+        resize_along: The dimension that the images share.
+        keep_aspect_ratio: Whether each image keeps its aspect ratio.
 
     Returns:
-        ``tuple[Tensor, Tensor]``: The resized ``fst`` and ``snd``.
+        The resized ``fst`` and ``snd``.
 
     Raises:
         ValueError: When ``resize_along`` or ``keep_size`` is not one of

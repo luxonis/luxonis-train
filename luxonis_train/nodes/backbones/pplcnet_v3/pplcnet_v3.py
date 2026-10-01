@@ -114,28 +114,26 @@ class PPLCNetV3(BaseNode):
         r"""Initialize the stem, the layers, and the pooling.
 
         Args:
-            scale (float): The width multiplier. `scale_up` applies it to
-                the ``16`` output channels of the stem and to the
+            scale: The width multiplier. `scale_up` applies it to the
+                ``16`` output channels of the stem and to the
                 ``out_channels`` of each layer.
-            n_branches (int): The number of dense branches of each
-                depthwise and pointwise convolution in the layers.
-            use_detection_backbone (bool): ``True`` selects detection
-                mode. Then :math:`1 \times 1` convolutions with a bias
-                map the outputs of layers ``1`` to ``4`` to
-                ``int(16 * scale)``, ``int(24 * scale)``,
-                ``int(56 * scale)``, and ``int(480 * scale)`` channels.
-                ``False`` selects recognition mode.
-            max_text_len (int): The output width of the pooling in
-                recognition mode. The constructor also builds the pooling
-                in detection mode, but `forward` does not run it.
-            layer_params (``list[LayerParamsDict] | None``): The
-                parameters of the layers, one dictionary for each layer,
-                in order. ``None`` or an empty list builds no layers.
-                With fewer than five layers, detection mode raises
-                ``IndexError`` in the constructor, and recognition mode
-                raises ``IndexError`` in `forward`.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            n_branches: The number of dense branches of each depthwise
+                and pointwise convolution in the layers.
+            use_detection_backbone: ``True`` selects detection mode.
+                Then :math:`1 \times 1` convolutions with a bias map the
+                outputs of layers ``1`` to ``4`` to ``int(16 * scale)``,
+                ``int(24 * scale)``, ``int(56 * scale)``, and
+                ``int(480 * scale)`` channels. ``False`` selects
+                recognition mode.
+            max_text_len: The output width of the pooling in recognition
+                mode. The constructor also builds the pooling in
+                detection mode, but `forward` does not run it.
+            layer_params: The parameters of the layers, one dictionary
+                for each layer, in order. ``None`` or an empty list
+                builds no layers. With fewer than five layers, detection
+                mode raises ``IndexError`` in the constructor, and
+                recognition mode raises ``IndexError`` in `forward`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -199,13 +197,13 @@ class PPLCNetV3(BaseNode):
         r"""Run the stem and the first five layers on a batch of images.
 
         Args:
-            x (``Tensor``): The input images, of shape ``[B, C, H, W]``.
+            x: The input images, of shape ``[B, C, H, W]``.
 
         Returns:
-            ``list[Tensor]``: In recognition mode, five tensors: the
-            outputs of layers ``1`` to ``4``, then the output of layer
-            ``4`` pooled to ``[B, C_4, 1, max_text_len]``. In detection
-            mode, four tensors: the outputs of layers ``1`` to ``4``
+            In recognition mode, five tensors. These are the outputs of
+            layers ``1`` to ``4``, then the output of layer ``4`` pooled
+            to ``[B, C_4, 1, max_text_len]``. In detection mode, four
+            tensors. These are the outputs of layers ``1`` to ``4``
             after their :math:`1 \times 1` convolutions.
 
         Example:
@@ -255,9 +253,8 @@ class PPLCNetV3(BaseNode):
         `PPLCNetV3` lists all values. Each call builds new dictionaries.
 
         Returns:
-            tuple[str, dict[str, PPLCNetVariantDict]]: The name of the
-            default variant, ``"rec-light"``, and a dictionary that maps
-            it to its constructor arguments.
+            The name of the default variant, ``"rec-light"``, and a
+            dictionary that maps it to its constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes.backbones import PPLCNetV3
@@ -316,15 +313,14 @@ class LayerParamsDict(TypedDict):
     `LCNetV3Block` for each position.
 
     Attributes:
-        kernel_sizes (list[int]): The kernel size of the depthwise
-            convolution of each block.
-        out_channels (list[int]): The output channels of each block,
-            before `scale_up` scales them. The last value sets the output
-            channels of the layer.
-        strides (list[int]): The stride of the depthwise convolution of
+        kernel_sizes: The kernel size of the depthwise convolution of
             each block.
-        use_se (list[bool]): Whether each block has a
-            `SqueezeExciteBlock` between its two convolutions.
+        out_channels: The output channels of each block, before
+            `scale_up` scales them. The last value sets the output
+            channels of the layer.
+        strides: The stride of the depthwise convolution of each block.
+        use_se: Whether each block has a `SqueezeExciteBlock` between
+            its two convolutions.
 
     """
 
@@ -342,13 +338,11 @@ class PPLCNetVariantDict(TypedDict):
     the keys in full. A variant does not set ``max_text_len``.
 
     Attributes:
-        scale (float): The width multiplier of the stem and the layers.
-        n_branches (int): The number of dense branches of each
-            convolution in the layers.
-        use_detection_backbone (bool): Whether the node runs in
-            detection mode.
-        layer_params (``list[LayerParamsDict]``): The parameters of the
-            layers, in order.
+        scale: The width multiplier of the stem and the layers.
+        n_branches: The number of dense branches of each convolution in
+            the layers.
+        use_detection_backbone: Whether the node runs in detection mode.
+        layer_params: The parameters of the layers, in order.
 
     """
 

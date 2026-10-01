@@ -93,52 +93,47 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         colors.
 
         Args:
-            labels (dict[int, str] | list[str] | None): Class names to
-                draw. A dictionary maps a class index to a name. A list
-                maps by position. When ``None`` or empty, the names come
-                from the ``classes`` of the node, so the visualizer then
-                needs a ``node``.
-            draw_labels (bool): Whether to draw the class name next to
-                each box. Applies to the predictions and the targets.
-            draw_scores (bool): Whether to write the confidence of each
+            labels: Class names to draw. A dictionary maps a class index
+                to a name. A list maps by position. When ``None`` or
+                empty, the names come from the ``classes`` of the node,
+                so the visualizer then needs a ``node``.
+            draw_labels: Whether to draw the class name next to each
+                box. Applies to the predictions and the targets.
+            draw_scores: Whether to write the confidence of each
                 predicted box, with two decimals, in its label. Applies
                 to the predictions only. Without ``draw_labels``, the
                 label is the confidence alone.
-            colors (dict[str, Color] | list[Color] | None): Colors of
-                the masks and the boxes. A dictionary maps a class name
-                to a color. A list maps by class index. When ``None``,
-                each class gets a distinct color from `get_color`,
-                seeded with its index.
-            fill (bool): The drawing methods do not read it.
-            width (int | None): Line width of the boxes, in pixels. When
-                ``None`` or ``0``, the width is one percent of the
-                smaller canvas side, rounded down, and at least ``1``.
-            font (str | None): The drawing methods do not read it.
-            font_size (int | None): The drawing methods do not read it.
-            alpha (float): Opacity of the masks, from ``0``
-                (transparent) to ``1`` (opaque).
-            visibility_threshold (float): The lowest confidence of a
-                visible predicted keypoint.
+            colors: Colors of the masks and the boxes. A dictionary maps
+                a class name to a color. A list maps by class index.
+                When ``None``, each class gets a distinct color from
+                `get_color`, seeded with its index.
+            fill: The drawing methods do not read it.
+            width: Line width of the boxes, in pixels. When ``None`` or
+                ``0``, the width is one percent of the smaller canvas
+                side, rounded down, and at least ``1``.
+            font: The drawing methods do not read it.
+            font_size: The drawing methods do not read it.
+            alpha: Opacity of the masks, from ``0`` (transparent) to
+                ``1`` (opaque).
+            visibility_threshold: The lowest confidence of a visible
+                predicted keypoint.
                 `KeypointVisualizer.draw_predictions` tells how the
                 visualizer draws the other keypoints.
-            connectivity (list[tuple[int, int]] | None): Pairs of
-                keypoint indices to connect with lines, the skeleton.
-                Applies to the predictions and the targets. ``None``
-                draws no lines.
-            visible_color (Color): Color of the visible predicted
-                keypoints, and of all target keypoints.
-            nonvisible_color (Color | None): Color of the predicted
-                keypoints below ``visibility_threshold``. When ``None``,
-                the visualizer does not draw them at their coordinates.
-            radius (int | None): Radius of a keypoint, in pixels. When
-                ``None``, `forward` picks it from the size of each
-                canvas.
-            draw_indices (bool): Whether to write the index of each
-                keypoint next to it. `KeypointVisualizer.draw_targets`
-                tells when this raises ``RuntimeError`` for the target
-                keypoints.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            connectivity: Pairs of keypoint indices to connect with
+                lines, the skeleton. Applies to the predictions and the
+                targets. ``None`` draws no lines.
+            visible_color: Color of the visible predicted keypoints, and
+                of all target keypoints.
+            nonvisible_color: Color of the predicted keypoints below
+                ``visibility_threshold``. When ``None``, the visualizer
+                does not draw them at their coordinates.
+            radius: Radius of a keypoint, in pixels. When ``None``,
+                `forward` picks it from the size of each canvas.
+            draw_indices: Whether to write the index of each keypoint
+                next to it. `KeypointVisualizer.draw_targets` tells when
+                this raises ``RuntimeError`` for the target keypoints.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -205,39 +200,35 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         otherwise.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the predictions on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the targets on.
-            boundingbox (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]`` in pixels.
-            instance_segmentation (``list[Tensor]``): One tensor per
-                image, of shape ``[M_i, H_0, W_0]``, with one binary
-                mask for each box. ``H_0`` and ``W_0`` are the image
-                size before the ``scale`` resize.
-            keypoints (``list[Tensor]``): One tensor per image, of shape
-                ``[M_i, K, 3]``. Each keypoint is ``(x, y, confidence)``,
-                with ``x`` and ``y`` in pixels.
-            target_boundingbox (``Tensor | None``): Boxes of shape
-                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
-                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
-                batch has no ``boundingbox`` labels.
-            target_instance_segmentation (``Tensor | None``): Binary
-                masks of shape ``[N, H_0, W_0]``, one for each target
-                box. ``None`` when the batch has no
-                ``instance_segmentation`` labels.
-            target_keypoints (``Tensor | None``): Keypoints of shape
-                ``[N, 1 + 3 * K]`` with rows
-                ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the targets on.
+            boundingbox: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]`` in pixels.
+            instance_segmentation: One tensor per image, of shape
+                ``[M_i, H_0, W_0]``, with one binary mask for each box.
+                ``H_0`` and ``W_0`` are the image size before the
+                ``scale`` resize.
+            keypoints: One tensor per image, of shape ``[M_i, K, 3]``.
+                Each keypoint is ``(x, y, confidence)``, with ``x`` and
+                ``y`` in pixels.
+            target_boundingbox: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``, ``xywh``
+                normalized to ``[0, 1]``. ``None`` when the batch has no
+                ``boundingbox`` labels.
+            target_instance_segmentation: Binary masks of shape
+                ``[N, H_0, W_0]``, one for each target box. ``None``
+                when the batch has no ``instance_segmentation`` labels.
+            target_keypoints: Keypoints of shape ``[N, 1 + 3 * K]`` with
+                rows ``[batch_index, x_1, y_1, v_1, ..., v_K]``. The
                 coordinates are normalized to ``[0, 1]``. ``None`` when
                 the batch has no ``keypoints`` labels.
 
         Returns:
-            ``tuple[Tensor, Tensor] | Tensor``: The pair
-            ``(targets, predictions)`` of drawn images when any of the
-            three targets is set; otherwise only the predictions image.
-            When only one of ``target_boundingbox`` and
+            The pair ``(targets, predictions)`` of drawn images when any
+            of the three targets is set; otherwise only the predictions
+            image. When only one of ``target_boundingbox`` and
             ``target_instance_segmentation`` is set and
             ``target_keypoints`` is ``None``, the targets image is
             ``target_canvas`` itself.

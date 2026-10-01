@@ -117,31 +117,31 @@ class PrecisionBBoxHead(BaseDetectionHead):
         `PrecisionDFLDetectionLoss` reads these two values from the node.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of scales. The head
-                reads the last ``n_heads`` outputs of the input node. An
+            n_heads: Number of scales. The head reads the last
+                ``n_heads`` outputs of the input node. An
                 ``attach_index`` param replaces this selection. When the
                 head gets fewer outputs, it logs a warning and uses that
                 number. When an ``attach_index`` selects more outputs,
                 the head builds one block for each output but keeps only
-                ``n_heads`` strides. The construction then fails, because
-                `initialize_weights` raises ``ValueError``.
-            conf_thres (float): NMS keeps only the boxes whose maximum
-                class score is above this value. The value must be in
+                ``n_heads`` strides. The construction then fails,
+                because `initialize_weights` raises ``ValueError``.
+            conf_thres: NMS keeps only the boxes whose maximum class
+                score is above this value. The value must be in
                 ``[0, 1]``. Otherwise, NMS raises ``ValueError`` in
                 evaluation mode.
-            iou_thres (float): NMS removes a box when its IoU with a box
-                of the same class and a higher score is above this
-                value. The value must be in ``[0, 1]``. Otherwise, NMS
-                raises ``ValueError`` in evaluation mode.
-            max_det (int): Maximum number of boxes that NMS keeps for
-                each image.
-            reg_max (int): Number of distance bins for each side of a
-                box. The regression branch gives ``4 * reg_max`` channels.
-                With a value above ``1``, `DFL` converts the bins to a
-                distance. With ``1``, the head uses the regression output
-                as the distance directly.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``original_in_shape``, the input sizes through
+            iou_thres: NMS removes a box when its IoU with a box of the
+                same class and a higher score is above this value. The
+                value must be in ``[0, 1]``. Otherwise, NMS raises
+                ``ValueError`` in evaluation mode.
+            max_det: Maximum number of boxes that NMS keeps for each
+                image.
+            reg_max: Number of distance bins for each side of a box. The
+                regression branch gives ``4 * reg_max`` channels. With a
+                value above ``1``, `DFL` converts the bins to a
+                distance. With ``1``, the head uses the regression
+                output as the distance directly.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``original_in_shape``, the input sizes through
                 ``input_shapes`` or ``in_sizes``, and the class count
                 through ``n_classes`` or ``dataset_metadata``.
 
@@ -187,17 +187,16 @@ class PrecisionBBoxHead(BaseDetectionHead):
         also calls the method.
 
         Args:
-            inputs (``list[Tensor]``): One feature map for each scale, of
-                shape ``[B, C_i, H_i, W_i]``. The list must have one map
-                for each block. Otherwise, ``zip`` raises ``ValueError``.
+            inputs: One feature map for each scale, of shape
+                ``[B, C_i, H_i, W_i]``. The list must have one map for
+                each block. Otherwise, ``zip`` raises ``ValueError``.
 
         Returns:
-            ``tuple[list[Tensor], list[Tensor], list[Tensor]]``: Three
-            lists with one tensor for each scale, in the order of
-            ``inputs``:
+            Three lists with one tensor for each scale, in the order of
+            ``inputs``.
 
-            - the features: the distance bin logits and the class logits,
-              joined along the channel axis, of shape
+            - the features, which join the distance bin logits and the
+              class logits along the channel axis, of shape
               ``[B, 4 * reg_max + n_classes, H_i, W_i]``;
             - the class logits, of shape ``[B, n_classes, H_i, W_i]``;
             - the distance bin logits, of shape
@@ -263,11 +262,11 @@ class PrecisionBBoxHead(BaseDetectionHead):
           ``H_i * W_i``.
 
         Args:
-            inputs (``list[Tensor]``): One feature map for each scale, of
-                shape ``[B, C_i, H_i, W_i]``.
+            inputs: One feature map for each scale, of shape
+                ``[B, C_i, H_i, W_i]``.
 
         Returns:
-            ``Packet[Tensor]``: The packet of the current mode.
+            The packet of the current mode.
 
         Example:
             A new head is in training mode:
@@ -355,10 +354,9 @@ class PrecisionBBoxHead(BaseDetectionHead):
         close to :math:`5 / \left(n_{classes} (H / s)^2\right)`.
 
         Args:
-            method (str | None): The method for
-                `BaseNode.initialize_weights`. ``"yolo"`` changes the batch
-                norm and activation settings. Other values skip that
-                step.
+            method: The method for `BaseNode.initialize_weights`.
+                ``"yolo"`` changes the batch norm and activation
+                settings. Other values skip that step.
 
         Example:
             The first scale has the stride ``8``. For ``H = 256`` and
@@ -424,17 +422,16 @@ class PrecisionBBoxHead(BaseDetectionHead):
         """Build the export map of each scale.
 
         Args:
-            classes_list (``list[Tensor]``): Class logits of shape
+            classes_list: Class logits of shape
                 ``[B, n_classes, H_i, W_i]`` for each scale.
-            regressions_list (``list[Tensor]``): Distance bin logits of
-                shape ``[B, 4 * reg_max, H_i, W_i]`` for each scale.
+            regressions_list: Distance bin logits of shape
+                ``[B, 4 * reg_max, H_i, W_i]`` for each scale.
 
         Returns:
-            ``list[Tensor]``: One map of shape
-            ``[B, 5 + n_classes, H_i, W_i]`` for each of the ``n_heads``
-            scales. Its channels are the distances from ``dfl``, the
-            maximum class score, and the class scores. The scores are
-            sigmoid probabilities.
+            One map of shape ``[B, 5 + n_classes, H_i, W_i]`` for each
+            of the ``n_heads`` scales. Its channels are the distances
+            from ``dfl``, the maximum class score, and the class scores.
+            The scores are sigmoid probabilities.
 
         """
         bboxes = []
@@ -452,15 +449,15 @@ class PrecisionBBoxHead(BaseDetectionHead):
         """Decode the predictions into the input tensor of NMS.
 
         Args:
-            classes_list (``list[Tensor]``): Class logits of shape
+            classes_list: Class logits of shape
                 ``[B, n_classes, H_i, W_i]`` for each scale.
-            regressions_list (``list[Tensor]``): Distance bin logits of
-                shape ``[B, 4 * reg_max, H_i, W_i]`` for each scale.
+            regressions_list: Distance bin logits of shape
+                ``[B, 4 * reg_max, H_i, W_i]`` for each scale.
 
         Returns:
-            ``Tensor``: Tensor of shape ``[B, N, 5 + n_classes]``, where
-            ``N`` is the sum of ``H_i * W_i``. Each row holds the ``xyxy``
-            box in pixels, a constant ``1``, and the sigmoid class scores.
+            Tensor of shape ``[B, N, 5 + n_classes]``, where ``N`` is
+            the sum of ``H_i * W_i``. Each row holds the ``xyxy`` box in
+            pixels, a constant ``1``, and the sigmoid class scores.
 
         """
         raw_bboxes = self._construct_raw_bboxes(classes_list, regressions_list)

@@ -15,7 +15,7 @@ class ModuleFactory(Protocol):
     """Type of a callable that builds a block from its channel counts.
 
     A matching callable takes ``in_channels`` and ``out_channels`` and
-    returns a `torch.nn.Module`. A block class such as
+    returns a ``torch.nn.Module``. A block class such as
     `GeneralReparameterizableBlock` matches. `BottleRep` calls its
     factory with keyword arguments.
 
@@ -32,14 +32,14 @@ def autopad(kernel_size: T, padding: T | None = None) -> T:
     ``1``.
 
     Args:
-        kernel_size (``int | tuple[int, ...]``): The kernel size, as one
-            value or one value for each axis.
-        padding (``int | tuple[int, ...] | None``): An explicit padding.
-            ``None`` selects the computed padding.
+        kernel_size: The kernel size, as one value or one value for each
+            axis.
+        padding: An explicit padding. ``None`` selects the computed
+            padding.
 
     Returns:
-        ``int | tuple[int, ...]``: ``padding`` when it is not ``None``.
-        Otherwise ``kernel_size // 2`` for each value, with the type of
+        ``padding`` when it is not ``None``. Otherwise
+        ``kernel_size // 2`` for each value, with the type of
         ``kernel_size``.
 
     Example:
@@ -66,13 +66,12 @@ def forward_gather(x: Tensor, modules: Iterable[nn.Module]) -> list[Tensor]:
     module takes ``x``.
 
     Args:
-        x (``Tensor``): The input of the first module.
-        modules (``Iterable[nn.Module]``): The modules, in the order in
-            which they run.
+        x: The input of the first module.
+        modules: The modules, in the order in which they run.
 
     Returns:
-        ``list[Tensor]``: The output of each module, in the same order.
-        The list does not hold ``x``.
+        The output of each module, in the same order. The list does not
+        hold ``x``.
 
     Example:
         >>> import torch

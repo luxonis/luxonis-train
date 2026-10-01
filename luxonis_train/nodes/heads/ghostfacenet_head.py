@@ -123,19 +123,19 @@ class GhostFaceNetHead(BaseHead):
         :math:`H` and :math:`W` from ``original_in_shape``.
 
         Args:
-            embedding_size (int): The number of values in each embedding.
-                It is the number of output channels of the ``1x1``
+            embedding_size: The number of values in each embedding. It
+                is the number of output channels of the ``1x1``
                 convolution.
-            cross_batch_memory_size (int | None): The maximum number of
-                the newest embeddings that the embedding losses and
-                metrics keep in memory across batches. ``None`` turns this
-                memory off. A loss that ``CrossBatchMemory`` does not
-                support logs a warning and ignores the value. The head
-                itself does not read the value.
-            dropout (float): The probability that the dropout layer sets
-                a value to zero in training mode, in ``[0, 1]``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``original_in_shape``, and ``input_shapes`` or
+            cross_batch_memory_size: The maximum number of the newest
+                embeddings that the embedding losses and metrics keep in
+                memory across batches. ``None`` turns this memory off. A
+                loss that ``CrossBatchMemory`` does not support logs a
+                warning and ignores the value. The head itself does not
+                read the value.
+            dropout: The probability that the dropout layer sets a value
+                to zero in training mode, in ``[0, 1]``.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``original_in_shape``, and ``input_shapes`` or
                 ``in_sizes``.
 
         """
@@ -167,12 +167,12 @@ class GhostFaceNetHead(BaseHead):
         r"""Compute the embeddings of a batch of feature maps.
 
         Args:
-            x (``Tensor``): The last feature map of the backbone, of shape
+            x: The last feature map of the backbone, of shape
                 ``[B, C, ceil(H / 32), ceil(W / 32)]``. ``H`` and ``W``
                 come from ``original_in_shape``.
 
         Returns:
-            ``Tensor``: The embeddings of shape ``[B, embedding_size]``.
+            The embeddings of shape ``[B, embedding_size]``.
             `BaseNode.run` puts them under the ``"embeddings"`` key.
 
         Example:
@@ -199,8 +199,8 @@ class GhostFaceNetHead(BaseHead):
         r"""Initialize the convolutions and the 2D batch norm layers.
 
         The method first calls `BaseNode.initialize_weights` with
-        ``method``. Then it draws the weights of every `torch.nn.Conv2d`
-        and `torch.nn.Linear` from a normal distribution with the mean
+        ``method``. Then it draws the weights of every ``torch.nn.Conv2d``
+        and ``torch.nn.Linear`` from a normal distribution with the mean
         ``0`` and this standard deviation:
 
         .. math::
@@ -211,18 +211,17 @@ class GhostFaceNetHead(BaseHead):
         ``0.25``. This is the Kaiming normal initialization for a leaky
         ReLU with the slope ``0.25``. The biases do not change.
 
-        Every `torch.nn.BatchNorm2d` then gets ``momentum=0.9`` and
+        Every ``torch.nn.BatchNorm2d`` then gets ``momentum=0.9`` and
         ``eps=1e-5``. The 1D batch norm keeps its defaults. PyTorch uses
         ``momentum`` as the weight of the new batch in the running
         statistics. With ``0.9``, these statistics thus follow the last
         batches closely.
 
         Args:
-            method (str | None): The method for
-                `BaseNode.initialize_weights`. The value has no effect on
-                this head. The head has no activation that ``"yolo"``
-                changes, and the method replaces the batch norm values of
-                ``"yolo"``.
+            method: The method for `BaseNode.initialize_weights`. The
+                value has no effect on this head. The head has no
+                activation that ``"yolo"`` changes, and the method
+                replaces the batch norm values of ``"yolo"``.
 
         Example:
             The node calls the method after construction:

@@ -93,32 +93,30 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         colors.
 
         Args:
-            labels (dict[int, str] | list[str] | None): Class names to
-                draw. A dictionary maps a class index to a name. A list
-                maps by position. When ``None`` or empty, the names come
-                from the ``classes`` of the node, so the visualizer then
-                needs a ``node``.
-            draw_labels (bool): Whether to draw the class name next to
-                each box. Applies to the predictions and the targets.
-            draw_scores (bool): Whether to write the confidence of each
+            labels: Class names to draw. A dictionary maps a class index
+                to a name. A list maps by position. When ``None`` or
+                empty, the names come from the ``classes`` of the node,
+                so the visualizer then needs a ``node``.
+            draw_labels: Whether to draw the class name next to each
+                box. Applies to the predictions and the targets.
+            draw_scores: Whether to write the confidence of each
                 predicted box, with two decimals, in its label. Applies
                 to the predictions only. Without ``draw_labels``, the
                 label is the confidence alone.
-            colors (dict[str, Color] | list[Color] | None): Colors of
-                the masks and the boxes. A dictionary maps a class name
-                to a color. A list maps by class index. When ``None``,
-                each class gets a distinct color from `get_color`,
-                seeded with its index.
-            fill (bool): The drawing methods do not read it.
-            width (int | None): Line width of the boxes, in pixels. When
-                ``None`` or ``0``, the width is one percent of the
-                smaller canvas side, rounded down, and at least ``1``.
-            font (str | None): The drawing methods do not read it.
-            font_size (int | None): The drawing methods do not read it.
-            alpha (float): Opacity of the masks, from ``0``
-                (transparent) to ``1`` (opaque).
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            colors: Colors of the masks and the boxes. A dictionary maps
+                a class name to a color. A list maps by class index.
+                When ``None``, each class gets a distinct color from
+                `get_color`, seeded with its index.
+            fill: The drawing methods do not read it.
+            width: Line width of the boxes, in pixels. When ``None`` or
+                ``0``, the width is one percent of the smaller canvas
+                side, rounded down, and at least ``1``.
+            font: The drawing methods do not read it.
+            font_size: The drawing methods do not read it.
+            alpha: Opacity of the masks, from ``0`` (transparent) to
+                ``1`` (opaque).
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -177,34 +175,33 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         one cause.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            pred_bboxes (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]``. The coordinates are
-                pixels of the unscaled image.
-            pred_masks (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, H_0, W_0]``, with one binary mask for each
-                box. ``H_0`` and ``W_0`` are the unscaled image size.
-            width (int | None): Line width of the boxes, in pixels. When
-                ``None`` or ``0``, the width is one percent of the
-                smaller canvas side, rounded down, and at least ``1``.
-            label_dict (``Mapping[int, str]``): Class index to class
-                name. Every predicted class must have a name here.
-            color_dict (dict[str, Color]): Class name to color. Every
-                predicted class must have a color here.
-            draw_labels (bool): Whether to write the class name in the
-                label of each box.
-            draw_scores (bool): Whether to write the confidence, with
-                two decimals, in the label of each box.
-            alpha (float): Opacity of the masks, from ``0``
-                (transparent) to ``1`` (opaque).
-            scale (float): Multiplier for the box coordinates and the
-                mask size. Pass the factor that scaled the canvas.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            pred_bboxes: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]``. The
+                coordinates are pixels of the unscaled image.
+            pred_masks: One tensor per image, of shape
+                ``[M_i, H_0, W_0]``, with one binary mask for each box.
+                ``H_0`` and ``W_0`` are the unscaled image size.
+            width: Line width of the boxes, in pixels. When ``None`` or
+                ``0``, the width is one percent of the smaller canvas
+                side, rounded down, and at least ``1``.
+            label_dict: Class index to class name. Every predicted class
+                must have a name here.
+            color_dict: Class name to color. Every predicted class must
+                have a color here.
+            draw_labels: Whether to write the class name in the label of
+                each box.
+            draw_scores: Whether to write the confidence, with two
+                decimals, in the label of each box.
+            alpha: Opacity of the masks, from ``0`` (transparent) to
+                ``1`` (opaque).
+            scale: Multiplier for the box coordinates and the mask size.
+                Pass the factor that scaled the canvas.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``
-            with the masks and boxes drawn.
+            A new tensor of the same shape as ``canvas`` with the masks
+            and boxes drawn.
 
         Example:
             >>> import torch
@@ -302,32 +299,31 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         ``ValueError`` of ``torchvision``.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            target_bboxes (``Tensor``): Boxes of shape ``[N, 6]`` with
-                rows ``[batch_index, class, x, y, w, h]``. The
-                coordinates are ``xywh`` normalized to ``[0, 1]``.
-            target_masks (``Tensor``): Binary masks of shape
-                ``[N, H_0, W_0]``, one for each row of
-                ``target_bboxes``. ``H_0`` and ``W_0`` are the unscaled
-                image size.
-            width (int | None): Line width of the boxes, in pixels. When
-                ``None`` or ``0``, the width is one percent of the
-                smaller canvas side, rounded down, and at least ``1``.
-            label_dict (``Mapping[int, str]``): Class index to class
-                name. Every target class must have a name here.
-            color_dict (dict[str, Color]): Class name to color. Every
-                target class must have a color here.
-            draw_labels (bool): Whether to write the class name next to
-                each box.
-            alpha (float): Opacity of the masks, from ``0``
-                (transparent) to ``1`` (opaque).
-            scale (float): Multiplier for the mask size. Pass the factor
-                that scaled the canvas.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            target_bboxes: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``. The coordinates
+                are ``xywh`` normalized to ``[0, 1]``.
+            target_masks: Binary masks of shape ``[N, H_0, W_0]``, one
+                for each row of ``target_bboxes``. ``H_0`` and ``W_0``
+                are the unscaled image size.
+            width: Line width of the boxes, in pixels. When ``None`` or
+                ``0``, the width is one percent of the smaller canvas
+                side, rounded down, and at least ``1``.
+            label_dict: Class index to class name. Every target class
+                must have a name here.
+            color_dict: Class name to color. Every target class must
+                have a color here.
+            draw_labels: Whether to write the class name next to each
+                box.
+            alpha: Opacity of the masks, from ``0`` (transparent) to
+                ``1`` (opaque).
+            scale: Multiplier for the mask size. Pass the factor that
+                scaled the canvas.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``
-            with the masks and boxes drawn.
+            A new tensor of the same shape as ``canvas`` with the masks
+            and boxes drawn.
 
         Example:
             >>> import torch
@@ -403,31 +399,29 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         the ``scale`` factor.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the predictions on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the targets on.
-            boundingbox (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]`` in pixels.
-            instance_segmentation (``list[Tensor]``): One tensor per
-                image, of shape ``[M_i, H_0, W_0]``, with one binary
-                mask for each box. ``H_0`` and ``W_0`` are the image
-                size before the ``scale`` resize.
-            target_boundingbox (``Tensor | None``): Boxes of shape
-                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
-                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
-                batch has no ``boundingbox`` labels.
-            target_instance_segmentation (``Tensor | None``): Binary
-                masks of shape ``[N, H_0, W_0]``, one for each target
-                box. ``None`` when the batch has no
-                ``instance_segmentation`` labels.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the targets on.
+            boundingbox: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]`` in pixels.
+            instance_segmentation: One tensor per image, of shape
+                ``[M_i, H_0, W_0]``, with one binary mask for each box.
+                ``H_0`` and ``W_0`` are the image size before the
+                ``scale`` resize.
+            target_boundingbox: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``, ``xywh``
+                normalized to ``[0, 1]``. ``None`` when the batch has no
+                ``boundingbox`` labels.
+            target_instance_segmentation: Binary masks of shape
+                ``[N, H_0, W_0]``, one for each target box. ``None``
+                when the batch has no ``instance_segmentation`` labels.
 
         Returns:
-            ``tuple[Tensor, Tensor] | Tensor``: The pair
-            ``(targets, predictions)`` of drawn images when both
-            ``target_boundingbox`` and ``target_instance_segmentation``
-            are set; otherwise only the predictions image.
+            The pair ``(targets, predictions)`` of drawn images when
+            both ``target_boundingbox`` and
+            ``target_instance_segmentation`` are set; otherwise only the
+            predictions image.
 
         Example:
             >>> import torch

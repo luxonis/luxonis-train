@@ -31,13 +31,13 @@ class LuxonisModelSummary(RichModelSummary):
         """Initialize the callback.
 
         Args:
-            rich (bool): Print ``rich`` tables. ``False`` logs a plain
-                text table instead.
-            **kwargs (``Any``): Keyword arguments for the Lightning
+            rich: Print ``rich`` tables. ``False`` logs a plain text
+                table instead.
+            **kwargs: Keyword arguments for the Lightning
                 ``RichModelSummary``. ``max_depth`` sets the deepest
                 level of nested modules in the table, and ``0`` turns
-                the summary off. Lightning passes every other keyword
-                to `LuxonisModelSummary.summarize`.
+                the summary off. Lightning passes every other keyword to
+                `LuxonisModelSummary.summarize`.
 
         """
         super().__init__(**kwargs)
@@ -91,15 +91,15 @@ class LuxonisModelSummary(RichModelSummary):
         ``1.2 M``.
 
         Args:
-            *args (``Any``): The positional arguments of the Lightning
-                hook, in order: ``summary_data``, the columns as
+            *args: The positional arguments of the Lightning hook, in
+                order: ``summary_data``, the columns as
                 ``(header, values)`` pairs; ``total_parameters``;
                 ``trainable_parameters``; ``model_size``, in MB; and
                 ``total_training_modes``, a dictionary with the keys
                 ``"train"`` and ``"eval"``.
-            **kwargs (``Any``): The keyword arguments of the Lightning
-                hook. The ``rich`` table reads ``header_style``, which
-                is ``"bold magenta"`` when it is not given. The method
+            **kwargs: The keyword arguments of the Lightning hook. The
+                ``rich`` table reads ``header_style``, which is
+                ``"bold magenta"`` when it is not given. The method
                 ignores all other keywords, such as ``total_flops``.
 
         """

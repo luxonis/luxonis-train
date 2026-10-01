@@ -23,17 +23,15 @@ def compute_ratio_and_padding(
     image, so the function returns no ratio and no padding.
 
     Args:
-        orig_h (int): The height of the original image, in pixels.
-        orig_w (int): The width of the original image, in pixels.
-        train_size (tuple[int, int]): The height and the width of the
-            model input.
-        keep_aspect_ratio (bool): Whether the loader letterboxed the
-            image.
+        orig_h: The height of the original image, in pixels.
+        orig_w: The width of the original image, in pixels.
+        train_size: The height and the width of the model input.
+        keep_aspect_ratio: Whether the loader letterboxed the image.
 
     Returns:
-        tuple[float | None, float, float]: The ratio :math:`r`, the
-        padding :math:`p_x`, and the padding :math:`p_y`. Without
-        ``keep_aspect_ratio``, the result is ``(None, 0, 0)``.
+        The ratio :math:`r`, the padding :math:`p_x`, and the padding
+        :math:`p_y`. Without ``keep_aspect_ratio``, the result is
+        ``(None, 0, 0)``.
 
     Example:
         >>> from luxonis_train.utils.spatial_transforms import (
@@ -76,19 +74,17 @@ def transform_boxes(
     the original size equals ``train_size``.
 
     Args:
-        raw_boxes (``np.ndarray``): The boxes in the pixels of the model
-            input, of shape ``[N, 4]``, in ``xyxy`` format.
-        orig_h (int): The height of the original image, in pixels.
-        orig_w (int): The width of the original image, in pixels.
-        train_size (tuple[int, int]): The height and the width of the
-            model input.
-        keep_aspect_ratio (bool): Whether the loader letterboxed the
-            image.
+        raw_boxes: The boxes in the pixels of the model input, of shape
+            ``[N, 4]``, in ``xyxy`` format.
+        orig_h: The height of the original image, in pixels.
+        orig_w: The width of the original image, in pixels.
+        train_size: The height and the width of the model input.
+        keep_aspect_ratio: Whether the loader letterboxed the image.
 
     Returns:
-        ``np.ndarray``: The boxes of shape ``[N, 4]`` in normalized
-        ``xywh`` format, where ``x`` and ``y`` give the top-left corner.
-        An empty ``raw_boxes`` gives an empty array of shape ``[0]``.
+        The boxes of shape ``[N, 4]`` in normalized ``xywh`` format,
+        where ``x`` and ``y`` give the top-left corner. An empty
+        ``raw_boxes`` gives an empty array of shape ``[0]``.
 
     Example:
         >>> import numpy as np
@@ -135,19 +131,17 @@ def transform_keypoints(
     when the original size equals ``train_size``.
 
     Args:
-        raw_kpts (``np.ndarray``): The keypoints in the pixels of the
-            model input, of shape ``[N, K, 3]``. The last axis holds
-            ``x``, ``y``, and a visibility or score value.
-        orig_h (int): The height of the original image, in pixels.
-        orig_w (int): The width of the original image, in pixels.
-        train_size (tuple[int, int]): The height and the width of the
-            model input.
-        keep_aspect_ratio (bool): Whether the loader letterboxed the
-            image.
+        raw_kpts: The keypoints in the pixels of the model input, of
+            shape ``[N, K, 3]``. The last axis holds ``x``, ``y``, and a
+            visibility or score value.
+        orig_h: The height of the original image, in pixels.
+        orig_w: The width of the original image, in pixels.
+        train_size: The height and the width of the model input.
+        keep_aspect_ratio: Whether the loader letterboxed the image.
 
     Returns:
-        ``np.ndarray``: The keypoints of shape ``[N, K, 3]``, as
-        ``float64``, with normalized ``x`` and ``y``.
+        The keypoints of shape ``[N, K, 3]``, as ``float64``, with
+        normalized ``x`` and ``y``.
 
     Example:
         >>> import numpy as np
@@ -186,20 +180,17 @@ def transform_masks(
     each mask to the original size with nearest-neighbour interpolation.
 
     Args:
-        raw_masks (``np.ndarray``): The masks at the size of the model
-            input, of shape ``[N, H, W]``. ``N`` must be at least ``1``,
-            because ``np.stack`` rejects an empty list. The data type
-            must be one that ``cv2.resize`` accepts, such as
-            ``float32``.
-        orig_h (int): The height of the original image, in pixels.
-        orig_w (int): The width of the original image, in pixels.
-        train_size (tuple[int, int]): The height and the width of the
-            model input.
-        keep_aspect_ratio (bool): Whether the loader letterboxed the
-            image.
+        raw_masks: The masks at the size of the model input, of shape
+            ``[N, H, W]``. ``N`` must be at least ``1``, because
+            ``np.stack`` rejects an empty list. The data type must be
+            one that ``cv2.resize`` accepts, such as ``float32``.
+        orig_h: The height of the original image, in pixels.
+        orig_w: The width of the original image, in pixels.
+        train_size: The height and the width of the model input.
+        keep_aspect_ratio: Whether the loader letterboxed the image.
 
     Returns:
-        ``np.ndarray``: The masks of shape ``[N, orig_h, orig_w]``.
+        The masks of shape ``[N, orig_h, orig_w]``.
 
     Example:
         >>> import numpy as np

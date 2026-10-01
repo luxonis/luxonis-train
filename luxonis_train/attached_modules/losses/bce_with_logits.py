@@ -86,29 +86,28 @@ class BCEWithLogitsLoss(BaseLoss):
         """Initialize the loss and the wrapped ``nn.BCEWithLogitsLoss``.
 
         Args:
-            weight (list[float] | None): Factors for the loss of the
-                elements. The list becomes a tensor that broadcasts
-                against the loss of shape ``[B, C, ...]``, aligned at
-                the last dimension. For a target of shape ``[B, C]``, a
-                list of ``C`` values gives one factor to each class. For
-                a target of shape ``[B, C, H, W]``, the list aligns with
-                ``W``, not with the classes. ``None`` gives every
-                element the factor ``1``.
-            reduction (``Literal["none", "mean", "sum"]``): How to
-                reduce the loss of the elements:
+            weight: Factors for the loss of the elements. The list
+                becomes a tensor that broadcasts against the loss of
+                shape ``[B, C, ...]``, aligned at the last dimension.
+                For a target of shape ``[B, C]``, a list of ``C`` values
+                gives one factor to each class. For a target of shape
+                ``[B, C, H, W]``, the list aligns with ``W``, not with
+                the classes. ``None`` gives every element the factor
+                ``1``.
+            reduction: How to reduce the loss of the elements:
 
                 - ``"none"``: return the loss of each element.
                 - ``"mean"``: return the mean over all elements.
                 - ``"sum"``: return the sum over all elements.
 
-            pos_weight (``Tensor | None``): Factors for the positive
-                term of the loss. The tensor broadcasts against the
-                target, aligned at the last dimension. For a target of
-                shape ``[B, C, H, W]``, a tensor of shape ``[C, 1, 1]``
-                gives one factor to each class. ``None`` gives the
-                factor ``1``. A list raises ``TypeError``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            pos_weight: Factors for the positive term of the loss. The
+                tensor broadcasts against the target, aligned at the
+                last dimension. For a target of shape ``[B, C, H, W]``,
+                a tensor of shape ``[C, 1, 1]`` gives one factor to each
+                class. ``None`` gives the factor ``1``. A list raises
+                ``TypeError``.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -122,17 +121,17 @@ class BCEWithLogitsLoss(BaseLoss):
         """Compute the binary cross entropy between logits and targets.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
-                the main output of the node.
-            target (``Tensor``): Float targets in ``[0, 1]``, of the
-                same shape as ``predictions``. The ``classification``
-                label has the shape ``[B, C]``, and the ``segmentation``
-                label has the shape ``[B, C, H, W]``.
+            predictions: Logits of shape ``[B, C, ...]``, the main
+                output of the node.
+            target: Float targets in ``[0, 1]``, of the same shape as
+                ``predictions``. The ``classification`` label has the
+                shape ``[B, C]``, and the ``segmentation`` label has the
+                shape ``[B, C, H, W]``.
 
         Returns:
-            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
-            reductions. For ``"none"``, the loss of each element, of
-            shape ``[B, C, ...]``.
+            A scalar for the ``"mean"`` and ``"sum"`` reductions. For
+            ``"none"``, the loss of each element, of shape
+            ``[B, C, ...]``.
 
         Raises:
             RuntimeError: When ``predictions`` and ``target`` have

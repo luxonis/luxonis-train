@@ -139,21 +139,21 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         ``trainer.accumulate_grad_batches``.
 
         Args:
-            tal_topk (int): The ``topk`` of `TaskAlignedAssigner`, the
-                largest number of positive anchors for each target box.
-                The exponents of the assigner are fixed: ``alpha`` is
+            tal_topk: The ``topk`` of `TaskAlignedAssigner`, the largest
+                number of positive anchors for each target box. The
+                exponents of the assigner are fixed: ``alpha`` is
                 ``0.5`` and ``beta`` is ``6.0``.
-            class_loss_weight (float): Weight of the classification term.
-            bbox_loss_weight (float): Weight of the CIoU box term.
-            dfl_loss_weight (float): Weight of the DFL term.
-            skip_stal (bool): Whether to turn off Small-Target-Aware Label
-                Assignment (STAL) in the assigner. When a side of a target
-                box is shorter than the smallest stride, STAL gives that
-                side the length of the second smallest stride. The
-                assigner uses the enlarged box only to find the anchors
-                inside the box.
-            **kwargs (``Any``): Keyword arguments forwarded to `BaseLoss`,
-                such as ``node`` and ``final_loss_weight``.
+            class_loss_weight: Weight of the classification term.
+            bbox_loss_weight: Weight of the CIoU box term.
+            dfl_loss_weight: Weight of the DFL term.
+            skip_stal: Whether to turn off Small-Target-Aware Label
+                Assignment (STAL) in the assigner. When a side of a
+                target box is shorter than the smallest stride, STAL
+                gives that side the length of the second smallest
+                stride. The assigner uses the enlarged box only to find
+                the anchors inside the box.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``node`` and ``final_loss_weight``.
 
         """
         super().__init__(**kwargs)
@@ -194,21 +194,21 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         scale, as the class notes describe.
 
         Args:
-            features (``list[Tensor]``): One tensor per scale, of shape
+            features: One tensor per scale, of shape
                 ``[B, 4 * reg_max + n_classes, H_i, W_i]``. The
                 ``features`` output of the node.
-            target (``Tensor``): Target boxes of shape ``[N_gt, 6]``, with
-                rows ``[batch_index, class, x, y, w, h]``. The coordinates
+            target: Target boxes of shape ``[N_gt, 6]``, with rows
+                ``[batch_index, class, x, y, w, h]``. The coordinates
                 are ``xywh`` normalized to ``[0, 1]``, with ``x`` and
-                ``y`` at the top-left corner. The ``boundingbox`` label of
-                the task.
+                ``y`` at the top-left corner. The ``boundingbox`` label
+                of the task.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The scalar weighted total
-            loss, and a dictionary that maps ``"class"``, ``"iou"``, and
-            ``"dfl"`` to the detached terms before the weights. The total
-            loss and ``"dfl"`` have the shape ``[1]`` when ``reg_max`` of
-            the node is ``1`` and an anchor is positive.
+            The scalar weighted total loss, and a dictionary that maps
+            ``"class"``, ``"iou"``, and ``"dfl"`` to the detached terms
+            before the weights. The total loss and ``"dfl"`` have the
+            shape ``[1]`` when ``reg_max`` of the node is ``1`` and an
+            anchor is positive.
 
         """
         self._init_parameters(features)
@@ -299,16 +299,16 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         distance is ``0``.
 
         Args:
-            anchor_points (``Tensor``): Anchor centers ``(x, y)`` of shape
+            anchor_points: Anchor centers ``(x, y)`` of shape
                 ``[N, 2]``. `forward` passes them in units of the stride
                 of each anchor.
-            pred_dist (``Tensor``): Distance bin logits of shape
-                ``[B, N, 4 * reg_max]``, with the sides in the order left,
-                top, right, bottom.
+            pred_dist: Distance bin logits of shape
+                ``[B, N, 4 * reg_max]``, with the sides in the order
+                left, top, right, bottom.
 
         Returns:
-            ``Tensor``: Boxes of shape ``[B, N, 4]`` in ``xyxy`` format, in
-            the units of ``anchor_points``.
+            Boxes of shape ``[B, N, 4]`` in ``xyxy`` format, in the
+            units of ``anchor_points``.
 
         """
         if self.node.dfl:
@@ -372,9 +372,9 @@ class BBoxLoss(nn.Module):
         """Initialize the loss and its DFL part.
 
         Args:
-            reg_max (int): Number of distance bins for each side of a
-                box. When ``reg_max`` is ``1`` or less, the loss has no
-                DFL part.
+            reg_max: Number of distance bins for each side of a box.
+                When ``reg_max`` is ``1`` or less, the loss has no DFL
+                part.
 
         """
         super().__init__()
@@ -398,26 +398,24 @@ class BBoxLoss(nn.Module):
         the boxes.
 
         Args:
-            pred_dist (``Tensor``): Distance bin logits of shape
+            pred_dist: Distance bin logits of shape
                 ``[B, N, 4 * reg_max]``.
-            pred_bboxes (``Tensor``): Predicted ``xyxy`` boxes of shape
+            pred_bboxes: Predicted ``xyxy`` boxes of shape
                 ``[B, N, 4]``, decoded from ``pred_dist``.
-            anchors (``Tensor``): Anchor centers ``(x, y)`` of shape
-                ``[N, 2]``.
-            targets (``Tensor``): Assigned ``xyxy`` target boxes of shape
+            anchors: Anchor centers ``(x, y)`` of shape ``[N, 2]``.
+            targets: Assigned ``xyxy`` target boxes of shape
                 ``[B, N, 4]``.
-            scores (``Tensor``): Assigned class scores of shape
+            scores: Assigned class scores of shape
                 ``[B, N, n_classes]``.
-            total_score (``Tensor``): The normalizer :math:`S`. The
-                detection losses pass the sum of ``scores``, at least
-                ``1``, as a Python number.
-            fg_mask (``Tensor``): Boolean mask of the positive anchors, of
-                shape ``[B, N]``.
+            total_score: The normalizer :math:`S`. The detection losses
+                pass the sum of ``scores``, at least ``1``, as a Python
+                number.
+            fg_mask: Boolean mask of the positive anchors, of shape
+                ``[B, N]``.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The scalar CIoU term and the scalar
-            DFL term. Without a DFL part, the DFL term is a zero tensor of
-            shape ``[1]``.
+            The scalar CIoU term and the scalar DFL term. Without a DFL
+            part, the DFL term is a zero tensor of shape ``[1]``.
 
         Example:
             The predicted box is equal to the target box, so the CIoU term
@@ -488,8 +486,7 @@ class DFLoss(nn.Module):
         """Initialize the loss.
 
         Args:
-            reg_max (int): Number of distance bins for each side of a
-                box.
+            reg_max: Number of distance bins for each side of a box.
 
         """
         super().__init__()
@@ -503,15 +500,15 @@ class DFLoss(nn.Module):
         class overrides ``__call__`` and not ``forward``.
 
         Args:
-            pred_dist (``Tensor``): Bin logits of shape
-                ``[4 * M, reg_max]``, four rows for each box, with the
-                sides in the order of ``targets``.
-            targets (``Tensor``): Target distances of shape ``[M, 4]``, in
-                units of one bin.
+            pred_dist: Bin logits of shape ``[4 * M, reg_max]``, four
+                rows for each box, with the sides in the order of
+                ``targets``.
+            targets: Target distances of shape ``[M, 4]``, in units of
+                one bin.
 
         Returns:
-            ``Tensor``: The loss of each box, the mean over its four
-            sides, of shape ``[M, 1]``.
+            The loss of each box, the mean over its four sides, of shape
+            ``[M, 1]``.
 
         Examples:
             Uniform logits over four bins give :math:`\ln 4`:

@@ -99,18 +99,16 @@ class RecSubNet(BaseNode):
         the reconstruction.
 
         Args:
-            base_channels (int): The base width. Encoder stage ``i`` has
+            base_channels: The base width. Encoder stage ``i`` has
                 ``int(base_channels * width_multipliers[i])`` channels,
                 and the last encoder stage repeats the last multiplier.
                 The decoder uses the multipliers in reverse order. Its
                 last stage has ``base_channels`` channels.
-            width_multipliers (list[float] | None): The channel
-                multipliers of the encoder stages. ``None`` or an empty
-                list selects ``[1, 2, 4, 8]``.
-            out_channels (int): The number of channels of the
-                reconstruction.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            width_multipliers: The channel multipliers of the encoder
+                stages. ``None`` or an empty list selects
+                ``[1, 2, 4, 8]``.
+            out_channels: The number of channels of the reconstruction.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -132,15 +130,14 @@ class RecSubNet(BaseNode):
         """Reconstruct a batch of images.
 
         Args:
-            x (``Tensor``): The input images, of shape ``[B, C, H, W]``.
+            x: The input images, of shape ``[B, C, H, W]``.
 
         Returns:
-            ``Packet[Tensor]``: A packet with two keys.
-            ``"reconstruction"`` holds the decoder output, of shape
-            ``[B, out_channels, H', W']``. ``H'`` and ``W'`` are ``H``
-            and ``W`` rounded down to a multiple of
-            ``2 ** len(width_multipliers)``. ``"original"`` holds ``x``
-            unchanged.
+            A packet with two keys. ``"reconstruction"`` holds the
+            decoder output, of shape ``[B, out_channels, H', W']``.
+            ``H'`` and ``W'`` are ``H`` and ``W`` rounded down to a
+            multiple of ``2 ** len(width_multipliers)``. ``"original"``
+            holds ``x`` unchanged.
 
         Example:
             >>> import torch
@@ -176,9 +173,9 @@ class RecSubNet(BaseNode):
         are multiples of ``16``. Each call builds new dictionaries.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name of the default
-            variant, ``"l"``, and a dictionary that maps ``"n"`` and
-            ``"l"`` to their constructor arguments.
+            The name of the default variant, ``"l"``, and a dictionary
+            that maps ``"n"`` and ``"l"`` to their constructor
+            arguments.
 
         Example:
             >>> from luxonis_train.nodes.backbones import RecSubNet

@@ -126,30 +126,29 @@ class AdaptiveDetectionLoss(BaseLoss):
         <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
 
         Args:
-            n_warmup_epochs (int): The number of epochs, counted from
-                epoch ``0``, that use `ATSSAssigner` with ``topk=9``.
-                The later epochs use `TaskAlignedAssigner` with
-                ``topk=13``, ``alpha=1.0``, and ``beta=6.0``.
-            iou_type (``IoUType``): The IoU variant of the box term:
-                ``"none"`` for the plain IoU, ``"giou"``, ``"diou"``,
-                ``"ciou"``, or ``"siou"``. `luxonis_train.utils.bbox_iou`
-                describes the variants.
-            reduction (``Literal["sum", "mean"]``): The loss does not
-                read it. Both terms always use the normalized sum of the
-                class formula.
-            class_loss_weight (float): The factor :math:`\lambda_{cls}`
-                of the classification term.
-            iou_loss_weight (float): The factor :math:`\lambda_{iou}` of
-                the box term.
-            per_class_weights (list[float] | None): One factor for each
-                class. `VarifocalLoss` multiplies the weight of each
-                class by its factor. A list with a length other than the
-                number of classes logs a warning, and the loss then uses
-                no factors. ``None`` uses no factors.
-            skip_stal (bool): ``True`` turns off the Small-Target-Aware
-                Label Assignment of `TaskAlignedAssigner`.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            n_warmup_epochs: The number of epochs, counted from epoch
+                ``0``, that use `ATSSAssigner` with ``topk=9``. The
+                later epochs use `TaskAlignedAssigner` with ``topk=13``,
+                ``alpha=1.0``, and ``beta=6.0``.
+            iou_type: The IoU variant of the box term: ``"none"`` for
+                the plain IoU, ``"giou"``, ``"diou"``, ``"ciou"``, or
+                ``"siou"``. `luxonis_train.utils.bbox_iou` describes the
+                variants.
+            reduction: The loss does not read it. Both terms always use
+                the normalized sum of the class formula.
+            class_loss_weight: The factor :math:`\lambda_{cls}` of the
+                classification term.
+            iou_loss_weight: The factor :math:`\lambda_{iou}` of the box
+                term.
+            per_class_weights: One factor for each class.
+                `VarifocalLoss` multiplies the weight of each class by
+                its factor. A list with a length other than the number
+                of classes logs a warning, and the loss then uses no
+                factors. ``None`` uses no factors.
+            skip_stal: ``True`` turns off the Small-Target-Aware Label
+                Assignment of `TaskAlignedAssigner`.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -223,25 +222,24 @@ class AdaptiveDetectionLoss(BaseLoss):
         the method computes the two terms of the class formula.
 
         Args:
-            features (``list[Tensor]``): The feature maps of the head,
-                one of shape ``[B, C_i, H_i, W_i]`` for each scale. Only
-                the first call uses them, to build the anchors.
-            class_scores (``Tensor``): Sigmoid class scores of shape
+            features: The feature maps of the head, one of shape
+                ``[B, C_i, H_i, W_i]`` for each scale. Only the first
+                call uses them, to build the anchors.
+            class_scores: Sigmoid class scores of shape
                 ``[B, N, n_classes]``, for the ``N`` anchors of all
                 scales.
-            distributions (``Tensor``): The distances from each anchor
-                point to the left, top, right, and bottom side of its
-                box, of shape ``[B, N, 4]``, in stride units.
-            target (``Tensor``): The ``boundingbox`` label of shape
-                ``[M, 6]``. Each row holds the batch index, the class,
-                and the normalized ``x``, ``y``, ``w``, and ``h`` of one
-                box. ``x`` and ``y`` give the top-left corner.
+            distributions: The distances from each anchor point to the
+                left, top, right, and bottom side of its box, of shape
+                ``[B, N, 4]``, in stride units.
+            target: The ``boundingbox`` label of shape ``[M, 6]``. Each
+                row holds the batch index, the class, and the normalized
+                ``x``, ``y``, ``w``, and ``h`` of one box. ``x`` and
+                ``y`` give the top-left corner.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The total loss as a
-            scalar, and the sub-losses ``"class"`` and ``"iou"``. The
-            sub-losses are the detached terms without the factors
-            ``class_loss_weight`` and ``iou_loss_weight``.
+            The total loss as a scalar, and the sub-losses ``"class"``
+            and ``"iou"``. The sub-losses are the detached terms without
+            the factors ``class_loss_weight`` and ``iou_loss_weight``.
 
         """
         batch_size = class_scores.shape[0]
@@ -369,16 +367,16 @@ class AdaptiveDetectionLoss(BaseLoss):
         """Convert the flat box label to padded boxes for each image.
 
         Args:
-            target (``Tensor``): The ``boundingbox`` label of shape
-                ``[M, 6]``, as `forward` describes it.
-            batch_size (int): The number of images ``B``.
+            target: The ``boundingbox`` label of shape ``[M, 6]``, as
+                `forward` describes it.
+            batch_size: The number of images ``B``.
 
         Returns:
-            ``Tensor``: Boxes of shape ``[B, K, 5]``. ``K`` is the
-            largest number of boxes in one image, or ``0`` for a batch
-            without boxes. Each row holds the class and the ``xyxy`` box
-            in pixels of the input image. A padding row has the class
-            ``-1`` and a zero box.
+            Boxes of shape ``[B, K, 5]``. ``K`` is the largest number of
+            boxes in one image, or ``0`` for a batch without boxes. Each
+            row holds the class and the ``xyxy`` box in pixels of the
+            input image. A padding row has the class ``-1`` and a zero
+            box.
 
         """
         sample_ids, counts = cast(
@@ -458,13 +456,12 @@ class VarifocalLoss(nn.Module):
         r"""Initialize the varifocal loss.
 
         Args:
-            alpha (float): The factor :math:`\alpha` of the weight of a
-                negative element.
-            gamma (float): The exponent :math:`\gamma` of the predicted
-                score in the weight of a negative element.
-            per_class_weights (``Tensor | None``): One factor for each
-                class, of shape ``[n_classes]``. ``None`` uses no
-                factors.
+            alpha: The factor :math:`\alpha` of the weight of a negative
+                element.
+            gamma: The exponent :math:`\gamma` of the predicted score in
+                the weight of a negative element.
+            per_class_weights: One factor for each class, of shape
+                ``[n_classes]``. ``None`` uses no factors.
 
         """
         super().__init__()
@@ -484,16 +481,16 @@ class VarifocalLoss(nn.Module):
         on the device of ``pred_score``.
 
         Args:
-            pred_score (``Tensor``): Predicted class scores in
-                ``[0, 1]``, of shape ``[B, N, n_classes]``.
-            target_score (``Tensor``): Target scores in ``[0, 1]``, of
-                the same shape. An assigner gives a soft score to the
-                assigned class, and ``0`` to the other classes.
-            label (``Tensor``): One-hot labels of the same shape. A
-                background anchor has only zeros.
+            pred_score: Predicted class scores in ``[0, 1]``, of shape
+                ``[B, N, n_classes]``.
+            target_score: Target scores in ``[0, 1]``, of the same
+                shape. An assigner gives a soft score to the assigned
+                class, and ``0`` to the other classes.
+            label: One-hot labels of the same shape. A background anchor
+                has only zeros.
 
         Returns:
-            ``Tensor``: The loss summed over all elements, as a scalar.
+            The loss summed over all elements, as a scalar.
 
         """
         weight = (

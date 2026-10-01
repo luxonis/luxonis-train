@@ -36,8 +36,8 @@ class NestedDict:
     the wrapped dictionary.
 
     Attributes:
-        _dict (``dict[str, Any]``): The wrapped dictionary. The
-            constructor takes it as its only argument.
+        _dict: The wrapped dictionary. The constructor takes it as its
+            only argument.
 
     Example:
         >>> from luxonis_train.upgrade import NestedDict
@@ -57,12 +57,12 @@ class NestedDict:
         """Check if a dotted key exists.
 
         Args:
-            key (str): A dotted key, for example ``"trainer.epochs"``.
+            key: A dotted key, for example ``"trainer.epochs"``.
 
         Returns:
-            bool: ``True`` when each part of ``key`` exists and each
-            value before the last part is a dictionary. A stored
-            ``None`` counts as present.
+            ``True`` when each part of ``key`` exists and each value
+            before the last part is a dictionary. A stored ``None``
+            counts as present.
 
         """
         keys = key.split(".")
@@ -79,10 +79,10 @@ class NestedDict:
         """Return the value under a dotted key.
 
         Args:
-            key (str): A dotted key, for example ``"trainer.epochs"``.
+            key: A dotted key, for example ``"trainer.epochs"``.
 
         Returns:
-            ``Any``: The value, or ``None`` when ``key`` does not exist.
+            The value, or ``None`` when ``key`` does not exist.
 
         """
         if key not in self:
@@ -101,8 +101,8 @@ class NestedDict:
         empty dictionary.
 
         Args:
-            key (str): A dotted key, for example ``"trainer.epochs"``.
-            value (``Any``): The new value.
+            key: A dotted key, for example ``"trainer.epochs"``.
+            value: The new value.
 
         """
         keys = key.split(".")
@@ -117,13 +117,12 @@ class NestedDict:
         """Return the value under a dotted key, or a default value.
 
         Args:
-            key (str): A dotted key, for example ``"model.nodes"``.
-            default (``Any``): The value to return when ``key`` does
-                not exist.
+            key: A dotted key, for example ``"model.nodes"``.
+            default: The value to return when ``key`` does not exist.
 
         Returns:
-            ``Any``: The value under ``key``, or ``default`` when ``key``
-            does not exist. A stored ``None`` gives ``None``.
+            The value under ``key``, or ``default`` when ``key`` does
+            not exist. A stored ``None`` gives ``None``.
 
         """
         if key not in self:
@@ -137,15 +136,14 @@ class NestedDict:
         dictionaries stay, also when they become empty.
 
         Args:
-            key (str): A dotted key, for example
-                ``"exporter.output_names"``.
-            default (``Any``): The value to return when ``key`` does
-                not exist. The default ``...`` means that there is no
-                default value.
+            key: A dotted key, for example ``"exporter.output_names"``.
+            default: The value to return when ``key`` does not exist.
+                The default ``...`` means that there is no default
+                value.
 
         Returns:
-            ``Any``: The removed value, or ``default`` when ``key`` does
-            not exist.
+            The removed value, or ``default`` when ``key`` does not
+            exist.
 
         Raises:
             KeyError: When ``key`` does not exist and ``default`` is
@@ -182,8 +180,8 @@ class NestedDict:
         value as ``self[key] = value`` does.
 
         Args:
-            key (str): A dotted key, for example ``"version"``.
-            value (``Any``): The new value.
+            key: A dotted key, for example ``"version"``.
+            value: The new value.
 
         """
         old_value = self[key]
@@ -209,11 +207,11 @@ class NestedDict:
         `log_change`.
 
         Args:
-            old_key (str): The dotted key to remove.
-            new_key (str): The dotted key to set.
-            value (``ParamValue | EllipsisType | None``): The value for
-                ``new_key``. The default ``...`` keeps the old value.
-                Any other value, ``None`` included, replaces it.
+            old_key: The dotted key to remove.
+            new_key: The dotted key to set.
+            value: The value for ``new_key``. The default ``...`` keeps
+                the old value. Any other value, ``None`` included,
+                replaces it.
 
         """
         if old_key not in self:
@@ -233,8 +231,8 @@ class NestedDict:
         """Log at the ``INFO`` level that a config field has a new key.
 
         Args:
-            old_field (str): The old dotted key.
-            new_field (str): The new dotted key.
+            old_field: The old dotted key.
+            new_field: The new dotted key.
 
         """
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
@@ -294,11 +292,11 @@ def upgrade_config(config: PathType | Params) -> Params:
     ``exporter.output_names`` have no ``INFO`` message.
 
     Args:
-        config (``PathType | Params``): The path of a local YAML or JSON
-            config file, or the config as a dictionary.
+        config: The path of a local YAML or JSON config file, or the
+            config as a dictionary.
 
     Returns:
-        ``Params``: The migrated config.
+        The migrated config.
 
     Raises:
         ValueError: When a module in ``model.losses``,
@@ -370,10 +368,10 @@ def get_latest_version() -> Version | None:
     request has a timeout of 5 seconds.
 
     Returns:
-        ``semver.Version | None``: The latest version. It is ``None``
-        when the request fails or when the response status is not
-        ``200``. It is also ``None`` when the response body is not JSON
-        with a valid ``info.version``.
+        The latest version. It is ``None`` when the request fails or
+        when the response status is not ``200``. It is also ``None``
+        when the response body is not JSON with a valid
+        ``info.version``.
 
     """
     import requests

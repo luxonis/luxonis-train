@@ -27,18 +27,17 @@ def merge_bbox_kpt_targets(
     labels.
 
     Args:
-        target_boundingbox (``Tensor``): The box label, of shape
-            ``[N, 6]``, with rows ``[batch_index, class, x, y, w, h]``.
-        target_keypoints (``Tensor``): The keypoint label, of shape
-            ``[N, 1 + 3K]``, with rows
+        target_boundingbox: The box label, of shape ``[N, 6]``, with
+            rows ``[batch_index, class, x, y, w, h]``.
+        target_keypoints: The keypoint label, of shape ``[N, 1 + 3K]``,
+            with rows
             ``[batch_index, x_1, y_1, v_1, ..., x_K, y_K, v_K]``, in the
             row order of ``target_boundingbox``.
-        device (torch.device | None): The device of the result. ``None``
-            selects the default device of ``torch``.
+        device: The device of the result. ``None`` selects the default
+            device of ``torch``.
 
     Returns:
-        ``Tensor``: A new floating point tensor of shape
-        ``[N, 6 + 3K]``, with rows
+        A new floating point tensor of shape ``[N, 6 + 3K]``, with rows
         ``[batch_index, class, x1, y1, x2, y2, x_1, y_1, v_1, ...]``.
 
     Example:
@@ -72,11 +71,11 @@ def fix_empty_tensor(tensor: Tensor) -> Tensor:
     unchanged.
 
     Args:
-        tensor (``Tensor``): The tensor to check.
+        tensor: The tensor to check.
 
     Returns:
-        ``Tensor``: A view of shape ``[1, 0]`` when ``tensor`` is empty
-        and one-dimensional, otherwise ``tensor`` itself.
+        A view of shape ``[1, 0]`` when ``tensor`` is empty and
+        one-dimensional, otherwise ``tensor`` itself.
 
     Example:
         >>> import torch

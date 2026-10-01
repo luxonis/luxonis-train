@@ -39,12 +39,12 @@ def filter_checkpoint_state_dict(
     ``state_dict``.
 
     Args:
-        state_dict (``Mapping[str, Tensor]``): The state dict of the model,
-            keyed by the names of the parameters and the buffers.
+        state_dict: The state dict of the model, keyed by the names of
+            the parameters and the buffers.
 
     Returns:
-        ``dict[str, Tensor]``: The entries of ``state_dict`` with a key
-        that does not match the pattern, in the same order.
+        The entries of ``state_dict`` with a key that does not match the
+        pattern, in the same order.
 
     Example:
         >>> import torch

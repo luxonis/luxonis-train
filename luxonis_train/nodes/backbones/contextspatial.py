@@ -86,25 +86,24 @@ class ContextSpatial(BaseNode):
         """Build the two paths and the feature fusion block.
 
         Args:
-            context_backbone (``str | nn.Module``): The backbone of
-                `ContextPath`. A string names a node in
-                `luxonis_train.registry.NODES`. The constructor builds
-                that node with ``backbone_kwargs`` and ``kwargs``. An
-                unknown name makes the registry raise ``KeyError``. A
-                module goes to `ContextPath` as it is. The backbone must
-                return a sequence of feature maps, and the last two
-                entries must have the strides 16 and 32. Defaults to
-                ``"MobileNetV2"``.
-            backbone_kwargs (``Kwargs | None``): Keyword arguments for
-                the backbone node. The constructor reads them only when
+            context_backbone: The backbone of `ContextPath`. A string
+                names a node in `luxonis_train.registry.NODES`. The
+                constructor builds that node with ``backbone_kwargs``
+                and ``kwargs``. An unknown name makes the registry raise
+                ``KeyError``. A module goes to `ContextPath` as it is.
+                The backbone must return a sequence of feature maps, and
+                the last two entries must have the strides 16 and 32.
+                Defaults to ``"MobileNetV2"``.
+            backbone_kwargs: Keyword arguments for the backbone node.
+                The constructor reads them only when
                 ``context_backbone`` is a string. It merges ``kwargs``
                 into this dictionary, and a key in ``kwargs`` replaces
                 the same key here. A dictionary that is not empty
                 changes in place, so the caller sees the merged keys.
                 ``None`` and an empty dictionary start from a new empty
                 dictionary.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`. A backbone built from a name gets them too.
+            **kwargs: Keyword arguments forwarded to `BaseNode`. A
+                backbone built from a name gets them too.
 
         """
         super().__init__(**kwargs)
@@ -127,15 +126,15 @@ class ContextSpatial(BaseNode):
         output of `ContextPath`.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
-                All multiples of ``32`` for ``H`` and ``W`` work. Other
-                sizes can give feature maps of different sizes, and
-                PyTorch then raises ``RuntimeError``. In the training
-                state, ``B`` must be larger than ``1``. Otherwise, a
-                batch norm raises ``ValueError``.
+            inputs: Image batch of shape ``[B, 3, H, W]``. All multiples
+                of ``32`` for ``H`` and ``W`` work. Other sizes can give
+                feature maps of different sizes, and PyTorch then raises
+                ``RuntimeError``. In the training state, ``B`` must be
+                larger than ``1``. Otherwise, a batch norm raises
+                ``ValueError``.
 
         Returns:
-            ``list[Tensor]``: A list with one fused feature map of shape
+            A list with one fused feature map of shape
             ``[B, 256, ceil(H / 8), ceil(W / 8)]``.
 
         Example:
@@ -178,8 +177,8 @@ class SpatialPath(nn.Module):
         """Initialize the four convolutions.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
 
         """
         super().__init__()
@@ -217,10 +216,10 @@ class SpatialPath(nn.Module):
         """Reduce ``x`` to 1/8 of its size and map its channels.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape
+            Output of shape
             ``[B, out_channels, ceil(H / 8), ceil(W / 8)]``.
 
         """
@@ -264,9 +263,9 @@ class ContextPath(nn.Module):
         ``3x3`` refinement blocks. `forward` builds the other layers.
 
         Args:
-            backbone (``nn.Module``): Module that returns a sequence of
-                feature maps. The path reads the last two entries. They
-                must have the strides 16 and 32.
+            backbone: Module that returns a sequence of feature maps.
+                The path reads the last two entries. They must have the
+                strides 16 and 32.
 
         """
         super().__init__()
@@ -292,21 +291,19 @@ class ContextPath(nn.Module):
         state, also when the path is in the eval state.
 
         Args:
-            x (``Tensor``): Input of the backbone, of shape
-                ``[B, C, H, W]``. The stride-32 map, upsampled by ``2``,
-                must have the size of the stride-16 map. All multiples
-                of ``32`` for ``H`` and ``W`` meet this condition. In the
-                training state, ``B`` must be larger than ``1``. The
-                reason is that each batch norm after a global pooling
-                sees one value per image.
+            x: Input of the backbone, of shape ``[B, C, H, W]``. The
+                stride-32 map, upsampled by ``2``, must have the size of
+                the stride-16 map. All multiples of ``32`` for ``H`` and
+                ``W`` meet this condition. In the training state, ``B``
+                must be larger than ``1``. The reason is that each batch
+                norm after a global pooling sees one value per image.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: Two maps with 128 channels. The
-            first is the final merged map, at twice the size of the
-            stride-16 map. The second is the refined stride-32 branch
-            after its upsampling and its ``3x3`` `ConvBlock`, at the
-            size of the stride-16 map. When ``H`` and ``W`` are
-            multiples of ``32``, the shapes are
+            Two maps with 128 channels. The first is the final merged
+            map, at twice the size of the stride-16 map. The second is
+            the refined stride-32 branch after its upsampling and its
+            ``3x3`` `ConvBlock`, at the size of the stride-16 map. When
+            ``H`` and ``W`` are multiples of ``32``, the shapes are
             ``[B, 128, H / 8, W / 8]`` and ``[B, 128, H / 16, W / 16]``.
 
         Example:

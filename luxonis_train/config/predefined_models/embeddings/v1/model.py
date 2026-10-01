@@ -55,15 +55,15 @@ class EmbeddingsModel(BasePredefinedModel):
         """Initialize the model.
 
         Args:
-            embedding_size (int): The length of the embedding vector the
-                head produces. It reaches the head as ``embedding_size``.
-            metadata_task_override (str): The metadata field of the
-                dataset that holds the identity of each sample. It
-                renames the ``id`` metadata label that the embeddings
-                task of the head requires. The example config
+            embedding_size: The length of the embedding vector the head
+                produces. It reaches the head as ``embedding_size``.
+            metadata_task_override: The metadata field of the dataset
+                that holds the identity of each sample. It renames the
+                ``id`` metadata label that the embeddings task of the
+                head requires. The example config
                 ``embeddings_model.yaml`` uses ``"color"``.
-            alias (str | None): The alias of the head node. ``None``
-                gives ``"<metadata_task_override>-embeddings"``.
+            alias: The alias of the head node. ``None`` gives
+                ``"<metadata_task_override>-embeddings"``.
 
         """
         self._embedding_size = embedding_size
@@ -78,8 +78,7 @@ class EmbeddingsModel(BasePredefinedModel):
         The model has one variant, ``default``, with no parameters.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"default"`` and the
-            single empty variant.
+            ``"default"`` and the single empty variant.
 
         Example:
             >>> EmbeddingsModel.get_variants()

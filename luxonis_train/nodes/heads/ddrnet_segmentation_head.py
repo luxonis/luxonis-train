@@ -129,19 +129,19 @@ class DDRNetSegmentationHead(BaseHead):
         when the two ratios differ.
 
         Args:
-            inter_channels (int): The number of output channels of the
-                3x3 convolution. With ``"pixel_shuffle"``, it must be a
+            inter_channels: The number of output channels of the 3x3
+                convolution. With ``"pixel_shuffle"``, it must be a
                 multiple of :math:`s^2`.
-            inter_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]``):
-                The upsampling method. ``"pixel_shuffle"`` uses
-                `torch.nn.PixelShuffle`. The other values are the
-                ``mode`` of `torch.nn.Upsample`. With ``"linear"`` or
-                ``"trilinear"``, `forward` raises ``NotImplementedError``,
-                because these modes need a 3D or a 5D input.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``original_in_shape``, ``input_shapes`` or
-                ``in_sizes``, and the class count through ``n_classes``
-                or ``dataset_metadata``.
+            inter_mode: The upsampling method. ``"pixel_shuffle"`` uses
+                ``torch.nn.PixelShuffle``. The other values are the
+                ``mode`` of ``torch.nn.Upsample``. With ``"linear"`` or
+                ``"trilinear"``, `forward` raises
+                ``NotImplementedError``, because these modes need a 3D
+                or a 5D input.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``original_in_shape``, ``input_shapes`` or ``in_sizes``,
+                and the class count through ``n_classes`` or
+                ``dataset_metadata``.
 
         Raises:
             ValueError: When ``inter_mode`` is ``"pixel_shuffle"`` and
@@ -207,12 +207,12 @@ class DDRNetSegmentationHead(BaseHead):
         method without arguments, so that value does not fail this way.
 
         Args:
-            path (str | None): Local path or URL of a ``.ckpt`` file.
+            path: Local path or URL of a ``.ckpt`` file.
                 `LuxonisLightningModule` also gives a state dictionary,
-                and the base method loads it directly. ``None`` or ``""``
-                takes the URL from `get_weights_url`.
-            strict (bool): Whether the keys of the checkpoint must match
-                the keys of the head exactly.
+                and the base method loads it directly. ``None`` or
+                ``""`` takes the URL from `get_weights_url`.
+            strict: Whether the keys of the checkpoint must match the
+                keys of the head exactly.
 
         """
         return super().load_checkpoint(path, strict=strict)
@@ -244,11 +244,10 @@ class DDRNetSegmentationHead(BaseHead):
         """Compute the logits, or the class indices in export mode.
 
         Args:
-            inputs (``Tensor``): The feature map of shape
-                ``[B, C, H / s, W / s]``.
+            inputs: The feature map of shape ``[B, C, H / s, W / s]``.
 
         Returns:
-            ``Tensor``: Outside export mode, the logits of shape
+            Outside export mode, the logits of shape
             ``[B, n_classes, H, W]``. In export mode, an ``int32``
             tensor. It holds the class index with the highest logit for
             each pixel, of shape ``[B, H, W]``. With ``n_classes == 1``,

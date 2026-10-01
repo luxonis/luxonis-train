@@ -54,16 +54,15 @@ def from_registry(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
     when it has no class under ``key``.
 
     Args:
-        registry (``Registry[type[T]]``): The registry to search, for
-            example `NODES` or `OPTIMIZERS`.
-        key (str): The name of the registered class.
-        *args (``Any``): The positional arguments for the constructor.
-        **kwargs (``Any``): The keyword arguments for the constructor.
+        registry: The registry to search, for example `NODES` or
+            `OPTIMIZERS`.
+        key: The name of the registered class.
+        *args: The positional arguments for the constructor.
+        **kwargs: The keyword arguments for the constructor.
 
     Returns:
-        ``T``: The result of the call. It is a new instance of the
-        registered class, unless the class is a factory such as
-        `ConfusionMatrix`.
+        The result of the call. It is a new instance of the registered
+        class, unless the class is a factory such as `ConfusionMatrix`.
 
     Example:
         >>> import torch

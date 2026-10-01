@@ -9,7 +9,7 @@ from .blocks import ConvBlock, DropPath
 class GenericResidualBlock(nn.Module):
     """Residual block that adds a shortcut to the output of any block.
 
-    The shortcut is `torch.nn.Identity` when ``stride`` is ``1`` and
+    The shortcut is ``torch.nn.Identity`` when ``stride`` is ``1`` and
     ``in_channels`` equals ``expansion * hidden_channels``. Otherwise
     it is a ``1x1`` `ConvBlock` with ``stride``, a batch norm, and no
     activation. This projection maps the input to
@@ -17,11 +17,9 @@ class GenericResidualBlock(nn.Module):
     `ResNetBottleneck` build on this class.
 
     Attributes:
-        block (``nn.Module``): The residual branch.
-        shortcut (``nn.Module``): The identity or the ``1x1``
-            projection.
-        final_relu (``nn.Module``): `torch.nn.ReLU` or
-            `torch.nn.Identity`.
+        block: The residual branch.
+        shortcut: The identity or the ``1x1`` projection.
+        final_relu: ``torch.nn.ReLU`` or ``torch.nn.Identity``.
 
     """
 
@@ -38,16 +36,16 @@ class GenericResidualBlock(nn.Module):
         """Store the branch and build the shortcut and the activation.
 
         Args:
-            in_channels (int): The number of input channels.
-            hidden_channels (int): The base width. The output has
+            in_channels: The number of input channels.
+            hidden_channels: The base width. The output has
                 ``expansion * hidden_channels`` channels.
-            stride (int): The stride of the shortcut projection. The
-                branch must reduce the size by the same factor.
-            expansion (int): The factor from ``hidden_channels`` to the
-                number of output channels.
-            final_relu (bool): Whether a ReLU follows the sum.
-            block (``nn.Module``): The residual branch. Its output must
-                have the shape of the shortcut output.
+            stride: The stride of the shortcut projection. The branch
+                must reduce the size by the same factor.
+            expansion: The factor from ``hidden_channels`` to the number
+                of output channels.
+            final_relu: Whether a ReLU follows the sum.
+            block: The residual branch. Its output must have the shape
+                of the shortcut output.
 
         """
         super().__init__()
@@ -75,13 +73,13 @@ class GenericResidualBlock(nn.Module):
         The addition runs in place on the output of ``block``.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The sum ``block(x) + shortcut(x)``, after the ReLU
-            when the constructor got ``final_relu=True``. The shape is
-            ``[B, expansion * hidden_channels, H', W']``, where ``stride``
-            sets ``H'`` and ``W'``.
+            The sum ``block(x) + shortcut(x)``, after the ReLU when the
+            constructor got ``final_relu=True``. The shape is
+            ``[B, expansion * hidden_channels, H', W']``, where
+            ``stride`` sets ``H'`` and ``W'``.
 
         """
         out = self.block(x)
@@ -122,17 +120,17 @@ class ResNetBlock(GenericResidualBlock):
         """Build the residual branch of the block.
 
         Args:
-            in_channels (int): The number of input channels.
-            hidden_channels (int): The number of output channels.
-            stride (int): The stride of the first convolution and of the
+            in_channels: The number of input channels.
+            hidden_channels: The number of output channels.
+            stride: The stride of the first convolution and of the
                 shortcut.
-            expansion (int): The factor of the shortcut channels. The
-                branch always gives ``hidden_channels`` channels, so
-                only ``1`` works. With a value above ``1``, ``forward``
-                raises ``RuntimeError``.
-            final_relu (bool): Whether a ReLU follows the sum.
-            droppath_prob (float): The drop probability of the `DropPath`
-                at the end of the branch.
+            expansion: The factor of the shortcut channels. The branch
+                always gives ``hidden_channels`` channels, so only ``1``
+                works. With a value above ``1``, ``forward`` raises
+                ``RuntimeError``.
+            final_relu: Whether a ReLU follows the sum.
+            droppath_prob: The drop probability of the `DropPath` at the
+                end of the branch.
 
         """
         super().__init__(
@@ -199,16 +197,16 @@ class ResNetBottleneck(GenericResidualBlock):
         """Build the residual branch of the block.
 
         Args:
-            in_channels (int): The number of input channels.
-            hidden_channels (int): The number of channels of the ``1x1``
+            in_channels: The number of input channels.
+            hidden_channels: The number of channels of the ``1x1``
                 reduction and of the ``3x3`` convolution.
-            stride (int): The stride of the ``3x3`` convolution and of
-                the shortcut.
-            expansion (int): The output has ``expansion * hidden_channels``
+            stride: The stride of the ``3x3`` convolution and of the
+                shortcut.
+            expansion: The output has ``expansion * hidden_channels``
                 channels.
-            final_relu (bool): Whether a ReLU follows the sum.
-            droppath_prob (float): The drop probability of the `DropPath`
-                at the end of the branch.
+            final_relu: Whether a ReLU follows the sum.
+            droppath_prob: The drop probability of the `DropPath` at the
+                end of the branch.
 
         """
         super().__init__(

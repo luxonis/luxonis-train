@@ -88,16 +88,14 @@ class FOMOLocalizationLoss(BaseLoss):
         ``node``, `BaseAttachedModule.node` raises ``RuntimeError``.
 
         Args:
-            object_weight (float): The factor :math:`w` of the loss in a
-                center cell. The other cells have the factor ``1``.
-            alpha (float): The factor :math:`\alpha` of the loss in
-                every cell.
-            gamma (float): The exponent :math:`\gamma` of the focal
-                term. A higher value lowers the loss of the cells that
-                the head already predicts well. ``0`` removes the focal
-                term.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            object_weight: The factor :math:`w` of the loss in a center
+                cell. The other cells have the factor ``1``.
+            alpha: The factor :math:`\alpha` of the loss in every cell.
+            gamma: The exponent :math:`\gamma` of the focal term. A
+                higher value lowers the loss of the cells that the head
+                already predicts well. ``0`` removes the focal term.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -110,17 +108,16 @@ class FOMOLocalizationLoss(BaseLoss):
         r"""Build the target heatmap and compute the weighted focal loss.
 
         Args:
-            heatmap (``Tensor``): The class logits of shape
-                ``[B, n_classes, H, W]``, from the ``heatmap`` key of the
-                node output.
-            target (``Tensor``): The ``boundingbox`` label of shape
-                ``[M, 6]``. Each row holds the batch index, the class,
-                and the normalized ``x``, ``y``, ``w``, and ``h`` of one
-                box. ``x`` and ``y`` give the top-left corner.
+            heatmap: The class logits of shape ``[B, n_classes, H, W]``,
+                from the ``heatmap`` key of the node output.
+            target: The ``boundingbox`` label of shape ``[M, 6]``. Each
+                row holds the batch index, the class, and the normalized
+                ``x``, ``y``, ``w``, and ``h`` of one box. ``x`` and
+                ``y`` give the top-left corner.
 
         Returns:
-            ``Tensor``: The mean of the weighted focal loss over all
-            cells of ``heatmap``, as a scalar.
+            The mean of the weighted focal loss over all cells of
+            ``heatmap``, as a scalar.
 
         Example:
             The example uses a heatmap of zero logits on a ``4x4`` grid.

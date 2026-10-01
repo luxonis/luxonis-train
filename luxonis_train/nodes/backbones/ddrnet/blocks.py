@@ -51,15 +51,15 @@ class DAPPMBranch(nn.Module):
         """Initialize the downscale layers and the upscale.
 
         Args:
-            in_channels (int): Number of input channels.
-            kernel_size (int): Kernel size of the depthwise convolution.
-                The branch uses it only when ``stride`` is above ``1``.
-            stride (int): Selects the downscale. ``0`` selects a global
+            in_channels: Number of input channels.
+            kernel_size: Kernel size of the depthwise convolution. The
+                branch uses it only when ``stride`` is above ``1``.
+            stride: Selects the downscale. ``0`` selects a global
                 average pool, ``1`` selects no downscale, and a larger
                 value selects a depthwise convolution with this stride.
-            branch_channels (int): Number of output channels.
-            interpolation_mode (str): Mode of
-                `torch.nn.functional.interpolate` for the resize to the
+            branch_channels: Number of output channels.
+            interpolation_mode: Mode of
+                ``torch.nn.functional.interpolate`` for the resize to the
                 input size. Defaults to ``"bilinear"``.
 
         """
@@ -94,10 +94,10 @@ class DAPPMBranch(nn.Module):
         """Run the branch on ``x`` and resize the output to ``[H, W]``.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, branch_channels, H, W]``.
+            Output of shape ``[B, branch_channels, H, W]``.
 
         """
         h, w = x.shape[-2], x.shape[-1]
@@ -135,16 +135,16 @@ class MergeDAPPMBranch(DAPPMBranch):
         """Initialize the branch layers and the merge layers.
 
         Args:
-            in_channels (int): Number of input channels.
-            kernel_size (int): Kernel size of the depthwise convolution.
-                The branch uses it only when ``stride`` is above ``1``.
-            stride (int): Selects the downscale. ``0`` selects a global
+            in_channels: Number of input channels.
+            kernel_size: Kernel size of the depthwise convolution. The
+                branch uses it only when ``stride`` is above ``1``.
+            stride: Selects the downscale. ``0`` selects a global
                 average pool, ``1`` selects no downscale, and a larger
                 value selects a depthwise convolution with this stride.
-            branch_channels (int): Number of output channels. The output
-                of the previous branch must have the same number.
-            interpolation_mode (str): Mode of
-                `torch.nn.functional.interpolate` for the resize to the
+            branch_channels: Number of output channels. The output of
+                the previous branch must have the same number.
+            interpolation_mode: Mode of
+                ``torch.nn.functional.interpolate`` for the resize to the
                 input size. Defaults to ``"bilinear"``.
 
         """
@@ -172,13 +172,13 @@ class MergeDAPPMBranch(DAPPMBranch):
         """Run the branch on ``x`` and merge the previous branch output.
 
         Args:
-            x (``Tensor``): Input of the `DAPPM` block, of shape
+            x: Input of the `DAPPM` block, of shape
                 ``[B, in_channels, H, W]``.
-            skip_x (``Tensor``): Output of the previous branch, of shape
+            skip_x: Output of the previous branch, of shape
                 ``[B, branch_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, branch_channels, H, W]``.
+            Output of shape ``[B, branch_channels, H, W]``.
 
         """
         out = super().forward(x)
@@ -225,18 +225,17 @@ class DAPPM(nn.Module):
         """Initialize the branches, the compression, and the shortcut.
 
         Args:
-            in_channels (int): Number of input channels.
-            branch_channels (int): Number of output channels of each
-                branch.
-            out_channels (int): Number of output channels.
-            kernel_sizes (list[int]): Kernel size of each branch. The
-                first entry configures the `DAPPMBranch`. Each other
-                entry configures one `MergeDAPPMBranch`.
-            strides (list[int]): Stride of each branch, in the order of
+            in_channels: Number of input channels.
+            branch_channels: Number of output channels of each branch.
+            out_channels: Number of output channels.
+            kernel_sizes: Kernel size of each branch. The first entry
+                configures the `DAPPMBranch`. Each other entry
+                configures one `MergeDAPPMBranch`.
+            strides: Stride of each branch, in the order of
                 ``kernel_sizes``. `DAPPMBranch` explains the values
                 ``0``, ``1``, and larger.
-            interpolation_mode (str): Mode of
-                `torch.nn.functional.interpolate` for the resize in each
+            interpolation_mode: Mode of
+                ``torch.nn.functional.interpolate`` for the resize in each
                 branch. Defaults to ``"bilinear"``.
 
         Raises:
@@ -290,10 +289,10 @@ class DAPPM(nn.Module):
         """Pool ``x`` at every scale and fuse the results.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H, W]``.
+            Output of shape ``[B, out_channels, H, W]``.
 
         """
         x_list = [self.start_branch(x)]
@@ -316,7 +315,7 @@ class BasicDDRBackbone(nn.Module):
     - ``stem``: ``stem_channels`` channels at ``H / 4``.
     - ``layer1``: ``stem_channels`` channels at ``H / 4``.
     - ``layer2``: ``2 * stem_channels`` channels at ``H / 8``.
-    - ``layer3``: a `torch.nn.ModuleList` of
+    - ``layer3``: a ``torch.nn.ModuleList`` of
       ``max(layer3_repeats, 1)`` stages, with ``4 * stem_channels``
       channels at ``H / 16``. Only the first stage has stride ``2``.
     - ``layer4``: ``8 * stem_channels`` channels at ``H / 32``.
@@ -339,18 +338,18 @@ class BasicDDRBackbone(nn.Module):
         """Build the stem and the four stages.
 
         Args:
-            block (``type[nn.Module]``): Block class of every stage, for
-                example `ResNetBlock`. `make_layer` lists the arguments
-                that the class must accept.
-            stem_channels (int): Number of output channels of the stem
-                and of ``layer1``. ``layer2``, ``layer3``, and ``layer4``
-                have 2, 4, and 8 times as many channels.
-            layers (list[int]): Number of blocks in ``layer1``,
-                ``layer2``, each ``layer3`` stage, and ``layer4``. The
-                backbone reads the first four entries.
-            in_channels (int): Number of input channels.
-            layer3_repeats (int): Number of ``layer3`` stages. A value
-                below ``1`` still builds one stage. Defaults to ``1``.
+            block: Block class of every stage, for example
+                `ResNetBlock`. `make_layer` lists the arguments that the
+                class must accept.
+            stem_channels: Number of output channels of the stem and of
+                ``layer1``. ``layer2``, ``layer3``, and ``layer4`` have
+                2, 4, and 8 times as many channels.
+            layers: Number of blocks in ``layer1``, ``layer2``, each
+                ``layer3`` stage, and ``layer4``. The backbone reads the
+                first four entries.
+            in_channels: Number of input channels.
+            layer3_repeats: Number of ``layer3`` stages. A value below
+                ``1`` still builds one stage. Defaults to ``1``.
 
         """
         super().__init__()
@@ -432,8 +431,8 @@ class BasicDDRBackbone(nn.Module):
         running statistics of the batch norms.
 
         Returns:
-            dict[str, int]: The channel counts under the keys
-            ``"layer2"``, ``"layer3"``, and ``"layer4"``.
+            The channel counts under the keys ``"layer2"``,
+            ``"layer3"``, and ``"layer4"``.
 
         Example:
             >>> from luxonis_train.nodes.blocks import ResNetBlock
@@ -484,20 +483,18 @@ def make_layer(
     ReLU. A value of ``n_blocks`` below ``1`` still builds one block.
 
     Args:
-        block (``type[nn.Module]``): Block class, for example
-            `ResNetBlock` or `ResNetBottleneck`. It must accept the
-            arguments above and output ``channels * expansion``
-            channels.
-        in_channels (int): Number of input channels of the first block.
-        channels (int): Number of hidden channels of each block.
-        n_blocks (int): Number of blocks.
-        stride (int): Stride of the first block. Defaults to ``1``.
-        expansion (int): Expansion factor of every block. Defaults to
-            ``1``.
+        block: Block class, for example `ResNetBlock` or
+            `ResNetBottleneck`. It must accept the arguments above and
+            output ``channels * expansion`` channels.
+        in_channels: Number of input channels of the first block.
+        channels: Number of hidden channels of each block.
+        n_blocks: Number of blocks.
+        stride: Stride of the first block. Defaults to ``1``.
+        expansion: Expansion factor of every block. Defaults to ``1``.
 
     Returns:
-        ``nn.Sequential``: The blocks in order. The stage outputs
-        ``channels * expansion`` channels.
+        The blocks in order. The stage outputs ``channels * expansion``
+        channels.
 
     Example:
         >>> import torch

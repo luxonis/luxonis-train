@@ -91,21 +91,19 @@ def default_annotate(
     The coordinates are wrong when the original size differs from it.
 
     Args:
-        head (BaseHead): The head that made the predictions. The
-            generator reads its ``task``, ``task_name``, ``classes``,
-            and ``name``. For the ``"text"`` label, it also reads
-            ``decoder``.
-        head_output (``Packet[Tensor]``): The output packet of the head.
-            The entry of each label holds one element for each image.
-            The ``"text"`` label reads the ``"ocr"`` entry.
-        image_paths (``list[Path]``): The paths of the original images,
-            in the order of the batch.
-        config_preprocessing (PreprocessingConfig): The preprocessing
-            config. The generator reads ``train_image_size`` and
-            ``keep_aspect_ratio``.
+        head: The head that made the predictions. The generator reads
+            its ``task``, ``task_name``, ``classes``, and ``name``. For
+            the ``"text"`` label, it also reads ``decoder``.
+        head_output: The output packet of the head. The entry of each
+            label holds one element for each image. The ``"text"`` label
+            reads the ``"ocr"`` entry.
+        image_paths: The paths of the original images, in the order of
+            the batch.
+        config_preprocessing: The preprocessing config. The generator
+            reads ``train_image_size`` and ``keep_aspect_ratio``.
 
     Yields:
-        dict: One record in the ``luxonis_ml`` record format.
+        One record in the ``luxonis_ml`` record format.
 
     Raises:
         ValueError: When ``head.task`` requires a label that the

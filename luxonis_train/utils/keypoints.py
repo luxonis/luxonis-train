@@ -27,16 +27,13 @@ def get_sigmas(
       logs an info message.
 
     Args:
-        sigmas (list[float] | None): One sigma per keypoint. ``None``
-            selects the defaults.
-        n_keypoints (int): The number of keypoints.
-        caller_name (str | None): The name of the caller, used as a
-            prefix of the log and error messages. ``None`` adds no
-            prefix.
+        sigmas: One sigma per keypoint. ``None`` selects the defaults.
+        n_keypoints: The number of keypoints.
+        caller_name: The name of the caller, used as a prefix of the log
+            and error messages. ``None`` adds no prefix.
 
     Returns:
-        ``Tensor``: The sigmas as a ``float32`` tensor of shape
-        ``[n_keypoints]``.
+        The sigmas as a ``float32`` tensor of shape ``[n_keypoints]``.
 
     Raises:
         ValueError: When ``sigmas`` is given and its length differs from
@@ -102,19 +99,19 @@ def get_center_keypoints(
     annotated keypoints.
 
     Args:
-        bboxes (``Tensor``): The bounding boxes of shape ``[N, 6]``, with
-            the columns ``(batch_index, class, x, y, w, h)``. ``x`` and
-            ``y`` are the normalized top-left corner, and ``w`` and
-            ``h`` are the normalized size.
-        height (int): The height that scales ``y``, for example the
-            height of an image or of a heatmap. ``1`` keeps the
-            coordinates normalized.
-        width (int): The width that scales ``x``, for example the width
-            of an image or of a heatmap. ``1`` keeps the coordinates
+        bboxes: The bounding boxes of shape ``[N, 6]``, with the columns
+            ``(batch_index, class, x, y, w, h)``. ``x`` and ``y`` are
+            the normalized top-left corner, and ``w`` and ``h`` are the
+            normalized size.
+        height: The height that scales ``y``, for example the height of
+            an image or of a heatmap. ``1`` keeps the coordinates
+            normalized.
+        width: The width that scales ``x``, for example the width of an
+            image or of a heatmap. ``1`` keeps the coordinates
             normalized.
 
     Returns:
-        ``Tensor``: The keypoints of shape ``[N, 4]``, with the columns
+        The keypoints of shape ``[N, 4]``, with the columns
         ``(batch_index, x, y, visibility)``, on the device and of the
         dtype of ``bboxes``. ``x`` and ``y`` are the box center scaled
         by ``width`` and ``height``. The visibility is always ``2``.
@@ -141,17 +138,15 @@ def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
     """Insert the class index of each bounding box into its keypoints.
 
     Args:
-        keypoints (``Tensor``): The keypoints of shape ``[N, 1 + 3K]``,
-            where ``K`` is the number of keypoints. The batch index is
-            in the first column, followed by ``(x, y, visibility)``
-            triples.
-        bboxes (``Tensor``): The bounding boxes of shape ``[N, 6]``, in
-            the same instance order, with the class index in the
-            second column.
+        keypoints: The keypoints of shape ``[N, 1 + 3K]``, where ``K``
+            is the number of keypoints. The batch index is in the first
+            column, followed by ``(x, y, visibility)`` triples.
+        bboxes: The bounding boxes of shape ``[N, 6]``, in the same
+            instance order, with the class index in the second column.
 
     Returns:
-        ``Tensor``: The keypoints of shape ``[N, 2 + 3K]``, with the
-        class index inserted as the second column.
+        The keypoints of shape ``[N, 2 + 3K]``, with the class index
+        inserted as the second column.
 
     Example:
         >>> import torch
@@ -201,32 +196,27 @@ def compute_pose_oks(
     :math:`-d_i^2 / (2 (A \sigma_i)^2)` instead.
 
     Args:
-        predictions (``Tensor``): The predicted keypoints of shape
+        predictions: The predicted keypoints of shape
             ``[N, M2, n_keypoints, 3]``. The function reads only ``x``
             and ``y``, the first two values of each keypoint.
-        targets (``Tensor``): The target keypoints of shape
+        targets: The target keypoints of shape
             ``[N, M1, n_keypoints, 3]``, as ``(x, y, visibility)``.
-        sigmas (``Tensor``): One sigma per keypoint, of shape
-            ``[n_keypoints]``.
-        gt_bboxes (``Tensor | None``): The target boxes of shape
-            ``[N, M1, 4]`` in ``xyxy`` format. Their area times
-            ``area_factor`` is the pose area. The function reads them
-            only when ``pose_area`` is ``None``.
-        pose_area (``Tensor | None``): The pose area of each target, of
-            shape ``[N, M1, 1, 1]``. ``None`` computes it from
-            ``gt_bboxes``.
-        eps (float): A small constant that the function adds to the
-            area and to the visible count. It prevents a division by
-            zero.
-        area_factor (float): The factor that scales the box area to the
-            pose area.
-        use_cocoeval_oks (bool): When ``True``, use the formula of the
-            COCO evaluation code. When ``False``, use the other formula
+        sigmas: One sigma per keypoint, of shape ``[n_keypoints]``.
+        gt_bboxes: The target boxes of shape ``[N, M1, 4]`` in ``xyxy``
+            format. Their area times ``area_factor`` is the pose area.
+            The function reads them only when ``pose_area`` is ``None``.
+        pose_area: The pose area of each target, of shape
+            ``[N, M1, 1, 1]``. ``None`` computes it from ``gt_bboxes``.
+        eps: A small constant that the function adds to the area and to
+            the visible count. It prevents a division by zero.
+        area_factor: The factor that scales the box area to the pose
+            area.
+        use_cocoeval_oks: When ``True``, use the formula of the COCO
+            evaluation code. When ``False``, use the other formula
             above.
 
     Returns:
-        ``Tensor``: The similarities of shape ``[N, M1, M2]``, in
-        ``[0, 1]``.
+        The similarities of shape ``[N, M1, M2]``, in ``[0, 1]``.
 
     Raises:
         ValueError: When both ``pose_area`` and ``gt_bboxes`` are

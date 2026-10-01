@@ -66,15 +66,14 @@ class FOMOVisualizer(BBoxVisualizer):
         """Initialize the visualizer and store the point options.
 
         Args:
-            visibility_threshold (float): Minimum probability of a
-                point. `draw_predictions_per_class` skips a point below
-                it. `forward` ignores it for points with three values.
+            visibility_threshold: Minimum probability of a point.
+                `draw_predictions_per_class` skips a point below it.
+                `forward` ignores it for points with three values.
                 Defaults to ``0.5``.
-            radius (int): Radius of a drawn point, in pixels. Defaults
-                to ``5``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BBoxVisualizer`, such as ``labels``, ``colors``,
-                ``scale``, and ``node``.
+            radius: Radius of a drawn point, in pixels. Defaults to
+                ``5``.
+            **kwargs: Keyword arguments forwarded to `BBoxVisualizer`,
+                such as ``labels``, ``colors``, ``scale``, and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -102,21 +101,20 @@ class FOMOVisualizer(BBoxVisualizer):
         per point, so its output takes the second path.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the points on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the target boxes on.
-            keypoints (``list[Tensor]``): One tensor per image, of shape
-                ``[K_i, 1, 4]`` with rows ``(x, y, prob, class)`` in
-                pixels, or of shape ``[K_i, 1, 3]`` without the class.
-            target_boundingbox (``Tensor | None``): Boxes of shape
-                ``[N, 6]`` with rows ``[batch_index, class, x, y, w, h]``,
-                ``xywh`` normalized to ``[0, 1]``. ``None`` when the
-                batch has no ``boundingbox`` labels.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the target boxes on.
+            keypoints: One tensor per image, of shape ``[K_i, 1, 4]``
+                with rows ``(x, y, prob, class)`` in pixels, or of shape
+                ``[K_i, 1, 3]`` without the class.
+            target_boundingbox: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``, ``xywh``
+                normalized to ``[0, 1]``. ``None`` when the batch has no
+                ``boundingbox`` labels.
 
         Returns:
-            ``tuple[Tensor, Tensor] | Tensor``: The pair
-            ``(targets, predictions)`` of drawn images when
+            The pair ``(targets, predictions)`` of drawn images when
             ``target_boundingbox`` is not ``None``; otherwise only the
             predictions image.
 
@@ -152,12 +150,12 @@ class FOMOVisualizer(BBoxVisualizer):
         point.
 
         Args:
-            predictions (``list[Tensor]``): One tensor per image, of
-                shape ``[K_i, 1, 3]`` or ``[K_i, 1, 4]``.
+            predictions: One tensor per image, of shape ``[K_i, 1, 3]``
+                or ``[K_i, 1, 4]``.
 
         Returns:
-            bool: ``True`` when the last dimension of every tensor has
-            size ``3``, and for an empty list.
+            ``True`` when the last dimension of every tensor has size
+            ``3``, and for an empty list.
 
         """
         return all(x.shape[2] == 3 for x in predictions)
@@ -175,14 +173,13 @@ class FOMOVisualizer(BBoxVisualizer):
         when the name has no color.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            predictions (``list[Tensor]``): One tensor per image, of
-                shape ``[K_i, 1, 4]`` with rows ``(x, y, prob, class)``
-                in pixels.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            predictions: One tensor per image, of shape ``[K_i, 1, 4]``
+                with rows ``(x, y, prob, class)`` in pixels.
 
         Returns:
-            ``Tensor``: A copy of ``canvas`` with the points drawn.
+            A copy of ``canvas`` with the points drawn.
 
         Example:
             >>> import torch
@@ -210,14 +207,13 @@ class FOMOVisualizer(BBoxVisualizer):
         """Draw the visible points of one image, class by class.
 
         Args:
-            image (``Tensor``): One ``uint8`` image of shape
-                ``[3, H, W]``.
-            prediction (``Tensor``): Points of shape ``[K, 1, 4]`` with
-                rows ``(x, y, prob, class)`` in pixels.
+            image: One ``uint8`` image of shape ``[3, H, W]``.
+            prediction: Points of shape ``[K, 1, 4]`` with rows
+                ``(x, y, prob, class)`` in pixels.
 
         Returns:
-            ``Tensor``: The image with the points drawn. The input image
-            itself when no point is visible.
+            The image with the points drawn. The input image itself when
+            no point is visible.
 
         """
         xy = prediction[..., :2].clone()
@@ -241,15 +237,14 @@ class FOMOVisualizer(BBoxVisualizer):
         """Draw the points of one class in the color of that class.
 
         Args:
-            image (``Tensor``): One ``uint8`` image of shape
-                ``[3, H, W]``.
-            points (``Tensor``): Pixel coordinates of shape ``[K, 2]``.
-            class_id (int): Class index. Its name comes from
-                ``label_dict``, and its color from ``colors``; white
-                when the name has no color.
+            image: One ``uint8`` image of shape ``[3, H, W]``.
+            points: Pixel coordinates of shape ``[K, 2]``.
+            class_id: Class index. Its name comes from ``label_dict``,
+                and its color from ``colors``; white when the name has
+                no color.
 
         Returns:
-            ``Tensor``: A new image with the points drawn.
+            A new image with the points drawn.
 
         """
         label = (

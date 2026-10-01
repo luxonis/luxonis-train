@@ -124,26 +124,24 @@ class EfficientViT(BaseNode):
         property raises ``RuntimeError``.
 
         Args:
-            width_list (list[int] | None): Number of output channels of
-                each stage. The length sets the number of stages. ``None``
-                or an empty list selects ``[8, 16, 32, 64, 128]``.
-            depth_list (list[int] | None): Number of repeated blocks of
-                each stage. Stage ``0`` has this number of
-                `DepthWiseSeparableConv` blocks after its stem
-                convolution. Stages ``1`` and ``2`` have this number of
-                `MobileBottleneckBlock` blocks. A later stage has this
-                number of `EfficientViTBlock` blocks after its first
-                `MobileBottleneckBlock`. ``None`` or an empty list
-                selects ``[1, 2, 2, 2, 2]``.
-            dim (int): Number of channels of the query, the key, and the
-                value of each attention head in the `EfficientViTBlock`
+            width_list: Number of output channels of each stage. The
+                length sets the number of stages. ``None`` or an empty
+                list selects ``[8, 16, 32, 64, 128]``.
+            depth_list: Number of repeated blocks of each stage. Stage
+                ``0`` has this number of `DepthWiseSeparableConv` blocks
+                after its stem convolution. Stages ``1`` and ``2`` have
+                this number of `MobileBottleneckBlock` blocks. A later
+                stage has this number of `EfficientViTBlock` blocks
+                after its first `MobileBottleneckBlock`. ``None`` or an
+                empty list selects ``[1, 2, 2, 2, 2]``.
+            dim: Number of channels of the query, the key, and the value
+                of each attention head in the `EfficientViTBlock`
                 blocks. Defaults to ``16``.
-            expand_ratio (int): Channel expansion factor of every
+            expand_ratio: Channel expansion factor of every
                 `MobileBottleneckBlock`. This includes the
                 `MobileBottleneckBlock` of each `EfficientViTBlock`.
                 Defaults to ``4``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         Raises:
             ValueError: When ``width_list`` and ``depth_list`` have
@@ -234,12 +232,12 @@ class EfficientViT(BaseNode):
         r"""Run the stages and return the output of each stage.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, C, H, W]``, where ``C``
-                is `BaseNode.in_channels`.
+            x: Input of shape ``[B, C, H, W]``, where ``C`` is
+                `BaseNode.in_channels`.
 
         Returns:
-            ``list[Tensor]``: One tensor for each stage, in stage order.
-            When no stage is empty, stage ``i`` gives the shape
+            One tensor for each stage, in stage order. When no stage is
+            empty, stage ``i`` gives the shape
             ``[B, width_list[i], H_i, W_i]``, with
             :math:`H_i = \lceil H / 2^{i+1} \rceil` and
             :math:`W_i = \lceil W / 2^{i+1} \rceil`. An empty stage
@@ -279,9 +277,8 @@ class EfficientViT(BaseNode):
         as their variants. Each call builds new dictionaries.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
-            dictionary that maps each variant name and alias to its
-            constructor keyword arguments.
+            The name ``"n"``, and a dictionary that maps each variant
+            name and alias to its constructor keyword arguments.
 
         Example:
             >>> from luxonis_train.nodes import EfficientViT

@@ -125,35 +125,33 @@ class PrecisionRecallCurve(BaseMetric):
         """Build the threshold grid and resolve the NMS settings.
 
         Args:
-            confidence_thresholds (list[float] | None): An explicit grid
-                of at least two strictly increasing values in
-                ``[0, 1]``. ``None`` builds a grid of ``num_thresholds``
-                evenly spaced values from ``min_confidence`` to
-                ``max_confidence``.
-            num_thresholds (int | None): The number of values of the
-                built grid, at least ``2``. ``None`` selects ``101``.
-            min_confidence (float | None): The first value of the built
-                grid, in ``[0, 1]``. ``None`` selects ``0.0``.
-            max_confidence (float | None): The last value of the built
-                grid, in ``[0, 1]`` and above ``min_confidence``.
-                ``None`` selects ``1.0``.
-            matching_iou_threshold (float): The smallest IoU, in
-                ``[0, 1]``, at which a detection matches a target of its
-                class.
-            nms_conf_threshold (float): The score floor of NMS, in
-                ``[0, 1]``. NMS drops the candidates below the floor, so
-                they never count, not even at the first threshold. The
-                metric uses the larger of this value and the first value
-                of the grid. A lower floor keeps more candidates, and
-                NMS then takes more time. A floor of ``0`` keeps every
-                candidate with a score above ``0``.
-            nms_iou_threshold (float | None): The IoU threshold of NMS,
-                in ``[0, 1]``. ``None`` selects ``iou_thres`` of the node.
-            max_detections (int | None): The largest number of detections
-                that NMS keeps for each image, above ``0``. ``None``
-                selects ``max_det`` of the node.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`. They must hold ``node``.
+            confidence_thresholds: An explicit grid of at least two
+                strictly increasing values in ``[0, 1]``. ``None``
+                builds a grid of ``num_thresholds`` evenly spaced values
+                from ``min_confidence`` to ``max_confidence``.
+            num_thresholds: The number of values of the built grid, at
+                least ``2``. ``None`` selects ``101``.
+            min_confidence: The first value of the built grid, in
+                ``[0, 1]``. ``None`` selects ``0.0``.
+            max_confidence: The last value of the built grid, in
+                ``[0, 1]`` and above ``min_confidence``. ``None``
+                selects ``1.0``.
+            matching_iou_threshold: The smallest IoU, in ``[0, 1]``, at
+                which a detection matches a target of its class.
+            nms_conf_threshold: The score floor of NMS, in ``[0, 1]``.
+                NMS drops the candidates below the floor, so they never
+                count, not even at the first threshold. The metric uses
+                the larger of this value and the first value of the
+                grid. A lower floor keeps more candidates, and NMS then
+                takes more time. A floor of ``0`` keeps every candidate
+                with a score above ``0``.
+            nms_iou_threshold: The IoU threshold of NMS, in ``[0, 1]``.
+                ``None`` selects ``iou_thres`` of the node.
+            max_detections: The largest number of detections that NMS
+                keeps for each image, above ``0``. ``None`` selects
+                ``max_det`` of the node.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`. They
+                must hold ``node``.
 
         Raises:
             ValueError: When ``confidence_thresholds`` comes with one of
@@ -289,14 +287,14 @@ class PrecisionRecallCurve(BaseMetric):
         made in inference mode with a normal tensor.
 
         Args:
-            detections_pre_nms (``Tensor``): The candidates of the head,
-                of shape ``[B, N, 5 + n_classes + E]``. Each row holds
-                the ``xyxy`` box in pixels, a constant ``1``, the class
+            detections_pre_nms: The candidates of the head, of shape
+                ``[B, N, 5 + n_classes + E]``. Each row holds the
+                ``xyxy`` box in pixels, a constant ``1``, the class
                 scores, and ``E`` extra values that the metric ignores.
-            target_boundingbox (``Tensor``): The target boxes of shape
-                ``[N_t, 6]``, as ``[batch, class, x, y, w, h]`` with
-                normalized values. The method moves them to the device
-                of the candidates.
+            target_boundingbox: The target boxes of shape ``[N_t, 6]``,
+                as ``[batch, class, x, y, w, h]`` with normalized
+                values. The method moves them to the device of the
+                candidates.
 
         """
         self._detach_inference_states()
@@ -416,19 +414,19 @@ class PrecisionRecallCurve(BaseMetric):
         once.
 
         Args:
-            prediction_boxes (``Tensor``): The ``xyxy`` boxes of the
-                predictions in pixels, of shape ``[M, 4]``, from the
-                highest score to the lowest.
-            prediction_classes (``Tensor``): The class index of each
-                prediction, of shape ``[M]``.
-            target_boxes (``Tensor``): The ``xyxy`` boxes of the targets
-                in pixels, of shape ``[K, 4]``.
-            target_classes (``Tensor``): The class index of each target,
-                of shape ``[K]``.
+            prediction_boxes: The ``xyxy`` boxes of the predictions in
+                pixels, of shape ``[M, 4]``, from the highest score to
+                the lowest.
+            prediction_classes: The class index of each prediction, of
+                shape ``[M]``.
+            target_boxes: The ``xyxy`` boxes of the targets in pixels,
+                of shape ``[K, 4]``.
+            target_classes: The class index of each target, of shape
+                ``[K]``.
 
         Returns:
-            ``Tensor``: A ``bool`` tensor of shape ``[M]``. An item is
-            ``True`` when its prediction pairs with a target.
+            A ``bool`` tensor of shape ``[M]``. An item is ``True`` when
+            its prediction pairs with a target.
 
         """
         true_positive = torch.zeros(
@@ -497,13 +495,14 @@ class PrecisionRecallCurve(BaseMetric):
         The class docstring gives the formulas.
 
         Returns:
-            ``dict[str, Tensor]``: The curves and their best point:
+            The curves and their best point.
 
-            - ``"confidence"``: the threshold grid, of shape ``[T]``.
-            - ``"precision"``, ``"recall"``, ``"f1"``: the values at the
-              thresholds, each of shape ``[T]``.
-            - ``"max_f1"``: the largest F1, a scalar.
-            - ``"confidence_at_max_f1"``: the first threshold that
+            - ``"confidence"`` holds the threshold grid, of shape
+              ``[T]``.
+            - ``"precision"``, ``"recall"``, and ``"f1"`` hold the
+              values at the thresholds, each of shape ``[T]``.
+            - ``"max_f1"`` holds the largest F1, a scalar.
+            - ``"confidence_at_max_f1"`` holds the first threshold that
               reaches ``max_f1``, a scalar.
 
         Example:
@@ -575,11 +574,11 @@ class PrecisionRecallCurve(BaseMetric):
         of the scalar logs.
 
         Args:
-            values (``dict[str, Tensor]``): The result of `compute`.
+            values: The result of `compute`.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: ``values["max_f1"]``,
-            and a dictionary with the key ``"confidence_at_max_f1"``.
+            ``values["max_f1"]``, and a dictionary with the key
+            ``"confidence_at_max_f1"``.
 
         """
         return values["max_f1"], {
@@ -590,8 +589,7 @@ class PrecisionRecallCurve(BaseMetric):
         """Return the name of the curve image.
 
         Returns:
-            ``tuple[str, ...]``: ``("curves",)``, the key that
-            `get_artifacts` uses.
+            ``("curves",)``, the key that `get_artifacts` uses.
 
         """
         return ("curves",)
@@ -605,11 +603,11 @@ class PrecisionRecallCurve(BaseMetric):
         The method closes the figure after it draws it.
 
         Args:
-            values (``dict[str, Tensor]``): The result of `compute`.
+            values: The result of `compute`.
 
         Returns:
-            ``dict[str, Tensor]``: The key ``"curves"``, with a ``uint8``
-            RGB image of shape ``[3, 400, 1200]``.
+            The key ``"curves"``, with a ``uint8`` RGB image of shape
+            ``[3, 400, 1200]``.
 
         """
         from luxonis_train.attached_modules.visualizers.utils import (
@@ -635,12 +633,11 @@ class PrecisionRecallCurve(BaseMetric):
         span ``[0, 1]``.
 
         Args:
-            values (``dict[str, Tensor]``): The result of `compute`. The
-                method reads ``"confidence"``, ``"precision"``, and
-                ``"recall"``.
+            values: The result of `compute`. The method reads
+                ``"confidence"``, ``"precision"``, and ``"recall"``.
 
         Returns:
-            ``Figure``: A ``matplotlib`` figure of ``12x4`` inches with a
+            A ``matplotlib`` figure of ``12x4`` inches with a
             constrained layout.
 
         """
@@ -726,12 +723,11 @@ def _exclusive_threshold(value: float, dtype: torch.dtype) -> float:
     counts.
 
     Args:
-        value (float): The inclusive floor, in ``[0, 1]``.
-        dtype (torch.dtype): The dtype of the scores that NMS compares
-            with the floor.
+        value: The inclusive floor, in ``[0, 1]``.
+        dtype: The dtype of the scores that NMS compares with the floor.
 
     Returns:
-        float: The exclusive floor for the ``conf_thres`` argument of
+        The exclusive floor for the ``conf_thres`` argument of
         `non_max_suppression`.
 
     """

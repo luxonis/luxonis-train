@@ -32,10 +32,10 @@ def rebase_scheduler_lr(
     `TrainingPlanRuntime.set_group_base_lr` sets them.
 
     Args:
-        scheduler (``LRScheduler | ReduceLROnPlateau``): The scheduler.
-        index (int): The index of the parameter group in the optimizer
-            of the scheduler.
-        lr (float): The new base learning rate.
+        scheduler: The scheduler.
+        index: The index of the parameter group in the optimizer of the
+            scheduler.
+        lr: The new base learning rate.
 
     Example:
         >>> from torch import nn
@@ -101,10 +101,10 @@ class CompositeLRScheduler(LRScheduler):
         The scheduler sets ``last_epoch`` to ``0``.
 
         Args:
-            composite (CompositeOptimizer): The optimizer that Lightning
-                receives. The scheduler stores it as ``optimizer``.
-            members (``Sequence[LRScheduler]``): The member schedulers.
-                Each one belongs to an inner optimizer of ``composite``.
+            composite: The optimizer that Lightning receives. The
+                scheduler stores it as ``optimizer``.
+            members: The member schedulers. Each one belongs to an inner
+                optimizer of ``composite``.
 
         """
         self.optimizer = composite
@@ -123,8 +123,8 @@ class CompositeLRScheduler(LRScheduler):
         ``step()`` of each member in order.
 
         Args:
-            epoch (int | None): The epoch that Lightning can pass. The
-                method ignores it.
+            epoch: The epoch that Lightning can pass. The method ignores
+                it.
 
         """
         _ = epoch
@@ -136,9 +136,9 @@ class CompositeLRScheduler(LRScheduler):
         """Return the last learning rates of all member schedulers.
 
         Returns:
-            ``list[float | Tensor]``: The ``get_last_lr()`` values of the
-            members, joined in member order. The list has one value for
-            each group of each member optimizer.
+            The ``get_last_lr()`` values of the members, joined in
+            member order. The list has one value for each group of each
+            member optimizer.
 
         """
         return [lr for member in self._members for lr in member.get_last_lr()]
@@ -147,11 +147,11 @@ class CompositeLRScheduler(LRScheduler):
         """Return the state of the scheduler and its members.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with these keys:
+            A dictionary with these keys.
 
-            - ``"version"``: ``1``.
-            - ``"last_epoch"``: The ``last_epoch`` counter.
-            - ``"members"``: The ``state_dict()`` of each member.
+            - ``"version"`` is ``1``.
+            - ``"last_epoch"`` holds the ``last_epoch`` counter.
+            - ``"members"`` holds the ``state_dict()`` of each member.
 
         """
         return {
@@ -167,7 +167,7 @@ class CompositeLRScheduler(LRScheduler):
         ``"members"`` into the member at the same position.
 
         Args:
-            state_dict (``dict[str, Any]``): A state that the
+            state_dict: A state that the
                 `CompositeLRScheduler.state_dict` method returned.
 
         Raises:
@@ -211,11 +211,10 @@ class CompositeReduceLROnPlateau(ReduceLROnPlateau):
         """Wrap the member schedulers.
 
         Args:
-            composite (CompositeOptimizer): The optimizer that Lightning
-                receives. The scheduler stores it as ``optimizer``.
-            members (``Sequence[ReduceLROnPlateau]``): The member
-                schedulers. Each one belongs to an inner optimizer of
-                ``composite``.
+            composite: The optimizer that Lightning receives. The
+                scheduler stores it as ``optimizer``.
+            members: The member schedulers. Each one belongs to an inner
+                optimizer of ``composite``.
 
         """
         self.optimizer = composite
@@ -235,10 +234,9 @@ class CompositeReduceLROnPlateau(ReduceLROnPlateau):
         rate of its optimizer.
 
         Args:
-            metrics (``Any``): The monitored value, such as the
-                validation loss.
-            epoch (int | None): The epoch that Lightning can pass. The
-                method ignores it.
+            metrics: The monitored value, such as the validation loss.
+            epoch: The epoch that Lightning can pass. The method ignores
+                it.
 
         """
         _ = epoch
@@ -249,9 +247,9 @@ class CompositeReduceLROnPlateau(ReduceLROnPlateau):
         """Return the states of the member schedulers.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with the keys ``"version"``,
-            which is ``1``, and ``"members"``, which holds the
-            ``state_dict()`` of each member.
+            A dictionary with the keys ``"version"``, which is ``1``,
+            and ``"members"``, which holds the ``state_dict()`` of each
+            member.
 
         """
         return {
@@ -266,7 +264,7 @@ class CompositeReduceLROnPlateau(ReduceLROnPlateau):
         the same position.
 
         Args:
-            state_dict (``dict[str, Any]``): A state that the
+            state_dict: A state that the
                 `CompositeReduceLROnPlateau.state_dict` method returned.
 
         Raises:

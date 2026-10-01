@@ -98,21 +98,19 @@ class ReconstructionSegmentationLoss(BaseLoss):
         r"""Initialize the L2, SSIM, and focal losses.
 
         Args:
-            alpha (float): The factor :math:`\alpha` of
-                `SoftmaxFocalLoss`. It scales the focal loss of every
-                pixel.
-            gamma (float): The focal exponent :math:`\gamma` of
-                `SoftmaxFocalLoss`. A larger value gives less weight to the
-                pixels that the head already classifies well.
-            reduction (``Literal["none", "mean", "sum"]``): How
-                `SoftmaxFocalLoss` reduces the loss of the pixels. With
-                ``"none"``, the focal term and the total loss have the
-                shape ``[B, H, W]``.
-            smooth (float): The label smoothing of `SoftmaxFocalLoss`. Its
+            alpha: The factor :math:`\alpha` of `SoftmaxFocalLoss`. It
+                scales the focal loss of every pixel.
+            gamma: The focal exponent :math:`\gamma` of
+                `SoftmaxFocalLoss`. A larger value gives less weight to
+                the pixels that the head already classifies well.
+            reduction: How `SoftmaxFocalLoss` reduces the loss of the
+                pixels. With ``"none"``, the focal term and the total
+                loss have the shape ``[B, H, W]``.
+            smooth: The label smoothing of `SoftmaxFocalLoss`. Its
                 constructor raises ``ValueError`` when ``smooth`` is not
                 in ``[0, 1]``.
-            **kwargs (``Any``): Keyword arguments forwarded to `BaseLoss`,
-                such as ``node`` and ``final_loss_weight``.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``node`` and ``final_loss_weight``.
 
         """
         super().__init__(**kwargs)
@@ -136,26 +134,24 @@ class ReconstructionSegmentationLoss(BaseLoss):
         ``target_segmentation``.
 
         Args:
-            predictions (``Tensor``): Anomaly logits of shape
-                ``[B, C, H, W]``, with ``C`` at least ``2``. The
-                ``segmentation`` output of the node.
-            reconstruction (``Tensor``): Reconstructed images of shape
+            predictions: Anomaly logits of shape ``[B, C, H, W]``, with
+                ``C`` at least ``2``. The ``segmentation`` output of the
+                node.
+            reconstruction: Reconstructed images of shape
                 ``[B, 3, H, W]``. The ``reconstruction`` output of the
                 node.
-            target_original_segmentation (``Tensor``): Clean images of the
-                shape of ``reconstruction``. The ``original_segmentation``
-                label of the task.
-            target_segmentation (``Tensor``): One-hot anomaly masks of the
-                shape of ``predictions``. The ``segmentation`` label of the
-                task.
+            target_original_segmentation: Clean images of the shape of
+                ``reconstruction``. The ``original_segmentation`` label
+                of the task.
+            target_segmentation: One-hot anomaly masks of the shape of
+                ``predictions``. The ``segmentation`` label of the task.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The sum of the three
-            terms, and a dictionary that maps ``"l2_loss"``,
-            ``"ssim_loss"``, and ``"focal_loss"`` to the terms. The L2 and
-            SSIM terms are scalars. The focal term and the sum are
-            scalars, or of shape ``[B, H, W]`` when ``reduction`` is
-            ``"none"``.
+            The sum of the three terms, and a dictionary that maps
+            ``"l2_loss"``, ``"ssim_loss"``, and ``"focal_loss"`` to the
+            terms. The L2 and SSIM terms are scalars. The focal term and
+            the sum are scalars, or of shape ``[B, H, W]`` when
+            ``reduction`` is ``"none"``.
 
         Example:
             A perfect reconstruction makes the L2 and SSIM terms ``0``.
@@ -208,14 +204,13 @@ class SSIM(nn.Module):
         """Initialize the loss with a window for one channel.
 
         Args:
-            window_size (int): Side of the square Gaussian window, in
-                pixels.
-            size_average (bool): Whether `forward` averages over the
-                whole batch. When ``False``, it returns one value for each
+            window_size: Side of the square Gaussian window, in pixels.
+            size_average: Whether `forward` averages over the whole
+                batch. When ``False``, it returns one value for each
                 image.
-            val_range (float | None): A dynamic range for `ssim`.
-                `forward` does not pass it to `ssim`, so `ssim` always
-                estimates the dynamic range from ``img1``.
+            val_range: A dynamic range for `ssim`. `forward` does not
+                pass it to `ssim`, so `ssim` always estimates the
+                dynamic range from ``img1``.
 
         """
         super().__init__()
@@ -235,14 +230,13 @@ class SSIM(nn.Module):
         cached window, the method builds a new window and caches it.
 
         Args:
-            img1 (``Tensor``): Images of shape ``[B, C, H, W]``. `ssim`
-                estimates the dynamic range from them.
-            img2 (``Tensor``): Images of the shape of ``img1``.
+            img1: Images of shape ``[B, C, H, W]``. `ssim` estimates the
+                dynamic range from them.
+            img2: Images of the shape of ``img1``.
 
         Returns:
-            ``Tensor``: :math:`1 - \text{SSIM}` as a scalar, or of shape
-            ``[B]`` when ``size_average`` is ``False``. ``0`` for equal
-            images.
+            :math:`1 - \text{SSIM}` as a scalar, or of shape ``[B]``
+            when ``size_average`` is ``False``. ``0`` for equal images.
 
         Example:
             >>> import torch
@@ -289,11 +283,11 @@ def create_window(window_size: int, channel: int = 1) -> Tensor:
     window.
 
     Args:
-        window_size (int): Side of the square window, in pixels.
-        channel (int): Number of channels.
+        window_size: Side of the square window, in pixels.
+        channel: Number of channels.
 
     Returns:
-        ``Tensor``: A ``float32`` window of shape
+        A ``float32`` window of shape
         ``[channel, 1, window_size, window_size]``, the weight shape of
         a grouped convolution. The weights of each channel sum to ``1``.
 
@@ -321,12 +315,11 @@ def gaussian(window_size: int, sigma: float) -> Tensor:
     the right one of the two middle samples.
 
     Args:
-        window_size (int): Number of samples.
-        sigma (float): Standard deviation :math:`\sigma`, in samples.
+        window_size: Number of samples.
+        sigma: Standard deviation :math:`\sigma`, in samples.
 
     Returns:
-        ``Tensor``: The weights, of shape ``[window_size]``, with the sum
-        ``1``.
+        The weights, of shape ``[window_size]``, with the sum ``1``.
 
     Example:
         >>> [round(weight, 4) for weight in gaussian(3, 1.5).tolist()]
@@ -369,26 +362,24 @@ def ssim(
     dynamic range :math:`L`.
 
     Args:
-        img1 (``Tensor``): Images of shape ``[B, C, H, W]``.
-        img2 (``Tensor``): Images of the shape of ``img1``.
-        window_size (int): Side of the window. The padding is always
+        img1: Images of shape ``[B, C, H, W]``.
+        img2: Images of the shape of ``img1``.
+        window_size: Side of the window. The padding is always
             ``window_size // 2``, also when ``window`` has another size.
-        window (``Tensor | None``): Filter weights of shape
-            ``[C, 1, k, k]``, for example from `create_window`. When
-            ``None``, the function builds a window with the side
-            ``min(window_size, H, W)``.
-        size_average (bool): Whether to return the mean of the whole
-            map. When ``False``, the function returns the mean of each
-            image.
-        val_range (float | None): The dynamic range :math:`L`. When
-            ``None``, the function estimates :math:`L` from ``img1`` as
-            the maximum minus the minimum. The maximum is ``255`` when a
-            value of ``img1`` is above ``128``, otherwise ``1``. The
-            minimum is ``-1`` when a value of ``img1`` is below ``-0.5``,
-            otherwise ``0``.
+        window: Filter weights of shape ``[C, 1, k, k]``, for example
+            from `create_window`. When ``None``, the function builds a
+            window with the side ``min(window_size, H, W)``.
+        size_average: Whether to return the mean of the whole map. When
+            ``False``, the function returns the mean of each image.
+        val_range: The dynamic range :math:`L`. When ``None``, the
+            function estimates :math:`L` from ``img1`` as the maximum
+            minus the minimum. The maximum is ``255`` when a value of
+            ``img1`` is above ``128``, otherwise ``1``. The minimum is
+            ``-1`` when a value of ``img1`` is below ``-0.5``, otherwise
+            ``0``.
 
     Returns:
-        ``Tensor``: The mean SSIM as a scalar, or of shape ``[B]`` when
+        The mean SSIM as a scalar, or of shape ``[B]`` when
         ``size_average`` is ``False``. ``1`` for equal images.
 
     Example:

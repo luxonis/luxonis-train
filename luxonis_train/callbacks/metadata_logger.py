@@ -36,10 +36,10 @@ class MetadataLogger(pl.Callback):
         """Initialize the callback.
 
         Args:
-            hyperparams (list[str]): The config keys to log. A key
-                separates its levels with dots, for example
-                ``"trainer.epochs"``. A level of a list is an integer
-                index, for example ``"model.nodes.0.name"``.
+            hyperparams: The config keys to log. A key separates its
+                levels with dots, for example ``"trainer.epochs"``. A
+                level of a list is an integer index, for example
+                ``"model.nodes.0.name"``.
 
         """
         super().__init__()
@@ -63,9 +63,9 @@ class MetadataLogger(pl.Callback):
         config section.
 
         Args:
-            _ (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model. It gives the
-                config, the logger, and the save directory.
+            _: The trainer. Unused.
+            pl_module: The model. It gives the config, the logger, and
+                the save directory.
 
         """
         cfg: Config = pl_module.cfg

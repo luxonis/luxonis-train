@@ -136,20 +136,19 @@ class DiscSubNetHead(BaseHead):
         to ``out_channels``.
 
         Args:
-            base_channels (int): The width that the multipliers scale.
-                The last decoder level always has this number of
-                channels.
-            width_multipliers (list[float]): One multiplier for each
-                encoder level. A level has ``int(base_channels * m)``
-                channels. The encoder adds one more level with the last
-                multiplier. For example, ``32`` and ``[1, 1.1]`` give the
-                levels ``32``, ``35``, and ``35``.
-            out_channels (int): The number of channels of the anomaly
-                logits. The ``"segmentation"`` label of the anomaly
-                detection task has two channels, so
+            base_channels: The width that the multipliers scale. The
+                last decoder level always has this number of channels.
+            width_multipliers: One multiplier for each encoder level. A
+                level has ``int(base_channels * m)`` channels. The
+                encoder adds one more level with the last multiplier.
+                For example, ``32`` and ``[1, 1.1]`` give the levels
+                ``32``, ``35``, and ``35``.
+            out_channels: The number of channels of the anomaly logits.
+                The ``"segmentation"`` label of the anomaly detection
+                task has two channels, so
                 `ReconstructionSegmentationLoss` needs ``2``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``input_shapes`` or ``in_sizes``.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``input_shapes`` or ``in_sizes``.
 
         """
         super().__init__(**kwargs)
@@ -170,17 +169,17 @@ class DiscSubNetHead(BaseHead):
         the channel axis and runs the U-Net on the result.
 
         Args:
-            reconstruction (``Tensor``): The images that `RecSubNet`
-                rebuilds, of shape ``[B, C, H, W]``. ``H`` and ``W`` must
-                be multiples of ``2 ** len(width_multipliers)``. Otherwise,
+            reconstruction: The images that `RecSubNet` rebuilds, of
+                shape ``[B, C, H, W]``. ``H`` and ``W`` must be
+                multiples of ``2 ** len(width_multipliers)``. Otherwise,
                 a concatenation in the U-Net raises ``RuntimeError``.
-            original (``Tensor``): The input images, of the same shape.
+            original: The input images, of the same shape.
 
         Returns:
-            ``Packet[Tensor]``: The anomaly logits of shape
-            ``[B, out_channels, H, W]`` under the ``"segmentation"`` key.
-            Outside export mode, the packet also holds ``reconstruction``
-            unchanged under the ``"reconstruction"`` key.
+            The anomaly logits of shape ``[B, out_channels, H, W]``
+            under the ``"segmentation"`` key. Outside export mode, the
+            packet also holds ``reconstruction`` unchanged under the
+            ``"reconstruction"`` key.
 
         Example:
             >>> import torch
@@ -226,9 +225,8 @@ class DiscSubNetHead(BaseHead):
         to ``512`` channels, and needs multiples of ``32``.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
-            dictionary that maps ``"n"`` and ``"l"`` to their
-            constructor keyword arguments.
+            The name ``"n"``, and a dictionary that maps ``"n"`` and
+            ``"l"`` to their constructor keyword arguments.
 
         """
         return "n", {

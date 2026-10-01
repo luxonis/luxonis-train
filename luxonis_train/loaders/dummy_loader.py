@@ -54,33 +54,31 @@ class DummyLoader(BaseLoaderTorch):
         `augmentation_config` property raises ``ValueError``.
 
         Args:
-            cfg (Config): The config. The loader reads
-                ``trainer.batch_size`` and the task of each node in
-                ``model.nodes``. Each task gives its required labels,
-                keyed by the ``task_name`` of the node, or by ``""``
-                when the node has no ``task_name``.
-            view (list[str]): The splits that form the view.
-            height (int | None): The height of the images and the masks.
-                With ``None``, `input_shapes` and ``__getitem__`` raise
+            cfg: The config. The loader reads ``trainer.batch_size`` and
+                the task of each node in ``model.nodes``. Each task
+                gives its required labels, keyed by the ``task_name`` of
+                the node, or by ``""`` when the node has no
+                ``task_name``.
+            view: The splits that form the view.
+            height: The height of the images and the masks. With
+                ``None``, `input_shapes` and ``__getitem__`` raise
                 ``ValueError``.
-            width (int | None): The width of the images and the masks.
-                With ``None``, `input_shapes` and ``__getitem__`` raise
-                ``ValueError``.
-            image_source (str): The input name of the image.
-            color_space (``Literal["RGB", "BGR", "GRAY"]``): The color
-                space. The image has one channel for ``"GRAY"``, and
-                three channels for the other values.
-            n_keypoints (int): The number of keypoints of each task.
-            n_classes (int): The number of classes of each task when
+            width: The width of the images and the masks. With ``None``,
+                `input_shapes` and ``__getitem__`` raise ``ValueError``.
+            image_source: The input name of the image.
+            color_space: The color space. The image has one channel for
+                ``"GRAY"``, and three channels for the other values.
+            n_keypoints: The number of keypoints of each task.
+            n_classes: The number of classes of each task when
                 ``class_names`` is ``None``.
-            class_names (list[str] | dict[str, int] | dict[str, dict[str, int]] | None):
-                The classes. A list gives the class ID from the position
-                of each name. A list or a ``dict[str, int]`` gives the
-                same classes to every task. A ``dict[str, dict[str, int]]``
-                maps each task name to its classes. ``None`` gives every
-                task the names ``"0"`` to ``str(n_classes - 1)``.
-            **kwargs (``Any``): Other loader parameters of the config.
-                The loader ignores them.
+            class_names: The classes. A list gives the class ID from the
+                position of each name. A list or a ``dict[str, int]``
+                gives the same classes to every task. A
+                ``dict[str, dict[str, int]]`` maps each task name to its
+                classes. ``None`` gives every task the names ``"0"`` to
+                ``str(n_classes - 1)``.
+            **kwargs: Other loader parameters of the config. The loader
+                ignores them.
 
         """
         super().__init__(
@@ -158,13 +156,13 @@ class DummyLoader(BaseLoaderTorch):
         Every sample is the same.
 
         Args:
-            idx (int): The index of the sample. The loader ignores it.
+            idx: The index of the sample. The loader ignores it.
 
         Returns:
-            ``tuple[Tensor | dict[str, Tensor], Labels]``: An image of
-            zeros of shape ``[C, H, W]``, and a tensor of zeros for each
-            required label. A label key is ``"<task_name>/<label>"``.
-            `get_label_shapes` gives the shape of each label.
+            An image of zeros of shape ``[C, H, W]``, and a tensor of
+            zeros for each required label. A label key is
+            ``"<task_name>/<label>"``. `get_label_shapes` gives the
+            shape of each label.
 
         """
         img = torch.zeros(self._n_channels, self.height, self.width)
@@ -183,10 +181,9 @@ class DummyLoader(BaseLoaderTorch):
         """Return the classes that the constructor built.
 
         Returns:
-            dict[str, dict[str, int]]: The class name to class ID
-            mapping of each task, keyed by the task name. The
-            ``class_names`` argument of the constructor describes the
-            content.
+            The class name to class ID mapping of each task, keyed by
+            the task name. The ``class_names`` argument of the
+            constructor describes the content.
 
         """
         return self._class_names
@@ -198,8 +195,7 @@ class DummyLoader(BaseLoaderTorch):
         Every task gets the count, also a task without keypoint labels.
 
         Returns:
-            dict[str, int] | None: ``n_keypoints``, keyed by each task
-            name of the model.
+            ``n_keypoints``, keyed by each task name of the model.
 
         """
         return dict.fromkeys(self._labels, self._n_keypoints)
@@ -221,12 +217,11 @@ class DummyLoader(BaseLoaderTorch):
         A subclass can override the method to give other shapes.
 
         Args:
-            labels (``dict[str, set[str | Metadata]]``): The required
-                labels of each task, keyed by the task name.
+            labels: The required labels of each task, keyed by the task
+                name.
 
         Returns:
-            ``dict[str, tuple[int, ...]]``: The shape of each label, keyed
-            by ``"<task_name>/<label>"``.
+            The shape of each label, keyed by ``"<task_name>/<label>"``.
 
         """
         shapes = {}

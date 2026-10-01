@@ -33,11 +33,11 @@ def make_divisible(x: float, divisor: int) -> int:
     channel counts.
 
     Args:
-        x (float): The value to round.
-        divisor (int): The number the result is a multiple of.
+        x: The value to round.
+        divisor: The number the result is a multiple of.
 
     Returns:
-        int: The smallest multiple of ``divisor`` that is not less than
+        The smallest multiple of ``divisor`` that is not less than
         ``x``.
 
     Example:
@@ -63,13 +63,13 @@ def infer_upscale_factor(
     upsampling steps, or compute the scale factor :math:`2^{n}` from it.
 
     Args:
-        in_size (tuple[int, int] | int): The input size as
-            ``(height, width)``, or one integer for both.
-        orig_size (tuple[int, int] | int): The original size as
-            ``(height, width)``, or one integer for both.
+        in_size: The input size as ``(height, width)``, or one integer
+            for both.
+        orig_size: The original size as ``(height, width)``, or one
+            integer for both.
 
     Returns:
-        int: The exponent :math:`n`.
+        The exponent :math:`n`.
 
     Raises:
         ValueError: When the width ratio or the height ratio is not a
@@ -144,13 +144,11 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     give each node the shapes of its inputs.
 
     Args:
-        packet (``Packet[Tensor]``): A packet whose values are tensors
-            or lists of tensors.
+        packet: A packet whose values are tensors or lists of tensors.
 
     Returns:
-        ``Packet[Size]``: A packet with the same keys. A tensor becomes
-        its `torch.Size`, and a list of tensors becomes a list of
-        `torch.Size` objects.
+        A packet with the same keys. A tensor becomes its ``torch.Size``,
+        and a list of tensors becomes a list of ``torch.Size`` objects.
 
     Example:
         >>> import torch
@@ -186,16 +184,14 @@ def get_with_default(
     names ``action_name``.
 
     Args:
-        value (``T | None``): The value to return when it is not
-            ``None``.
-        action_name (str): What the value is for, named in the log
-            message.
-        caller_name (str | None): The name of the caller, used as a
-            prefix of the log message. ``None`` adds no prefix.
-        default (``T``): The value to return when ``value`` is ``None``.
+        value: The value to return when it is not ``None``.
+        action_name: What the value is for, named in the log message.
+        caller_name: The name of the caller, used as a prefix of the log
+            message. ``None`` adds no prefix.
+        default: The value to return when ``value`` is ``None``.
 
     Returns:
-        ``T``: ``value`` when it is not ``None``, else ``default``.
+        ``value`` when it is not ``None``, else ``default``.
 
     Example:
         >>> get_with_default(0.4, "area factor", default=0.53)
@@ -223,14 +219,13 @@ def get_signature(
     ``kwargs``. It also leaves out the names in ``exclude``.
 
     Args:
-        func (``Callable``): The function or method to inspect.
-        exclude (``Collection[str] | None``): More parameter names to
-            leave out. ``None`` excludes only ``"self"`` and
-            ``"kwargs"``.
+        func: The function or method to inspect.
+        exclude: More parameter names to leave out. ``None`` excludes
+            only ``"self"`` and ``"kwargs"``.
 
     Returns:
-        ``dict[str, Parameter]``: The remaining parameter names, in
-        signature order, mapped to their `inspect.Parameter` objects.
+        The remaining parameter names, in signature order, mapped to
+        their ``inspect.Parameter`` objects.
 
     Example:
         >>> def forward(self, x, y=1, **kwargs): ...
@@ -257,8 +252,8 @@ def safe_download(
 ) -> Path | None:
     """Download a remote file into the cache and return its local path.
 
-    The function returns a `pathlib.Path` unchanged. It converts a
-    ``str`` without a remote protocol to a `pathlib.Path`. It does not
+    The function returns a ``pathlib.Path`` unchanged. It converts a
+    ``str`` without a remote protocol to a ``pathlib.Path``. It does not
     check that a local file exists.
 
     The function saves a remote file as ``cache_dir/<version>/<file>``,
@@ -270,25 +265,23 @@ def safe_download(
 
     The function downloads ``s3``, ``gcs``, and ``gs`` URLs with
     ``LuxonisFileSystem.download``, and all other URLs with
-    `torch.hub.download_url_to_file`. After a failed attempt, it logs
+    ``torch.hub.download_url_to_file``. After a failed attempt, it logs
     the traceback and tries again, at most ``retry`` more times. When
     all attempts fail, it logs a warning and returns ``None``.
 
     Args:
-        url (``PathType | None``): The URL or path of the file. ``None``
-            returns ``None``.
-        file (str | None): The name of the saved file. ``None`` takes
-            the file name from ``url``.
-        cache_dir (``PathType``): The root of the cache directory.
-        retry (int): The number of repeated attempts after a failed
-            download.
-        force (bool): When ``True``, download again even when the file
-            is in the cache.
+        url: The URL or path of the file. ``None`` returns ``None``.
+        file: The name of the saved file. ``None`` takes the file name
+            from ``url``.
+        cache_dir: The root of the cache directory.
+        retry: The number of repeated attempts after a failed download.
+        force: When ``True``, download again even when the file is in
+            the cache.
 
     Returns:
-        ``Path | None``: The local path of the file, or ``None`` when
-        every attempt failed. For ``s3``, ``gcs``, and ``gs`` URLs, the
-        path that ``LuxonisFileSystem.download`` returns.
+        The local path of the file, or ``None`` when every attempt
+        failed. For ``s3``, ``gcs``, and ``gs`` URLs, the path that
+        ``LuxonisFileSystem.download`` returns.
 
     Example:
         >>> from pathlib import Path
@@ -328,19 +321,19 @@ def safe_download(
 def clean_url(url: str) -> str:
     """Strip the query string from a URL and decode percent-escapes.
 
-    The function first normalizes the URL with `pathlib.PurePosixPath`.
+    The function first normalizes the URL with ``pathlib.PurePosixPath``.
     This step collapses repeated slashes to one, removes the ``.``
     path components, and removes a trailing slash. The function decodes
     the escapes before it cuts the URL at the first ``?``, so an
     escaped ``%3F`` also cuts the URL.
 
     Args:
-        url (str): The URL, for example
+        url: The URL, for example
             ``"https://url.com/file%20a.txt?auth"``.
 
     Returns:
-        str: The URL without the first ``?`` and the text after it, with
-        the ``%XX`` escapes decoded, for example
+        The URL without the first ``?`` and the text after it, with the
+        ``%XX`` escapes decoded, for example
         ``"https://url.com/file a.txt"``.
 
     Example:
@@ -360,11 +353,10 @@ def url2file(url: str) -> str:
     """Get the file name from a URL.
 
     Args:
-        url (str): The URL, for example
-            ``"https://url.com/file.txt?auth"``.
+        url: The URL, for example ``"https://url.com/file.txt?auth"``.
 
     Returns:
-        str: The last path component of the URL after `clean_url`, for
+        The last path component of the URL after `clean_url`, for
         example ``"file.txt"``.
 
     Example:
@@ -382,12 +374,11 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
     leave unset.
 
     Args:
-        obj (object): The object that holds the attribute.
-        attribute (str): The attribute name without the leading
-            underscore.
+        obj: The object that holds the attribute.
+        attribute: The attribute name without the leading underscore.
 
     Returns:
-        ``Any``: The value of ``obj._<attribute>``.
+        The value of ``obj._<attribute>``.
 
     Raises:
         AttributeError: When ``obj`` has no attribute ``_<attribute>``.
@@ -424,18 +415,18 @@ def get_batch_instances(
     """Select the rows of one image from batched instance data.
 
     Args:
-        batch_index (int): The index of the image in the batch.
-        bboxes (``Tensor``): The bounding boxes of the whole batch, of
-            shape ``[N, C]``, with the batch index in the first column.
-        payload (``Tensor | None``): A tensor of shape ``[N, ...]``
-            with one row per row of ``bboxes``, in the same order.
-            ``None`` selects from ``bboxes`` itself.
+        batch_index: The index of the image in the batch.
+        bboxes: The bounding boxes of the whole batch, of shape
+            ``[N, C]``, with the batch index in the first column.
+        payload: A tensor of shape ``[N, ...]`` with one row per row of
+            ``bboxes``, in the same order. ``None`` selects from
+            ``bboxes`` itself.
 
     Returns:
-        ``Tensor``: The rows whose batch index equals ``batch_index``.
-        From ``bboxes`` they come without the first column, of shape
-        ``[n, C - 1]``. From ``payload`` they come with all columns,
-        so a batch index column in ``payload`` stays.
+        The rows whose batch index equals ``batch_index``. From
+        ``bboxes`` they come without the first column, of shape
+        ``[n, C - 1]``. From ``payload`` they come with all columns, so
+        a batch index column in ``payload`` stays.
 
     Example:
         >>> import torch
@@ -482,24 +473,23 @@ def instances_from_batch(
     the end of the batch.
 
     When ``bboxes`` is empty, the function yields new empty tensors from
-    `torch.empty_like`, with the shapes of the inputs. The bounding
+    ``torch.empty_like``, with the shapes of the inputs. The bounding
     boxes keep the batch index column. Empty input yields no items when
     ``batch_size`` is ``None`` or ``0``.
 
     Args:
-        bboxes (``Tensor``): The bounding boxes of the whole batch, of
-            shape ``[N, C]``, with the batch index in the first column.
-        *args (``Tensor``): Extra tensors of shape ``[N, ...]``, in the
-            same order as ``bboxes``.
-        batch_size (int | None): The number of images to yield. ``None``
-            or ``0`` infers it from the largest batch index.
+        bboxes: The bounding boxes of the whole batch, of shape
+            ``[N, C]``, with the batch index in the first column.
+        *args: Extra tensors of shape ``[N, ...]``, in the same order as
+            ``bboxes``.
+        batch_size: The number of images to yield. ``None`` or ``0``
+            infers it from the largest batch index.
 
     Yields:
-        ``Tensor | tuple[Tensor, ...]``: Without extra tensors, the
-        bounding boxes of one image with the batch index column
-        removed, of shape ``[n, C - 1]``. With extra tensors, a tuple
-        of those bounding boxes followed by the matching rows of each
-        tensor in ``args``.
+        Without extra tensors, the bounding boxes of one image with the
+        batch index column removed, of shape ``[n, C - 1]``. With extra
+        tensors, a tuple of those bounding boxes followed by the
+        matching rows of each tensor in ``args``.
 
     Raises:
         ValueError: When a tensor in ``args`` has a different length
@@ -555,15 +545,14 @@ def decode_text_metadata_labels(
       first ``0``.
 
     Args:
-        labels (``dict[str, np.ndarray]``): Label names mapped to their
-            label arrays.
-        metadata_types (dict[str, type]): Label names mapped to the type
-            of their metadata values. The function does not decode a
-            label that is missing here.
+        labels: Label names mapped to their label arrays.
+        metadata_types: Label names mapped to the type of their metadata
+            values. The function does not decode a label that is missing
+            here.
 
     Returns:
-        ``dict[str, np.ndarray]``: The same label names. A decoded
-        ``str`` label is an array of strings, one for each row.
+        The same label names. A decoded ``str`` label is an array of
+        strings, one for each row.
 
     Example:
         >>> import numpy as np
@@ -609,7 +598,7 @@ class Counter:
         """Initialize the counter.
 
         Args:
-            start (int): The first value that the counter returns.
+            start: The first value that the counter returns.
 
         """
         self._count = start

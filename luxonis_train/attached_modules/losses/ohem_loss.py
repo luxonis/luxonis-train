@@ -92,26 +92,25 @@ class OHEMLoss(BaseLoss):
         ``reduction``.
 
         Args:
-            criterion (``str | type[BaseLoss] | Literal["auto"]``): The
-                loss that computes the value of each element. A string
-                names a loss in the `LOSSES` registry, such as
+            criterion: The loss that computes the value of each element.
+                A string names a loss in the `LOSSES` registry, such as
                 ``"CrossEntropyLoss"``. An unknown name raises
-                ``KeyError``. The method uses a `BaseLoss` subclass as it
-                is. ``"auto"`` selects ``"BCEWithLogitsLoss"`` when the
-                node has one class, and ``"CrossEntropyLoss"`` otherwise.
-                The method then logs a warning about the inferred task.
-                Without a node, ``"auto"`` raises ``ValueError``.
-            ohem_ratio (float): The ratio :math:`r` that sets the
-                number :math:`k` of the largest values that the loss
-                keeps when :math:`\ell_k \leq \tau`.
-            ohem_threshold (float): The probability :math:`p` that sets
-                the loss threshold :math:`\tau = -\ln p`.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss` and to the criterion, such as
-                ``final_loss_weight`` and ``node``. Both receive the same
-                arguments, so an argument that only the criterion
-                accepts, such as ``label_smoothing``, raises
-                ``TypeError``.
+                ``KeyError``. The method uses a `BaseLoss` subclass as
+                it is. ``"auto"`` selects ``"BCEWithLogitsLoss"`` when
+                the node has one class, and ``"CrossEntropyLoss"``
+                otherwise. The method then logs a warning about the
+                inferred task. Without a node, ``"auto"`` raises
+                ``ValueError``.
+            ohem_ratio: The ratio :math:`r` that sets the number
+                :math:`k` of the largest values that the loss keeps when
+                :math:`\ell_k \leq \tau`.
+            ohem_threshold: The probability :math:`p` that sets the loss
+                threshold :math:`\tau = -\ln p`.
+            **kwargs: Keyword arguments forwarded to `BaseLoss` and to
+                the criterion, such as ``final_loss_weight`` and
+                ``node``. Both receive the same arguments, so an
+                argument that only the criterion accepts, such as
+                ``label_smoothing``, raises ``TypeError``.
 
         """
         super().__init__(**kwargs)
@@ -140,18 +139,18 @@ class OHEMLoss(BaseLoss):
         describes.
 
         Args:
-            predictions (``Tensor``): The main output of the node, passed
-                to the criterion. For the default criteria, logits of
-                shape ``[B, C, ...]``.
-            target (``Tensor``): The single label of the task, such as
-                the ``segmentation`` label of shape ``[B, C, H, W]``,
-                passed to the criterion.
+            predictions: The main output of the node, passed to the
+                criterion. For the default criteria, logits of shape
+                ``[B, C, ...]``.
+            target: The single label of the task, such as the
+                ``segmentation`` label of shape ``[B, C, H, W]``, passed
+                to the criterion.
 
         Returns:
-            ``Tensor``: The mean of the kept element losses, as a
-            scalar. The value is ``nan`` when the method keeps no
-            element. For an input without elements, the method returns
-            the empty tensor of the element losses.
+            The mean of the kept element losses, as a scalar. The value
+            is ``nan`` when the method keeps no element. For an input
+            without elements, the method returns the empty tensor of the
+            element losses.
 
         Example:
             The four elements have the cross entropy ``0.1269`` or

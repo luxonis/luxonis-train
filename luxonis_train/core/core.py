@@ -114,23 +114,21 @@ class LuxonisModel:
     `export`, `archive`, `convert`, `tune`, and `quantize`.
 
     Attributes:
-        cfg (Config): The config of the run.
-        cfg_preprocessing (PreprocessingConfig): Shortcut to
-            ``cfg.trainer.preprocessing``.
-        tracker (LuxonisTrackerPL): The experiment tracker of the run.
-        run_save_dir (``Path``): ``<tracker.save_directory>/<run name>``.
-            The checkpoints, the logs, and the exported files go there.
-        error_message (str | None): The message of the exception that
-            ended a training thread, or ``None``.
-        pl_trainer (``pl.Trainer``): The Lightning trainer.
-        loaders (``dict[View, BaseLoaderTorch]``): The loaders, keyed by
-            ``"train"``, ``"val"``, and ``"test"``.
-        pytorch_loaders (``dict[View, DataLoader]``): The PyTorch data
-            loaders over ``loaders``, with the same keys.
-        lightning_module (LuxonisLightningModule): The module that runs
-            the node graph.
-        thread (``threading.Thread``): The thread of the last `train` or
-            `test` call with ``new_thread=True``. Unset before that.
+        cfg: The config of the run.
+        cfg_preprocessing: Shortcut to ``cfg.trainer.preprocessing``.
+        tracker: The experiment tracker of the run.
+        run_save_dir: ``<tracker.save_directory>/<run name>``. The
+            checkpoints, the logs, and the exported files go there.
+        error_message: The message of the exception that ended a
+            training thread, or ``None``.
+        pl_trainer: The Lightning trainer.
+        loaders: The loaders, keyed by ``"train"``, ``"val"``, and
+            ``"test"``.
+        pytorch_loaders: The PyTorch data loaders over ``loaders``, with
+            the same keys.
+        lightning_module: The module that runs the node graph.
+        thread: The thread of the last `train` or `test` call with
+            ``new_thread=True``. Unset before that.
 
     Example:
         .. code-block:: python
@@ -164,38 +162,37 @@ class LuxonisModel:
         ``opts`` is ``None`` as well.
 
         Args:
-            cfg (``PathType | Params | Config | None``): A path or URL of a
-                config file, a config dictionary, or a `Config` instance.
-                ``opts`` do not apply to a `Config` instance.
-            opts (``Params | list[str] | tuple[str, ...] | None``): Overrides
-                of the config, as a mapping of dotted keys to values or
-                as a flat sequence of alternating keys and values.
-            model (str | None): The name of a packaged predefined model,
-                with an optional version suffix, as in ``"detection:v1"``
-                or ``"detection:latest"``. Its packaged YAML file becomes
-                ``cfg``. A version other than ``latest`` goes to ``opts``
-                as ``model.predefined_model.version``, and ``variant``
-                goes there as ``model.predefined_model.variant``.
-            variant (str | None): The variant of the packaged model.
-                Requires ``model``. Defaults to the default variant of
-                the model.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. The constructor downloads a URL first, then
-                loads the weights into the module. They take precedence
-                over ``model.weights`` of the config, and that case logs
-                a warning.
-            allow_empty_dataset (bool): When ``True``, a `DummyLoader`
-                replaces a loader that fails to build. The model then
-                runs without a dataset, for example to export existing
+            cfg: A path or URL of a config file, a config dictionary, or
+                a `Config` instance. ``opts`` do not apply to a `Config`
+                instance.
+            opts: Overrides of the config, as a mapping of dotted keys
+                to values or as a flat sequence of alternating keys and
+                values.
+            model: The name of a packaged predefined model, with an
+                optional version suffix, as in ``"detection:v1"`` or
+                ``"detection:latest"``. Its packaged YAML file becomes
+                ``cfg``. A version other than ``latest`` goes to
+                ``opts`` as ``model.predefined_model.version``, and
+                ``variant`` goes there as
+                ``model.predefined_model.variant``.
+            variant: The variant of the packaged model. Requires
+                ``model``. Defaults to the default variant of the model.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. The constructor downloads a URL
+                first, then loads the weights into the module. They take
+                precedence over ``model.weights`` of the config, and
+                that case logs a warning.
+            allow_empty_dataset: When ``True``, a `DummyLoader` replaces
+                a loader that fails to build. The model then runs
+                without a dataset, for example to export existing
                 weights. When ``False``, the error propagates.
-            dataset_metadata (DatasetMetadata | None): The dataset
-                metadata to use. ``None`` reads the ``dataset_metadata``
-                key of the ``weights`` checkpoint, and otherwise builds
-                the metadata from the train loader. The metadata of a
-                `DummyLoader` train loader wins over both sources when
-                ``loader.params`` holds ``class_names``, ``n_classes``,
-                or ``n_keypoints``. That case logs a warning.
+            dataset_metadata: The dataset metadata to use. ``None``
+                reads the ``dataset_metadata`` key of the ``weights``
+                checkpoint, and otherwise builds the metadata from the
+                train loader. The metadata of a `DummyLoader` train
+                loader wins over both sources when ``loader.params``
+                holds ``class_names``, ``n_classes``, or
+                ``n_keypoints``. That case logs a warning.
 
         Raises:
             ValueError: When ``variant`` comes without ``model``. When
@@ -587,14 +584,14 @@ class LuxonisModel:
         constructor can rebuild a `LuxonisModel` from it alone.
 
         Args:
-            path (``PathType``): The path of the checkpoint file.
-            weights_only (bool): When ``True``, leave out the optimizer,
-                the scheduler, and the callback states.
-            storage_options (``Any``): Options passed to the
-                ``CheckpointIO`` plugin of the trainer.
+            path: The path of the checkpoint file.
+            weights_only: When ``True``, leave out the optimizer, the
+                scheduler, and the callback states.
+            storage_options: Options passed to the ``CheckpointIO``
+                plugin of the trainer.
 
         Returns:
-            ``Path``: ``path`` as a `pathlib.Path`.
+            ``path`` as a ``pathlib.Path``.
 
         Raises:
             AttributeError: When no module is attached to the trainer
@@ -614,13 +611,12 @@ class LuxonisModel:
         `save_checkpoint`, loads it on the CPU, and deletes the file.
 
         Args:
-            weights_only (bool): When ``True``, leave out the optimizer,
-                the scheduler, and the callback states.
+            weights_only: When ``True``, leave out the optimizer, the
+                scheduler, and the callback states.
 
         Returns:
-            ``dict[str, Any]``: The loaded checkpoint, with the
-            ``state_dict`` key and the metadata `save_checkpoint`
-            describes.
+            The loaded checkpoint, with the ``state_dict`` key and the
+            metadata `save_checkpoint` describes.
 
         Raises:
             AttributeError: When no module is attached to the trainer
@@ -670,14 +666,13 @@ class LuxonisModel:
           the model weights, and the training state starts fresh.
 
         Args:
-            new_thread (bool): When ``True``, run the training in a
-                daemon thread, store it in ``self.thread``, and return
-                at once. The message of an exception raised in that
-                thread goes to ``self.error_message``. The method
-                replaces the global ``threading.excepthook`` to do so.
-            weights (``PathType | None``): A checkpoint path or URL. It
-                takes precedence over the weights of the constructor and
-                of the config.
+            new_thread: When ``True``, run the training in a daemon
+                thread, store it in ``self.thread``, and return at once.
+                The message of an exception raised in that thread goes
+                to ``self.error_message``. The method replaces the
+                global ``threading.excepthook`` to do so.
+            weights: A checkpoint path or URL. It takes precedence over
+                the weights of the constructor and of the config.
 
         """
         if self.cfg.trainer.matmul_precision is not None:
@@ -779,24 +774,23 @@ class LuxonisModel:
         are ``None``.
 
         Args:
-            save_path (``PathType | None``): The directory of the output
-                files. A path with a suffix names the output stem
-                instead. ``None`` selects ``<run_save_dir>/export``.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
-            ignore_missing_weights (bool): When ``True``, do not warn
-                when no weights are available.
-            ckpt_only (bool): When ``True``, only save ``<stem>.ckpt``
-                through the trainer and return its path. Use it to
-                refresh the metadata of a checkpoint, such as the config
-                or the execution order of the nodes, without an ONNX
-                export.
+            save_path: The directory of the output files. A path with a
+                suffix names the output stem instead. ``None`` selects
+                ``<run_save_dir>/export``.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
+            ignore_missing_weights: When ``True``, do not warn when no
+                weights are available.
+            ckpt_only: When ``True``, only save ``<stem>.ckpt`` through
+                the trainer and return its path. Use it to refresh the
+                metadata of a checkpoint, such as the config or the
+                execution order of the nodes, without an ONNX export.
 
         Returns:
-            ``Path``: The path of the ONNX file, or of the ``.ckpt`` file
-            when ``ckpt_only`` is set.
+            The path of the ONNX file, or of the ``.ckpt`` file when
+            ``ckpt_only`` is set.
 
         """
         weights = self.resolve_weights(weights)
@@ -963,33 +957,32 @@ class LuxonisModel:
         ``view`` and returns the values logged in that epoch.
 
         Args:
-            new_thread (bool): When ``True``, run the test in a daemon
-                thread, store it in ``self.thread``, and return the
-                thread at once.
-            view (``Literal["train", "val", "test"]``): The dataset view
-                to test on.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
-            finalize_tracker (bool): When ``True``, upload the log and
-                the config to the run and finalize the tracker once the
-                test ends, also after a failure. Set it to ``False`` when
-                the run continues with an export or an archive, and call
+            new_thread: When ``True``, run the test in a daemon thread,
+                store it in ``self.thread``, and return the thread at
+                once.
+            view: The dataset view to test on.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
+            finalize_tracker: When ``True``, upload the log and the
+                config to the run and finalize the tracker once the test
+                ends, also after a failure. Set it to ``False`` when the
+                run continues with an export or an archive, and call
                 `finalize_run` at the end.
 
         Returns:
-            ``Mapping[str, float] | Thread``: The logged values of the
-            test epoch when ``new_thread`` is ``False``. The keys are
-            ``test/loss``, ``test/loss/<node>/<loss>``,
+            The logged values of the test epoch when ``new_thread`` is
+            ``False``. The keys are ``test/loss``,
+            ``test/loss/<node>/<loss>``,
             ``test/loss/<node>/<loss>/<sub>`` when
             ``trainer.log_sub_losses`` is set, and
-            ``test/metric/<node>/<name>`` for every scalar metric
-            value. ``<name>`` is the metric identifier, or a sub-metric
-            name when ``trainer.log_sub_metrics`` is set. A matrix value
-            goes to the tracker instead. In these keys, ``<node>`` is
-            the node name, prefixed with ``<task>-`` when the node has
-            a task name. The prefix is ``test`` for every ``view``. The
+            ``test/metric/<node>/<name>`` for every scalar metric value.
+            ``<name>`` is the metric identifier, or a sub-metric name
+            when ``trainer.log_sub_metrics`` is set. A matrix value goes
+            to the tracker instead. In these keys, ``<node>`` is the
+            node name, prefixed with ``<task>-`` when the node has a
+            task name. The prefix is ``test`` for every ``view``. The
             started thread when ``new_thread`` is ``True``.
 
         """
@@ -1033,7 +1026,7 @@ class LuxonisModel:
         method themselves.
 
         Args:
-            status (str): The final status of the run, ``"success"`` or
+            status: The final status of the run, ``"success"`` or
                 ``"failed"``.
 
         """
@@ -1084,17 +1077,16 @@ class LuxonisModel:
         - ``<node>_<visualizer>.mp4`` for a video.
 
         Args:
-            view (``Literal["train", "val", "test"]``): The dataset view
-                to read when ``source_path`` is ``None``.
-            save_dir (``PathType | None``): The directory of the renders.
-                ``None`` shows them on screen instead.
-            source_path (``PathType | None``): An image file, a video
-                file, or a directory of images. ``None`` reads the
-                dataset.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
+            view: The dataset view to read when ``source_path`` is
+                ``None``.
+            save_dir: The directory of the renders. ``None`` shows them
+                on screen instead.
+            source_path: An image file, a video file, or a directory of
+                images. ``None`` reads the dataset.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
 
         Raises:
             ValueError: When ``source_path`` is neither a file nor a
@@ -1158,25 +1150,23 @@ class LuxonisModel:
         warning. The method prints the dataset info at the end.
 
         Args:
-            dir_path (``PathType``): The directory that holds the images.
-            dataset_name (str): The name of the dataset to create.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
-            bucket_storage (``Literal["local", "gcs"]``): The storage
-                backend of the dataset.
-            delete_local (bool): Delete an existing local dataset of the
-                same name first. With ``False``, the records go into the
+            dir_path: The directory that holds the images.
+            dataset_name: The name of the dataset to create.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
+            bucket_storage: The storage backend of the dataset.
+            delete_local: Delete an existing local dataset of the same
+                name first. With ``False``, the records go into the
                 existing dataset.
-            delete_remote (bool): Also delete the remote copy of an
-                existing dataset of the same name.
-            team_id (str | None): The team that owns the dataset. ``None``
-                reads ``LUXONISML_TEAM_ID`` from the environment.
+            delete_remote: Also delete the remote copy of an existing
+                dataset of the same name.
+            team_id: The team that owns the dataset. ``None`` reads
+                ``LUXONISML_TEAM_ID`` from the environment.
 
         Returns:
-            ``LuxonisDataset``: The new dataset with the generated
-            annotations.
+            The new dataset with the generated annotations.
 
         Raises:
             ValueError: When ``dir_path`` is not a directory.
@@ -1535,18 +1525,18 @@ class LuxonisModel:
         and to the run when ``archiver.upload_to_run`` is set.
 
         Args:
-            path (``PathType | None``): The model executable. It must be
-                an ONNX file. ``None`` uses the last exported ONNX file,
-                after an export when needed.
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
-            save_dir (``PathType | None``): The directory of the archive.
-                ``None`` selects ``<run_save_dir>/archive``.
+            path: The model executable. It must be an ONNX file.
+                ``None`` uses the last exported ONNX file, after an
+                export when needed.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
+            save_dir: The directory of the archive. ``None`` selects
+                ``<run_save_dir>/archive``.
 
         Returns:
-            ``Path``: The path of the archive.
+            The path of the archive.
 
         Raises:
             NotImplementedError: When ``path`` is not an ONNX file.
@@ -1688,20 +1678,19 @@ class LuxonisModel:
         and the HubAI archive like the archive.
 
         Args:
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` falls back to the weights of the
-                constructor, then to ``model.weights`` of the config.
-            save_dir (``PathType | None``): The directory of every output
-                file. ``None`` selects the run directory for the
-                conversions, and its ``export`` and ``archive``
-                subdirectories for the ONNX file and the archive.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` falls back to the
+                weights of the constructor, then to ``model.weights`` of
+                the config.
+            save_dir: The directory of every output file. ``None``
+                selects the run directory for the conversions, and its
+                ``export`` and ``archive`` subdirectories for the ONNX
+                file and the archive.
 
         Returns:
-            ``tuple[Path, dict[str, Path]]``: The path of the ONNX archive,
-            and the conversion outputs keyed by ``"blob"`` and
-            ``"hubai_archive"``. A key is present only when that
-            conversion ran.
+            The path of the ONNX archive, and the conversion outputs
+            keyed by ``"blob"`` and ``"hubai_archive"``. A key is
+            present only when that conversion ran.
 
         Raises:
             RuntimeError: When the export produced no ONNX file.
@@ -1900,58 +1889,50 @@ class LuxonisModel:
         The three tests log their values to the tracker of the run.
 
         Args:
-            weights (``PathType | None``): A checkpoint to load into the
-                model before quantization. It does not fall back to the
-                config weights, which the module already holds.
-            epochs (int | None): The number of epochs of
-                quantization-aware training.
-            quant_scheme (``Literal["min_max", "tf", "tf_enhanced"] | None``):
-                The rule that selects the quantization ranges.
-            default_output_bw (int | None): The bit width of the
-                activations.
-            default_param_bw (int | None): The bit width of the
-                parameters.
-            config_file (str | None): The path of an AIMET config JSON
-                file. When the fallback ``exporter.aimet.config`` is a
-                dictionary, the method writes it to ``aimet_config.json``
-                in the output directory first. Without either,
+            weights: A checkpoint to load into the model before
+                quantization. It does not fall back to the config
+                weights, which the module already holds.
+            epochs: The number of epochs of quantization-aware training.
+            quant_scheme: The rule that selects the quantization ranges.
+            default_output_bw: The bit width of the activations.
+            default_param_bw: The bit width of the parameters.
+            config_file: The path of an AIMET config JSON file. When the
+                fallback ``exporter.aimet.config`` is a dictionary, the
+                method writes it to ``aimet_config.json`` in the output
+                directory first. Without either,
                 ``batch_norm_reestimation`` selects the per-channel
                 config of AIMET.
-            default_data_type (``Literal["int", "float"] | None``): The
-                data type of a quantized value.
-            adaround (bool | None): Learn the rounding of the weights
-                with AdaRound.
-            adaround_iterations (int | None): The number of AdaRound
-                iterations.
-            adaround_reg_param (float | None): The AdaRound
-                regularization parameter.
-            adaround_beta_range (tuple[int, int] | None): The start and
-                the end of the AdaRound beta annealing.
-            adaround_warm_start (float | None): The share of the AdaRound
-                iterations during which the rounding loss has no effect.
-            fold_batch_norms (bool | None): Fold the batch norms into the
-                preceding layers: before quantization when
+            default_data_type: The data type of a quantized value.
+            adaround: Learn the rounding of the weights with AdaRound.
+            adaround_iterations: The number of AdaRound iterations.
+            adaround_reg_param: The AdaRound regularization parameter.
+            adaround_beta_range: The start and the end of the AdaRound
+                beta annealing.
+            adaround_warm_start: The share of the AdaRound iterations
+                during which the rounding loss has no effect.
+            fold_batch_norms: Fold the batch norms into the preceding
+                layers: before quantization when
                 ``batch_norm_reestimation`` is off, and after
                 quantization-aware training otherwise.
-            cross_layer_equalization (bool | None): Balance the weight
-                ranges across consecutive layers before quantization.
-            batch_norm_reestimation (bool | None): Re-estimate the batch
-                norm statistics after quantization-aware training.
-            sequential_mse (bool | None): Optimize the quantization of
-                each layer against the output of the float model.
-            optimizer (``Optimizer | None``): The optimizer of
-                quantization-aware training. ``None`` builds
-                ``exporter.aimet.optimizer`` from the registry.
-            scheduler (``LRScheduler | None``): The scheduler of
-                quantization-aware training. ``None`` builds
-                ``exporter.aimet.scheduler`` from the registry.
-            in_place (bool): When ``True``, quantize ``lightning_module``
+            cross_layer_equalization: Balance the weight ranges across
+                consecutive layers before quantization.
+            batch_norm_reestimation: Re-estimate the batch norm
+                statistics after quantization-aware training.
+            sequential_mse: Optimize the quantization of each layer
+                against the output of the float model.
+            optimizer: The optimizer of quantization-aware training.
+                ``None`` builds ``exporter.aimet.optimizer`` from the
+                registry.
+            scheduler: The scheduler of quantization-aware training.
+                ``None`` builds ``exporter.aimet.scheduler`` from the
+                registry.
+            in_place: When ``True``, quantize ``lightning_module``
                 itself, which saves memory but overwrites its weights
                 and structure. The call also leaves it in export mode.
                 When ``False``, quantize a deep copy.
 
         Returns:
-            ``Path``: The output directory, ``<run_save_dir>/aimet``.
+            The output directory, ``<run_save_dir>/aimet``.
 
         Raises:
             ImportError: When ``aimet_torch`` is not installed.
@@ -2271,16 +2252,16 @@ class LuxonisModel:
         """Return the checkpoint path with the lowest validation loss.
 
         The method reads the ``best_model_path`` of the
-        `lightning.pytorch.callbacks.ModelCheckpoint` callback that
+        ``lightning.pytorch.callbacks.ModelCheckpoint`` callback that
         monitors ``val/loss``. The trainer attaches that callback when
         it first runs a fit, a test, or a prediction. It runs on rank
         zero only; every other rank gets ``None``.
 
         Returns:
-            str | None: The checkpoint path, or ``None`` when no callback
-            monitors ``val/loss``, as before the first run of the
-            trainer. The path is an empty string while that callback
-            has not saved a checkpoint yet.
+            The checkpoint path, or ``None`` when no callback monitors
+            ``val/loss``, as before the first run of the trainer. The
+            path is an empty string while that callback has not saved a
+            checkpoint yet.
 
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
@@ -2301,10 +2282,10 @@ class LuxonisModel:
         only; every other rank gets ``None``.
 
         Returns:
-            str | None: The checkpoint path, or ``None`` when no callback
-            monitors a validation metric, as before the first run of
-            the trainer. The path is an empty string while that
-            callback has not saved a checkpoint yet.
+            The checkpoint path, or ``None`` when no callback monitors a
+            validation metric, as before the first run of the trainer.
+            The path is an empty string while that callback has not
+            saved a checkpoint yet.
 
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
@@ -2325,9 +2306,8 @@ class LuxonisModel:
         and the log and config files of the run.
 
         Returns:
-            dict[str, list[str]]: The sorted metric keys under
-            ``"metrics"`` and the sorted artifact names under
-            ``"artifacts"``.
+            The sorted metric keys under ``"metrics"`` and the sorted
+            artifact names under ``"artifacts"``.
 
         """
         return self.lightning_module.get_mlflow_logging_keys()
@@ -2345,14 +2325,13 @@ class LuxonisModel:
         the config weights.
 
         Args:
-            weights (``PathType | dict[str, Any] | None``): A checkpoint
-                path or URL, a loaded checkpoint, or a bare state
-                dictionary. ``None`` selects the fallback.
+            weights: A checkpoint path or URL, a loaded checkpoint, or a
+                bare state dictionary. ``None`` selects the fallback.
 
         Returns:
-            ``PathType | dict[str, Any] | None``: A local path, a
-            checkpoint dictionary with a ``state_dict`` key, or ``None``
-            when no weights exist or the download failed.
+            A local path, a checkpoint dictionary with a ``state_dict``
+            key, or ``None`` when no weights exist or the download
+            failed.
 
         """
         if isinstance(weights, dict):

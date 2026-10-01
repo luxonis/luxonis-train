@@ -27,12 +27,11 @@ class OCRDecoder:
         """Invert the character mapping and store the options.
 
         Args:
-            char_to_int (dict): The class index of each character, as
+            char_to_int: The class index of each character, as
                 `OCREncoder` builds it.
-            ignored_tokens (list[int] | None): The class indices to drop.
-                ``None`` selects ``[0]``, the CTC blank. An empty list
-                keeps every class.
-            is_remove_duplicate (bool): Whether to drop a step whose class
+            ignored_tokens: The class indices to drop. ``None`` selects
+                ``[0]``, the CTC blank. An empty list keeps every class.
+            is_remove_duplicate: Whether to drop a step whose class
                 equals the class of the previous step.
 
         """
@@ -55,12 +54,12 @@ class OCRDecoder:
         keeps both characters.
 
         Args:
-            preds (``Tensor``): The logits of shape ``[B, T, n_classes]``.
+            preds: The logits of shape ``[B, T, n_classes]``.
 
         Returns:
-            list[tuple[str, float]]: One ``(text, confidence)`` pair for
-            each sequence. The confidence is the mean probability of the
-            kept steps, and ``nan`` for an empty text.
+            One ``(text, confidence)`` pair for each sequence. The
+            confidence is the mean probability of the kept steps, and
+            ``nan`` for an empty text.
 
         Example:
             >>> import torch
@@ -107,10 +106,10 @@ class OCRDecoder:
         """Decode the class scores with `decode`.
 
         Args:
-            preds (``Tensor``): The logits of shape ``[B, T, n_classes]``.
+            preds: The logits of shape ``[B, T, n_classes]``.
 
         Returns:
-            list[tuple[str, float]]: The result of `decode`.
+            The result of `decode`.
 
         """
         return self.decode(preds)
@@ -124,7 +123,7 @@ class OCREncoder:
     the last class. A call of the encoder runs `encode`.
 
     Attributes:
-        char_to_int (dict): The class index of each character.
+        char_to_int: The class index of each character.
 
     Example:
         >>> import torch
@@ -145,10 +144,10 @@ class OCREncoder:
         """Build the alphabet and the class index of each character.
 
         Args:
-            alphabet (list[str]): The characters of the labels. The
-                encoder sorts them and drops the duplicates.
-            ignore_unknown (bool): Whether `encode` drops a character that
-                is not in ``alphabet``. With ``False``, the encoder adds
+            alphabet: The characters of the labels. The encoder sorts
+                them and drops the duplicates.
+            ignore_unknown: Whether `encode` drops a character that is
+                not in ``alphabet``. With ``False``, the encoder adds
                 the class ``"<UNK>"`` and maps such a character to it.
 
         """
@@ -170,12 +169,11 @@ class OCREncoder:
         ``"<UNK>"`` class.
 
         Args:
-            targets (``Tensor``): The Unicode code points of the labels,
-                of shape ``[N, L]``.
+            targets: The Unicode code points of the labels, of shape
+                ``[N, L]``.
 
         Returns:
-            ``Tensor``: The class indices of shape ``[N, L]``, as
-            ``int64``.
+            The class indices of shape ``[N, L]``, as ``int64``.
 
         """
         encoded_targets = []
@@ -202,11 +200,11 @@ class OCREncoder:
         """Convert the character codes with `encode`.
 
         Args:
-            targets (``Tensor``): The Unicode code points of the labels,
-                of shape ``[N, L]``.
+            targets: The Unicode code points of the labels, of shape
+                ``[N, L]``.
 
         Returns:
-            ``Tensor``: The result of `encode`.
+            The result of `encode`.
 
         """
         return self.encode(targets)

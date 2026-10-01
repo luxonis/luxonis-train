@@ -60,15 +60,14 @@ def replace_weights(
     unchanged.
 
     Args:
-        module (LuxonisLightningModule): The module that receives the
-            weights.
-        weights (``PathType | dict[str, Any] | None``): A path to a
-            checkpoint file, or a loaded checkpoint with a
-            ``state_dict`` key. ``None`` leaves the module unchanged.
+        module: The module that receives the weights.
+        weights: A path to a checkpoint file, or a loaded checkpoint
+            with a ``state_dict`` key. ``None`` leaves the module
+            unchanged.
 
     Yields:
-        None: The manager yields no value. The block runs with
-        ``weights`` loaded.
+        The manager yields no value. The block runs with ``weights``
+        loaded.
 
     """
     old_weights = None
@@ -98,7 +97,7 @@ def try_onnx_simplify(onnx_path: PathType) -> None:
       valid.
 
     Args:
-        onnx_path (``PathType``): The ONNX file to simplify.
+        onnx_path: The ONNX file to simplify.
 
     """
     import onnx
@@ -144,9 +143,9 @@ def rename_onnx_outputs(onnx_path: PathType, output_names: list[str]) -> None:
     model is not valid.
 
     Args:
-        onnx_path (``PathType``): The ONNX file to modify.
-        output_names (list[str]): The new output names, one for each
-            graph output, in graph order.
+        onnx_path: The ONNX file to modify.
+        output_names: The new output names, one for each graph output,
+            in graph order.
 
     Raises:
         ValueError: When the length of ``output_names`` differs from
@@ -227,13 +226,11 @@ def get_preprocessing(
     the value that stays unset.
 
     Args:
-        cfg (PreprocessingConfig): The ``trainer.preprocessing``
-            section of the config.
-        log_label (str | None): The name of the caller in the warning,
-            such as ``"Model export"``. ``None`` disables the warning.
+        cfg: The ``trainer.preprocessing`` section of the config.
+        log_label: The name of the caller in the warning, such as
+            ``"Model export"``. ``None`` disables the warning.
 
     Returns:
-        ``tuple[list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]]``:
         The mean values, the standard deviation values, and
         ``cfg.color_space``.
 
@@ -304,23 +301,21 @@ def blobconverter_export(
     gives ``FP16`` and logs a warning.
 
     Args:
-        cfg (ExportConfig): The ``exporter`` section of the config.
-        scale_values (list[float] | None): The scale of the input
-            normalization, per channel, in ``uint8`` pixel units. The
-            standard deviation from `get_preprocessing` has this
-            format.
-        mean_values (list[float] | None): The mean of the input
-            normalization, per channel, in ``uint8`` pixel units. The
-            mean from `get_preprocessing` has this format.
-        reverse_channels (bool): When ``True``, pass
+        cfg: The ``exporter`` section of the config.
+        scale_values: The scale of the input normalization, per channel,
+            in ``uint8`` pixel units. The standard deviation from
+            `get_preprocessing` has this format.
+        mean_values: The mean of the input normalization, per channel,
+            in ``uint8`` pixel units. The mean from `get_preprocessing`
+            has this format.
+        reverse_channels: When ``True``, pass
             ``--reverse_input_channels``, which swaps the order of the
             input channels.
-        export_path (``PathType``): The directory that receives the
-            ``.blob`` file.
-        onnx_path (``PathType``): The ONNX file to convert.
+        export_path: The directory that receives the ``.blob`` file.
+        onnx_path: The ONNX file to convert.
 
     Returns:
-        ``Path``: The path of the ``.blob`` file.
+        The path of the ``.blob`` file.
 
     """
     import blobconverter
@@ -401,20 +396,17 @@ def hubai_export(
     A failed deletion logs a warning and does not raise an error.
 
     Args:
-        cfg (HubAIExportConfig): The ``exporter.hubai`` section of the
-            config.
-        quantization_mode (str): The precision to convert to, such as
+        cfg: The ``exporter.hubai`` section of the config.
+        quantization_mode: The precision to convert to, such as
             ``"INT8_STANDARD"`` or ``"FP16_STANDARD"``.
-        archive_path (``PathType``): The ONNX NN Archive to convert.
-        export_path (``PathType``): The directory that receives the
-            converted archive.
-        model_name (str): The name of the model on HubAI.
-        dataset_name (str | None): The name of the train dataset. It
-            is the second part of the variant name.
+        archive_path: The ONNX NN Archive to convert.
+        export_path: The directory that receives the converted archive.
+        model_name: The name of the model on HubAI.
+        dataset_name: The name of the train dataset. It is the second
+            part of the variant name.
 
     Returns:
-        ``Path``: The path of the converted archive inside
-        ``export_path``.
+        The path of the converted archive inside ``export_path``.
 
     Raises:
         ValueError: When the ``HUBAI_API_KEY`` environment variable is
@@ -478,7 +470,7 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     and leaves the file unchanged.
 
     Args:
-        onnx_path (``PathType``): The ONNX file to modify.
+        onnx_path: The ONNX file to modify.
 
     """
     import onnx
@@ -546,20 +538,17 @@ def _resolve_hubai_model(
     which of the two happens.
 
     Args:
-        client (``HubAIClient``): The client of the HubAI SDK.
-        existing_model_id (str | None): The id of the model named
-            ``model_name`` on HubAI, or ``None`` when no such model
-            exists.
-        model_name (str): The name of the model.
-        variant_name (str): The name of the new variant, for the log
-            message.
+        client: The client of the HubAI SDK.
+        existing_model_id: The id of the model named ``model_name`` on
+            HubAI, or ``None`` when no such model exists.
+        model_name: The name of the model.
+        variant_name: The name of the new variant, for the log message.
 
     Returns:
-        tuple[str, str | None]: The id of the model that receives
-        the variant, and the id of the model this call created. The
-        second value is ``None`` when the model existed before.
-        `hubai_export` deletes a whole model only when this call
-        created it.
+        The id of the model that receives the variant, and the id of the
+        model this call created. The second value is ``None`` when the
+        model existed before. `hubai_export` deletes a whole model only
+        when this call created it.
 
     """
     if existing_model_id is not None:

@@ -88,12 +88,12 @@ class MeanAveragePrecision:
         is not ``None``.
 
         Args:
-            task (Task | None): The task of the node that the metric
-                attaches to, or ``None`` when the node has no task.
+            task: The task of the node that the metric attaches to, or
+                ``None`` when the node has no task.
 
         Returns:
-            dict[str, str]: ``{"per_class_metrics": "class_metrics"}``
-            for ``Tasks.BOUNDINGBOX``, ``Tasks.INSTANCE_KEYPOINTS``,
+            ``{"per_class_metrics": "class_metrics"}`` for
+            ``Tasks.BOUNDINGBOX``, ``Tasks.INSTANCE_KEYPOINTS``,
             ``Tasks.INSTANCE_SEGMENTATION``, and
             ``Tasks.INSTANCE_SEGMENTATION_KEYPOINTS``. An empty
             dictionary for any other task.
@@ -129,16 +129,14 @@ class MeanAveragePrecision:
         """Build the mean average precision metric for a node.
 
         Args:
-            node (BaseNode): The node that the metric attaches to. Its
-                ``task`` selects the metric class, see the class
-                docstring.
-            **kwargs (``Any``): Keyword arguments forwarded to the
-                constructor of the selected metric. For boxes and
-                masks, a ``backend`` argument raises ``TypeError``,
-                because the method sets it already.
+            node: The node that the metric attaches to. Its ``task``
+                selects the metric class, see the class docstring.
+            **kwargs: Keyword arguments forwarded to the constructor of
+                the selected metric. For boxes and masks, a ``backend``
+                argument raises ``TypeError``, because the method sets
+                it already.
 
         Returns:
-            MeanAveragePrecisionBBox | MeanAveragePrecisionSegmentation | MeanAveragePrecisionKeypoints:
             A new metric, attached to ``node``.
 
         Raises:

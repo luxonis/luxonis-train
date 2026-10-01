@@ -71,14 +71,13 @@ class VariantMeta(AutoRegisterMeta):
         ``get_variants`` returned.
 
         Args:
-            *args (``Any``): Positional arguments for ``__init__``.
-            variant (str | None): The name of the variant,
-                ``"default"``, or ``"none"``. ``None`` and ``""`` act as
-                ``"none"``.
-            **kwargs (``Any``): Keyword arguments for ``__init__``.
+            *args: Positional arguments for ``__init__``.
+            variant: The name of the variant, ``"default"``, or
+                ``"none"``. ``None`` and ``""`` act as ``"none"``.
+            **kwargs: Keyword arguments for ``__init__``.
 
         Returns:
-            VariantBase: The initialized instance.
+            The initialized instance.
 
         Raises:
             NotImplementedError: When ``get_variants`` raises it and
@@ -150,14 +149,13 @@ class VariantMeta(AutoRegisterMeta):
         """Build an instance, then call its ``__post_init__``.
 
         Args:
-            *args (``Any``): Positional arguments for ``__init__``.
-            variant (str | None): The name of the variant,
-                ``"default"``, or ``"none"``. ``None`` and ``""`` act as
-                ``"none"``.
-            **kwargs (``Any``): Keyword arguments for ``__init__``.
+            *args: Positional arguments for ``__init__``.
+            variant: The name of the variant, ``"default"``, or
+                ``"none"``. ``None`` and ``""`` act as ``"none"``.
+            **kwargs: Keyword arguments for ``__init__``.
 
         Returns:
-            VariantBase: The initialized instance.
+            The initialized instance.
 
         Raises:
             NotImplementedError: When ``get_variants`` raises it and
@@ -182,9 +180,9 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
     ``NotImplementedError``, as `BaseNode` does.
 
     Attributes:
-        _variant (str | None): The name of the selected variant.
-            `VariantMeta` sets it only when a call selects a variant.
-            Otherwise it is ``None``.
+        _variant: The name of the selected variant. `VariantMeta` sets
+            it only when a call selects a variant. Otherwise it is
+            ``None``.
 
     """
 
@@ -205,8 +203,8 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
         because `VariantMeta` deletes the keys that a call replaces.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The default variant name,
-            and the variants with their constructor arguments.
+            The default variant name, and the variants with their
+            constructor arguments.
 
         Raises:
             NotImplementedError: When the class has no variants.
@@ -228,17 +226,15 @@ def add_variant_aliases(
     ``variants`` does not hold.
 
     Args:
-        variants (``dict[str, Kwargs]``): The variants, keyed by name.
-            The function adds the aliases to this dictionary in place.
-        aliases (``dict[str, Collection[str]] | Literal["yolo"]``): Each
-            variant name mapped to its aliases. ``"yolo"`` maps
-            ``"tiny"``, ``"nano"``, ``"small"``, ``"medium"``, and
+        variants: The variants, keyed by name. The function adds the
+            aliases to this dictionary in place.
+        aliases: Each variant name mapped to its aliases. ``"yolo"``
+            maps ``"tiny"``, ``"nano"``, ``"small"``, ``"medium"``, and
             ``"large"`` to their first letters, and each first letter
             back to its full name.
 
     Returns:
-        ``dict[str, Kwargs]``: The ``variants`` dictionary itself, with
-        the aliases.
+        The ``variants`` dictionary itself, with the aliases.
 
     Example:
         >>> add_variant_aliases({"n": {"width": 8}, "l": {"width": 64}})

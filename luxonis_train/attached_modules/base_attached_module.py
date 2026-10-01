@@ -47,12 +47,12 @@ class BaseAttachedModule(
     ``RuntimeError`` when the module has no node.
 
     Attributes:
-        supported_tasks (``Sequence[Task] | None``): The tasks that the
-            module supports. The constructor raises `IncompatibleError`
-            when the task of the node is not in the sequence. When the
-            module gets no task from its node and the sequence holds
-            one task, that task becomes the task of the module. ``None``
-            accepts a node with any task.
+        supported_tasks: The tasks that the module supports. The
+            constructor raises `IncompatibleError` when the task of the
+            node is not in the sequence. When the module gets no task
+            from its node and the sequence holds one task, that task
+            becomes the task of the module. ``None`` accepts a node with
+            any task.
 
     """
 
@@ -67,13 +67,13 @@ class BaseAttachedModule(
         module has no task, and `task` raises ``RuntimeError``.
 
         Args:
-            node (BaseNode | None): The node that the module attaches to.
-                The trainer passes it. ``None`` makes the properties that
-                read the node raise ``RuntimeError``.
-            **kwargs (``Any``): Keyword arguments forwarded to the next
-                base class. For a metric, it is the ``torchmetrics``
+            node: The node that the module attaches to. The trainer
+                passes it. ``None`` makes the properties that read the
+                node raise ``RuntimeError``.
+            **kwargs: Keyword arguments forwarded to the next base
+                class. For a metric, it is the ``torchmetrics``
                 ``Metric``. For a loss or a visualizer, it is
-                `torch.nn.Module`, which raises ``TypeError`` for any
+                ``torch.nn.Module``, which raises ``TypeError`` for any
                 keyword argument.
 
         Raises:
@@ -273,15 +273,14 @@ class BaseAttachedModule(
         entry, so the default applies.
 
         Args:
-            predictions (``Packet[Tensor]``): The output packet of the
-                node.
-            labels (``Labels | None``): The labels of the batch, keyed
+            predictions: The output packet of the node.
+            labels: The labels of the batch, keyed
                 ``<task_name>/<label>``. ``None`` acts as an empty
                 dictionary.
 
         Returns:
-            ``dict[str, Tensor | list[Tensor] | None]``: The values keyed
-            by parameter name, ready to pass as keyword arguments.
+            The values keyed by parameter name, ready to pass as keyword
+            arguments.
 
         Raises:
             RuntimeError: When a parameter without a default value gets

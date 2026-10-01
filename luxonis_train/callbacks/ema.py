@@ -31,11 +31,11 @@ class ModelEma(nn.Module):
     does not return it. `EMACallback` creates and updates it.
 
     Attributes:
-        state_dict_ema (``dict[str, Tensor]``): The average, with the
-            keys of ``model.state_dict()``.
-        updates (int): The number of updates of the average. Each
-            `update` call adds ``1``. `EMACallback.on_fit_start` sets it
-            from a checkpoint that holds a count.
+        state_dict_ema: The average, with the keys of
+            ``model.state_dict()``.
+        updates: The number of updates of the average. Each `update`
+            call adds ``1``. `EMACallback.on_fit_start` sets it from a
+            checkpoint that holds a count.
 
     """
 
@@ -54,15 +54,14 @@ class ModelEma(nn.Module):
         before. The copy does not require gradients.
 
         Args:
-            model (``pl.LightningModule``): The model to average.
-            decay (float): The largest decay :math:`d`. A value near
-                ``1`` moves the average slowly.
-            use_dynamic_decay (bool): When ``True``, the decay grows from
-                ``0`` toward ``decay`` as the updates add up. See
-                `update`.
-            decay_tau (float): The time constant :math:`\tau` of the
-                dynamic decay, in updates. A larger value makes the decay
-                grow more slowly.
+            model: The model to average.
+            decay: The largest decay :math:`d`. A value near ``1`` moves
+                the average slowly.
+            use_dynamic_decay: When ``True``, the decay grows from ``0``
+                toward ``decay`` as the updates add up. See `update`.
+            decay_tau: The time constant :math:`\tau` of the dynamic
+                decay, in updates. A larger value makes the decay grow
+                more slowly.
 
         """
         super().__init__()
@@ -106,8 +105,8 @@ class ModelEma(nn.Module):
         through the update.
 
         Args:
-            model (``pl.LightningModule``): The model whose current state
-                the average moves toward.
+            model: The model whose current state the average moves
+                toward.
 
         References:
             - Source: adapted from `timm model_ema.py
@@ -219,13 +218,13 @@ class EMACallback(pl.Callback):
         The callback creates the average in `on_fit_start`, not here.
 
         Args:
-            decay (float): The largest decay of the average. A value near
-                ``1`` moves the average slowly. The default ``0.5`` is far
+            decay: The largest decay of the average. A value near ``1``
+                moves the average slowly. The default ``0.5`` is far
                 lower than the ``0.9999`` default of `ModelEma`.
-            use_dynamic_decay (bool): When ``True``, the decay grows from
-                ``0`` toward ``decay`` as the updates add up. See
+            use_dynamic_decay: When ``True``, the decay grows from ``0``
+                toward ``decay`` as the updates add up. See
                 `ModelEma.update`.
-            decay_tau (float): The time constant of the dynamic decay, in
+            decay_tau: The time constant of the dynamic decay, in
                 updates.
 
         """
@@ -278,9 +277,9 @@ class EMACallback(pl.Callback):
         It then clears the stored average and count.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model to average.
-                `ModelEma` leaves it in training mode.
+            trainer: The trainer. Unused.
+            pl_module: The model to average. `ModelEma` leaves it in
+                training mode.
 
         """
         self._ema = ModelEma(
@@ -310,14 +309,12 @@ class EMACallback(pl.Callback):
         window, on the first batch of the window.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads its
+            trainer: The trainer. The hook reads its
                 ``accumulate_grad_batches``.
-            pl_module (``pl.LightningModule``): The model whose weights
-                the average moves toward.
-            outputs (``STEP_OUTPUT``): The output of the training step.
-                Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch in the epoch.
+            pl_module: The model whose weights the average moves toward.
+            outputs: The output of the training step. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch in the epoch.
 
         """
         if (
@@ -338,8 +335,8 @@ class EMACallback(pl.Callback):
         weights in the model, the hook does nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model to validate.
+            trainer: The trainer. Unused.
+            pl_module: The model to validate.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -356,8 +353,8 @@ class EMACallback(pl.Callback):
         model. The copy stays in the callback.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The validated model.
+            trainer: The trainer. Unused.
+            pl_module: The validated model.
 
         """
         self._restore_original_weights(pl_module)
@@ -374,8 +371,8 @@ class EMACallback(pl.Callback):
         weights in the model, the hook does nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model to test.
+            trainer: The trainer. Unused.
+            pl_module: The model to test.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -391,8 +388,8 @@ class EMACallback(pl.Callback):
         holds explicit weights in the model.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The tested model.
+            trainer: The trainer. Unused.
+            pl_module: The tested model.
 
         """
         self._restore_original_weights(pl_module)
@@ -409,8 +406,8 @@ class EMACallback(pl.Callback):
         explicit weights in the model, the hook does nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The trained model.
+            trainer: The trainer. Unused.
+            pl_module: The trained model.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -430,10 +427,10 @@ class EMACallback(pl.Callback):
         average weights.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model. Unused.
-            checkpoint (dict): The checkpoint that Lightning saves. The
-                hook changes it in place.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
+            checkpoint: The checkpoint that Lightning saves. The hook
+                changes it in place.
 
         """
         if self._ema is not None:
@@ -448,12 +445,13 @@ class EMACallback(pl.Callback):
         the callback. It does not store an empty result.
 
         Returns:
-            ``dict[str, Any]``: An empty dictionary when the average does
-            not exist yet. Otherwise a dictionary with two keys:
+            An empty dictionary when the average does not exist yet.
+            Otherwise a dictionary with two keys.
 
-            - ``"ema_state_dict"``: the average, without the entries that
-              losses, metrics, and visualizers keep for their node;
-            - ``"updates"``: the number of updates of the average.
+            - ``"ema_state_dict"`` holds the average, without the
+              entries that losses, metrics, and visualizers keep for
+              their node.
+            - ``"updates"`` holds the number of updates of the average.
 
         """
         if self._ema is None:
@@ -477,7 +475,7 @@ class EMACallback(pl.Callback):
         empty ``state_dict``. The current average does not change.
 
         Args:
-            state_dict (``dict[str, Any]``): The state of the callback.
+            state_dict: The state of the callback.
 
         Example:
             Before a fit, the callback has no average, so its state stays
@@ -513,10 +511,9 @@ class EMACallback(pl.Callback):
         checkpoint has one.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (``pl.LightningModule``): The model. Unused.
-            callback_state (dict): The whole checkpoint, despite the
-                name.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
+            callback_state: The whole checkpoint, despite the name.
 
         """
         self._load_ema_state(callback_state)
@@ -591,7 +588,7 @@ class EMACallback(pl.Callback):
         in the model.
 
         Args:
-            pl_module (``pl.LightningModule``): The model.
+            pl_module: The model.
 
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):
@@ -608,7 +605,7 @@ class EMACallback(pl.Callback):
         the model.
 
         Args:
-            pl_module (``pl.LightningModule``): The model.
+            pl_module: The model.
 
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):

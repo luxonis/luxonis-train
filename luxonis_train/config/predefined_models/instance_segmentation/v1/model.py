@@ -83,8 +83,8 @@ class InstanceSegmentationModel(SimplePredefinedModel):
         ``weights`` in it again to keep the COCO checkpoint.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the three
-            variants with their constructor arguments.
+            ``"light"`` and the three variants with their constructor
+            arguments.
 
         Example:
             >>> default, variants = InstanceSegmentationModel.get_variants()

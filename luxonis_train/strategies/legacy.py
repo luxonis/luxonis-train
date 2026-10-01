@@ -47,11 +47,11 @@ class LegacyStrategyAdapter(BaseTrainingStrategy, register=False):
         and the adapter keeps the result.
 
         Args:
-            legacy (``Any``): The legacy strategy. It must have the
-                methods ``configure_optimizers`` and
-                ``update_parameters``, and can have
-                ``get_base_configs``. ``configure_optimizers`` returns a
-                sequence of optimizers and a sequence of schedulers.
+            legacy: The legacy strategy. It must have the methods
+                ``configure_optimizers`` and ``update_parameters``, and
+                can have ``get_base_configs``. ``configure_optimizers``
+                returns a sequence of optimizers and a sequence of
+                schedulers.
 
         """
         self._legacy = legacy
@@ -83,7 +83,7 @@ class LegacyStrategyAdapter(BaseTrainingStrategy, register=False):
         """Return no rules, because the legacy strategy has none.
 
         Returns:
-            list[StrategyRule]: An empty list.
+            An empty list.
 
         """
         return []
@@ -99,8 +99,7 @@ class LegacyStrategyAdapter(BaseTrainingStrategy, register=False):
         ``trainer.scheduler``.
 
         Returns:
-            tuple[OptimizerConfig, SchedulerConfig]: The result of
-            ``get_base_configs()`` of the legacy strategy.
+            The result of ``get_base_configs()`` of the legacy strategy.
 
         Raises:
             NotImplementedError: If the legacy strategy has no
@@ -123,8 +122,8 @@ class LegacyStrategyAdapter(BaseTrainingStrategy, register=False):
         strategy.
 
         Returns:
-            set[int]: The ``id()`` of each parameter in the
-            ``param_groups`` of each legacy optimizer.
+            The ``id()`` of each parameter in the ``param_groups`` of
+            each legacy optimizer.
 
         """
         optimizers, _ = self._mount()
@@ -141,10 +140,10 @@ class LegacyStrategyAdapter(BaseTrainingStrategy, register=False):
         schedulers.
 
         Returns:
-            ``list[tuple[Optimizer, Any]]``: One pair for each optimizer,
-            in order. The scheduler at the same position completes the
-            pair. When the legacy strategy returns fewer schedulers than
-            optimizers, the last optimizers get ``None``.
+            One pair for each optimizer, in order. The scheduler at the
+            same position completes the pair. When the legacy strategy
+            returns fewer schedulers than optimizers, the last
+            optimizers get ``None``.
 
         Raises:
             ValueError: If the legacy strategy returns more schedulers

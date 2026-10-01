@@ -140,30 +140,29 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         `SegProto` reads the feature map of the first scale too.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of scales. The head
-                reads the last ``n_heads`` outputs of the input node. An
+            n_heads: Number of scales. The head reads the last
+                ``n_heads`` outputs of the input node. An
                 ``attach_index`` param replaces this selection. It must
                 select a range or ``"all"``. An integer index makes the
-                constructor raise ``TypeError``. When the head gets fewer
-                outputs, it logs a warning and uses that number. When an
-                ``attach_index`` selects more outputs, the constructor
-                raises ``ValueError``. Defaults to ``3``.
-            n_masks (int): Number of prototype masks. It is also the
-                number of mask coefficients of each anchor point.
-                Defaults to ``32``.
-            n_proto (int): Number of hidden channels of the `SegProto`
+                constructor raise ``TypeError``. When the head gets
+                fewer outputs, it logs a warning and uses that number.
+                When an ``attach_index`` selects more outputs, the
+                constructor raises ``ValueError``. Defaults to ``3``.
+            n_masks: Number of prototype masks. It is also the number of
+                mask coefficients of each anchor point. Defaults to
+                ``32``.
+            n_proto: Number of hidden channels of the `SegProto`
                 prototype generator. Defaults to ``64``.
-            conf_thres (float): NMS keeps only the boxes whose maximum
-                class score is above this value. The value must be in
+            conf_thres: NMS keeps only the boxes whose maximum class
+                score is above this value. The value must be in
                 ``[0, 1]``. Defaults to ``0.25``.
-            iou_thres (float): NMS removes a box when its IoU with a box
-                of the same class and a higher score is above this
-                value. The value must be in ``[0, 1]``. Defaults to
-                ``0.45``.
-            max_det (int): Maximum number of boxes that NMS keeps for
-                each image. Defaults to ``300``.
-            **kwargs (``Any``): Keyword arguments for `PrecisionBBoxHead`,
-                such as ``reg_max``, and for `BaseNode`. They must hold
+            iou_thres: NMS removes a box when its IoU with a box of the
+                same class and a higher score is above this value. The
+                value must be in ``[0, 1]``. Defaults to ``0.45``.
+            max_det: Maximum number of boxes that NMS keeps for each
+                image. Defaults to ``300``.
+            **kwargs: Keyword arguments for `PrecisionBBoxHead`, such as
+                ``reg_max``, and for `BaseNode`. They must hold
                 ``original_in_shape``, the input sizes through
                 ``input_shapes`` or ``in_sizes``, and the class count
                 through ``n_classes`` or ``dataset_metadata``.
@@ -244,13 +243,13 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
           ``[B, N, 5 + n_classes + n_masks]``.
 
         Args:
-            inputs (``list[Tensor]``): One feature map for each scale, of
-                shape ``[B, C_i, H_i, W_i]``. ``H_0`` and ``W_0`` are the
+            inputs: One feature map for each scale, of shape
+                ``[B, C_i, H_i, W_i]``. ``H_0`` and ``W_0`` are the
                 height and the width of the first map.
 
         Returns:
-            ``Packet[Tensor]``: The packet of the current mode, with the
-            keys that the description gives.
+            The packet of the current mode, with the keys that the
+            description gives.
 
         Example:
             A new head is in training mode:
@@ -432,21 +431,21 @@ def refine_and_apply_masks(
     The interpolation can extend a mask a little past its box.
 
     Args:
-        mask_prototypes (``Tensor``): The prototype masks, of shape
+        mask_prototypes: The prototype masks, of shape
             ``[n_masks, h, w]``.
-        predicted_masks (``Tensor``): The mask coefficients of each
-            detection, of shape ``[N, n_masks]``.
-        bounding_boxes (``Tensor``): The ``xyxy`` box of each detection,
-            in the pixels of the ``height`` by ``width`` image, of shape
+        predicted_masks: The mask coefficients of each detection, of
+            shape ``[N, n_masks]``.
+        bounding_boxes: The ``xyxy`` box of each detection, in the
+            pixels of the ``height`` by ``width`` image, of shape
             ``[N, 4]``.
-        height (int): The image height, in pixels.
-        width (int): The image width, in pixels.
-        upsample (bool): Whether to resize the masks to ``height`` by
+        height: The image height, in pixels.
+        width: The image width, in pixels.
+        upsample: Whether to resize the masks to ``height`` by
             ``width``. Defaults to ``False``.
 
     Returns:
-        ``Tensor``: A float tensor of masks with the values ``0`` and
-        ``1``. Its shape is ``[N, height, width]`` with ``upsample``, and
+        A float tensor of masks with the values ``0`` and ``1``. Its
+        shape is ``[N, height, width]`` with ``upsample``, and
         ``[N, h, w]`` without it. When ``predicted_masks`` or
         ``bounding_boxes`` has no rows, the function returns a ``uint8``
         tensor of shape ``[0, height, width]``.

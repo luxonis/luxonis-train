@@ -22,11 +22,10 @@ class ArchiveMetadataDict(TypedDict):
     """The shape and the data type of one input or output of a model.
 
     Attributes:
-        shape (list[int]): The dimensions of the tensor. A dimension
-            without a fixed size in the model file is ``0``.
-        dtype (``DataType``): The data type of the tensor, one of
-            ``int8``, ``int32``, ``uint8``, ``float32``, and
-            ``float16``.
+        shape: The dimensions of the tensor. A dimension without a fixed
+            size in the model file is ``0``.
+        dtype: The data type of the tensor, one of ``int8``, ``int32``,
+            ``uint8``, ``float32``, and ``float16``.
 
     """
 
@@ -41,11 +40,11 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     ``graph.input`` of the model.
 
     Args:
-        path (``Path``): The model file, with the suffix ``.onnx``.
+        path: The model file, with the suffix ``.onnx``.
 
     Returns:
-        ``dict[str, ArchiveMetadataDict]``: The shape and the data type
-        of each input, keyed by input name, in graph order.
+        The shape and the data type of each input, keyed by input name,
+        in graph order.
 
     Raises:
         NotImplementedError: When the suffix of ``path`` is not
@@ -68,11 +67,11 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     ``graph.output`` of the model.
 
     Args:
-        path (``Path``): The model file, with the suffix ``.onnx``.
+        path: The model file, with the suffix ``.onnx``.
 
     Returns:
-        ``dict[str, ArchiveMetadataDict]``: The shape and the data type
-        of each output, keyed by output name, in graph order.
+        The shape and the data type of each output, keyed by output
+        name, in graph order.
 
     Raises:
         NotImplementedError: When the suffix of ``path`` is not
@@ -146,14 +145,13 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     is ``head_name`` itself.
 
     Args:
-        outputs (list[dict]): The outputs of the NN Archive config. The
-            function reads the ``"name"`` key of each output.
-        head_name (str): The name of the head node, such as
+        outputs: The outputs of the NN Archive config. The function
+            reads the ``"name"`` key of each output.
+        head_name: The name of the head node, such as
             ``"EfficientBBoxHead"``, or its alias.
 
     Returns:
-        list[str]: The matching output names, in the order of
-        ``outputs``.
+        The matching output names, in the order of ``outputs``.
 
     """
     output_names = []
@@ -186,15 +184,13 @@ def get_head_configs(
       in ``outputs`` that belong to the node name.
 
     Args:
-        lightning_module (LuxonisLightningModule): The module whose
-            heads the archive describes.
-        outputs (list[dict]): The outputs of the NN Archive config, each
-            with a ``"name"`` key.
+        lightning_module: The module whose heads the archive describes.
+        outputs: The outputs of the NN Archive config, each with a
+            ``"name"`` key.
 
     Returns:
-        list[dict]: One config dictionary for each exported head, with
-        the keys ``"parser"``, ``"metadata"``, ``"name"``, and
-        ``"outputs"``.
+        One config dictionary for each exported head, with the keys
+        ``"parser"``, ``"metadata"``, ``"name"``, and ``"outputs"``.
 
     """
     head_configs = []

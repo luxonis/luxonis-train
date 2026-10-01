@@ -41,7 +41,7 @@ _ForwardInput = Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]
 class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     """Base class for all nodes of the model graph.
 
-    A node is a `torch.nn.Module` that reads packets and returns a
+    A node is a ``torch.nn.Module`` that reads packets and returns a
     packet. A *packet* is a dictionary that maps an output name to a
     tensor or to a list of tensors. The model calls `run` with one packet
     for each input of the node. The packet of an input node is its
@@ -71,11 +71,10 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
       of a subclass hide the annotations of its parent.
 
     Attributes:
-        attach_index (AttachIndexType): The output or outputs of the input
-            node that the node reads. `get_attached` applies it. The value
-            is an integer index, a tuple of two or three integers for a
-            range, or ``"all"`` for every output. ``-1`` is the last
-            output.
+        attach_index: The output or outputs of the input node that the
+            node reads. `get_attached` applies it. The value is an
+            integer index, a tuple of two or three integers for a range,
+            or ``"all"`` for every output. ``-1`` is the last output.
 
             When a subclass leaves it ``None``, the constructor infers it
             from ``forward``. A ``forward`` with one parameter annotated
@@ -83,15 +82,15 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             ``list[Tensor]`` gives ``"all"``. For any other ``forward``
             with parameters, the constructor logs a warning and the index
             stays ``None``.
-        task (Task | None): The task of the node. A head sets it. When
-            ``forward`` returns a tensor or a list of tensors, `run`
-            puts the result under the key ``task.main_output``. When the
-            task is ``None``, the key is ``"features"``.
-        task_name (str): The dataset task of the node. It is ``""`` when
-            the constructor gets no ``task_name``.
-        current_epoch (int): The number of the current training epoch,
-            from ``0``. `LuxonisLightningModule` sets it at the start of
-            each training epoch.
+        task: The task of the node. A head sets it. When ``forward``
+            returns a tensor or a list of tensors, `run` puts the result
+            under the key ``task.main_output``. When the task is
+            ``None``, the key is ``"features"``.
+        task_name: The dataset task of the node. It is ``""`` when the
+            constructor gets no ``task_name``.
+        current_epoch: The number of the current training epoch, from
+            ``0``. `LuxonisLightningModule` sets it at the start of each
+            training epoch.
 
     Example:
         A node that sizes its layer from the input shapes. The
@@ -143,42 +142,38 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         depend on missing metadata raise ``RuntimeError`` when accessed.
 
         Args:
-            input_shapes (``list[Packet[Size]] | None``): One shape
-                packet for each input of the node, in the order of the
-                inputs. The shape properties, such as `in_channels`, read
-                it.
-            original_in_shape (``Size | None``): The shape of the model
-                input image, ``[C, H, W]``, without the batch dimension.
-            dataset_metadata (DatasetMetadata | None): The metadata of
-                the dataset. `n_classes`, `n_keypoints`, `classes`, and
-                `class_names` read it.
-            n_classes (int | None): The number of classes. When it is
-                set, `n_classes` returns it and does not read
+            input_shapes: One shape packet for each input of the node,
+                in the order of the inputs. The shape properties, such
+                as `in_channels`, read it.
+            original_in_shape: The shape of the model input image,
+                ``[C, H, W]``, without the batch dimension.
+            dataset_metadata: The metadata of the dataset. `n_classes`,
+                `n_keypoints`, `classes`, and `class_names` read it.
+            n_classes: The number of classes. When it is set,
+                `n_classes` returns it and does not read
                 ``dataset_metadata``.
-            n_keypoints (int | None): The number of keypoints. When it
-                is set, `n_keypoints` returns it and does not read
+            n_keypoints: The number of keypoints. When it is set,
+                `n_keypoints` returns it and does not read
                 ``dataset_metadata``.
-            in_sizes (``Size | list[Size] | None``): The sizes of the
-                attached inputs. When it is set, `in_sizes` returns it
-                and does not read ``input_shapes``.
-            remove_on_export (bool): When ``True``, the model skips the
-                node in export mode, so the exported model does not
-                contain the node.
-            export_output_names (list[str] | None): The names of the
-                node outputs in the exported model. See
-                `export_output_names` for how the export uses them.
-                ``None`` keeps the default names.
-            attach_index (AttachIndexType | None): The output of the
-                input node that the node reads. A value other than
-                ``None`` replaces the class attribute and logs a
-                warning. See `attach_index` for the accepted values.
-            task_name (str | None): The dataset task of the node. It
-                selects the classes and the keypoints in
-                ``dataset_metadata``. ``None`` becomes ``""``.
-            weights (``str | Literal["download", "yolo", "none"] | None``):
-                The source or the initialization method of the weights.
-                The variant metaclass calls ``__post_init__`` after the
-                constructor. That step reads the value:
+            in_sizes: The sizes of the attached inputs. When it is set,
+                `in_sizes` returns it and does not read
+                ``input_shapes``.
+            remove_on_export: When ``True``, the model skips the node in
+                export mode, so the exported model does not contain the
+                node.
+            export_output_names: The names of the node outputs in the
+                exported model. See `export_output_names` for how the
+                export uses them. ``None`` keeps the default names.
+            attach_index: The output of the input node that the node
+                reads. A value other than ``None`` replaces the class
+                attribute and logs a warning. See `attach_index` for the
+                accepted values.
+            task_name: The dataset task of the node. It selects the
+                classes and the keypoints in ``dataset_metadata``.
+                ``None`` becomes ``""``.
+            weights: The source or the initialization method of the
+                weights. The variant metaclass calls ``__post_init__``
+                after the constructor. That step reads the value:
 
                 - ``"download"`` calls `load_checkpoint`, which takes the
                   URL from `get_weights_url`.
@@ -266,14 +261,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         The base implementation knows one method, ``"yolo"``. It sets
         ``eps`` to ``0.001`` and ``momentum`` to ``0.03`` in every
-        `torch.nn.BatchNorm2d`. It also sets ``inplace`` to ``True`` in
+        ``torch.nn.BatchNorm2d``. It also sets ``inplace`` to ``True`` in
         every ``Hardswish``, ``LeakyReLU``, ``ReLU``, ``ReLU6``, and
         ``SiLU`` activation. Other values change nothing.
 
         Args:
-            method (``Literal["yolo", "none"] | str | None``): The name
-                of the initialization method. ``None`` and ``"none"``
-                change nothing.
+            method: The name of the initialization method. ``None`` and
+                ``"none"`` change nothing.
 
         Example:
             The ``weights`` argument of the constructor selects the
@@ -322,9 +316,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         makes the metaclass raise ``ValueError``.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name of the default
-            variant, and a dictionary that maps each variant name to its
-            constructor keyword arguments.
+            The name of the default variant, and a dictionary that maps
+            each variant name to its constructor keyword arguments.
 
         Raises:
             NotImplementedError: When the node has no variants. The base
@@ -652,8 +645,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         be the parameter and buffer names of the node.
 
         Returns:
-            str: The URL of the checkpoint. It can contain the
-            placeholders.
+            The URL of the checkpoint. It can contain the placeholders.
 
         Raises:
             NotImplementedError: When the node has no pretrained weights.
@@ -697,21 +689,20 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         For a file, the method logs the path or URL. `safe_download`
         copies a remote file into the local cache first. When the
         download fails, the method logs a warning and leaves the weights
-        unchanged. The method reads the file with `torch.load` on the
+        unchanged. The method reads the file with ``torch.load`` on the
         CPU and with ``weights_only=False``. **Load only trusted files**,
         because the file can run code when it loads. After the load, the
         method logs an info message through the standard ``logging``
         module.
 
         Args:
-            ckpt (``str | dict[str, Tensor] | None``): A state dictionary,
-                or the local path or URL of a ``.ckpt`` file. The file
-                must hold the state dictionary under the ``"state_dict"``
-                key. ``None`` or ``""`` takes the URL from
-                `get_weights_url`.
-            strict (bool): Whether the keys of the state dictionary must
-                match the keys of the node exactly. The value goes to
-                `torch.nn.Module.load_state_dict`. With ``True``, that
+            ckpt: A state dictionary, or the local path or URL of a
+                ``.ckpt`` file. The file must hold the state dictionary
+                under the ``"state_dict"`` key. ``None`` or ``""`` takes
+                the URL from `get_weights_url`.
+            strict: Whether the keys of the state dictionary must match
+                the keys of the node exactly. The value goes to
+                ``torch.nn.Module.load_state_dict``. With ``True``, that
                 method raises ``RuntimeError`` when the keys differ.
 
         Raises:
@@ -775,8 +766,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         on each of them. It logs every call at the debug level.
 
         Args:
-            mode (bool): ``True`` to switch export mode on, ``False`` to
-                switch it off.
+            mode: ``True`` to switch export mode on, ``False`` to switch
+                it off.
 
         """
         self._export = mode
@@ -829,13 +820,12 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         ``inputs``. See `run` for the rules.
 
         Args:
-            inputs (``Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]``):
-                The input of the node. An implementation can rename the
-                parameter and add more parameters.
+            inputs: The input of the node. An implementation can rename
+                the parameter and add more parameters.
 
         Returns:
-            ``Tensor | list[Tensor] | Packet[Tensor]``: The outputs of the
-            node. `run` puts a tensor or a list of tensors into a packet.
+            The outputs of the node. `run` puts a tensor or a list of
+            tensors into a packet.
 
         """
         ...
@@ -871,11 +861,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         ``None``.
 
         Args:
-            inputs (``list[Packet[Tensor]]``): One packet for each input
-                of the node, in the order of the inputs.
+            inputs: One packet for each input of the node, in the order
+                of the inputs.
 
         Returns:
-            ``Packet[Tensor]``: The outputs of the node, for example
+            The outputs of the node, for example
             ``{"features": [feature_map_1, feature_map_2]}``.
 
         Raises:
@@ -1084,13 +1074,12 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         elements, not the Python slice ``[-3:-1]``.
 
         Args:
-            value (``list[T] | T``): A list of tensors or sizes, or a
-                single tensor or size.
+            value: A list of tensors or sizes, or a single tensor or
+                size.
 
         Returns:
-            ``list[T] | T``: One element for an integer index, a list for
-            ``"all"`` or a tuple, or ``value`` itself when it is not a
-            list.
+            One element for an integer index, a list for ``"all"`` or a
+            tuple, or ``value`` itself when it is not a list.
 
         Raises:
             ValueError: When ``value`` is not a list and the index is not

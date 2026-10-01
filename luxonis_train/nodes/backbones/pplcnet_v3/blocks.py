@@ -17,7 +17,7 @@ class AffineActivation(nn.Module):
 
     The output is ``scale * hardswish(x) + bias``. An `AffineBlock`
     holds ``scale`` and ``bias``. They start at ``1.0`` and ``0.0``, so
-    the module starts as a plain `torch.nn.Hardswish`.
+    the module starts as a plain ``torch.nn.Hardswish``.
 
     Example:
         >>> import torch
@@ -36,11 +36,10 @@ class AffineActivation(nn.Module):
         """Apply ``Hardswish``, then the affine map.
 
         Args:
-            x (``Tensor``): A tensor of any shape.
+            x: A tensor of any shape.
 
         Returns:
-            ``Tensor``: ``scale * hardswish(x) + bias``, of the same
-            shape as ``x``.
+            ``scale * hardswish(x) + bias``, of the same shape as ``x``.
 
         """
         # WARN: Is the order correct (activation -> affine)?
@@ -66,12 +65,12 @@ class AffineBlock(nn.Module):
         """Initialize the scale and the bias parameters.
 
         Args:
-            scale_value (float): The initial value of ``scale``. Give a
-                ``float``. An ``int`` passes the type check, but it makes
-                an integer tensor. Then the constructor raises
+            scale_value: The initial value of ``scale``. Give a
+                ``float``. An ``int`` passes the type check, but it
+                makes an integer tensor. Then the constructor raises
                 ``RuntimeError``.
-            bias_value (float): The initial value of ``bias``. The same
-                rule applies.
+            bias_value: The initial value of ``bias``. The same rule
+                applies.
 
         """
         super().__init__()
@@ -83,10 +82,10 @@ class AffineBlock(nn.Module):
         """Apply the affine map.
 
         Args:
-            x (``Tensor``): A tensor of any shape.
+            x: A tensor of any shape.
 
         Returns:
-            ``Tensor``: ``scale * x + bias``, of the same shape as ``x``.
+            ``scale * x + bias``, of the same shape as ``x``.
 
         """
         return self.scale * x + self.bias
@@ -122,11 +121,10 @@ with suppress(ImportError):
             quantizer. It skips a quantizer that is ``None``.
 
             Args:
-                x (``Tensor``): A tensor of any shape.
+                x: A tensor of any shape.
 
             Returns:
-                ``Tensor``: ``scale * x + bias``, of the same shape as
-                ``x``.
+                ``scale * x + bias``, of the same shape as ``x``.
 
             """
             # Quantize input tensors
@@ -184,18 +182,18 @@ class LCNetV3Block(nn.Module):
         """Initialize the two convolutions and the optional attention.
 
         Args:
-            in_channels (int): The number of input channels. The
-                depthwise convolution keeps this number.
-            out_channels (int): The number of output channels of the
-                pointwise convolution.
-            kernel_size (int): The kernel size of the depthwise
-                convolution. The padding is ``(kernel_size - 1) // 2``.
-                Use an odd value.
-            stride (int): The stride of the depthwise convolution. ``2``
-                also removes the activation after it.
-            use_se (bool): Whether to add the `SqueezeExciteBlock`
-                between the two convolutions.
-            n_branches (int): The number of dense branches of each
+            in_channels: The number of input channels. The depthwise
+                convolution keeps this number.
+            out_channels: The number of output channels of the pointwise
+                convolution.
+            kernel_size: The kernel size of the depthwise convolution.
+                The padding is ``(kernel_size - 1) // 2``. Use an odd
+                value.
+            stride: The stride of the depthwise convolution. ``2`` also
+                removes the activation after it.
+            use_se: Whether to add the `SqueezeExciteBlock` between the
+                two convolutions.
+            n_branches: The number of dense branches of each
                 convolution.
 
         """
@@ -236,10 +234,10 @@ class LCNetV3Block(nn.Module):
         """Apply the two convolutions and the optional attention.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape
+            The output of shape
             ``[B, out_channels, ceil(H / stride), ceil(W / stride)]``,
             for an odd ``kernel_size``.
 
@@ -253,10 +251,10 @@ class LCNetV3Layer(nn.Sequential):
     The layer builds one block for each position of the four lists.
     `scale_up` scales each value of ``out_channels`` by ``scale``. Each
     block takes the output channels of the block before it. The
-    ``forward`` of `torch.nn.Sequential` runs the blocks in order.
+    ``forward`` of ``torch.nn.Sequential`` runs the blocks in order.
 
     Attributes:
-        out_channels (int): The number of output channels of the layer,
+        out_channels: The number of output channels of the layer,
             ``scale_up(out_channels[-1], scale)``.
 
     Example:
@@ -284,19 +282,17 @@ class LCNetV3Layer(nn.Sequential):
         """Build one `LCNetV3Block` for each position of the lists.
 
         Args:
-            in_channels (int): The number of input channels of the first
+            in_channels: The number of input channels of the first
                 block.
-            out_channels (list[int]): The output channels of each block,
-                before `scale_up` scales them.
-            kernel_sizes (list[int]): The depthwise kernel size of each
-                block.
-            strides (list[int]): The depthwise stride of each block.
-            use_se (list[bool]): Whether each block has a
-                `SqueezeExciteBlock`.
-            n_branches (int): The number of dense branches of each
-                convolution of each block.
-            scale (float): The width multiplier that `scale_up` applies
-                to ``out_channels``.
+            out_channels: The output channels of each block, before
+                `scale_up` scales them.
+            kernel_sizes: The depthwise kernel size of each block.
+            strides: The depthwise stride of each block.
+            use_se: Whether each block has a `SqueezeExciteBlock`.
+            n_branches: The number of dense branches of each convolution
+                of each block.
+            scale: The width multiplier that `scale_up` applies to
+                ``out_channels``.
 
         Raises:
             ValueError: When the four lists do not have the same length.
@@ -339,14 +335,13 @@ def scale_up(
     ``divisor``.
 
     Args:
-        v (float): The channel count to scale.
-        scale (float): The multiplier.
-        divisor (int): The multiple to round to.
-        min_value (int | None): The smallest result. ``None`` selects
-            ``divisor``.
+        v: The channel count to scale.
+        scale: The multiplier.
+        divisor: The multiple to round to.
+        min_value: The smallest result. ``None`` selects ``divisor``.
 
     Returns:
-        int: The scaled and rounded channel count.
+        The scaled and rounded channel count.
 
     Example:
         >>> scale_up(512, 0.95)

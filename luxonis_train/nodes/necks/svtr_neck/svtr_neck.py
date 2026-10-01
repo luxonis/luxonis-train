@@ -103,50 +103,49 @@ class SVTRNeck(BaseNode):
         r"""Build the convolutions and the SVTR blocks.
 
         Args:
-            dims (int): The number of output channels.
-            depth (int): The number of `SVTRBlock` layers.
-            mid_channels (int): The number of channels of each token. It
-                must be a multiple of ``n_heads``.
-            use_guide (bool): Whether the neck reads a detached copy of
-                the input. With ``True``, no gradient flows from the neck
+            dims: The number of output channels.
+            depth: The number of `SVTRBlock` layers.
+            mid_channels: The number of channels of each token. It must
+                be a multiple of ``n_heads``.
+            use_guide: Whether the neck reads a detached copy of the
+                input. With ``True``, no gradient flows from the neck
                 back to the input node.
-            n_heads (int): The number of attention heads of each block,
-                or the number of convolution groups of the ``"conv"``
-                mixer.
-            mlp_ratio (float): The number of hidden features of each MLP,
-                as a multiple of ``mid_channels``.
-            drop_rate (float): The dropout probability of the dropout
-                layers of the MLPs, and after the attention outputs.
-            attn_drop_rate (float): The dropout probability of the
-                attention weights.
-            drop_path (float): The probability that `DropPath` drops a
-                residual branch for a sample in training mode. ``0.0``
-                turns it off.
-            kernel_size (tuple[int, int]): The kernel of the two
-                `ConvBlock` layers with :math:`\lfloor C / 8 \rfloor`
-                output channels. The padding is ``kernel_size[0] // 2``
-                on all sides. Use the same odd number twice. Other values
-                change the size of the map, and the concatenation raises
-                ``RuntimeError``. The blocks do not use this value.
-            qk_scale (float | None): The scale of the attention queries.
-                ``None`` or ``0`` gives :math:`1 / \sqrt{d}`, where
-                :math:`d` is ``mid_channels // n_heads``.
-            mixer (``Literal["global", "local", "conv"]``): The token
-                mixer of every block. ``"global"`` attends to all tokens.
-                ``"local"`` attends to a ``7x11`` window of tokens. Its
-                mask stays on the CPU, so it works only for an input on
-                the CPU. ``"conv"`` uses a grouped ``7x11`` convolution.
-            height (int | None): The height of the input map. The
-                ``"local"`` and ``"conv"`` mixers need it. Without it,
-                the blocks raise ``ValueError``.
-            width (int | None): The width of the input map. The
-                ``"local"`` and ``"conv"`` mixers need it. Without it,
-                the blocks raise ``ValueError``.
-            prenorm (bool): The place of the norm layers in each block.
+            n_heads: The number of attention heads of each block, or the
+                number of convolution groups of the ``"conv"`` mixer.
+            mlp_ratio: The number of hidden features of each MLP, as a
+                multiple of ``mid_channels``.
+            drop_rate: The dropout probability of the dropout layers of
+                the MLPs, and after the attention outputs.
+            attn_drop_rate: The dropout probability of the attention
+                weights.
+            drop_path: The probability that `DropPath` drops a residual
+                branch for a sample in training mode. ``0.0`` turns it
+                off.
+            kernel_size: The kernel of the two `ConvBlock` layers with
+                :math:`\lfloor C / 8 \rfloor` output channels. The
+                padding is ``kernel_size[0] // 2`` on all sides. Use the
+                same odd number twice. Other values change the size of
+                the map, and the concatenation raises ``RuntimeError``.
+                The blocks do not use this value.
+            qk_scale: The scale of the attention queries. ``None`` or
+                ``0`` gives :math:`1 / \sqrt{d}`, where :math:`d` is
+                ``mid_channels // n_heads``.
+            mixer: The token mixer of every block. ``"global"`` attends
+                to all tokens. ``"local"`` attends to a ``7x11`` window
+                of tokens. Its mask stays on the CPU, so it works only
+                for an input on the CPU. ``"conv"`` uses a grouped
+                ``7x11`` convolution.
+            height: The height of the input map. The ``"local"`` and
+                ``"conv"`` mixers need it. Without it, the blocks raise
+                ``ValueError``.
+            width: The width of the input map. The ``"local"`` and
+                ``"conv"`` mixers need it. Without it, the blocks raise
+                ``ValueError``.
+            prenorm: The place of the norm layers in each block.
                 ``False`` puts them before the branches. ``True`` puts
                 them after the residual sums. See `SVTRBlock`.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``input_shapes`` or ``in_sizes``.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``input_shapes`` or ``in_sizes``.
 
         """
         super().__init__(**kwargs)
@@ -219,14 +218,13 @@ class SVTRNeck(BaseNode):
         """Refine a feature map with the SVTR blocks.
 
         Args:
-            x (``Tensor``): The feature map of shape
-                ``[B, in_channels, H, W]``. With the ``"local"`` or
-                ``"conv"`` mixer, ``H`` and ``W`` must be ``height`` and
-                ``width``.
+            x: The feature map of shape ``[B, in_channels, H, W]``. With
+                the ``"local"`` or ``"conv"`` mixer, ``H`` and ``W``
+                must be ``height`` and ``width``.
 
         Returns:
-            ``Tensor``: The refined map of shape ``[B, dims, H, W]``.
-            `BaseNode.run` puts it under the ``"features"`` key.
+            The refined map of shape ``[B, dims, H, W]``. `BaseNode.run`
+            puts it under the ``"features"`` key.
 
         Example:
             >>> import torch
@@ -266,21 +264,20 @@ class SVTRNeck(BaseNode):
         `BaseNode.initialize_weights` with ``method``. Then it changes
         these layers:
 
-        - Every `torch.nn.Linear` draws its weight from a normal
+        - Every ``torch.nn.Linear`` draws its weight from a normal
           distribution with the mean ``0`` and the standard deviation
           ``0.02``, truncated to ``[-2, 2]``. Its bias becomes ``0``.
-        - Every `torch.nn.LayerNorm` gets the weight ``1`` and the bias
+        - Every ``torch.nn.LayerNorm`` gets the weight ``1`` and the bias
           ``0``.
 
         After the first step, the method does not change the
         convolutions and the batch norms.
 
         Args:
-            method (str | None): The method for
-                `BaseNode.initialize_weights`. ``"yolo"`` changes the
-                batch norms and makes every ReLU run in place, also the
-                ReLU layers of the MLPs. Other values change nothing
-                there.
+            method: The method for `BaseNode.initialize_weights`.
+                ``"yolo"`` changes the batch norms and makes every ReLU
+                run in place, also the ReLU layers of the MLPs. Other
+                values change nothing there.
 
         """
         super().initialize_weights(method)

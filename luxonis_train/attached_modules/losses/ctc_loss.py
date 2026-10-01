@@ -78,12 +78,11 @@ class CTCLoss(BaseLoss):
         of each image. `forward` takes the mean over the batch.
 
         Args:
-            use_focal_loss (bool): Whether to multiply the loss
-                :math:`\ell_i` of each image by
-                :math:`(1 - e^{-\ell_i})^2`, as the class formula
-                describes.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            use_focal_loss: Whether to multiply the loss :math:`\ell_i`
+                of each image by :math:`(1 - e^{-\ell_i})^2`, as the
+                class formula describes.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -102,16 +101,15 @@ class CTCLoss(BaseLoss):
         the full length ``T``.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, T, C]``, the
-                main output of the node. ``T`` is the sequence length,
-                and ``C`` is the number of classes, with class ``0`` as
-                blank.
-            target (``Tensor``): The ``metadata/text`` label of shape
-                ``[B, L]``. Each value is the Unicode code point of one
-                character, and ``0`` pads the shorter texts.
+            predictions: Logits of shape ``[B, T, C]``, the main output
+                of the node. ``T`` is the sequence length, and ``C`` is
+                the number of classes, with class ``0`` as blank.
+            target: The ``metadata/text`` label of shape ``[B, L]``.
+                Each value is the Unicode code point of one character,
+                and ``0`` pads the shorter texts.
 
         Returns:
-            ``Tensor``: The mean loss over the batch, as a scalar.
+            The mean loss over the batch, as a scalar.
 
         Example:
             The example has one time step with equal logits for the

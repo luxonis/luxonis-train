@@ -87,32 +87,31 @@ class BBoxVisualizer(BaseVisualizer):
         colors.
 
         Args:
-            labels (dict[int, str] | list[str] | None): Class names to
-                draw. A dictionary maps a class index to a name. A list
-                maps by position. When ``None`` or empty, the names come
-                from the ``classes`` of the node, so the visualizer then
-                needs a ``node``.
-            draw_labels (bool): Whether to draw the class name next to
-                each box. Defaults to ``True``.
-            draw_scores (bool): Whether to write the confidence of each
+            labels: Class names to draw. A dictionary maps a class index
+                to a name. A list maps by position. When ``None`` or
+                empty, the names come from the ``classes`` of the node,
+                so the visualizer then needs a ``node``.
+            draw_labels: Whether to draw the class name next to each
+                box. Defaults to ``True``.
+            draw_scores: Whether to write the confidence of each
                 predicted box, with two decimals, in its label. Applies
                 to the predictions only. Without ``draw_labels``, the
                 label is the confidence alone. Defaults to ``False``.
-            colors (dict[str, Color] | list[Color] | None): Box colors.
-                A dictionary maps a class name to a color. A list maps
-                by class index. When ``None``, each class gets a
-                distinct color from `get_color`, seeded with its index.
-            fill (bool): The drawing methods do not read it. Defaults to
+            colors: Box colors. A dictionary maps a class name to a
+                color. A list maps by class index. When ``None``, each
+                class gets a distinct color from `get_color`, seeded
+                with its index.
+            fill: The drawing methods do not read it. Defaults to
                 ``False``.
-            width (int | None): Line width of the boxes, in pixels. When
-                ``None`` or ``0``, the width is one percent of the
-                smaller canvas side, rounded down, and at least ``1``.
-            font (str | None): The drawing methods do not read it.
-                Defaults to ``None``.
-            font_size (int | None): The drawing methods do not read it.
-                Defaults to ``None``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            width: Line width of the boxes, in pixels. When ``None`` or
+                ``0``, the width is one percent of the smaller canvas
+                side, rounded down, and at least ``1``.
+            font: The drawing methods do not read it. Defaults to
+                ``None``.
+            font_size: The drawing methods do not read it. Defaults to
+                ``None``.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -148,15 +147,15 @@ class BBoxVisualizer(BaseVisualizer):
         ``draw_labels`` is set.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not modify it.
-            targets (``Tensor``): Boxes of shape ``[N, 6]`` with rows
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not modify it.
+            targets: Boxes of shape ``[N, 6]`` with rows
                 ``[batch_index, class, x, y, w, h]``. The coordinates
                 are ``xywh`` normalized to ``[0, 1]``.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas`` with
-            the boxes drawn.
+            A new tensor of the same shape as ``canvas`` with the boxes
+            drawn.
 
         Example:
             >>> import torch
@@ -219,19 +218,17 @@ class BBoxVisualizer(BaseVisualizer):
         and draws the remaining images into ``canvas`` in place.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``.
-            predictions (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]``. The coordinates are
-                pixels of the unscaled image.
-            scale (float): Multiplier for the box coordinates. Pass the
-                factor that scaled the canvas. Defaults to ``1.0``.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``.
+            predictions: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]``. The
+                coordinates are pixels of the unscaled image.
+            scale: Multiplier for the box coordinates. Pass the factor
+                that scaled the canvas. Defaults to ``1.0``.
 
         Returns:
-            ``Tensor``: The images with the boxes drawn, of the same
-            shape as ``canvas``. A new tensor, except after a failure,
-            when it is ``canvas`` itself.
+            The images with the boxes drawn, of the same shape as
+            ``canvas``. A new tensor, except after a failure, when it is
+            ``canvas`` itself.
 
         Example:
             >>> import torch
@@ -297,24 +294,22 @@ class BBoxVisualizer(BaseVisualizer):
         """Draw the predicted boxes, and the target boxes when given.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the predictions on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the targets on.
-            predictions (``list[Tensor]``): One tensor per image, of
-                shape ``[M_i, 6]`` with rows
-                ``[x1, y1, x2, y2, conf, class]`` in pixels.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the targets on.
+            predictions: One tensor per image, of shape ``[M_i, 6]``
+                with rows ``[x1, y1, x2, y2, conf, class]`` in pixels.
                 `draw_predictions` scales them by the ``scale`` factor.
-            targets (``Tensor | None``): Boxes of shape ``[N, 6]`` with
-                rows ``[batch_index, class, x, y, w, h]``, ``xywh``
+            targets: Boxes of shape ``[N, 6]`` with rows
+                ``[batch_index, class, x, y, w, h]``, ``xywh``
                 normalized to ``[0, 1]``. ``None`` when the batch has no
                 ``boundingbox`` labels.
 
         Returns:
-            ``tuple[Tensor, Tensor] | Tensor``: The pair
-            ``(targets, predictions)`` of drawn images when ``targets``
-            is not ``None``; otherwise only the predictions image. Each
-            image has the shape of its canvas.
+            The pair ``(targets, predictions)`` of drawn images when
+            ``targets`` is not ``None``; otherwise only the predictions
+            image. Each image has the shape of its canvas.
 
         Example:
             >>> import torch

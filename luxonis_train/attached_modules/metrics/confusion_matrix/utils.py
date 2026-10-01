@@ -24,29 +24,28 @@ def preprocess_instance_masks(
     target mask come from its target box.
 
     Args:
-        predicted_boundingbox (``list[Tensor]``): The predicted boxes of
-            each image, of shape ``[M_i, 6]``, with the class in column
-            ``5``. The length of the list is the batch size.
-        predicted_instance_segmentation (``list[Tensor]``): The predicted
-            masks of each image, of shape ``[M_i, height, width]``, one
-            for each box.
-        target_boundingbox (``Tensor``): The target boxes of the batch,
-            of shape ``[N, C]``, with the batch index in column ``0`` and
-            the class in column ``1``.
-        target_instance_segmentation (``Tensor``): The target masks, of
-            shape ``[N, height, width]``, one for each target box.
-        n_classes (int): The number of classes.
-        height (int): The height of the masks.
-        width (int): The width of the masks.
-        device (torch.device): The device of the new masks.
+        predicted_boundingbox: The predicted boxes of each image, of
+            shape ``[M_i, 6]``, with the class in column ``5``. The
+            length of the list is the batch size.
+        predicted_instance_segmentation: The predicted masks of each
+            image, of shape ``[M_i, height, width]``, one for each box.
+        target_boundingbox: The target boxes of the batch, of shape
+            ``[N, C]``, with the batch index in column ``0`` and the
+            class in column ``1``.
+        target_instance_segmentation: The target masks, of shape
+            ``[N, height, width]``, one for each target box.
+        n_classes: The number of classes.
+        height: The height of the masks.
+        width: The width of the masks.
+        device: The device of the new masks.
 
     Returns:
-        ``tuple[Tensor, Tensor]``: The predicted and the target semantic
-        masks, each of shape ``[B, n_classes, height, width]``, where
-        ``B`` is the length of ``predicted_boundingbox``. They hold ``1``
-        for the object and ``0`` elsewhere. The predicted masks take the
-        dtype of ``predicted_instance_segmentation[0]``. The target masks
-        take the dtype of ``target_instance_segmentation``.
+        The predicted and the target semantic masks, each of shape
+        ``[B, n_classes, height, width]``, where ``B`` is the length of
+        ``predicted_boundingbox``. They hold ``1`` for the object and
+        ``0`` elsewhere. The predicted masks take the dtype of
+        ``predicted_instance_segmentation[0]``. The target masks take
+        the dtype of ``target_instance_segmentation``.
 
     Example:
         The batch has one image and two classes. The two predicted masks
@@ -116,13 +115,12 @@ def compute_mcc(cm: Tensor) -> Tensor:
     denominator is ``0``. The transposed matrix gives the same value.
 
     Args:
-        cm (``Tensor``): A square matrix of counts, of shape ``[K, K]``.
-            The confusion matrices pass a ``float32`` copy of their
-            counts.
+        cm: A square matrix of counts, of shape ``[K, K]``. The
+            confusion matrices pass a ``float32`` copy of their counts.
 
     Returns:
-        ``Tensor``: The scalar MCC as a floating point tensor, on the
-        device of ``cm``.
+        The scalar MCC as a floating point tensor, on the device of
+        ``cm``.
 
     Example:
         >>> import torch

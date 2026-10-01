@@ -26,12 +26,10 @@ def _intersect_defaults(inners: Sequence[Optimizer]) -> dict[str, Any]:
     has it.
 
     Args:
-        inners (``Sequence[Optimizer]``): The inner optimizers. The
-            sequence must not be empty.
+        inners: The inner optimizers. The sequence must not be empty.
 
     Returns:
-        ``dict[str, Any]``: The shared keys, with the values of the first
-        inner optimizer.
+        The shared keys, with the values of the first inner optimizer.
 
     """
     keys = set(inners[0].defaults)
@@ -84,7 +82,7 @@ class _CompositeState(MutableMapping[Tensor, Any]):
 
 
 class CompositeOptimizer(Optimizer):
-    """One `torch.optim.Optimizer` that drives several inner optimizers.
+    """One ``torch.optim.Optimizer`` that drives several inner optimizers.
 
     `param_groups` joins the ``param_groups`` of the inner optimizers,
     and holds the same dictionary objects. Lightning can therefore drive
@@ -128,8 +126,8 @@ class CompositeOptimizer(Optimizer):
         inner optimizers share, with the values of the first one.
 
         Args:
-            inners (``Sequence[Optimizer]``): The inner optimizers, in
-                the order of their groups in `param_groups`.
+            inners: The inner optimizers, in the order of their groups
+                in `param_groups`.
 
         Raises:
             ValueError: If ``inners`` is empty. Also if ``inners`` has
@@ -230,12 +228,12 @@ class CompositeOptimizer(Optimizer):
         fires no hooks of its own.
 
         Args:
-            closure (``Callable[[], Any] | None``): The function that
-                computes the loss and the gradients, or ``None``.
+            closure: The function that computes the loss and the
+                gradients, or ``None``.
 
         Returns:
-            ``Any``: The return value of ``closure``, or ``None`` without
-            a closure.
+            The return value of ``closure``, or ``None`` without a
+            closure.
 
         """
         loss = None
@@ -250,7 +248,7 @@ class CompositeOptimizer(Optimizer):
         """Reset the gradients of every inner optimizer.
 
         Args:
-            set_to_none (bool): Whether to set the gradients to ``None``
+            set_to_none: Whether to set the gradients to ``None``
                 instead of to zero. The method passes it to each inner
                 optimizer.
 
@@ -262,8 +260,7 @@ class CompositeOptimizer(Optimizer):
         """Reject a new parameter group, because the partition is fixed.
 
         Args:
-            param_group (``dict[str, Any]``): The group. The method does
-                not use it.
+            param_group: The group. The method does not use it.
 
         Raises:
             RuntimeError: Always.
@@ -278,12 +275,14 @@ class CompositeOptimizer(Optimizer):
         """Return the state of every inner optimizer.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with these keys:
+            A dictionary with these keys.
 
-            - ``"format"``: ``"luxonis_composite"``.
-            - ``"version"``: ``1``.
-            - ``"optimizers"``: The class name of each inner optimizer.
-            - ``"inners"``: The ``state_dict()`` of each inner optimizer.
+            - ``"format"`` is ``"luxonis_composite"``.
+            - ``"version"`` is ``1``.
+            - ``"optimizers"`` holds the class name of each inner
+              optimizer.
+            - ``"inners"`` holds the ``state_dict()`` of each inner
+              optimizer.
 
         """
         return {
@@ -300,8 +299,8 @@ class CompositeOptimizer(Optimizer):
         optimizer at the same position.
 
         Args:
-            state_dict (``dict[str, Any]``): A state that the
-                `CompositeOptimizer.state_dict` method returned.
+            state_dict: A state that the `CompositeOptimizer.state_dict`
+                method returned.
 
         Raises:
             ValueError: If ``"format"`` is not ``"luxonis_composite"``,
@@ -359,12 +358,11 @@ def unwrap_optimizers(
     run with one optimizer and a run with a composite in the same way.
 
     Args:
-        optimizers (``Sequence[Optimizer]``): The optimizers, such as
-            ``trainer.optimizers`` of Lightning.
+        optimizers: The optimizers, such as ``trainer.optimizers`` of
+            Lightning.
 
     Returns:
-        ``list[Optimizer]``: A new list with the plain optimizers, in
-        order.
+        A new list with the plain optimizers, in order.
 
     Example:
         >>> from torch import nn

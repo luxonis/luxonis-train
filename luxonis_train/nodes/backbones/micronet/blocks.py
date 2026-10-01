@@ -78,69 +78,69 @@ class MicroBlock(nn.Module):
         r"""Build the layers of the lite, transition, or full layout.
 
         Args:
-            in_channels (int): The number of input channels.
-            out_channels (int): The number of output channels of a lite
-                or a full block. The layers of a transition block do not
-                read it. The residual check reads it in all layouts.
-            kernel_size (int): The kernel size :math:`k` of the
+            in_channels: The number of input channels.
+            out_channels: The number of output channels of a lite or a
+                full block. The layers of a transition block do not read
+                it. The residual check reads it in all layouts.
+            kernel_size: The kernel size :math:`k` of the
                 `DepthSpatialSepConv`, which is a :math:`k \times 1` and
                 a :math:`1 \times k` convolution. A transition block
                 ignores it.
-            stride (int): The stride of the `DepthSpatialSepConv`. The
-                layers of a transition block ignore it.
-            expand_ratio (tuple[int, int]): The two channel multipliers
-                of the expansion. A lite block applies one multiplier in
-                each half of its `DepthSpatialSepConv`. The other layouts
-                apply the product in the expansion :math:`1 \times 1`
-                convolution.
-            groups_1 (tuple[int, int]): The first value is the number of
-                groups of the expansion :math:`1 \times 1` convolution.
-                ``0`` selects a lite block. The second value sets the
-                groups of the `DYShiftMax` layers before the projection
-                and of the `ChannelShuffle` after the first activation.
-                In the `DYShiftMax` after the depthwise convolution of a
-                full block, the groups are the expanded channels divided
-                by the value, when the value is not ``1``. In a transition
-                block, the value sets the groups of its only `DYShiftMax`.
-            groups_2 (tuple[int, int]): The first value is the number of
-                groups of the projection :math:`1 \times 1` convolution.
-                The second value sets the groups of the last `DYShiftMax`
-                and of the `ChannelShuffle` after it. ``0`` selects a
+            stride: The stride of the `DepthSpatialSepConv`. The layers
+                of a transition block ignore it.
+            expand_ratio: The two channel multipliers of the expansion.
+                A lite block applies one multiplier in each half of its
+                `DepthSpatialSepConv`. The other layouts apply the
+                product in the expansion :math:`1 \times 1` convolution.
+            groups_1: The first value is the number of groups of the
+                expansion :math:`1 \times 1` convolution. ``0`` selects
+                a lite block. The second value sets the groups of the
+                `DYShiftMax` layers before the projection and of the
+                `ChannelShuffle` after the first activation. In the
+                `DYShiftMax` after the depthwise convolution of a full
+                block, the groups are the expanded channels divided by
+                the value, when the value is not ``1``. In a transition
+                block, the value sets the groups of its only
+                `DYShiftMax`.
+            groups_2: The first value is the number of groups of the
+                projection :math:`1 \times 1` convolution. The second
+                value sets the groups of the last `DYShiftMax` and of
+                the `ChannelShuffle` after it. ``0`` selects a
                 transition block when ``groups_1[0]`` is not ``0``.
-            dy_shift (tuple[int, int, int]): The activations after the
-                expansion convolution, after the depthwise convolution,
-                and after the projection. In the first two positions, a
-                positive value selects `DYShiftMax`, and other values
-                select ``ReLU6``. ``2`` selects two branches, and another
-                positive value selects one branch. In the last position,
-                a positive value selects a one-branch `DYShiftMax`, and
-                other values select no activation. A lite block ignores
-                the first value. A transition block reads only the last
+            dy_shift: The activations after the expansion convolution,
+                after the depthwise convolution, and after the
+                projection. In the first two positions, a positive value
+                selects `DYShiftMax`, and other values select ``ReLU6``.
+                ``2`` selects two branches, and another positive value
+                selects one branch. In the last position, a positive
+                value selects a one-branch `DYShiftMax`, and other
+                values select no activation. A lite block ignores the
+                first value. A transition block reads only the last
                 value, for the activation after its expansion. In a lite
                 or a full block, values other than ``0`` also add a
                 `ChannelShuffle` after an activation. In a lite block,
                 the second value adds one with ``C // 2`` groups, where
-                ``C`` is the number of expanded channels. In a full block,
-                the first two values share one after the depthwise
-                activation. It has ``C // 4`` groups when both values are
-                not ``0``, and ``C // 2`` groups when only one is not
-                ``0``. The last value adds one with ``out_channels // 2``
-                groups. In a lite block, it does so only when
-                ``out_channels`` is even.
-            reduction_factor (int): The reduction of the squeeze network
-                of `DYShiftMax`. The activations use a ``reduction`` of
+                ``C`` is the number of expanded channels. In a full
+                block, the first two values share one after the
+                depthwise activation. It has ``C // 4`` groups when both
+                values are not ``0``, and ``C // 2`` groups when only
+                one is not ``0``. The last value adds one with
+                ``out_channels // 2`` groups. In a lite block, it does
+                so only when ``out_channels`` is even.
+            reduction_factor: The reduction of the squeeze network of
+                `DYShiftMax`. The activations use a ``reduction`` of
                 ``8 * reduction_factor``. The last activation of a lite
                 block uses ``4 * reduction_factor``. The last activation
                 of a full block also does, when ``out_channels`` is
                 smaller than the expanded channels.
-            init_a (tuple[float, float]): The offsets for the weights of
-                the input in `DYShiftMax`. The activations after the
-                expansion and after the depthwise convolution use them.
-                The last activation, and the activation of a transition
-                block, use ``(1.0, 0.0)`` instead.
-            init_b (tuple[float, float]): The offsets for the weights of
-                the shifted input in `DYShiftMax`. The same activations
-                as for ``init_a`` use them. The others use ``(0.0, 0.0)``.
+            init_a: The offsets for the weights of the input in
+                `DYShiftMax`. The activations after the expansion and
+                after the depthwise convolution use them. The last
+                activation, and the activation of a transition block,
+                use ``(1.0, 0.0)`` instead.
+            init_b: The offsets for the weights of the shifted input in
+                `DYShiftMax`. The same activations as for ``init_a`` use
+                them. The others use ``(0.0, 0.0)``.
 
         """
         super().__init__()
@@ -199,19 +199,18 @@ class MicroBlock(nn.Module):
         """Run the layers, and add the input for a residual connection.
 
         Args:
-            inputs (``Tensor``): The input of shape
-                ``[B, in_channels, H, W]``.
+            inputs: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape ``[B, C, H', W']``. ``C`` is
-            ``out_channels`` for a lite or a full block, and the expanded
-            number of channels for a transition block. For an odd
-            ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and ``W'`` is
-            ``ceil(W / stride)``. A transition block keeps ``H`` and
-            ``W``. With the residual connection, the output is the sum
-            of the layer output and ``inputs``. For a transition block,
-            this sum raises ``RuntimeError`` unless the expanded number
-            of channels is equal to ``in_channels``.
+            The output of shape ``[B, C, H', W']``. ``C`` is
+            ``out_channels`` for a lite or a full block, and the
+            expanded number of channels for a transition block. For an
+            odd ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and
+            ``W'`` is ``ceil(W / stride)``. A transition block keeps
+            ``H`` and ``W``. With the residual connection, the output is
+            the sum of the layer output and ``inputs``. For a transition
+            block, this sum raises ``RuntimeError`` unless the expanded
+            number of channels is equal to ``in_channels``.
 
         """
         out = self.layers(inputs)
@@ -413,8 +412,8 @@ class ChannelShuffle(nn.Module):
         """Store the number of groups.
 
         Args:
-            groups (int): The number of groups. The number of input
-                channels must be a multiple of it.
+            groups: The number of groups. The number of input channels
+                must be a multiple of it.
 
         """
         super().__init__()
@@ -424,13 +423,13 @@ class ChannelShuffle(nn.Module):
         """Interleave the channels of the groups.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, C, H, W]``. ``C``
-                must be a multiple of ``groups``. Otherwise, the reshape
-                raises ``RuntimeError``.
+            x: The input of shape ``[B, C, H, W]``. ``C`` must be a
+                multiple of ``groups``. Otherwise, the reshape raises
+                ``RuntimeError``.
 
         Returns:
-            ``Tensor``: The input with its channels in the new order, of
-            the same shape.
+            The input with its channels in the new order, of the same
+            shape.
 
         """
         batch_size, channels, height, width = x.size()
@@ -485,30 +484,30 @@ class DYShiftMax(nn.Module):
         r"""Initialize the squeeze network and the channel shift.
 
         Args:
-            in_channels (int): The number of input channels. It must be
-                a multiple of the number of groups.
-            out_channels (int): The number of channels of each
-                coefficient. `forward` needs it equal to ``in_channels``
-                or to ``1``. With ``1``, all channels of a sample share
-                each coefficient.
-            init_a (tuple[float, float]): The offsets for :math:`a_1`
-                and :math:`a_2`. `forward` adds ``init_a[0]`` to
-                :math:`a_1`. It does not read ``init_a[1]``, because it
-                adds ``init_b[1]`` to :math:`a_2`.
-            init_b (tuple[float, float]): The offsets for :math:`b_1`
-                and :math:`b_2`. ``init_b[1]`` also goes to :math:`a_2`.
-            use_relu (bool): ``True`` selects two branches and their
-                maximum, a dynamic form of ``ReLU``. ``False`` selects
-                one branch without a maximum.
-            groups (int): The number of channel groups for the shift.
-                With ``1``, the shift moves the channels by one position.
-            reduction (int): The divisor of ``in_channels`` for the
-                hidden layer of the squeeze network. The module rounds
+            in_channels: The number of input channels. It must be a
+                multiple of the number of groups.
+            out_channels: The number of channels of each coefficient.
+                `forward` needs it equal to ``in_channels`` or to ``1``.
+                With ``1``, all channels of a sample share each
+                coefficient.
+            init_a: The offsets for :math:`a_1` and :math:`a_2`.
+                `forward` adds ``init_a[0]`` to :math:`a_1`. It does not
+                read ``init_a[1]``, because it adds ``init_b[1]`` to
+                :math:`a_2`.
+            init_b: The offsets for :math:`b_1` and :math:`b_2`.
+                ``init_b[1]`` also goes to :math:`a_2`.
+            use_relu: ``True`` selects two branches and their maximum, a
+                dynamic form of ``ReLU``. ``False`` selects one branch
+                without a maximum.
+            groups: The number of channel groups for the shift. With
+                ``1``, the shift moves the channels by one position.
+            reduction: The divisor of ``in_channels`` for the hidden
+                layer of the squeeze network. The module rounds
                 ``in_channels // reduction`` to the nearest multiple of
                 ``4``, with a minimum of ``4``. When the rounding goes
                 more than 10% down, it adds ``4``.
-            expansion (bool): When ``True`` and ``groups`` is not ``1``,
-                the number of groups is ``in_channels // groups``. Then
+            expansion: When ``True`` and ``groups`` is not ``1``, the
+                number of groups is ``in_channels // groups``. Then
                 ``groups`` is the number of channels in each group.
 
         """
@@ -547,10 +546,10 @@ class DYShiftMax(nn.Module):
         """Apply the activation with the coefficients of the input.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The activated input, of the same shape.
+            The activated input, of the same shape.
 
         """
         batch_size, channels, _, _ = x.shape
@@ -624,16 +623,16 @@ class SpatialSepConvSF(nn.Module):
         r"""Initialize the two convolutions and the channel shuffle.
 
         Args:
-            in_channels (int): The number of input channels.
-            outs (tuple[int, int]): The channel layout. The first value
-                is the number of output channels of the
-                :math:`k \times 1` convolution. It is also the number of
-                groups of the :math:`1 \times k` convolution and of the
-                shuffle. The second value is the channel multiplier of
-                the :math:`1 \times k` convolution.
-            kernel_size (int): The kernel size :math:`k`. The padding is
+            in_channels: The number of input channels.
+            outs: The channel layout. The first value is the number of
+                output channels of the :math:`k \times 1` convolution.
+                It is also the number of groups of the
+                :math:`1 \times k` convolution and of the shuffle. The
+                second value is the channel multiplier of the
+                :math:`1 \times k` convolution.
+            kernel_size: The kernel size :math:`k`. The padding is
                 ``kernel_size // 2``.
-            stride (int): The stride along the height and the width.
+            stride: The stride along the height and the width.
 
         """
         super().__init__()
@@ -665,13 +664,12 @@ class SpatialSepConvSF(nn.Module):
         """Apply the convolutions, the batch norms, and the shuffle.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape
-            ``[B, outs[0] * outs[1], H', W']``. For an odd
-            ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and ``W'`` is
-            ``ceil(W / stride)``.
+            The output of shape ``[B, outs[0] * outs[1], H', W']``. For
+            an odd ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and
+            ``W'`` is ``ceil(W / stride)``.
 
         """
         return self.conv(x)
@@ -697,14 +695,13 @@ class Stem(nn.Module):
         r"""Initialize the convolution and the activation.
 
         Args:
-            in_channels (int): The number of input channels.
-            stride (int): The stride along the height and the width.
-            outs (tuple[int, int]): The channel layout of the
-                `SpatialSepConvSF`. The first value is the number of
-                output channels of the :math:`3 \times 1` convolution and
-                the number of groups after it. The second value is the
-                channel multiplier. The stem has
-                ``outs[0] * outs[1]`` output channels.
+            in_channels: The number of input channels.
+            stride: The stride along the height and the width.
+            outs: The channel layout of the `SpatialSepConvSF`. The
+                first value is the number of output channels of the
+                :math:`3 \times 1` convolution and the number of groups
+                after it. The second value is the channel multiplier.
+                The stem has ``outs[0] * outs[1]`` output channels.
 
         """
         super().__init__()
@@ -716,10 +713,10 @@ class Stem(nn.Module):
         """Apply the convolution and ``ReLU6``.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape
+            The output of shape
             ``[B, outs[0] * outs[1], ceil(H / stride), ceil(W / stride)]``,
             with values in ``[0, 6]``.
 
@@ -756,14 +753,13 @@ class DepthSpatialSepConv(nn.Module):
         r"""Initialize the two depthwise convolutions.
 
         Args:
-            in_channels (int): The number of input channels.
-            expand (tuple[int, int]): The channel multipliers of the
-                :math:`k \times 1` and the :math:`1 \times k`
-                convolution. The block has
+            in_channels: The number of input channels.
+            expand: The channel multipliers of the :math:`k \times 1`
+                and the :math:`1 \times k` convolution. The block has
                 ``in_channels * expand[0] * expand[1]`` output channels.
-            kernel_size (int): The kernel size :math:`k`. The padding is
+            kernel_size: The kernel size :math:`k`. The padding is
                 ``kernel_size // 2``.
-            stride (int): The stride along the height and the width.
+            stride: The stride along the height and the width.
 
         """
         super().__init__()
@@ -798,10 +794,10 @@ class DepthSpatialSepConv(nn.Module):
         """Apply the two convolutions and their batch norms.
 
         Args:
-            x (``Tensor``): The input of shape ``[B, in_channels, H, W]``.
+            x: The input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: The output of shape
+            The output of shape
             ``[B, in_channels * expand[0] * expand[1], H', W']``. For an
             odd ``kernel_size``, ``H'`` is ``ceil(H / stride)`` and
             ``W'`` is ``ceil(W / stride)``.

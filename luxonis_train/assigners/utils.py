@@ -22,18 +22,17 @@ def candidates_in_gt(
     of the box is larger than ``eps``. A center on a side is outside.
 
     Args:
-        anchor_centers (``Tensor``): Anchor centers ``(x, y)`` with shape
+        anchor_centers: Anchor centers ``(x, y)`` with shape
             ``[n_anchors, 2]``.
-        gt_bboxes (``Tensor``): Boxes in ``xyxy`` format with shape
-            ``[n_boxes, 4]``. The assigners give the ground truth boxes
-            of all images as one flat tensor, so ``n_boxes`` is
-            ``bs * n_max_boxes``.
-        eps (float): The value that the distance between a center and
-            each side of the box must exceed.
+        gt_bboxes: Boxes in ``xyxy`` format with shape ``[n_boxes, 4]``.
+            The assigners give the ground truth boxes of all images as
+            one flat tensor, so ``n_boxes`` is ``bs * n_max_boxes``.
+        eps: The value that the distance between a center and each side
+            of the box must exceed.
 
     Returns:
-        ``Tensor``: Mask with shape ``[n_boxes, n_anchors]`` and the dtype
-        of ``gt_bboxes``. ``1`` marks a center inside the box.
+        Mask with shape ``[n_boxes, n_anchors]`` and the dtype of
+        ``gt_bboxes``. ``1`` marks a center inside the box.
 
     Example:
         >>> import torch
@@ -66,26 +65,27 @@ def fix_collisions(
     not change.
 
     Args:
-        mask_pos (``Tensor``): Positive mask with shape
+        mask_pos: Positive mask with shape
             ``[bs, n_max_boxes, n_anchors]``. ``1`` marks an anchor that
             is positive for a box.
-        overlaps (``Tensor``): The overlap of each box and anchor with
-            shape ``[bs, n_max_boxes, n_anchors]``. `ATSSAssigner` gives
-            the IoU with the anchor boxes. `TaskAlignedAssigner` gives the
+        overlaps: The overlap of each box and anchor with shape
+            ``[bs, n_max_boxes, n_anchors]``. `ATSSAssigner` gives the
+            IoU with the anchor boxes. `TaskAlignedAssigner` gives the
             IoU with the predicted boxes, times the object keypoint
             similarity when it gets keypoints.
-        n_max_boxes (int): Number of box slots per image, the size of
+        n_max_boxes: Number of box slots per image, the size of
             dimension ``1`` of ``mask_pos``.
 
     Returns:
-        ``tuple[Tensor, Tensor, Tensor]``: Three tensors:
+        Three tensors.
 
-        - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``): The index
-          of the box of each anchor, ``0`` for an anchor without a box.
-        - ``mask_pos_sum`` (``[bs, n_anchors]``): The number of boxes of
-          each anchor, ``0`` or ``1``.
-        - ``mask_pos`` (``[bs, n_max_boxes, n_anchors]``): The positive
-          mask with at most one box for each anchor.
+        - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``) holds the
+          index of the box of each anchor, ``0`` for an anchor without a
+          box.
+        - ``mask_pos_sum`` (``[bs, n_anchors]``) holds the number of
+          boxes of each anchor, ``0`` or ``1``.
+        - ``mask_pos`` (``[bs, n_max_boxes, n_anchors]``) is the
+          positive mask with at most one box for each anchor.
 
     Example:
         The second anchor is positive for both boxes. It has the higher
@@ -125,15 +125,12 @@ def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
     The function calls `bbox_iou` once for each image of the batch.
 
     Args:
-        batch1 (``Tensor``): Boxes in ``xyxy`` format with shape
-            ``[bs, N, 4]``.
-        batch2 (``Tensor``): Boxes in ``xyxy`` format with shape
-            ``[bs, M, 4]``.
+        batch1: Boxes in ``xyxy`` format with shape ``[bs, N, 4]``.
+        batch2: Boxes in ``xyxy`` format with shape ``[bs, M, 4]``.
 
     Returns:
-        ``Tensor``: IoU values with shape ``[bs, N, M]``. The value at
-        ``[b, i, j]`` is the IoU between ``batch1[b, i]`` and
-        ``batch2[b, j]``.
+        IoU values with shape ``[bs, N, M]``. The value at ``[b, i, j]``
+        is the IoU between ``batch1[b, i]`` and ``batch2[b, j]``.
 
     Example:
         >>> import torch

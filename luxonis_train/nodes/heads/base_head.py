@@ -31,12 +31,12 @@ class BaseHead(BaseNode):
     does not know.
 
     Attributes:
-        parser (str): The name of the parser that reads the outputs of
-            the head in the exported model. `get_head_config` puts it
-            into the NN Archive entry of the head. It is ``""`` in the
-            base class.
-        task (Task): The task of the head. It gives the key of the main
-            output and the labels that the head needs.
+        parser: The name of the parser that reads the outputs of the
+            head in the exported model. `get_head_config` puts it into
+            the NN Archive entry of the head. It is ``""`` in the base
+            class.
+        task: The task of the head. It gives the key of the main output
+            and the labels that the head needs.
 
     """
 
@@ -60,9 +60,9 @@ class BaseHead(BaseNode):
         ``ValueError``.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with the keys ``"parser"``
-            and ``"metadata"``. The ``"metadata"`` dictionary holds
-            ``"classes"``, ``"n_classes"``, and the custom keys.
+            A dictionary with the keys ``"parser"`` and ``"metadata"``.
+            The ``"metadata"`` dictionary holds ``"classes"``,
+            ``"n_classes"``, and the custom keys.
 
         Example:
             >>> from torch import Size
@@ -89,8 +89,8 @@ class BaseHead(BaseNode):
         """Return the part of the head config that every head shares.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with two keys. ``"parser"``
-            holds the ``parser`` class attribute. ``"metadata"`` holds a
+            A dictionary with two keys. ``"parser"`` holds the
+            ``parser`` class attribute. ``"metadata"`` holds a
             dictionary with the ``"classes"`` and the ``"n_classes"`` of
             the head.
 
@@ -111,7 +111,7 @@ class BaseHead(BaseNode):
         dictionary. The base implementation returns an empty dictionary.
 
         Returns:
-            ``Params``: The additional metadata keys and their values.
+            The additional metadata keys and their values.
 
         """
         return {}
@@ -128,15 +128,14 @@ class BaseHead(BaseNode):
         Override it for tasks that the default converter does not support.
 
         Args:
-            head_output (``Packet[Tensor]``): The output packet of the
-                head for one batch.
-            image_paths (``list[Path]``): The paths of the original
-                images, in the order of the batch.
-            config_preprocessing (PreprocessingConfig): The preprocessing
-                settings used to map predictions back to the images.
+            head_output: The output packet of the head for one batch.
+            image_paths: The paths of the original images, in the order
+                of the batch.
+            config_preprocessing: The preprocessing settings used to map
+                predictions back to the images.
 
         Returns:
-            ``DatasetIterator``: A generator of the annotation records.
+            A generator of the annotation records.
 
         """
         return default_annotate(

@@ -74,16 +74,15 @@ class OCRVisualizer(BaseVisualizer):
         """Initialize the visualizer and store the text options.
 
         Args:
-            font_scale (float): The OpenCV font scale of the text.
-            color (tuple[int, int, int]): The color of the text, one value
-                in ``[0, 255]`` for each channel, in the channel order of
-                the canvas. The default is black.
-            thickness (int): The line thickness of the text, in pixels.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``. The
-                ``node`` must be an `OCRCTCHead`, because `forward` uses
-                its ``decoder``. Another node type raises
-                ``IncompatibleError``.
+            font_scale: The OpenCV font scale of the text.
+            color: The color of the text, one value in ``[0, 255]`` for
+                each channel, in the channel order of the canvas. The
+                default is black.
+            thickness: The line thickness of the text, in pixels.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``. The ``node`` must be an
+                `OCRCTCHead`, because `forward` uses its ``decoder``.
+                Another node type raises ``IncompatibleError``.
 
         """
         super().__init__(**kwargs)
@@ -109,21 +108,21 @@ class OCRVisualizer(BaseVisualizer):
         probability has two decimals and is ``nan`` for an empty text.
 
         Args:
-            prediction_canvas (``Tensor``): Images of shape
-                ``[B, 3, H, W]``. The method uses only the shape, the
-                dtype, and the device of this tensor.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The panels get the size of these images.
-            predictions (``Tensor``): The logits of the node, of shape
+            prediction_canvas: Images of shape ``[B, 3, H, W]``. The
+                method uses only the shape, the dtype, and the device of
+                this tensor.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]``.
+                The panels get the size of these images.
+            predictions: The logits of the node, of shape
                 ``[B, T, n_classes]``.
-            targets (``Tensor | None``): The ``metadata/text`` label, of
-                shape ``[B, T_max]``. Each row holds the Unicode code
-                points of one text, padded with ``0``. ``None`` when the
-                batch has no text labels.
+            targets: The ``metadata/text`` label, of shape
+                ``[B, T_max]``. Each row holds the Unicode code points
+                of one text, padded with ``0``. ``None`` when the batch
+                has no text labels.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: A copy of ``target_canvas``, and
-            the panels in a tensor of the same shape.
+            A copy of ``target_canvas``, and the panels in a tensor of
+            the same shape.
 
         Example:
             >>> import torch

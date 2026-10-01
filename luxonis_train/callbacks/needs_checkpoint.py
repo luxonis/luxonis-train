@@ -35,14 +35,13 @@ class NeedsCheckpoint(pl.Callback):
         """Initialize the callback.
 
         Args:
-            preferred_checkpoint (``Literal["metric", "loss"]``): The
-                checkpoint to try first. ``"metric"`` selects the best
-                main metric, and ``"loss"`` selects the lowest validation
-                loss. The constructor does not check the value. Any value
-                other than ``"loss"`` acts as ``"metric"``.
-            **kwargs (``Any``): Keyword arguments for ``pl.Callback``.
-                That class accepts none, so any key raises
-                ``TypeError``.
+            preferred_checkpoint: The checkpoint to try first.
+                ``"metric"`` selects the best main metric, and
+                ``"loss"`` selects the lowest validation loss. The
+                constructor does not check the value. Any value other
+                than ``"loss"`` acts as ``"metric"``.
+            **kwargs: Keyword arguments for ``pl.Callback``. That class
+                accepts none, so any key raises ``TypeError``.
 
         """
         super().__init__(**kwargs)
@@ -103,12 +102,12 @@ class NeedsCheckpoint(pl.Callback):
         returns ``None``.
 
         Args:
-            pl_module (LuxonisLightningModule): The module of the run.
-                Its `LuxonisModel` holds the trainer and its callbacks.
+            pl_module: The module of the run. Its `LuxonisModel` holds
+                the trainer and its callbacks.
 
         Returns:
-            str | None: The path of the checkpoint file, or ``None`` when
-            neither checkpoint exists.
+            The path of the checkpoint file, or ``None`` when neither
+            checkpoint exists.
 
         """
         path = self._get_checkpoint(self._preferred_checkpoint, pl_module)
