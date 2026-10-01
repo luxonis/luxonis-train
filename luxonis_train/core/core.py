@@ -334,7 +334,6 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **get_tracker_init_params(self.cfg.tracker),
         )
@@ -639,7 +638,7 @@ class LuxonisModel:
             status = "failed"
             raise
         finally:
-            self.finalize_run(status)
+            self._end_stage(status)
 
     def train(
         self,
@@ -651,8 +650,9 @@ class LuxonisModel:
         When ``trainer.matmul_precision`` is set, the method applies it
         first. It then resolves the weights and runs ``Trainer.fit``
         with the train and validation loaders. At the end, also after a
-        failure, it uploads the log and the config to the run and
-        finalizes the tracker.
+        failure, it uploads the log and the config to the run. The run
+        stays open for a later test, export, or archive. A failed
+        training closes it as failed.
 
         The weights come from ``weights``, else from the constructor,
         else from ``model.weights`` of the config:
@@ -966,10 +966,10 @@ class LuxonisModel:
                 weights of the constructor, then to ``model.weights`` of
                 the config.
             finalize_tracker: When ``True``, upload the log and the
-                config to the run and finalize the tracker once the test
-                ends, also after a failure. Set it to ``False`` when the
-                run continues with an export or an archive, and call
-                `finalize_run` at the end.
+                config to the run once the test ends, also after a
+                failure. The run stays open, and a failed test closes
+                it as failed, as in `train`. `TestOnTrainEnd` sets it to
+                ``False``, because the training uploads them itself.
 
         Returns:
             The logged values of the test epoch when ``new_thread`` is
@@ -1002,7 +1002,7 @@ class LuxonisModel:
                 raise
             finally:
                 if finalize_tracker:
-                    self.finalize_run(status)
+                    self._end_stage(status)
 
         if new_thread:  # pragma: no cover
             self.thread = threading.Thread(
@@ -1014,16 +1014,17 @@ class LuxonisModel:
         return _run_test()
 
     def finalize_run(self, status: str = "success") -> None:
-        """Upload the run metadata and finalize the tracker.
+        """Upload the run metadata and close the run.
 
         The method uploads ``luxonis_train.log`` and
         ``training_config.yaml`` of the run as artifacts, then closes
-        the tracker with ``status``. It flushes and closes TensorBoard.
-        MLFlow marks the run ``FINISHED`` for ``"success"`` or
-        ``"finished"`` and ``FAILED`` otherwise. Weights and Biases
-        gets the exit code ``0`` for ``"success"`` and ``1`` otherwise.
-        Both steps run on rank zero only. `train` and `test` call this
-        method themselves.
+        the tracker with ``status``. Each backend ends its run as
+        successful for ``"success"`` or ``"finished"``, and as failed
+        otherwise. The tracker ignores the logging calls after it.
+
+        `train` and `test` keep the run open, so that a later export or
+        archive still uploads to it. Call this method when the run is
+        complete. Otherwise, the run closes when the process exits.
 
         Args:
             status: The final status of the run, ``"success"`` or
@@ -1031,7 +1032,25 @@ class LuxonisModel:
 
         """
         self._upload_run_metadata()
-        self.tracker._finalize(status)
+        self.tracker.close(status)
+
+    def _end_stage(self, status: str) -> None:
+        """Upload the run metadata at the end of a training or a test.
+
+        After a stage that succeeds, the tracker writes its pending
+        data, such as the TensorBoard events, and the run stays open. A
+        failed stage closes the run as failed with `finalize_run`.
+
+        Args:
+            status: The status of the stage, ``"success"`` or
+                ``"failed"``.
+
+        """
+        if status != "success":
+            self.finalize_run(status)
+            return
+        self._upload_run_metadata()
+        self.tracker.flush()
 
     def _upload_run_metadata(self) -> None:
         self.tracker.upload_artifact(self._log_file, typ="logs")
@@ -1287,6 +1306,7 @@ class LuxonisModel:
         )
 
         self._parent_tracker.log_hyperparams(study.best_params)
+        self._parent_tracker.close()
 
         self._finalize_wandb_tuning(study)
 
@@ -1306,10 +1326,7 @@ class LuxonisModel:
             tracker_params["run_name"] or self.tracker.run_name
         )
         child_tracker = LuxonisTrackerPL(
-            rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-            is_sweep=True,
-            **tracker_params,
+            rank=rank_zero_only.rank, is_sweep=True, **tracker_params
         )
 
         run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
@@ -1447,19 +1464,15 @@ class LuxonisModel:
         cfg_tracker = self.cfg.tracker
         tracker_params = get_tracker_init_params(cfg_tracker)
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
-        tracker_params["is_wandb"] = False
+        tracker_params["wandb"] = False
         tracker_params["run_name"] = (
             tracker_params["run_name"] or self.tracker.run_name
         )
         self._parent_tracker = LuxonisTrackerPL(
-            rank=rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-            is_sweep=False,
-            **tracker_params,
+            rank=rank, is_sweep=False, **tracker_params
         )
-        if self._parent_tracker.is_mlflow:  # pragma: no cover
-            # Experiment needs to be interacted with to create actual MLFlow run
-            self._parent_tracker.experiment["mlflow"].active_run()
+        # the MLFlow runs of the trials nest under the open parent run
+        self._parent_tracker.start()
 
     @staticmethod
     def _build_optuna_storage(cfg_tuner: TunerConfig) -> "URL | None":
@@ -1481,17 +1494,18 @@ class LuxonisModel:
         return storage
 
     def _finalize_wandb_tuning(self, study: "optuna.study.Study") -> None:
-        if self.cfg.tracker.is_wandb:  # pragma: no cover
+        cfg_tracker = self.cfg.tracker
+        if cfg_tracker.wandb is not False:  # pragma: no cover
             # If wandb used then init parent tracker separately at the end
-            wandb_parent_tracker = LuxonisTrackerPL(
+            with LuxonisTrackerPL(
+                project_name=cfg_tracker.project_name,
+                project_id=cfg_tracker.project_id,
+                run_name=self._parent_tracker.run_name,
+                save_directory=cfg_tracker.save_directory,
                 rank=rank_zero_only.rank,
-                _auto_finalize=True,
-                **(
-                    get_tracker_init_params(self.cfg.tracker)
-                    | {"run_name": self._parent_tracker.run_name}
-                ),
-            )
-            wandb_parent_tracker.log_hyperparams(study.best_params)
+                wandb=cfg_tracker.wandb,
+            ) as wandb_parent_tracker:
+                wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
         self,

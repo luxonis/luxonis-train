@@ -18,10 +18,9 @@ tracker:
   project_id: null
   run_name: null
   run_id: null
-  is_tensorboard: true
-  is_wandb: false
-  wandb_entity: null
-  is_mlflow: false
+  tensorboard: true
+  wandb: false
+  mlflow: false
 
 trainer:
   preprocessing:

@@ -182,7 +182,7 @@ def test_public_config_exports_are_importable():
     assert ArchiveConfig().upload_to_run is True
     assert BlobconverterExportConfig().version == "2022.1"
     assert OnnxExportConfig().opset_version == 16
-    assert TrackerConfig().is_tensorboard is True
+    assert TrackerConfig().tensorboard is True
     assert TunerConfig().storage.active is True
     assert StorageConfig(active=False).active is False
     assert NormalizeAugmentationConfig().active is True
@@ -715,6 +715,48 @@ def test_config_validators_and_storage(monkeypatch: pytest.MonkeyPatch):
 
     constructed = Config.model_construct(tuner=None)
     assert cast(Any, constructed).check_tune_storage() is constructed
+
+
+def test_tracker_config_turns_deprecated_flags_into_backend_keys():
+    tracker = TrackerConfig.model_validate(
+        {
+            "is_tensorboard": False,
+            "is_wandb": True,
+            "wandb_entity": "my-team",
+            "is_mlflow": True,
+            "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
+        }
+    )
+
+    assert tracker.tensorboard is False
+    assert tracker.wandb == {"entity": "my-team"}
+    assert tracker.mlflow == {"tracking_uri": "sqlite:///mlflow.db"}
+    assert tracker.model_extra == {}
+
+    tracker = TrackerConfig.model_validate(
+        {"is_wandb": False, "wandb_entity": "my-team"}
+    )
+    assert tracker.wandb is False
+    assert tracker.model_extra == {}
+
+
+def test_tracker_config_passes_backend_options_and_plugins():
+    tracker = TrackerConfig.model_validate(
+        {
+            "wandb": {"entity": "my-team", "tags": ["baseline"]},
+            "my_service": {"api_key": "key"},
+            "other_service": True,
+        }
+    )
+
+    dumped = tracker.model_dump()
+    assert dumped["wandb"] == {"entity": "my-team", "tags": ["baseline"]}
+    assert dumped["my_service"] == {"api_key": "key"}
+    assert dumped["other_service"] is True
+
+    # each extra key is a backend, so a key with a scalar value fails
+    with pytest.raises(ValidationError, match="run_label"):
+        TrackerConfig.model_validate({"run_label": "baseline"})
 
 
 def test_config_get_config_handles_string_mlflow_paths(

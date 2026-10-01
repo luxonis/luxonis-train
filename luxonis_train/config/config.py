@@ -32,7 +32,9 @@ from luxonis_ml.utils import (
 )
 from pydantic import (
     AliasChoices,
+    BaseModel,
     BeforeValidator,
+    ConfigDict,
     Field,
     PlainSerializer,
     SecretStr,
@@ -996,12 +998,35 @@ class ModelConfig(BaseModelExtraForbid):
         ]
 
 
-class TrackerConfig(BaseModelExtraForbid):
+class TrackerConfig(BaseModel):
     """Where the metrics, the images, and the checkpoints go.
 
-    More than one backend can be active at once, and at least one must
-    be. Weights and Biases and MLFlow need ``project_name`` or
+    Each backend of ``luxonis_ml.tracker`` has a key of its name. ``true``
+    turns the backend on with its defaults, ``false`` leaves it off, and
+    a mapping turns it on with these options. The backend checks the
+    options when `LuxonisModel` creates the tracker. A plugin backend of
+    another package has a key of its name too.
+
+    More than one backend can be on at once, and at least one must be.
+    Weights and Biases and MLFlow need ``project_name`` or
     ``project_id``.
+
+    The keys ``is_tensorboard``, ``is_wandb``, ``wandb_entity``, and
+    ``is_mlflow`` are deprecated. The config turns them into the
+    backend keys and logs a warning.
+
+    Example:
+        A run that logs to TensorBoard, to the WandB team ``my-team``,
+        and to a plugin backend ``my_service``:
+
+        .. code-block:: yaml
+
+            tracker:
+              project_name: detection
+              wandb:
+                entity: my-team
+              my_service:
+                api_key: ...
 
     Attributes:
         project_name: The project the run belongs to.
@@ -1014,24 +1039,66 @@ class TrackerConfig(BaseModelExtraForbid):
         save_directory: The directory that holds one subdirectory for
             each run, with the logs, the checkpoints, and the exported
             files. ``model_dump`` leaves it out.
-        is_tensorboard: Log to TensorBoard.
-        is_wandb: Log to Weights and Biases.
-        wandb_entity: The Weights and Biases entity that owns the run.
-            Required when ``is_wandb`` is set.
-        is_mlflow: Log to MLFlow. It needs the ``MLFLOW_TRACKING_URI``
-            environment variable.
+        tensorboard: Log to TensorBoard.
+        wandb: Log to Weights and Biases, or the options of its
+            backend, such as ``entity``.
+        mlflow: Log to MLFlow, or the options of its backend, such as
+            ``tracking_uri``. Without ``tracking_uri``, the backend
+            reads the ``MLFLOW_TRACKING_URI`` environment variable.
 
     """
+
+    model_config = ConfigDict(extra="allow")
+    __pydantic_extra__: dict[str, Params | bool] = Field(init=False)
 
     project_name: str | None = None
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
     save_directory: Annotated[Path, Field(exclude=True)] = Path("output")
-    is_tensorboard: bool = True
-    is_wandb: bool = False
-    wandb_entity: str | None = None
-    is_mlflow: bool = False
+    tensorboard: bool = True
+    wandb: Params | bool = False
+    mlflow: Params | bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def replace_deprecated_flags(cls, data: Any) -> Any:
+        """Turn the ``is_*`` keys and ``wandb_entity`` into the backend
+        keys.
+
+        A backend key that the data also holds wins over its ``is_*``
+        key.
+
+        Args:
+            data: The raw tracker section.
+
+        Returns:
+            A copy of ``data`` with the backend keys, or ``data`` when
+            it has no deprecated key.
+
+        """
+        deprecated = {
+            "is_tensorboard",
+            "is_wandb",
+            "wandb_entity",
+            "is_mlflow",
+        }
+        if not isinstance(data, dict) or not deprecated & data.keys():
+            return data
+        logger.warning(
+            f"The tracker keys {sorted(deprecated & data.keys())} are "
+            "deprecated. Use `tensorboard`, `wandb` and `mlflow`, for "
+            "example `wandb: {entity: my-team}`."
+        )
+        data = dict(data)
+        entity = data.pop("wandb_entity", None)
+        for backend in ("tensorboard", "wandb", "mlflow"):
+            flag = data.pop(f"is_{backend}", None)
+            if flag is not None:
+                data.setdefault(backend, flag)
+        if entity is not None and data.get("wandb") is True:
+            data["wandb"] = {"entity": entity}
+        return data
 
 
 class LoaderConfig(ConfigItem):
