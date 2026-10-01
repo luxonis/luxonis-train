@@ -80,6 +80,10 @@ class FOMOHead(BaseHead):
 
     task: Task = Tasks.FOMO
     attach_index: int = 1
+    distillation_loss = {
+        "name": "LogitKDLoss",
+        "params": {"activation": "sigmoid"},
+    }
     in_channels: int
 
     def __init__(

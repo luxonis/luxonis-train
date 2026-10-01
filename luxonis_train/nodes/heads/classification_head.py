@@ -69,6 +69,7 @@ class ClassificationHead(BaseHead):
     in_channels: int
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
+    distillation_loss = {"name": "LogitKDLoss", "params": {"temperature": 4.0}}
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
         """Build the pooling, the dropout, and the linear layer.

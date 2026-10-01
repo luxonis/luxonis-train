@@ -85,6 +85,7 @@ class SegmentationHead(BaseHead):
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
+    distillation_loss = {"name": "LogitKDLoss"}
 
     def __init__(self, **kwargs: Any):
         r"""Build the upsampling steps and the class convolution.

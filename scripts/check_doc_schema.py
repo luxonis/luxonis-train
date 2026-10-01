@@ -18,7 +18,12 @@ NODE_BASES = {"BaseNode"}
 ATTACHED_BASES = {"BaseLoss", "BaseMetric", "BaseVisualizer"}
 
 NODE_SKIP = {"BaseNode", "BaseHead", "BaseDetectionHead"}
-ATTACHED_SKIP = {"BaseLoss", "BaseMetric", "BaseVisualizer"}
+ATTACHED_SKIP = {
+    "BaseLoss",
+    "BaseMetric",
+    "BaseVisualizer",
+    "BaseDistillationLoss",
+}
 REGISTERED_ATTACHED_FACTORIES = {"ConfusionMatrix", "MeanAveragePrecision"}
 
 NODE_MARKERS = [

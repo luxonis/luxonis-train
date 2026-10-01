@@ -37,11 +37,16 @@ class BaseHead(BaseNode):
             class.
         task: The task of the head. It gives the key of the main output
             and the labels that the head needs.
+        distillation_loss: The distillation loss that the automatic
+            recipe gives the head when the teacher has a matching head, as
+            a loss entry with ``name`` and, optionally, ``params``.
+            ``None``, the default, gives the head none.
 
     """
 
     parser: str = ""
     task: Task
+    distillation_loss: Params | None = None
 
     def get_head_config(self) -> dict[str, Any]:
         """Return the entry of the head in the NN Archive config.

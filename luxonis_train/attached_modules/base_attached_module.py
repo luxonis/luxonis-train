@@ -246,7 +246,10 @@ class BaseAttachedModule(
         return self.node.classes
 
     def get_parameters(
-        self, predictions: Packet[Tensor], labels: Labels | None = None
+        self,
+        predictions: Packet[Tensor],
+        labels: Labels | None = None,
+        teacher: Packet[Tensor] | None = None,
     ) -> dict[str, Tensor | list[Tensor] | None]:
         """Select the arguments of the module from a batch.
 
@@ -264,10 +267,17 @@ class BaseAttachedModule(
           after the first underscore. A name without an underscore,
           such as ``predictions``, selects the ``main_output`` of
           `task`.
+        - A name that starts with ``teacher`` selects a key of the
+          teacher packet, by the rules of ``pred``: ``teacher_features``
+          selects ``features``, and ``teacher`` selects the
+          ``main_output`` of `task`. Only distillation losses get a
+          teacher packet.
         - Any other name selects the packet key of that name.
 
         ``<task_name>`` is the ``task_name`` of `node`. The method
-        clones each selected tensor, and each tensor of a selected list.
+        clones each selected tensor, and each tensor of a selected list,
+        except the teacher tensors: they carry no gradient, and a copy
+        would only cost memory.
         When a value is missing, a parameter annotated with ``| None``
         gets ``None``. Another parameter with a default value gets no
         entry, so the default applies.
@@ -277,6 +287,8 @@ class BaseAttachedModule(
             labels: The labels of the batch, keyed
                 ``<task_name>/<label>``. ``None`` acts as an empty
                 dictionary.
+            teacher: The output packet of the teacher node that the
+                module distills from. ``None`` acts as an empty packet.
 
         Returns:
             The values keyed by parameter name, ready to pass as keyword
@@ -313,9 +325,10 @@ class BaseAttachedModule(
         """
         kwargs: dict[str, Tensor | list[Tensor] | None] = {}
         labels = labels or {}
+        teacher = teacher or {}
         for kwarg_name, parameter in self._signature.items():
             name, data, kind = self._parameter_source(
-                kwarg_name, predictions, labels
+                kwarg_name, predictions, labels, teacher
             )
             self._add_parameter(
                 kwargs, name, kwarg_name, data, parameter, kind
@@ -329,13 +342,16 @@ class BaseAttachedModule(
         kwarg_name: str,
         predictions: Packet[Tensor],
         labels: Labels,
+        teacher: Packet[Tensor],
     ) -> tuple[
         str,
         Mapping[str, list[Tensor] | Tensor],
-        Literal["label", "prediction"],
+        Literal["label", "prediction", "teacher"],
     ]:
         if kwarg_name.startswith("target"):
             return self._target_label_name(kwarg_name), labels, "label"
+        if kwarg_name.startswith("teacher"):
+            return self._teacher_output_name(kwarg_name), teacher, "teacher"
         return self._prediction_name(kwarg_name), predictions, "prediction"
 
     def _target_label_name(self, kwarg_name: str) -> str:
@@ -360,6 +376,10 @@ class BaseAttachedModule(
         _, *prediction_name = kwarg_name.split("_", 1)
         return prediction_name[0] if prediction_name else self.task.main_output
 
+    def _teacher_output_name(self, kwarg_name: str) -> str:
+        _, *output_name = kwarg_name.split("_", 1)
+        return output_name[0] if output_name else self.task.main_output
+
     def _add_parameter(
         self,
         kwargs: dict[str, Tensor | list[Tensor] | None],
@@ -367,11 +387,13 @@ class BaseAttachedModule(
         kwarg_name: str,
         data: Mapping[str, list[Tensor] | Tensor],
         parameter: Parameter,
-        kind: Literal["label", "prediction"],
+        kind: Literal["label", "prediction", "teacher"],
     ) -> None:
         if name in data:
             value = data[name]
-            if isinstance(value, Tensor):
+            if kind == "teacher":
+                kwargs[kwarg_name] = value
+            elif isinstance(value, Tensor):
                 kwargs[kwarg_name] = value.clone()
             else:
                 kwargs[kwarg_name] = [item.clone() for item in value]
@@ -380,7 +402,11 @@ class BaseAttachedModule(
             kwargs[kwarg_name] = None
             return
         if parameter.default is Parameter.empty:
-            source = "dataset" if kind == "label" else "predictions"
+            source = {
+                "label": "dataset",
+                "prediction": "predictions",
+                "teacher": "teacher outputs",
+            }[kind]
             raise RuntimeError(
                 f"Module '{self.name}' requires {kind} '{name}', but it is not "
                 f"present in the {source}. All available {kind}s: {list(data.keys())}. "
