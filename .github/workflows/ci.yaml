@@ -71,9 +71,7 @@ concurrency:
   cancel-in-progress: ${{ inputs.cancel_in_progress || !inputs.concurrency_group }}
 
 permissions:
-  pull-requests: write
-  contents: write
-  checks: write
+  contents: read
 
 jobs:
   pre-commit:
