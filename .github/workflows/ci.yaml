@@ -149,15 +149,16 @@ jobs:
 
       - name: Install released version of LuxonisML
         if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
-        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tensorboard,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis/luxonis-ml#502 is merged
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
-          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip install --python .venv "luxonis-ml[data,tensorboard,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Pyright check
         run: uv run --no-sync pyright --warnings --project pyproject.toml
@@ -196,7 +197,8 @@ jobs:
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis/luxonis-ml#502 is merged
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
           uv pip install --python .venv "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
@@ -242,15 +244,16 @@ jobs:
 
       - name: Install released version of LuxonisML
         if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
-        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tensorboard,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis/luxonis-ml#502 is merged
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
-          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip install --python .venv "luxonis-ml[data,tensorboard,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Run doctests
         run: >-
@@ -314,15 +317,16 @@ jobs:
 
       - name: Install released version of LuxonisML
         if: ${{ !inputs.ml_ref && startsWith(github.head_ref, 'release/') }}
-        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tracker]"
+        run: uv pip install --python .venv --upgrade "luxonis-ml[data,gcs,mlflow,roboflow,s3,tensorboard,tracker]"
 
       - name: Install source version of LuxonisML
         if: ${{ inputs.ml_ref || !startsWith(github.head_ref, 'release/') }}
         env:
-          ML_REF: ${{ inputs.ml_ref || 'main' }}
+          # TODO: back to 'main' once luxonis/luxonis-ml#502 is merged
+          ML_REF: ${{ inputs.ml_ref || 'feat/tracker-refactor' }}
         run: |
           uv pip uninstall --python .venv luxonis-ml -y
-          uv pip install --python .venv "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
+          uv pip install --python .venv "luxonis-ml[data,tensorboard,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}"
 
       - name: Authenticate to Google Cloud
         id: google-auth
