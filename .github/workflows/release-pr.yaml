@@ -8,6 +8,9 @@ on:
         type: string
         default: patch
 
+permissions:
+  contents: read
+
 jobs:
   release-pr:
     uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@cdfb00741162eb84ea9575881d412e420203e66f
