@@ -53,7 +53,12 @@ repository = "https://github.com/luxonis/luxonis-train"
 issues = "https://github.com/luxonis/luxonis-train/issues"
 
 [project.optional-dependencies]
-aimet = ["aimet-torch~=2.36"]
+aimet = [
+  "aimet-torch~=2.36",
+  # The quantized export of AIMET rewrites external data at an offset that
+  # onnx 1.23 rejects.
+  "onnx<1.23",
+]
 
 [dependency-groups]
 config-test = ["luxonis-ml[utils]>=0.9.1", "pytest-cov~=7.1", "semver~=3.0"]
