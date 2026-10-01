@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   deploy:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-python-publish.yaml@90b4157a4040727fe38905acecb02d75f2f9d768
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-python-publish.yaml@1556182be18dd350dbeb5b07bc7282e17828b655
     with:
       uv-version: "0.11.28"
     secrets:
