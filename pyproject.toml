@@ -74,6 +74,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv]
+exclude-newer = "7 days"
+exclude-newer-package = { luxonis-ml = false }
 # onnxruntime 1.24 declares Python 3.10 support, but it ships no cp310 wheels.
 constraint-dependencies = ["onnxruntime<1.24; python_full_version < '3.11'"]
 
