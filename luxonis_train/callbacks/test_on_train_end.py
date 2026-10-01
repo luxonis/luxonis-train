@@ -31,10 +31,9 @@ class TestOnTrainEnd(NeedsCheckpoint):
         """Initialize the callback.
 
         Args:
-            view (``Literal["train", "val", "test"]``): The dataset view
-                to test on. The test reads the PyTorch loader of this
-                view. The logged keys start with ``test/`` for every
-                view.
+            view: The dataset view to test on. The test reads the
+                PyTorch loader of this view. The logged keys start with
+                ``test/`` for every view.
 
         """
         super().__init__()
@@ -73,9 +72,9 @@ class TestOnTrainEnd(NeedsCheckpoint):
         again.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads and
-                updates its checkpoint callbacks.
-            pl_module (LuxonisLightningModule): The model to test.
+            trainer: The trainer. The hook reads and updates its
+                checkpoint callbacks.
+            pl_module: The model to test.
 
         """
         checkpoint = self.get_checkpoint(pl_module)

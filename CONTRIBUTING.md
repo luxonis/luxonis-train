@@ -65,18 +65,31 @@ uv run complexipy luxonis_train tests
 
 ## Documentation
 
-We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup language for documentation.
+We write docstrings in the [Google style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings). [pydoctor](https://github.com/twisted/pydoctor) builds the API docs from them. The `[tool.pydoctor]` section of `pyproject.toml` holds its options.
+
+Do not write types in docstrings. The annotations of the signature hold the types, and the docs show them from there.
+
+Single backticks link to a name in `luxonis_train`. Put a name from another library, such as ``` ``torch.nn.Conv2d`` ```, in double backticks. The docs build does not download the indexes of other projects, so it cannot link to them.
+
+```python
+def resize(image: Tensor, size: int) -> Tensor:
+    """Resize an image to a square.
+
+    Args:
+        image: The image with shape ``[C, H, W]``.
+        size: The side of the result, in pixels.
+
+    Returns:
+        The resized image with shape ``[C, size, size]``.
+
+    """
+```
+
 To verify that your documentation is formatted correctly, run the following command:
 
 ```bash
-uv run --group docs pydoctor --docformat=epytext luxonis_train
+uv run --group docs pydoctor
 ```
-
-### Editor Support
-
-- **PyCharm** - built in support for generating `epytext` docstrings
-- **Visual Studio Code** - [AI Docify](https://marketplace.visualstudio.com/items?itemName=AIC.docify) extension offers support for `epytext`
-- **NeoVim** - [vim-python-docstring](https://github.com/pixelneo/vim-python-docstring) supports `epytext` style
 
 ## Type Checking
 

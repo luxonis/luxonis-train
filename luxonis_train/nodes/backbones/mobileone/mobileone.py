@@ -114,26 +114,24 @@ class MobileOne(BaseNode):
         """Initialize the stem and the four stages.
 
         Args:
-            width_multipliers (tuple[float, float, float, float]): The
-                channel multipliers ``w`` of the four stages. The stages
-                have ``int(64 * w[0])``, ``int(128 * w[1])``,
-                ``int(256 * w[2])``, and ``int(512 * w[3])`` output
-                channels. The stem has ``min(64, int(64 * w[0]))``
-                output channels.
-            n_conv_branches (int): The number of dense branches of each
+            width_multipliers: The channel multipliers ``w`` of the four
+                stages. The stages have ``int(64 * w[0])``,
+                ``int(128 * w[1])``, ``int(256 * w[2])``, and
+                ``int(512 * w[3])`` output channels. The stem has
+                ``min(64, int(64 * w[0]))`` output channels.
+            n_conv_branches: The number of dense branches of each
                 depthwise and pointwise convolution in the stages. The
                 stem always has one dense branch.
-            use_se (bool): Whether to add `SqueezeExciteBlock` layers.
-                They go into the last 5 blocks of stage 3 and into the
-                only block of stage 4. Each has ``int(256 * w[2]) // 16``
+            use_se: Whether to add `SqueezeExciteBlock` layers. They go
+                into the last 5 blocks of stage 3 and into the only
+                block of stage 4. Each has ``int(256 * w[2]) // 16``
                 hidden channels. The depthwise and the pointwise
                 convolution of a block share one `SqueezeExciteBlock`.
                 The pointwise convolution of stage 4 has
                 ``int(512 * w[3])`` output channels. Thus `forward`
                 raises ``RuntimeError`` unless that number is equal to
                 ``int(256 * w[2])``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -181,16 +179,15 @@ class MobileOne(BaseNode):
         """Run the stem and the four stages on a batch of images.
 
         Args:
-            inputs (``Tensor``): The input images, of shape
-                ``[B, C, H, W]``.
+            inputs: The input images, of shape ``[B, C, H, W]``.
 
         Returns:
-            ``list[Tensor]``: Five feature maps: the output of the stem,
-            then the output of each stage. Their strides are 2, 4, 8,
-            16, and 32. For a height and a width that are multiples of
-            ``32``, a map with the stride ``s`` has the height ``H / s``
-            and the width ``W / s``. ``width_multipliers`` sets the
-            channels.
+            Five feature maps. The first is the output of the stem, and
+            the others are the outputs of the stages. Their strides are
+            2, 4, 8, 16, and 32. For a height and a width that are
+            multiples of ``32``, a map with the stride ``s`` has the
+            height ``H / s`` and the width ``W / s``.
+            ``width_multipliers`` sets the channels.
 
         Example:
             >>> import torch
@@ -217,9 +214,8 @@ class MobileOne(BaseNode):
         `MobileOne` lists all values. Each call builds new dictionaries.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name of the default
-            variant, ``"s0"``, and a dictionary that maps each variant
-            name to its constructor arguments.
+            The name of the default variant, ``"s0"``, and a dictionary
+            that maps each variant name to its constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes.backbones import MobileOne
@@ -263,16 +259,15 @@ class MobileOne(BaseNode):
         first block.
 
         Args:
-            out_channels (int): The number of output channels of the
-                stage.
-            n_blocks (int): The number of blocks. The first block has a
-                stride of ``2``.
-            n_se_blocks (int): The number of blocks, at the end of the
-                stage, that get a `SqueezeExciteBlock`.
+            out_channels: The number of output channels of the stage.
+            n_blocks: The number of blocks. The first block has a stride
+                of ``2``.
+            n_se_blocks: The number of blocks, at the end of the stage,
+                that get a `SqueezeExciteBlock`.
 
         Returns:
-            ``nn.Sequential``: The depthwise and the pointwise
-            convolution of each block, in order.
+            The depthwise and the pointwise convolution of each block,
+            in order.
 
         Raises:
             ValueError: When ``n_se_blocks`` is larger than ``n_blocks``.

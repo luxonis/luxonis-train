@@ -13,7 +13,7 @@ class EfficientNet(BaseNode):
 
     EfficientNet scales the depth, the width, and the input resolution
     of a network together with one compound coefficient. The node loads
-    the fixed ``efficientnet_lite0`` model with `torch.hub.load`. It
+    the fixed ``efficientnet_lite0`` model with ``torch.hub.load``. It
     runs the stem and the seven block stages. It returns the output of
     each stage that ``out_indices`` selects.
 
@@ -34,7 +34,7 @@ class EfficientNet(BaseNode):
         - License: Apache-2.0 (this project)
 
     Notes:
-        The input must have 3 channels. `torch.hub.load` runs with
+        The input must have 3 channels. ``torch.hub.load`` runs with
         ``trust_repo=True``. The first load downloads the repository
         into the ``torch.hub`` cache, so it needs network access. The
         node keeps the unused head layers of the loaded model:
@@ -65,17 +65,16 @@ class EfficientNet(BaseNode):
         """Load ``efficientnet_lite0`` and store the output indices.
 
         Args:
-            out_indices (list[int] | None): Indices of the block stages
-                that `forward` returns, from ``0`` to ``6``. An index
-                outside that range adds no output. ``None`` or an empty
-                list selects ``[0, 1, 2, 4, 6]``.
-            weights (``Literal["download", "none"] | None``): The value
-                ``"download"`` loads the pretrained weights of the
-                ``torch.hub`` model. Any other value keeps the random
-                initialization. The value does not reach `BaseNode`, so
-                a checkpoint URL or ``"yolo"`` has no effect.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            out_indices: Indices of the block stages that `forward`
+                returns, from ``0`` to ``6``. An index outside that
+                range adds no output. ``None`` or an empty list selects
+                ``[0, 1, 2, 4, 6]``.
+            weights: The value ``"download"`` loads the pretrained
+                weights of the ``torch.hub`` model. Any other value
+                keeps the random initialization. The value does not
+                reach `BaseNode`, so a checkpoint URL or ``"yolo"`` has
+                no effect.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -104,13 +103,13 @@ class EfficientNet(BaseNode):
         model, with stride ``2``. The seven block stages follow it.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+            inputs: Image batch of shape ``[B, 3, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The output of each stage whose index is
-            in ``out_indices``, in stage order. The stages have 16, 24,
-            40, 80, 112, 192, and 320 channels, at the strides 2, 4, 8,
-            16, 16, 32, and 32.
+            The output of each stage whose index is in ``out_indices``,
+            in stage order. The stages have 16, 24, 40, 80, 112, 192,
+            and 320 channels, at the strides 2, 4, 8, 16, 16, 32, and
+            32.
 
         """
         x = self.backbone.conv_stem(inputs)

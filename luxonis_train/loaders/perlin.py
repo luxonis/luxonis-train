@@ -21,11 +21,10 @@ def compute_gradients(res: tuple[int, int]) -> Tensor:
     ``torch`` random state.
 
     Args:
-        res (tuple[int, int]): The number of lattice cells along each
-            dimension.
+        res: The number of lattice cells along each dimension.
 
     Returns:
-        ``Tensor``: The gradients ``(cos, sin)`` of shape
+        The gradients ``(cos, sin)`` of shape
         ``[res[0] + 1, res[1] + 1, 2]``.
 
     Example:
@@ -54,13 +53,13 @@ def lerp_torch(  # pragma: no cover
     TorchScript compiles the function.
 
     Args:
-        x (``Tensor``): The values at ``w = 0``.
-        y (``Tensor``): The values at ``w = 1``.
-        w (``Tensor``): The weights. They broadcast with ``x`` and ``y``.
+        x: The values at ``w = 0``.
+        y: The values at ``w = 1``.
+        w: The weights. They broadcast with ``x`` and ``y``.
 
     Returns:
-        ``Tensor``: The interpolated values, with the broadcast shape of
-        ``x``, ``y``, and ``w``.
+        The interpolated values, with the broadcast shape of ``x``,
+        ``y``, and ``w``.
 
     """
     return (y - x) * w + x
@@ -79,10 +78,10 @@ def fade_function(t: Tensor) -> Tensor:
     of the lattice cells.
 
     Args:
-        t (``Tensor``): The positions inside a cell, in ``[0, 1]``.
+        t: The positions inside a cell, in ``[0, 1]``.
 
     Returns:
-        ``Tensor``: The faded positions, with the shape of ``t``.
+        The faded positions, with the shape of ``t``.
 
     Example:
         >>> import torch
@@ -110,19 +109,17 @@ def tile_grads(
     and ``(1, None)`` selects the second corner.
 
     Args:
-        slice1 (tuple[int, int | None]): The start and the stop of the
-            slice along dimension ``0``.
-        slice2 (tuple[int, int | None]): The start and the stop of the
-            slice along dimension ``1``.
-        gradients (``Tensor``): The lattice gradients. `rand_perlin_2d`
-            gives the shape ``[res[0] + 1, res[1] + 1, 2]``.
-        d (tuple[int, int]): The number of pixels in a cell along each
-            dimension.
+        slice1: The start and the stop of the slice along dimension
+            ``0``.
+        slice2: The start and the stop of the slice along dimension
+            ``1``.
+        gradients: The lattice gradients. `rand_perlin_2d` gives the
+            shape ``[res[0] + 1, res[1] + 1, 2]``.
+        d: The number of pixels in a cell along each dimension.
 
     Returns:
-        ``Tensor``: The repeated gradients. For the slices of
-        `rand_perlin_2d`, the shape is
-        ``[res[0] * d[0], res[1] * d[1], 2]``.
+        The repeated gradients. For the slices of `rand_perlin_2d`, the
+        shape is ``[res[0] * d[0], res[1] * d[1], 2]``.
 
     Example:
         A 2D tensor shows the pattern of the indices:
@@ -151,18 +148,17 @@ def dot(
     product.
 
     Args:
-        grad (``Tensor``): The gradient of the corner for each pixel, of
-            shape ``[H', W', 2]``, where ``H' >= H`` and ``W' >= W``.
-        shift (tuple[int, int]): The negative position of the corner in
-            the cell: ``(0, 0)``, ``(-1, 0)``, ``(0, -1)``, or
-            ``(-1, -1)``.
-        grid (``Tensor``): The position of each pixel inside its cell,
-            in ``[0, 1)``, of shape ``[H'', W'', 2]``, where
-            ``H'' >= H`` and ``W'' >= W``.
-        shape (tuple[int, int]): The output shape ``(H, W)``.
+        grad: The gradient of the corner for each pixel, of shape
+            ``[H', W', 2]``, where ``H' >= H`` and ``W' >= W``.
+        shift: The negative position of the corner in the cell:
+            ``(0, 0)``, ``(-1, 0)``, ``(0, -1)``, or ``(-1, -1)``.
+        grid: The position of each pixel inside its cell, in ``[0, 1)``,
+            of shape ``[H'', W'', 2]``, where ``H'' >= H`` and
+            ``W'' >= W``.
+        shape: The output shape ``(H, W)``.
 
     Returns:
-        ``Tensor``: The dot products of shape ``[H, W]``.
+        The dot products of shape ``[H, W]``.
 
     Example:
         A pixel at ``(0.25, 0.75)`` in its cell, and the corner
@@ -207,15 +203,14 @@ def rand_perlin_2d(
     empty tensor instead.
 
     Args:
-        shape (tuple[int, int]): The output shape ``(H, W)``.
-        res (tuple[int, int]): The number of lattice cells along each
-            dimension. More cells give smaller noise features.
-        fade (``Callable[[Tensor], Tensor]``): The interpolation curve.
-            It gets the position of each pixel inside its cell.
+        shape: The output shape ``(H, W)``.
+        res: The number of lattice cells along each dimension. More
+            cells give smaller noise features.
+        fade: The interpolation curve. It gets the position of each
+            pixel inside its cell.
 
     Returns:
-        ``Tensor``: The noise of shape ``[H, W]``, with values in
-        ``[-1, 1]``.
+        The noise of shape ``[H, W]``, with values in ``[-1, 1]``.
 
     Example:
         >>> import torch
@@ -271,11 +266,11 @@ def rotate_noise(noise: Tensor) -> Tensor:  # pragma: no cover
     input moves to the nearest border. TorchScript compiles the function.
 
     Args:
-        noise (``Tensor``): The tensor of shape ``[H, W]``.
+        noise: The tensor of shape ``[H, W]``.
 
     Returns:
-        ``Tensor``: The rotated tensor of shape ``[H, W]``. It holds only
-        values from ``noise``.
+        The rotated tensor of shape ``[H, W]``. It holds only values
+        from ``noise``.
 
     """
     angle = torch.rand(1) * 2 * torch.pi
@@ -313,19 +308,19 @@ def generate_perlin_noise(
     Otherwise some draws fail, see `rand_perlin_2d`.
 
     Args:
-        shape (tuple[int, int]): The mask shape ``(H, W)``.
-        min_perlin_scale (int): The smallest exponent.
-        perlin_scale (int): The upper bound of the exponent, exclusive.
-            A larger exponent gives smaller noise blobs. A value that is
-            not greater than ``min_perlin_scale`` makes ``torch.randint``
-            raise ``RuntimeError``.
-        threshold (float): The noise value that a pixel must exceed to
-            get ``1.0``. The noise is in ``[-1, 1]``, so a higher
-            threshold gives a smaller mask area.
+        shape: The mask shape ``(H, W)``.
+        min_perlin_scale: The smallest exponent.
+        perlin_scale: The upper bound of the exponent, exclusive. A
+            larger exponent gives smaller noise blobs. A value that is
+            not greater than ``min_perlin_scale`` makes
+            ``torch.randint`` raise ``RuntimeError``.
+        threshold: The noise value that a pixel must exceed to get
+            ``1.0``. The noise is in ``[-1, 1]``, so a higher threshold
+            gives a smaller mask area.
 
     Returns:
-        ``Tensor``: The ``torch.float32`` mask of shape ``[H, W]``, with
-        the values ``0.0`` and ``1.0``.
+        The ``torch.float32`` mask of shape ``[H, W]``, with the values
+        ``0.0`` and ``1.0``.
 
     Example:
         >>> import torch
@@ -372,16 +367,15 @@ def apply_anomaly_to_img(
     `generate_perlin_noise`.
 
     Args:
-        img (``Tensor``): The clean image of shape ``[C, H, W]``.
-        anomaly_img (``Tensor``): The texture image of shape
-            ``[C, H, W]``.
-        beta (float | None): The weight of the image inside the mask.
-            ``None`` draws a value from ``[0, 0.8)``.
+        img: The clean image of shape ``[C, H, W]``.
+        anomaly_img: The texture image of shape ``[C, H, W]``.
+        beta: The weight of the image inside the mask. ``None`` draws a
+            value from ``[0, 0.8)``.
 
     Returns:
-        ``tuple[Tensor, Tensor]``: The image with the anomaly, of shape
-        ``[C, H, W]``, and the mask of shape ``[H, W]``. The mask is
-        ``1.0`` inside the anomaly and ``0.0`` outside.
+        The image with the anomaly, of shape ``[C, H, W]``, and the mask
+        of shape ``[H, W]``. The mask is ``1.0`` inside the anomaly and
+        ``0.0`` outside.
 
     Example:
         With ``beta=0.0``, the texture replaces the image inside the

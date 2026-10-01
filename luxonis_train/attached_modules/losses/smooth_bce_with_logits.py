@@ -80,26 +80,25 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         """Initialize the loss and the wrapped `BCEWithLogitsLoss`.
 
         Args:
-            label_smoothing (float): The smoothing factor :math:`s`. A
-                target of ``1`` becomes ``1 - label_smoothing``, and a
-                target of ``0`` becomes ``label_smoothing``. ``0.0``
-                keeps the targets unchanged.
-            bce_pow (float): The factor of the positive term of the
-                loss, the same for all classes. It becomes the
-                ``pos_weight`` of the wrapped loss.
-            weight (list[float] | None): Factors for the loss of the
-                elements. The wrapped loss turns the list into a tensor
-                that broadcasts against the loss, aligned at the last
-                dimension. ``None`` gives every element the factor ``1``.
-            reduction (``Literal["mean", "sum", "none"]``): How to
-                reduce the loss of the elements:
+            label_smoothing: The smoothing factor :math:`s`. A target of
+                ``1`` becomes ``1 - label_smoothing``, and a target of
+                ``0`` becomes ``label_smoothing``. ``0.0`` keeps the
+                targets unchanged.
+            bce_pow: The factor of the positive term of the loss, the
+                same for all classes. It becomes the ``pos_weight`` of
+                the wrapped loss.
+            weight: Factors for the loss of the elements. The wrapped
+                loss turns the list into a tensor that broadcasts
+                against the loss, aligned at the last dimension.
+                ``None`` gives every element the factor ``1``.
+            reduction: How to reduce the loss of the elements:
 
                 - ``"none"``: return the loss of each element.
                 - ``"mean"``: return the mean over all elements.
                 - ``"sum"``: return the sum over all elements.
 
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -115,15 +114,15 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         """Smooth the targets and compute the binary cross entropy.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
-                the main output of the node.
-            target (``Tensor``): Float targets in ``[0, 1]``, of the
-                same shape as ``predictions``.
+            predictions: Logits of shape ``[B, C, ...]``, the main
+                output of the node.
+            target: Float targets in ``[0, 1]``, of the same shape as
+                ``predictions``.
 
         Returns:
-            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
-            reductions. For ``"none"``, the loss of each element, of
-            shape ``[B, C, ...]``.
+            A scalar for the ``"mean"`` and ``"sum"`` reductions. For
+            ``"none"``, the loss of each element, of shape
+            ``[B, C, ...]``.
 
         Raises:
             RuntimeError: When ``predictions`` and ``target`` have

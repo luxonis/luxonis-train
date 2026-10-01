@@ -93,9 +93,9 @@ class TorchMetricWrapper(BaseMetric):
         ``num_labels`` for ``"multilabel"``.
 
         Args:
-            **kwargs (``Any``): ``node`` goes to `BaseMetric`. The other
-                arguments and the resolved ``task`` go to the constructor
-                of ``Metric``, for example ``average`` or ``threshold``.
+            **kwargs: ``node`` goes to `BaseMetric`. The other arguments
+                and the resolved ``task`` go to the constructor of
+                ``Metric``, for example ``average`` or ``threshold``.
 
         Raises:
             ValueError: When the method cannot infer ``task``, or when
@@ -158,12 +158,12 @@ class TorchMetricWrapper(BaseMetric):
         tasks, it passes ``target`` unchanged.
 
         Args:
-            predictions (``Tensor``): The main output of the node, of
-                shape ``[B, n_classes, ...]``. Logits or probabilities.
-            target (``Tensor``): The label of the task, of shape
+            predictions: The main output of the node, of shape
+                ``[B, n_classes, ...]``. Logits or probabilities.
+            target: The label of the task, of shape
                 ``[B, n_classes, ...]``. It is a binary mask for
-                ``"binary"``, one-hot for ``"multiclass"``, and multi-hot
-                for ``"multilabel"``.
+                ``"binary"``, one-hot for ``"multiclass"``, and
+                multi-hot for ``"multilabel"``.
 
         """
         if self._torchmetric_task == "multiclass":
@@ -184,9 +184,8 @@ class TorchMetricWrapper(BaseMetric):
         property raises ``RuntimeError``.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The scalar
-            value, or the mean of the class values and the dictionary of
-            the class values.
+            The scalar value, or the mean of the class values and the
+            dictionary of the class values.
 
         Raises:
             ValueError: When the result has more than one element and

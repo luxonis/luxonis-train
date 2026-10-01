@@ -101,16 +101,16 @@ class FOMOHead(BaseHead):
         ``conv_channels`` channels.
 
         Args:
-            n_conv_layers (int): Number of convolutions, the last one
+            n_conv_layers: Number of convolutions, the last one
                 included. Defaults to ``3``.
-            conv_channels (int): Number of channels of the hidden layers.
+            conv_channels: Number of channels of the hidden layers.
                 Defaults to ``16``.
-            use_nms (bool): Whether to apply a ``3x3`` max pooling with
-                stride ``1``. In evaluation mode, only the local maxima
-                of the heatmap then become keypoints. In export mode, the
+            use_nms: Whether to apply a ``3x3`` max pooling with stride
+                ``1``. In evaluation mode, only the local maxima of the
+                heatmap then become keypoints. In export mode, the
                 pooled heatmap replaces the heatmap. Defaults to
                 ``True``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`, such as
+            **kwargs: Keyword arguments for `BaseNode`, such as
                 ``n_classes`` and ``input_shapes``.
 
         """
@@ -175,11 +175,11 @@ class FOMOHead(BaseHead):
           original input.
 
         Args:
-            inputs (``Tensor``): Feature map of shape ``[B, C, H, W]``.
-                By default, it is output ``1`` of the input node.
+            inputs: Feature map of shape ``[B, C, H, W]``. By default,
+                it is output ``1`` of the input node.
 
         Returns:
-            ``Packet[Tensor]``: The packet of the current mode.
+            The packet of the current mode.
 
         Example:
             >>> import torch
@@ -231,14 +231,14 @@ class FOMOHead(BaseHead):
         cells that ``_get_keypoint_mask`` selects.
 
         Args:
-            heatmap (``Tensor``): Logits of shape ``[B, n_classes, H, W]``.
+            heatmap: Logits of shape ``[B, n_classes, H, W]``.
 
         Returns:
-            ``list[Tensor]``: One ``float32`` tensor of shape
-            ``[K_i, 1, 4]`` for each image. Each of the ``K_i`` keypoints
-            holds ``[x, y, probability, class]``. ``x`` and ``y`` are
-            the top-left corner of the cell, in the pixels of the
-            original input. The keypoints are in class order.
+            One ``float32`` tensor of shape ``[K_i, 1, 4]`` for each
+            image. Each of the ``K_i`` keypoints holds
+            ``[x, y, probability, class]``. ``x`` and ``y`` are the
+            top-left corner of the cell, in the pixels of the original
+            input. The keypoints are in class order.
 
         """
         device = heatmap.device
@@ -279,14 +279,13 @@ class FOMOHead(BaseHead):
         """Select the keypoint cells of one class.
 
         Args:
-            prob_map (``Tensor``): Probabilities of one class, of shape
-                ``[H, W]``.
+            prob_map: Probabilities of one class, of shape ``[H, W]``.
 
         Returns:
-            ``Tensor``: Boolean mask of shape ``[H, W]``. A cell is
-            ``True`` when its probability is above ``0.5``. When
-            ``use_nms`` is ``True``, the cell must also equal the maximum
-            of its ``3x3`` neighborhood.
+            Boolean mask of shape ``[H, W]``. A cell is ``True`` when
+            its probability is above ``0.5``. When ``use_nms`` is
+            ``True``, the cell must also equal the maximum of its
+            ``3x3`` neighborhood.
 
         """
         if self._use_nms:

@@ -97,16 +97,13 @@ class ConfusionMatrix:
         """Build the confusion matrix metric for a node.
 
         Args:
-            node (BaseNode): The node that the metric attaches to. Its
-                ``task`` selects the metric class, see the class
-                docstring.
-            **kwargs (``Any``): Keyword arguments forwarded to the
-                constructor of the selected metric. Only
-                `DetectionConfusionMatrix` and its subclasses accept
-                ``iou_threshold``.
+            node: The node that the metric attaches to. Its ``task``
+                selects the metric class, see the class docstring.
+            **kwargs: Keyword arguments forwarded to the constructor of
+                the selected metric. Only `DetectionConfusionMatrix` and
+                its subclasses accept ``iou_threshold``.
 
         Returns:
-            RecognitionConfusionMatrix | DetectionConfusionMatrix | InstanceSegmentationConfusionMatrix:
             A new metric, attached to ``node``. A `FomoConfusionMatrix`
             is a `DetectionConfusionMatrix`.
 

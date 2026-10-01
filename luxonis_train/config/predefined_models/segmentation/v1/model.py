@@ -74,11 +74,11 @@ class SegmentationModel(SimplePredefinedModel):
         ``head_params`` sets.
 
         Args:
-            use_aux_head (bool): Add the auxiliary head to the node graph.
-                See `nodes`.
-            aux_head_params (``Params | None``): The constructor
-                parameters of the auxiliary head. The constructor edits
-                a given non-empty dictionary in place:
+            use_aux_head: Add the auxiliary head to the node graph. See
+                `nodes`.
+            aux_head_params: The constructor parameters of the auxiliary
+                head. The constructor edits a given non-empty dictionary
+                in place:
 
                 - It sets ``attach_index`` to ``-2`` when the dictionary
                   does not hold the key. The auxiliary head then reads
@@ -89,7 +89,7 @@ class SegmentationModel(SimplePredefinedModel):
                   value as ``remove_on_export`` of the auxiliary head.
                   Without the key, the value is ``True``.
 
-            **kwargs (``Any``): Keyword arguments for
+            **kwargs: Keyword arguments for
                 `SimplePredefinedModel.__init__`.
 
         Raises:
@@ -147,8 +147,8 @@ class SegmentationModel(SimplePredefinedModel):
         loads no checkpoint.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
-            variants with their constructor arguments.
+            ``"light"`` and the two variants with their constructor
+            arguments.
 
         Example:
             >>> default, variants = SegmentationModel.get_variants()

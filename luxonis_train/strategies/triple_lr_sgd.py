@@ -99,23 +99,22 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         rounded, and at least ``100`` steps.
 
         Args:
-            pl_module (LuxonisLightningModule): The module to train. The
-                strategy reads its ``cfg``, its ``core.loaders``, and its
+            pl_module: The module to train. The strategy reads its
+                ``cfg``, its ``core.loaders``, and its
                 ``current_epoch``.
-            lr (float): The base learning rate of every group.
-            momentum (float): The SGD momentum of every group.
-            weight_decay (float): The weight decay of the
-                ``triple_lr/weights`` group.
-            nesterov (bool): Whether SGD uses Nesterov momentum.
-            warmup_epochs (int): The length of the warmup, in epochs.
-            warmup_bias_lr (float): The learning rate of the bias group
-                at the start of the warmup.
-            warmup_momentum (float): The strategy stores the value, but
-                does not use it.
-            lre (float): The learning rate at the end of the training.
-            cosine_annealing (bool): Whether the learning rate factor
-                follows a cosine curve. With ``False``, it falls
-                linearly.
+            lr: The base learning rate of every group.
+            momentum: The SGD momentum of every group.
+            weight_decay: The weight decay of the ``triple_lr/weights``
+                group.
+            nesterov: Whether SGD uses Nesterov momentum.
+            warmup_epochs: The length of the warmup, in epochs.
+            warmup_bias_lr: The learning rate of the bias group at the
+                start of the warmup.
+            warmup_momentum: The strategy stores the value, but does not
+                use it.
+            lre: The learning rate at the end of the training.
+            cosine_annealing: Whether the learning rate factor follows a
+                cosine curve. With ``False``, it falls linearly.
 
         """
         self._model = pl_module
@@ -171,9 +170,9 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         `get_base_configs`.
 
         Returns:
-            list[StrategyRule]: The rules with the tags
-            ``BATCH_NORM_TAG``, ``WEIGHT_TAG``, and ``BIAS_TAG``, in this
-            order. Only the ``WEIGHT_TAG`` rule sets ``weight_decay``.
+            The rules with the tags ``BATCH_NORM_TAG``, ``WEIGHT_TAG``,
+            and ``BIAS_TAG``, in this order. Only the ``WEIGHT_TAG``
+            rule sets ``weight_decay``.
 
         """
         # Batch-norm weights are tested before generic weights, so a
@@ -201,10 +200,10 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         """Return the SGD config and the ``LambdaLR`` config.
 
         Returns:
-            tuple[OptimizerConfig, SchedulerConfig]: The SGD config with
-            ``lr``, ``momentum``, and ``nesterov``, without weight decay.
-            The ``LambdaLR`` config, whose ``lr_lambda`` is the learning
-            rate factor :math:`f` that the class describes.
+            The SGD config with ``lr``, ``momentum``, and ``nesterov``,
+            without weight decay. The ``LambdaLR`` config, whose
+            ``lr_lambda`` is the learning rate factor :math:`f` that the
+            class describes.
 
         """
         return self._sgd(), SchedulerConfig(

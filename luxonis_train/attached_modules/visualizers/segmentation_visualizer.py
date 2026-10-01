@@ -90,22 +90,21 @@ class SegmentationVisualizer(BaseVisualizer):
         """Initialize the visualizer and store the color options.
 
         Args:
-            colors (``Color | list[Color] | None``): One color for each
-                class, in the order of the class indices. A single color
-                becomes a list of one color. When ``None``, or when the
-                number of colors is not the number of classes, `forward`
-                uses the colors of `BaseVisualizer.colormap`. It logs a
-                warning on its first call.
-            background_class (int | None): The index of the class that
-                gets ``background_color``. It applies only when `forward`
+            colors: One color for each class, in the order of the class
+                indices. A single color becomes a list of one color.
+                When ``None``, or when the number of colors is not the
+                number of classes, `forward` uses the colors of
+                `BaseVisualizer.colormap`. It logs a warning on its
+                first call.
+            background_class: The index of the class that gets
+                ``background_color``. It applies only when `forward`
                 uses the colormap colors and the node has more than one
                 class. ``None`` gives every class a colormap color.
-            background_color (``Color``): The color of the background
-                class.
-            alpha (float): The opacity of the masks, from ``0`` for
-                transparent to ``1`` for opaque.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            background_color: The color of the background class.
+            alpha: The opacity of the masks, from ``0`` for transparent
+                to ``1`` for opaque.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -137,19 +136,19 @@ class SegmentationVisualizer(BaseVisualizer):
         `draw_segmentation_targets` blends them into the image.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not change them.
-            predictions (``Tensor``): Logits of shape
-                ``[B, n_classes, h, w]``. The masks must have the canvas
-                size after the resize by ``scale``.
-            alpha (float): The opacity of the masks, from ``0`` to ``1``.
-            colors (``list[Color]``): One color for each class, at least
-                as many colors as classes.
-            scale (float): The factor that resizes the masks.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not change them.
+            predictions: Logits of shape ``[B, n_classes, h, w]``. The
+                masks must have the canvas size after the resize by
+                ``scale``.
+            alpha: The opacity of the masks, from ``0`` to ``1``.
+            colors: One color for each class, at least as many colors as
+                classes.
+            scale: The factor that resizes the masks.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``, with
-            the masks drawn.
+            A new tensor of the same shape as ``canvas``, with the masks
+            drawn.
 
         Example:
             The first pixel column is class ``0`` and the second is class
@@ -195,19 +194,19 @@ class SegmentationVisualizer(BaseVisualizer):
         `draw_segmentation_targets` blends them into the image.
 
         Args:
-            canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]``. The method does not change them.
-            targets (``Tensor``): One-hot masks of shape
-                ``[B, n_classes, h, w]``. The masks must have the canvas
-                size after the resize by ``scale``.
-            alpha (float): The opacity of the masks, from ``0`` to ``1``.
-            colors (``list[Color]``): One color for each class, at least
-                as many colors as classes.
-            scale (float): The factor that resizes the masks.
+            canvas: ``uint8`` images of shape ``[B, 3, H, W]``. The
+                method does not change them.
+            targets: One-hot masks of shape ``[B, n_classes, h, w]``.
+                The masks must have the canvas size after the resize by
+                ``scale``.
+            alpha: The opacity of the masks, from ``0`` to ``1``.
+            colors: One color for each class, at least as many colors as
+                classes.
+            scale: The factor that resizes the masks.
 
         Returns:
-            ``Tensor``: A new tensor of the same shape as ``canvas``, with
-            the masks drawn.
+            A new tensor of the same shape as ``canvas``, with the masks
+            drawn.
 
         Example:
             >>> import torch
@@ -248,21 +247,20 @@ class SegmentationVisualizer(BaseVisualizer):
         ``scale`` factor and draw them.
 
         Args:
-            prediction_canvas (``Tensor``): ``uint8`` images of shape
+            prediction_canvas: ``uint8`` images of shape
                 ``[B, 3, H, W]`` to draw the predictions on.
-            target_canvas (``Tensor``): ``uint8`` images of shape
-                ``[B, 3, H, W]`` to draw the targets on.
-            predictions (``Tensor``): Logits of shape
-                ``[B, n_classes, h, w]``, the main output of the node.
-            target (``Tensor | None``): One-hot masks of shape
-                ``[B, n_classes, h, w]``, the ``segmentation`` label.
-                ``None`` when the batch has no such label.
+            target_canvas: ``uint8`` images of shape ``[B, 3, H, W]`` to
+                draw the targets on.
+            predictions: Logits of shape ``[B, n_classes, h, w]``, the
+                main output of the node.
+            target: One-hot masks of shape ``[B, n_classes, h, w]``, the
+                ``segmentation`` label. ``None`` when the batch has no
+                such label.
 
         Returns:
-            ``Tensor | tuple[Tensor, Tensor]``: The predictions image when
-            ``target`` is ``None``, otherwise the pair
-            ``(targets, predictions)``. Each image has the shape of its
-            canvas.
+            The predictions image when ``target`` is ``None``, otherwise
+            the pair ``(targets, predictions)``. Each image has the
+            shape of its canvas.
 
         """
         colors = self._adjust_colors(

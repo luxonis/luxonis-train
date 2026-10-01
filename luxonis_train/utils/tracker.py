@@ -23,15 +23,16 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
         """Initialize the tracker and the Lightning logger.
 
         Args:
-            _auto_finalize (bool): Whether the ``Trainer`` closes the run.
-                With ``True``, the instance replaces ``finalize`` with
+            _auto_finalize: Whether the ``Trainer`` closes the run. With
+                ``True``, the instance replaces ``finalize`` with
                 ``_finalize``. The ``Trainer`` calls
                 ``finalize("success")`` at the end of each ``fit``,
                 ``validate``, ``test``, or ``predict`` call. It calls
                 ``finalize("failed")`` on an exception. With ``False``,
-                ``finalize`` of Lightning stays, and the caller must call
-                ``_finalize``. `LuxonisModel.finalize_run` does this.
-            **kwargs (``Any``): Keyword arguments for
+                ``finalize`` of Lightning stays, and the caller must
+                call ``_finalize``. `LuxonisModel.finalize_run` does
+                this.
+            **kwargs: Keyword arguments for
                 ``luxonis_ml.tracker.LuxonisTracker``, such as
                 ``project_name``, ``run_name``, ``save_directory``, and
                 ``is_mlflow``.
@@ -53,7 +54,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
         exit code ``0`` for ``"success"`` and ``1`` otherwise.
 
         Args:
-            status (str): The final status of the run.
+            status: The final status of the run.
 
         """
         if self.is_tensorboard:
@@ -78,14 +79,12 @@ def get_tracker_init_params(cfg_tracker: Any) -> dict[str, Any]:
     the function adds it back.
 
     Args:
-        cfg_tracker (``Any``): The tracker config, a `TrackerConfig`.
-            The function calls its ``model_dump`` and reads its
-            ``save_directory``.
+        cfg_tracker: The tracker config, a `TrackerConfig`. The function
+            calls its ``model_dump`` and reads its ``save_directory``.
 
     Returns:
-        ``dict[str, Any]``: The fields of ``cfg_tracker``, with
-        ``save_directory``. `LuxonisModel` passes them to
-        `LuxonisTrackerPL`.
+        The fields of ``cfg_tracker``, with ``save_directory``.
+        `LuxonisModel` passes them to `LuxonisTrackerPL`.
 
     Example:
         >>> from luxonis_train.config.config import TrackerConfig

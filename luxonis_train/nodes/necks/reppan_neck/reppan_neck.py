@@ -160,40 +160,38 @@ class RepPANNeck(BaseNode):
         ``channels_list[5]`` channels.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of scales that the neck
-                fuses and returns. It is usually equal to the ``n_heads``
-                of the head after the neck. Defaults to ``3``.
-            channels_list (list[int] | None): Six channel counts for the
-                steps, before ``width_multiplier`` scales them. Extra
-                items have no effect. ``None`` or an empty list selects
+            n_heads: Number of scales that the neck fuses and returns.
+                It is usually equal to the ``n_heads`` of the head after
+                the neck. Defaults to ``3``.
+            channels_list: Six channel counts for the steps, before
+                ``width_multiplier`` scales them. Extra items have no
+                effect. ``None`` or an empty list selects
                 ``[256, 128, 128, 256, 256, 512]``.
-            n_repeats (list[int] | None): Four numbers of RepVGG-style
-                blocks for the steps, before ``depth_multiplier`` scales
-                them. ``None`` or an empty list selects
-                ``[12, 12, 12, 12]``.
-            depth_multiplier (float): Factor for each ``n_repeats`` value
-                above ``1``. The neck rounds the result with the Python
+            n_repeats: Four numbers of RepVGG-style blocks for the
+                steps, before ``depth_multiplier`` scales them. ``None``
+                or an empty list selects ``[12, 12, 12, 12]``.
+            depth_multiplier: Factor for each ``n_repeats`` value above
+                ``1``. The neck rounds the result with the Python
                 ``round``, with a minimum of ``1``. Values of ``1`` or
                 less do not change. Defaults to ``0.33``.
-            width_multiplier (float): Factor for each ``channels_list``
-                value. The neck rounds the result up to a multiple of
-                ``8``. Defaults to ``0.25``.
-            block (``Literal["RepBlock", "CSPStackRepBlock"]``): Type of
-                the steps. ``"RepBlock"`` builds `RepUpBlock` and
-                `RepDownBlock`. ``"CSPStackRepBlock"`` builds `CSPUpBlock`
-                and `CSPDownBlock`. The neck does not check the value,
-                so any other string also builds the CSP steps. Defaults
-                to ``"RepBlock"``.
-            e (float | None): Fraction of the output channels in each path
-                of a `CSPStackRepBlock`. The neck reads it only when
+            width_multiplier: Factor for each ``channels_list`` value.
+                The neck rounds the result up to a multiple of ``8``.
+                Defaults to ``0.25``.
+            block: Type of the steps. ``"RepBlock"`` builds `RepUpBlock`
+                and `RepDownBlock`. ``"CSPStackRepBlock"`` builds
+                `CSPUpBlock` and `CSPDownBlock`. The neck does not check
+                the value, so any other string also builds the CSP
+                steps. Defaults to ``"RepBlock"``.
+            e: Fraction of the output channels in each path of a
+                `CSPStackRepBlock`. The neck reads it only when
                 ``block`` is ``"CSPStackRepBlock"``. ``None`` or ``0``
                 selects ``0.5``. Defaults to ``None``.
-            weights (str): Source or initialization method of the weights,
-                as in `BaseNode`. ``"download"`` loads the COCO checkpoint
+            weights: Source or initialization method of the weights, as
+                in `BaseNode`. ``"download"`` loads the COCO checkpoint
                 from `get_weights_url`. Only the ``"n"``, ``"s"``, and
                 ``"l"`` variants have a checkpoint. Defaults to
                 ``"yolo"``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`, such as
+            **kwargs: Keyword arguments for `BaseNode`, such as
                 ``input_shapes`` and ``original_in_shape``.
 
         Raises:
@@ -383,19 +381,18 @@ class RepPANNeck(BaseNode):
         ``n_heads`` maps.
 
         Args:
-            inputs (``list[Tensor]``): Feature maps of shape
-                ``[B, C_i, H_i, W_i]``, finest first. The channels must
-                match the input sizes that the constructor got. Each of
-                the last ``n_heads - 1`` maps has half the height and the
-                width of the map before it.
+            inputs: Feature maps of shape ``[B, C_i, H_i, W_i]``, finest
+                first. The channels must match the input sizes that the
+                constructor got. Each of the last ``n_heads - 1`` maps
+                has half the height and the width of the map before it.
 
         Returns:
-            ``list[Tensor]``: ``n_heads`` fused maps, finest first. Each
-            map has the height and the width of the input at its scale. For
-            three heads, the maps have ``channels_list[1]``,
-            ``channels_list[3]``, and ``channels_list[5]`` channels, after
-            ``width_multiplier`` scales them. The constructor docstring
-            gives the channels for two and four heads.
+            ``n_heads`` fused maps, finest first. Each map has the
+            height and the width of the input at its scale. For three
+            heads, the maps have ``channels_list[1]``,
+            ``channels_list[3]``, and ``channels_list[5]`` channels,
+            after ``width_multiplier`` scales them. The constructor
+            docstring gives the channels for two and four heads.
 
         Example:
             >>> import torch
@@ -462,9 +459,8 @@ class RepPANNeck(BaseNode):
         dictionary as its short name.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"n"``, and a
-            dictionary that maps each variant name and alias to its
-            constructor keyword arguments.
+            The name ``"n"``, and a dictionary that maps each variant
+            name and alias to its constructor keyword arguments.
 
         Example:
             >>> from luxonis_train.nodes import RepPANNeck
@@ -517,14 +513,13 @@ class RepPANNeck(BaseNode):
         and ``2`` of ``n_repeats``.
 
         Args:
-            channels_list (list[int]): Channel counts after
-                ``width_multiplier`` scales them.
-            n_repeats (list[int]): Block counts after ``depth_multiplier``
+            channels_list: Channel counts after ``width_multiplier``
                 scales them.
+            n_repeats: Block counts after ``depth_multiplier`` scales
+                them.
 
         Returns:
-            tuple[list[int], list[int]]: The adapted ``channels_list``
-            and ``n_repeats``.
+            The adapted ``channels_list`` and ``n_repeats``.
 
         Raises:
             ValueError: When ``n_heads`` is not ``2``, ``3``, or ``4``.

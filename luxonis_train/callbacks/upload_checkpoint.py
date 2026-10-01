@@ -90,13 +90,13 @@ class UploadCheckpoint(pl.Callback):
         path.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads its
-                checkpoint callbacks.
-            module (LuxonisLightningModule): The model. The hook uploads
-                through its logger and adds its metadata to the copy.
-            checkpoint (``dict[str, Any]``): The checkpoint dictionary
-                that Lightning is about to write. For each new upload,
-                the hook replaces the state of this callback in
+            trainer: The trainer. The hook reads its checkpoint
+                callbacks.
+            module: The model. The hook uploads through its logger and
+                adds its metadata to the copy.
+            checkpoint: The checkpoint dictionary that Lightning is
+                about to write. For each new upload, the hook replaces
+                the state of this callback in
                 ``checkpoint["callbacks"]``. It does not change the
                 other keys.
 
@@ -139,8 +139,7 @@ class UploadCheckpoint(pl.Callback):
         """Return the paths of the checkpoints already uploaded.
 
         Returns:
-            dict[str, set[str]]: The uploaded paths under
-                ``"last_best_checkpoints"``.
+            The uploaded paths under ``"last_best_checkpoints"``.
 
         """
         return {
@@ -152,8 +151,8 @@ class UploadCheckpoint(pl.Callback):
         """Restore the paths of the checkpoints already uploaded.
 
         Args:
-            state_dict (dict[str, set[str]]): The callback state from a
-                checkpoint. An old checkpoint can hold an empty dictionary.
+            state_dict: The callback state from a checkpoint. An old
+                checkpoint can hold an empty dictionary.
 
         """
         self._last_best_checkpoints = state_dict.get(

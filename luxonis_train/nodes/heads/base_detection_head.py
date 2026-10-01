@@ -29,14 +29,13 @@ class BaseDetectionHead(BaseHead):
     keeps the NMS input in its packet.
 
     Attributes:
-        parser (str): The export parser, ``"YOLO"``. A subclass can
-            replace it.
-        iou_thres (float): The IoU threshold of NMS.
-        max_det (int): The maximum number of boxes that NMS keeps for
-            each image.
-        stride (``Tensor``): The stride of each scale, an ``int32``
-            tensor of shape ``[n_heads]``. `fit_stride_to_heads` computes
+        parser: The export parser, ``"YOLO"``. A subclass can replace
             it.
+        iou_thres: The IoU threshold of NMS.
+        max_det: The maximum number of boxes that NMS keeps for each
+            image.
+        stride: The stride of each scale, an ``int32`` tensor of shape
+            ``[n_heads]``. `fit_stride_to_heads` computes it.
 
     Example:
         `EfficientBBoxHead` is a detection head. With two scales, it
@@ -84,23 +83,22 @@ class BaseDetectionHead(BaseHead):
         ``kwargs``, this check counts all outputs of the input node.
 
         Args:
-            n_heads (int): The number of scales. The head reads the last
+            n_heads: The number of scales. The head reads the last
                 ``n_heads`` outputs of the input node.
-            conf_thres (float): The confidence threshold of NMS, in
-                ``[0, 1]``.
-            iou_thres (float): The IoU threshold of NMS, in ``[0, 1]``.
-            max_det (int): The maximum number of boxes that NMS keeps for
-                each image.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. An
+            conf_thres: The confidence threshold of NMS, in ``[0, 1]``.
+            iou_thres: The IoU threshold of NMS, in ``[0, 1]``.
+            max_det: The maximum number of boxes that NMS keeps for each
+                image.
+            **kwargs: Keyword arguments for `BaseNode`. An
                 ``attach_index`` among them replaces the default
-                selection of the last ``n_heads`` outputs. It must select
-                a range or ``"all"``. An integer index makes the
-                constructor fail. This class annotates ``in_channels`` as
-                ``list[int]``, so `BaseNode` raises `IncompatibleError`.
-                A subclass with its own class annotations hides this
-                annotation, for example `PrecisionSegmentBBoxHead`. For
-                such a subclass, the constructor raises ``TypeError``
-                instead.
+                selection of the last ``n_heads`` outputs. It must
+                select a range or ``"all"``. An integer index makes the
+                constructor fail. This class annotates ``in_channels``
+                as ``list[int]``, so `BaseNode` raises
+                `IncompatibleError`. A subclass with its own class
+                annotations hides this annotation, for example
+                `PrecisionSegmentBBoxHead`. For such a subclass, the
+                constructor raises ``TypeError`` instead.
 
         """
         super().__init__(**kwargs)
@@ -191,7 +189,7 @@ class BaseDetectionHead(BaseHead):
         ``"subtype"``.
 
         Returns:
-            ``Params``: A dictionary with the keys ``"iou_threshold"``,
+            A dictionary with the keys ``"iou_threshold"``,
             ``"conf_threshold"``, ``"max_det"``, and ``"strides"``. They
             hold ``iou_thres``, ``conf_thres``, ``max_det``, and
             ``stride`` as a list with one integer for each scale.
@@ -222,13 +220,12 @@ class BaseDetectionHead(BaseHead):
         outputs from the argument.
 
         Args:
-            default (list[str]): The names to return when the constructor
-                argument is ``None`` or has the wrong length. The
-                subclasses give names that DepthAI accepts.
+            default: The names to return when the constructor argument
+                is ``None`` or has the wrong length. The subclasses give
+                names that DepthAI accepts.
 
         Returns:
-            list[str]: The names of the constructor argument, or
-            ``default``.
+            The names of the constructor argument, or ``default``.
 
         Example:
             >>> from torch import Size
@@ -285,7 +282,7 @@ class BaseDetectionHead(BaseHead):
         shows the result.
 
         Returns:
-            ``Tensor``: An ``int32`` tensor of shape ``[n_heads]``.
+            An ``int32`` tensor of shape ``[n_heads]``.
 
         """
         return torch.tensor(

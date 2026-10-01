@@ -51,9 +51,8 @@ class FailOnNoTrainBatches(pl.Callback):
         ``trainer.batch_size`` of the config.
 
         Args:
-            trainer (``pl.Trainer``): The trainer of the fit.
-            pl_module (LuxonisLightningModule): The model. The hook reads
-                its config.
+            trainer: The trainer of the fit.
+            pl_module: The model. The hook reads its config.
 
         Raises:
             RuntimeError: When the fit loop has no training batches.

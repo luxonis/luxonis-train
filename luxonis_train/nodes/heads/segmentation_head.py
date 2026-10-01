@@ -108,8 +108,8 @@ class SegmentationHead(BaseHead):
         `IncompatibleError`.
 
         Args:
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``original_in_shape``, the input sizes through
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``original_in_shape``, the input sizes through
                 ``input_shapes`` or ``in_sizes``, and the class count
                 through ``n_classes`` or ``dataset_metadata``.
 
@@ -143,14 +143,13 @@ class SegmentationHead(BaseHead):
         """Compute the segmentation logits.
 
         Args:
-            inputs (``Tensor``): The feature map of shape
-                ``[B, C, H/s, W/s]``.
+            inputs: The feature map of shape ``[B, C, H/s, W/s]``.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, n_classes, H, W]``.
-            When ``s < 1``, the logits keep the size of the feature
-            map: ``[B, n_classes, H/s, W/s]``. `BaseNode.run` puts them
-            under the ``"segmentation"`` key.
+            The logits of shape ``[B, n_classes, H, W]``. When
+            ``s < 1``, the logits keep the size of the feature map,
+            ``[B, n_classes, H/s, W/s]``. `BaseNode.run` puts them under
+            the ``"segmentation"`` key.
 
         Example:
             A feature map with the stride ``4`` gets two upsampling

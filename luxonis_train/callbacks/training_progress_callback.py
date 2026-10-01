@@ -58,10 +58,10 @@ class TrainingProgressCallback(pl.Callback):
         """Initialize the callback.
 
         Args:
-            log_every_n_batches (int): Log at the end of a batch once
-                every this many batches of an epoch. ``1`` logs every
-                batch. A higher value reduces the logging overhead. A
-                value below ``1`` acts as ``1``.
+            log_every_n_batches: Log at the end of a batch once every
+                this many batches of an epoch. ``1`` logs every batch. A
+                higher value reduces the logging overhead. A value below
+                ``1`` acts as ``1``.
 
         """
         super().__init__()
@@ -95,12 +95,12 @@ class TrainingProgressCallback(pl.Callback):
         """Sum the finite batch counts of the evaluation data loaders.
 
         Args:
-            total_batches (float | list[int | float]): The batch count of
-                one data loader, or a list with one count for each.
+            total_batches: The batch count of one data loader, or a list
+                with one count for each.
 
         Returns:
-            int: The sum of the finite counts. A single infinite count
-            gives ``0``.
+            The sum of the finite counts. A single infinite count gives
+            ``0``.
 
         Example:
             >>> from luxonis_train.callbacks import TrainingProgressCallback
@@ -135,9 +135,8 @@ class TrainingProgressCallback(pl.Callback):
         warning instead.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook logs to its
-                ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook logs to its ``logger``.
+            pl_module: The model. Unused.
 
         """
         self._train_epoch_start_time = self._now()
@@ -174,10 +173,10 @@ class TrainingProgressCallback(pl.Callback):
         ``train/batch_total_sec``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch in the epoch. Unused.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch in the epoch. Unused.
 
         """
         self._train_batch_start_time = self._now()
@@ -212,13 +211,12 @@ class TrainingProgressCallback(pl.Callback):
         Without ``trainer.logger``, the hook logs nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
+            trainer: The trainer. The hook reads
                 ``num_training_batches`` and logs to ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            outputs (``STEP_OUTPUT``): The output of the training step.
-                Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch in the epoch.
+            pl_module: The model. Unused.
+            outputs: The output of the training step. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch in the epoch.
 
         """
         self._train_batch_step += 1
@@ -268,9 +266,8 @@ class TrainingProgressCallback(pl.Callback):
         Without ``trainer.logger``, the hook logs nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook logs to its
-                ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook logs to its ``logger``.
+            pl_module: The model. Unused.
 
         """
         if trainer.logger is None:
@@ -302,9 +299,9 @@ class TrainingProgressCallback(pl.Callback):
         nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``sanity_checking`` and logs to ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook reads ``sanity_checking`` and
+                logs to ``logger``.
+            pl_module: The model. Unused.
 
         """
         self._val_epoch_start_time = self._now()
@@ -334,12 +331,11 @@ class TrainingProgressCallback(pl.Callback):
         of ``val/batch_total_sec``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``sanity_checking``.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
-            dataloader_idx (int): The index of the data loader. Unused.
+            trainer: The trainer. The hook reads ``sanity_checking``.
+            pl_module: The model. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
+            dataloader_idx: The index of the data loader. Unused.
 
         """
         if trainer.sanity_checking:
@@ -380,15 +376,13 @@ class TrainingProgressCallback(pl.Callback):
         loader. Without ``trainer.logger``, the hook logs nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``sanity_checking`` and ``num_val_batches``, and logs to
-                ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            outputs (``STEP_OUTPUT``): The output of the validation step.
-                Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
-            dataloader_idx (int): The index of the data loader. Unused.
+            trainer: The trainer. The hook reads ``sanity_checking`` and
+                ``num_val_batches``, and logs to ``logger``.
+            pl_module: The model. Unused.
+            outputs: The output of the validation step. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
+            dataloader_idx: The index of the data loader. Unused.
 
         """
         if trainer.sanity_checking:
@@ -444,10 +438,9 @@ class TrainingProgressCallback(pl.Callback):
         ``trainer.current_epoch``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``sanity_checking`` and ``current_epoch``, and logs to
-                ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook reads ``sanity_checking`` and
+                ``current_epoch``, and logs to ``logger``.
+            pl_module: The model. Unused.
 
         """
         if trainer.sanity_checking or trainer.logger is None:
@@ -485,9 +478,8 @@ class TrainingProgressCallback(pl.Callback):
         logs nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook logs to its
-                ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook logs to its ``logger``.
+            pl_module: The model. Unused.
 
         """
         self._test_epoch_start_time = self._now()
@@ -516,11 +508,11 @@ class TrainingProgressCallback(pl.Callback):
         The hook stores the start time of ``test/batch_total_sec``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
-            dataloader_idx (int): The index of the data loader. Unused.
+            trainer: The trainer. Unused.
+            pl_module: The model. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
+            dataloader_idx: The index of the data loader. Unused.
 
         """
         self._test_batch_start_time = self._now()
@@ -557,14 +549,13 @@ class TrainingProgressCallback(pl.Callback):
         Without ``trainer.logger``, the hook logs nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``num_test_batches`` and logs to ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
-            outputs (``STEP_OUTPUT``): The output of the test step.
-                Unused.
-            batch (``Any``): The batch. Unused.
-            batch_idx (int): The index of the batch. Unused.
-            dataloader_idx (int): The index of the data loader. Unused.
+            trainer: The trainer. The hook reads ``num_test_batches``
+                and logs to ``logger``.
+            pl_module: The model. Unused.
+            outputs: The output of the test step. Unused.
+            batch: The batch. Unused.
+            batch_idx: The index of the batch. Unused.
+            dataloader_idx: The index of the data loader. Unused.
 
         """
         self._test_epoch_batch_count += 1
@@ -617,9 +608,9 @@ class TrainingProgressCallback(pl.Callback):
         ``trainer.current_epoch``.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads
-                ``current_epoch`` and logs to ``logger``.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer. The hook reads ``current_epoch`` and
+                logs to ``logger``.
+            pl_module: The model. Unused.
 
         """
         if trainer.logger is None:

@@ -99,25 +99,23 @@ class ResNet(BaseNode):
         """Build the ``torchvision`` ResNet of the selected depth.
 
         Args:
-            variant (``Literal["18", "34", "50", "101", "152"]``): Depth
-                of the network. ``"18"`` and ``"34"`` use basic blocks.
-                The other depths use bottleneck blocks, with four times
-                as many output channels. Each variant of `get_variants`
-                sets it to the name of the variant. Defaults to
-                ``"18"``.
-            zero_init_residual (bool): Whether to set the weight of the
-                last batch norm in each residual block to zero. The
-                residual branch of each block then starts with zero
-                output, so only the shortcut reaches the final ReLU of
-                the block. Pretrained weights replace this
-                initialization. See `Accurate,
-                Large Minibatch SGD <https://arxiv.org/abs/1706.02677>`_.
+            variant: Depth of the network. ``"18"`` and ``"34"`` use
+                basic blocks. The other depths use bottleneck blocks,
+                with four times as many output channels. Each variant of
+                `get_variants` sets it to the name of the variant.
+                Defaults to ``"18"``.
+            zero_init_residual: Whether to set the weight of the last
+                batch norm in each residual block to zero. The residual
+                branch of each block then starts with zero output, so
+                only the shortcut reaches the final ReLU of the block.
+                Pretrained weights replace this initialization. See
+                `Accurate, Large Minibatch SGD <https://arxiv.org/abs/1706.02677>`_.
                 Defaults to ``False``.
-            groups (int): Number of groups of the ``3x3`` convolution in
-                each bottleneck block. The depths ``"18"`` and ``"34"``
+            groups: Number of groups of the ``3x3`` convolution in each
+                bottleneck block. The depths ``"18"`` and ``"34"``
                 accept only ``1``. For other values, ``torchvision``
                 raises ``ValueError``. Defaults to ``1``.
-            width_per_group (int): Number of channels per group in each
+            width_per_group: Number of channels per group in each
                 bottleneck block. The ``3x3`` convolution of a block has
                 ``int(planes * width_per_group / 64) * groups``
                 channels. ``planes`` is 64, 128, 256, or 512 for
@@ -125,20 +123,18 @@ class ResNet(BaseNode):
                 ``"34"`` accept only ``64``. For other values,
                 ``torchvision`` raises ``ValueError``. Defaults to
                 ``64``.
-            replace_stride_with_dilation (tuple[bool, bool, bool]): For
-                ``layer2``, ``layer3``, and ``layer4``, whether to
-                replace the stride ``2`` with a dilation. A stage with a
-                dilation keeps the resolution of the stage before it.
-                The depths ``"18"`` and ``"34"`` accept only ``False``.
-                For ``True``, ``torchvision`` raises
-                ``NotImplementedError``.
-            weights (``Literal["download", "none"] | None``): The value
-                ``"download"`` loads the ``DEFAULT`` ImageNet weights of
-                ``torchvision``. Any other value keeps the random
-                initialization. The value does not reach `BaseNode`, so
-                a checkpoint URL or ``"yolo"`` has no effect.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            replace_stride_with_dilation: For ``layer2``, ``layer3``,
+                and ``layer4``, whether to replace the stride ``2`` with
+                a dilation. A stage with a dilation keeps the resolution
+                of the stage before it. The depths ``"18"`` and ``"34"``
+                accept only ``False``. For ``True``, ``torchvision``
+                raises ``NotImplementedError``.
+            weights: The value ``"download"`` loads the ``DEFAULT``
+                ImageNet weights of ``torchvision``. Any other value
+                keeps the random initialization. The value does not
+                reach `BaseNode`, so a checkpoint URL or ``"yolo"`` has
+                no effect.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         Raises:
             ValueError: When ``variant`` is not one of the five depths.
@@ -162,14 +158,14 @@ class ResNet(BaseNode):
         skips ``avgpool`` and ``fc``.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+            inputs: Image batch of shape ``[B, 3, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The outputs of ``layer1`` to ``layer4``,
-            at the strides 4, 8, 16, and 32. They have 64, 128, 256,
-            and 512 channels for the depths ``"18"`` and ``"34"``, and
-            four times as many for the other depths. A stage with a
-            dilation keeps the stride of the stage before it.
+            The outputs of ``layer1`` to ``layer4``, at the strides 4,
+            8, 16, and 32. They have 64, 128, 256, and 512 channels for
+            the depths ``"18"`` and ``"34"``, and four times as many for
+            the other depths. A stage with a dilation keeps the stride
+            of the stage before it.
 
         Example:
             >>> import torch
@@ -205,9 +201,9 @@ class ResNet(BaseNode):
         the default.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"18"``, and a
-            dictionary that maps each of ``"18"``, ``"34"``, ``"50"``,
-            ``"101"``, and ``"152"`` to ``{"variant": name}``.
+            The name ``"18"``, and a dictionary that maps each of
+            ``"18"``, ``"34"``, ``"50"``, ``"101"``, and ``"152"`` to
+            ``{"variant": name}``.
 
         Example:
             >>> from luxonis_train.nodes import ResNet

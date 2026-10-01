@@ -75,18 +75,16 @@ class MobileNetV2(BaseNode):
         The modules ``1`` to ``17`` are the inverted residual blocks.
 
         Args:
-            out_indices (list[int] | None): Indices of the ``features``
-                modules that `forward` returns, from ``0`` to ``18``. An
-                index outside that range adds no output. ``None`` or an
-                empty list selects ``[3, 6, 13, 18]``.
-            weights (``Literal["download", "none"] | None``): The value
-                ``"download"`` loads the ``DEFAULT`` ``torchvision``
-                weights, ``IMAGENET1K_V2``. Any other value keeps the
-                random initialization. The value does not reach
-                `BaseNode`, so a checkpoint URL or ``"yolo"`` has no
-                effect.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            out_indices: Indices of the ``features`` modules that
+                `forward` returns, from ``0`` to ``18``. An index
+                outside that range adds no output. ``None`` or an empty
+                list selects ``[3, 6, 13, 18]``.
+            weights: The value ``"download"`` loads the ``DEFAULT``
+                ``torchvision`` weights, ``IMAGENET1K_V2``. Any other
+                value keeps the random initialization. The value does
+                not reach `BaseNode`, so a checkpoint URL or ``"yolo"``
+                has no effect.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -100,13 +98,12 @@ class MobileNetV2(BaseNode):
         """Run the ``features`` modules in order.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+            inputs: Image batch of shape ``[B, 3, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The output of each module whose index is
-            in ``out_indices``, in module order. The default indices
-            give 24, 32, 96, and 1280 channels at the strides 4, 8, 16,
-            and 32.
+            The output of each module whose index is in ``out_indices``,
+            in module order. The default indices give 24, 32, 96, and
+            1280 channels at the strides 4, 8, 16, and 32.
 
         Example:
             >>> import torch

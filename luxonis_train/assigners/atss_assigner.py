@@ -49,12 +49,12 @@ class ATSSAssigner(nn.Module):
         """Initialize the ATSS assigner.
 
         Args:
-            n_classes (int): Number of classes in the dataset. The label
+            n_classes: Number of classes in the dataset. The label
                 ``n_classes`` marks a background anchor in the output.
-            topk (int): Maximum number of candidate anchors to select on
-                each pyramid level for each ground truth box. With fewer
-                than three candidates for a box over all levels, no
-                candidate passes the threshold.
+            topk: Maximum number of candidate anchors to select on each
+                pyramid level for each ground truth box. With fewer than
+                three candidates for a box over all levels, no candidate
+                passes the threshold.
 
         """
         super().__init__()
@@ -77,40 +77,41 @@ class ATSSAssigner(nn.Module):
         boxes with ``mask_gt`` set to ``1`` get positive anchors.
 
         Args:
-            anchor_bboxes (``Tensor``): Anchor boxes with shape
-                ``[n_anchors, 4]``, ordered level by level.
-            n_level_bboxes (list[int]): Number of anchors on each pyramid
-                level. The sum must equal ``n_anchors``.
-            gt_labels (``Tensor``): Class index of each ground truth box
-                with shape ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            anchor_bboxes: Anchor boxes with shape ``[n_anchors, 4]``,
+                ordered level by level.
+            n_level_bboxes: Number of anchors on each pyramid level. The
+                sum must equal ``n_anchors``.
+            gt_labels: Class index of each ground truth box with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
-                padded slot, with shape ``[bs, n_max_boxes, 1]``.
-            pred_bboxes (``Tensor``): Predicted boxes with shape
+            mask_gt: ``1`` for a real box and ``0`` for a padded slot,
+                with shape ``[bs, n_max_boxes, 1]``.
+            pred_bboxes: Predicted boxes with shape
                 ``[bs, n_anchors, 4]``. The IoU between a predicted box
                 and its assigned box scales the assigned scores.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor, Tensor, Tensor]``: Five tensors:
+            Five tensors.
 
-            - ``assigned_labels`` (``[bs, n_anchors]``, ``int64``): The
-              class of the assigned box, or ``n_classes`` for a
+            - ``assigned_labels`` (``[bs, n_anchors]``, ``int64``) holds
+              the class of the assigned box, or ``n_classes`` for a
               background anchor.
-            - ``assigned_bboxes`` (``[bs, n_anchors, 4]``): The assigned
-              box. Only the values at positive anchors are meaningful.
-            - ``assigned_scores`` (``[bs, n_anchors, n_classes]``): A
-              one-hot class vector scaled by the IoU between the
+            - ``assigned_bboxes`` (``[bs, n_anchors, 4]``) holds the
+              assigned box. Only the values at positive anchors are
+              meaningful.
+            - ``assigned_scores`` (``[bs, n_anchors, n_classes]``) holds
+              a one-hot class vector scaled by the IoU between the
               predicted box and the assigned box. Zero for a background
               anchor.
-            - ``mask_positive`` (``[bs, n_anchors]``, ``bool``): ``True``
-              at an anchor with an assigned box.
-            - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``): The
-              index of the assigned box along dimension ``1`` of
+            - ``mask_positive`` (``[bs, n_anchors]``, ``bool``) is
+              ``True`` at an anchor with an assigned box.
+            - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``) holds
+              the index of the assigned box along dimension ``1`` of
               ``gt_bboxes``, ``0`` for a background anchor.
 
-            When ``n_max_boxes`` is ``0``, every anchor is background. In
-            this case, ``mask_positive`` and ``assigned_gt_idx`` are
+            When ``n_max_boxes`` is ``0``, every anchor is background.
+            In this case, ``mask_positive`` and ``assigned_gt_idx`` are
             ``float32`` zeros.
 
         Example:
@@ -224,11 +225,10 @@ class ATSSAssigner(nn.Module):
         """Compute the center of each box.
 
         Args:
-            bbox (``Tensor``): Boxes in ``xyxy`` format with shape
-                ``[N, 4]``.
+            bbox: Boxes in ``xyxy`` format with shape ``[N, 4]``.
 
         Returns:
-            ``Tensor``: Centers ``(x, y)`` with shape ``[N, 2]``.
+            Centers ``(x, y)`` with shape ``[N, 2]``.
 
         """
         cx = (bbox[:, 0] + bbox[:, 2]) / 2.0
@@ -247,20 +247,19 @@ class ATSSAssigner(nn.Module):
         change.
 
         Args:
-            distances (``Tensor``): Distances between the box centers and
-                the anchor centers with shape
-                ``[bs, n_max_boxes, n_anchors]``.
-            n_level_bboxes (list[int]): Number of anchors on each pyramid
-                level.
-            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
-                padded slot, with shape ``[bs, n_max_boxes, 1]``.
+            distances: Distances between the box centers and the anchor
+                centers with shape ``[bs, n_max_boxes, n_anchors]``.
+            n_level_bboxes: Number of anchors on each pyramid level.
+            mask_gt: ``1`` for a real box and ``0`` for a padded slot,
+                with shape ``[bs, n_max_boxes, 1]``.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The mask ``is_in_topk`` with shape
-            ``[bs, n_max_boxes, n_anchors]`` and the indices ``topk_idxs``
-            with shape ``[bs, n_max_boxes, n_selected]``. ``n_selected``
-            is the number of candidates over all levels. Each index points
-            into all ``n_anchors`` anchors, not into one level.
+            The mask ``is_in_topk`` with shape
+            ``[bs, n_max_boxes, n_anchors]`` and the indices
+            ``topk_idxs`` with shape ``[bs, n_max_boxes, n_selected]``.
+            ``n_selected`` is the number of candidates over all levels.
+            Each index points into all ``n_anchors`` anchors, not into
+            one level.
 
         """
         mask_gt = mask_gt.bool()
@@ -302,16 +301,15 @@ class ATSSAssigner(nn.Module):
         the IoUs of its candidates.
 
         Args:
-            is_in_topk (``Tensor``): Candidate mask with shape
+            is_in_topk: Candidate mask with shape
                 ``[bs, n_max_boxes, n_anchors]``.
-            topk_idxs (``Tensor``): Candidate indices with shape
+            topk_idxs: Candidate indices with shape
                 ``[bs, n_max_boxes, n_selected]``.
-            overlaps (``Tensor``): IoU between each box and each anchor
-                with shape ``[bs, n_max_boxes, n_anchors]``.
+            overlaps: IoU between each box and each anchor with shape
+                ``[bs, n_max_boxes, n_anchors]``.
 
         Returns:
-            ``Tensor``: Positive mask with shape
-            ``[bs, n_max_boxes, n_anchors]``.
+            Positive mask with shape ``[bs, n_max_boxes, n_anchors]``.
 
         """
         n_bs_max_boxes = self._bs * self._n_max_boxes
@@ -350,17 +348,17 @@ class ATSSAssigner(nn.Module):
         """Gather the label, box, and one-hot score of each anchor.
 
         Args:
-            gt_labels (``Tensor``): Class index of each ground truth box
-                with shape ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            gt_labels: Class index of each ground truth box with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            assigned_gt_idx (``Tensor``): Index of the assigned box with
-                shape ``[bs, n_anchors]``.
-            mask_pos_sum (``Tensor``): Number of assigned boxes per anchor
-                with shape ``[bs, n_anchors]``.
+            assigned_gt_idx: Index of the assigned box with shape
+                ``[bs, n_anchors]``.
+            mask_pos_sum: Number of assigned boxes per anchor with shape
+                ``[bs, n_anchors]``.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor]``: Three tensors:
+            Three tensors.
 
             - The assigned labels with shape ``[bs, n_anchors]`` and the
               dtype of ``gt_labels``. ``n_classes`` for a background

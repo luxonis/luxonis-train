@@ -106,17 +106,16 @@ class Selector(Protocol):
         """Decide whether the rule claims the parameter.
 
         Args:
-            module (torch.nn.Module): The module that directly owns the
-                parameter.
-            module_name (str): The dotted name of ``module`` relative to
-                the node, such as ``"stem.conv"``. It is an empty string
-                for the node module itself.
-            parameter (``nn.Parameter``): The parameter.
-            parameter_name (str): The name of the parameter inside
-                ``module``, such as ``"weight"``.
+            module: The module that directly owns the parameter.
+            module_name: The dotted name of ``module`` relative to the
+                node, such as ``"stem.conv"``. It is an empty string for
+                the node module itself.
+            parameter: The parameter.
+            parameter_name: The name of the parameter inside ``module``,
+                such as ``"weight"``.
 
         Returns:
-            bool: ``True`` when the rule claims the parameter.
+            ``True`` when the rule claims the parameter.
 
         """
         ...
@@ -136,12 +135,12 @@ def pattern_selector(patterns: Sequence[ParameterPattern]) -> Selector:
     case, as `ParameterPattern` describes.
 
     Args:
-        patterns (``Sequence[ParameterPattern]``): The patterns. An empty
-            sequence gives a selector that accepts no parameter.
+        patterns: The patterns. An empty sequence gives a selector that
+            accepts no parameter.
 
     Returns:
-        Selector: A function with the arguments of `Selector.__call__`.
-        It returns ``True`` when a pattern matches the parameter.
+        A function with the arguments of `Selector.__call__`. It returns
+        ``True`` when a pattern matches the parameter.
 
     Example:
         >>> from torch import nn
@@ -205,16 +204,15 @@ def merge_config_items(
       has only the ``params`` of the override.
 
     Args:
-        base (OptimizerConfig | SchedulerConfig): The base config:
-            ``trainer.optimizer``, ``trainer.scheduler``, or a base
-            config of the training strategy.
-        override (FinetuningOptimizerConfig | FinetuningSchedulerConfig | None):
-            The override of a node ``finetuning`` entry, or ``None``.
+        base: The base config: ``trainer.optimizer``,
+            ``trainer.scheduler``, or a base config of the training
+            strategy.
+        override: The override of a node ``finetuning`` entry, or
+            ``None``.
 
     Returns:
-        OptimizerConfig | SchedulerConfig: A new config of the type of
-        ``base``, so its ``name`` is never ``None``. The arguments do not
-        change.
+        A new config of the type of ``base``, so its ``name`` is never
+        ``None``. The arguments do not change.
 
     Example:
         >>> from luxonis_train.config.config import (
@@ -258,11 +256,10 @@ class OptimizerSpec:
     options.
 
     Attributes:
-        name (str): The class name of the optimizer in the
-            ``OPTIMIZERS`` registry.
-        params (``Params``): The optimizer parameters, such as ``lr``.
-            Each parameter group of the rule receives them as its
-            options.
+        name: The class name of the optimizer in the ``OPTIMIZERS``
+            registry.
+        params: The optimizer parameters, such as ``lr``. Each parameter
+            group of the rule receives them as its options.
 
     """
 
@@ -274,11 +271,10 @@ class OptimizerSpec:
         """Create the specification from an optimizer config.
 
         Args:
-            config (OptimizerConfig): The optimizer config.
+            config: The optimizer config.
 
         Returns:
-            OptimizerSpec: The name of ``config`` and a shallow copy of
-            its ``params``.
+            The name of ``config`` and a shallow copy of its ``params``.
 
         Raises:
             KeyError: When the ``OPTIMIZERS`` registry has no optimizer
@@ -294,16 +290,16 @@ class SchedulerSpec:
     """The scheduler of one rule.
 
     Attributes:
-        name (str): The class name of the scheduler in the
-            ``SCHEDULERS`` registry.
-        params (``Params``): The scheduler parameters.
-            `SchedulerSpec.from_config` adds ``T_max`` when a
-            ``CosineAnnealingLR`` config has no ``T_max``.
-        key (str): A JSON string of ``name`` and ``params`` with sorted
-            keys. A value that JSON cannot encode goes into the string
-            as its ``repr``. Rules with the same optimizer name and the
-            same ``key`` share one inner optimizer. The equality check
-            of the dataclass ignores this field.
+        name: The class name of the scheduler in the ``SCHEDULERS``
+            registry.
+        params: The scheduler parameters. `SchedulerSpec.from_config`
+            adds ``T_max`` when a ``CosineAnnealingLR`` config has no
+            ``T_max``.
+        key: A JSON string of ``name`` and ``params`` with sorted keys.
+            A value that JSON cannot encode goes into the string as its
+            ``repr``. Rules with the same optimizer name and the same
+            ``key`` share one inner optimizer. The equality check of the
+            dataclass ignores this field.
 
     """
 
@@ -325,14 +321,14 @@ class SchedulerSpec:
         ``total_epochs`` therefore get the same ``key``.
 
         Args:
-            config (SchedulerConfig): The scheduler config.
-            total_epochs (int): The number of training epochs, from
+            config: The scheduler config.
+            total_epochs: The number of training epochs, from
                 ``trainer.epochs``.
 
         Returns:
-            SchedulerSpec: The name of ``config``, a shallow copy of its
-            ``params`` with the ``T_max`` default when the method adds
-            one, and the ``key``.
+            The name of ``config``, a shallow copy of its ``params``
+            with the ``T_max`` default when the method adds one, and the
+            ``key``.
 
         Raises:
             KeyError: When the ``SCHEDULERS`` registry has no scheduler
@@ -388,18 +384,18 @@ class StrategyRule:
     ``freezing.active`` gets its own group ``strategy/<tag>/<node>``.
 
     Attributes:
-        tag (str): The name of the rule.
-            `BaseTrainingStrategy.attach` receives the handles of the
-            groups of the rule under this key. When the rule claims no
-            parameter, the mapping has no entry for the tag.
-        selector (Selector): The predicate that decides which parameters
-            the rule claims.
-        optimizer (OptimizerConfig): The optimizer of the claimed
-            parameters. The plan uses it as it is and does not merge it
-            with the base optimizer.
-        scheduler (SchedulerConfig | None): The scheduler of the claimed
-            parameters. ``None`` uses the base scheduler of the strategy,
-            or ``trainer.scheduler`` when
+        tag: The name of the rule. `BaseTrainingStrategy.attach`
+            receives the handles of the groups of the rule under this
+            key. When the rule claims no parameter, the mapping has no
+            entry for the tag.
+        selector: The predicate that decides which parameters the rule
+            claims.
+        optimizer: The optimizer of the claimed parameters. The plan
+            uses it as it is and does not merge it with the base
+            optimizer.
+        scheduler: The scheduler of the claimed parameters. ``None``
+            uses the base scheduler of the strategy, or
+            ``trainer.scheduler`` when
             `BaseTrainingStrategy.get_base_configs` raises
             ``NotImplementedError``.
 
@@ -420,18 +416,16 @@ class Rule:
     claims all parameters that are left.
 
     Attributes:
-        label (str): The base name of the groups of the rule:
+        label: The base name of the groups of the rule:
             ``<node>/<index>`` for a ``finetuning`` entry,
             ``strategy/<tag>`` for a strategy rule, and ``default`` for
             the default rule.
-        selector (Selector): The predicate that decides which parameters
-            the rule claims.
-        optimizer (OptimizerSpec): The optimizer of the claimed
-            parameters.
-        scheduler (SchedulerSpec): The scheduler of the claimed
-            parameters.
-        tag (str | None): The tag of a strategy rule, or ``None`` for
-            the other rules.
+        selector: The predicate that decides which parameters the rule
+            claims.
+        optimizer: The optimizer of the claimed parameters.
+        scheduler: The scheduler of the claimed parameters.
+        tag: The tag of a strategy rule, or ``None`` for the other
+            rules.
 
     """
 
@@ -451,11 +445,11 @@ class GroupHandle(NamedTuple):
     valid.
 
     Attributes:
-        inner_index (int): The index of the inner optimizer in
+        inner_index: The index of the inner optimizer in
             `TrainingPlan.inners` and in
             `TrainingPlanRuntime.inner_optimizers`.
-        group_index (int): The index of the group in `InnerSpec.groups`
-            and in the ``param_groups`` of the inner optimizer.
+        group_index: The index of the group in `InnerSpec.groups` and in
+            the ``param_groups`` of the inner optimizer.
 
     """
 
@@ -468,22 +462,20 @@ class GroupSpec:
     """One parameter group of the plan.
 
     Attributes:
-        name (str): The name of the group, unique in the whole plan. It
-            is the label of the rule, followed by ``/<node>`` when
+        name: The name of the group, unique in the whole plan. It is the
+            label of the rule, followed by ``/<node>`` when
             `resolve_training_plan` gives a node its own group of the
             rule. A repeated name gets the suffix ``-2``, ``-3``, and so
             on.
-        node_names (``tuple[str, ...]``): The names of the nodes that
-            have parameters in the group, in the order of the first
-            claim.
-        parameters (``tuple[nn.Parameter, ...]``): The parameters of the
-            group, in claim order.
-        parameter_names (``tuple[str, ...]``): The name of each parameter,
-            in the order of ``parameters``. A name is the node name, a
-            dot, and the dotted name of the parameter in the node, such
-            as ``"backbone.stem.conv.weight"``.
-        options (``Params``): The parameter-group options, from the
-            ``params`` of the optimizer of the rule.
+        node_names: The names of the nodes that have parameters in the
+            group, in the order of the first claim.
+        parameters: The parameters of the group, in claim order.
+        parameter_names: The name of each parameter, in the order of
+            ``parameters``. A name is the node name, a dot, and the
+            dotted name of the parameter in the node, such as
+            ``"backbone.stem.conv.weight"``.
+        options: The parameter-group options, from the ``params`` of the
+            optimizer of the rule.
 
     """
 
@@ -499,11 +491,11 @@ class InnerSpec:
     """One inner optimizer of the plan and its scheduler.
 
     Attributes:
-        optimizer_name (str): The class name of the optimizer in the
+        optimizer_name: The class name of the optimizer in the
             ``OPTIMIZERS`` registry.
-        scheduler (SchedulerSpec): The scheduler of the optimizer.
-        groups (``tuple[GroupSpec, ...]``): The parameter groups of the
-            optimizer, in creation order.
+        scheduler: The scheduler of the optimizer.
+        groups: The parameter groups of the optimizer, in creation
+            order.
 
     """
 
@@ -522,16 +514,14 @@ class TrainingPlan:
     optimizers.
 
     Attributes:
-        inners (``tuple[InnerSpec, ...]``): The specifications of the
-            inner optimizers, in creation order.
-        handles_by_node (``Mapping[str, tuple[GroupHandle, ...]]``): For
-            each node name, the handles of the groups that hold
-            parameters of the node, in plan order. A node without a
-            parameter in the plan has no entry.
-        handles_by_tag (``Mapping[str, tuple[GroupHandle, ...]]``): For
-            each strategy rule tag, the handles of the groups of the
-            rule, in plan order. A tag whose rule claims no parameter
-            has no entry.
+        inners: The specifications of the inner optimizers, in creation
+            order.
+        handles_by_node: For each node name, the handles of the groups
+            that hold parameters of the node, in plan order. A node
+            without a parameter in the plan has no entry.
+        handles_by_tag: For each strategy rule tag, the handles of the
+            groups of the rule, in plan order. A tag whose rule claims
+            no parameter has no entry.
 
     """
 
@@ -608,17 +598,16 @@ class _PlanBuilder:
         optimizer entry when they do not exist yet.
 
         Args:
-            rule (Rule): The rule whose selector decides.
-            node_name (str): The name of the node that owns
-                ``module_source``.
-            module_source (torch.nn.Module): The node module. The
-                method scans it and all its submodules.
-            group_scope (str): ``_SHARED`` for a group that all nodes
-                share, or the node name for a group of this node only.
+            rule: The rule whose selector decides.
+            node_name: The name of the node that owns ``module_source``.
+            module_source: The node module. The method scans it and all
+                its submodules.
+            group_scope: ``_SHARED`` for a group that all nodes share,
+                or the node name for a group of this node only.
 
         Returns:
-            int: The number of parameters that this call claimed. A
-            parameter that an earlier call claimed does not count.
+            The number of parameters that this call claimed. A parameter
+            that an earlier call claimed does not count.
 
         """
         claimed = 0
@@ -769,16 +758,15 @@ def resolve_training_plan(
     from ``trainer.epochs``.
 
     Args:
-        cfg (Config): The config. The function reads ``trainer.epochs``,
+        cfg: The config. The function reads ``trainer.epochs``,
             ``trainer.optimizer``, and ``trainer.scheduler``.
-        nodes (Nodes): The nodes of the model. The function reads the
-            ``name``, ``module``, ``finetuning``, and ``unfreeze_after``
-            of each `NodeWrapper`.
-        strategy (BaseTrainingStrategy | None): The training strategy,
-            or ``None``.
+        nodes: The nodes of the model. The function reads the ``name``,
+            ``module``, ``finetuning``, and ``unfreeze_after`` of each
+            `NodeWrapper`.
+        strategy: The training strategy, or ``None``.
 
     Returns:
-        TrainingPlan: The plan.
+        The plan.
 
     Raises:
         ValueError: When a ``finetuning`` entry claims no parameter, for
@@ -831,20 +819,19 @@ class TrainingPlanRuntime:
     learning rate.
 
     Attributes:
-        plan (TrainingPlan): The plan of the runtime.
-        inner_optimizers (``tuple[Optimizer, ...]``): One optimizer for
-            each `InnerSpec` of the plan, in plan order. The optimizers
-            of a legacy training strategy follow them.
-        members (``tuple[LRScheduler | ReduceLROnPlateau | None, ...]``):
-            The scheduler of each inner optimizer, in the same order.
-            The entry is ``None`` for a legacy optimizer without a
-            scheduler.
-        optimizer (torch.optim.Optimizer): The optimizer that Lightning
-            receives. It is the only inner optimizer, or a
-            `CompositeOptimizer` over all inner optimizers.
-        scheduler_configs (``list[Any]``): The schedulers and scheduler
-            configs that Lightning receives. `build_training_plan`
-            describes the entries.
+        plan: The plan of the runtime.
+        inner_optimizers: One optimizer for each `InnerSpec` of the
+            plan, in plan order. The optimizers of a legacy training
+            strategy follow them.
+        members: The scheduler of each inner optimizer, in the same
+            order. The entry is ``None`` for a legacy optimizer without
+            a scheduler.
+        optimizer: The optimizer that Lightning receives. It is the only
+            inner optimizer, or a `CompositeOptimizer` over all inner
+            optimizers.
+        scheduler_configs: The schedulers and scheduler configs that
+            Lightning receives. `build_training_plan` describes the
+            entries.
 
     """
 
@@ -858,12 +845,11 @@ class TrainingPlanRuntime:
         """Return the parameter group at a handle.
 
         Args:
-            handle (GroupHandle): The address of the group.
+            handle: The address of the group.
 
         Returns:
-            ``dict[str, Any]``: The entry of ``param_groups`` in the
-            inner optimizer. It is not a copy, so a change to it changes
-            the optimizer.
+            The entry of ``param_groups`` in the inner optimizer. It is
+            not a copy, so a change to it changes the optimizer.
 
         """
         optimizer = self.inner_optimizers[handle.inner_index]
@@ -873,12 +859,12 @@ class TrainingPlanRuntime:
         """Return the handles of the groups of a node.
 
         Args:
-            node_name (str): The name of the node.
+            node_name: The name of the node.
 
         Returns:
-            ``tuple[GroupHandle, ...]``: The handles of the groups that
-            hold parameters of the node, in plan order. The tuple is
-            empty when no group holds a parameter of ``node_name``.
+            The handles of the groups that hold parameters of the node,
+            in plan order. The tuple is empty when no group holds a
+            parameter of ``node_name``.
 
         """
         return self.plan.handles_by_node.get(node_name, ())
@@ -895,8 +881,8 @@ class TrainingPlanRuntime:
         inner optimizer has no scheduler, only the group changes.
 
         Args:
-            handle (GroupHandle): The address of the group.
-            lr (float): The new base learning rate.
+            handle: The address of the group.
+            lr: The new base learning rate.
 
         """
         group = self.group(handle)
@@ -965,18 +951,17 @@ def build_training_plan(
     Each ``frequency`` above is ``trainer.validation_interval``.
 
     Args:
-        plan (TrainingPlan): The plan from `resolve_training_plan`.
-        cfg (Config): The config. The function reads
+        plan: The plan from `resolve_training_plan`.
+        cfg: The config. The function reads
             ``trainer.validation_interval``.
-        main_metric_monitor (str | None): The logged name of the main
-            metric, or ``None`` when the model has no main metric.
-        strategy (BaseTrainingStrategy | None): The training strategy,
-            or ``None``. The function reads its
-            `BaseTrainingStrategy.opaque_inners`.
+        main_metric_monitor: The logged name of the main metric, or
+            ``None`` when the model has no main metric.
+        strategy: The training strategy, or ``None``. The function reads
+            its `BaseTrainingStrategy.opaque_inners`.
 
     Returns:
-        TrainingPlanRuntime: The optimizers, the schedulers, and the
-        scheduler configs for Lightning.
+        The optimizers, the schedulers, and the scheduler configs for
+        Lightning.
 
     Raises:
         TypeError: When a group option is not a key of the
@@ -1048,12 +1033,12 @@ def _unique_name(name: str, used: set[str]) -> str:
     """Reserve a unique name in ``used``.
 
     Args:
-        name (str): The wanted name.
-        used (set[str]): The names in use. The function adds the result
-            to this set.
+        name: The wanted name.
+        used: The names in use. The function adds the result to this
+            set.
 
     Returns:
-        str: ``name`` when ``used`` does not hold it. Otherwise the first
+        ``name`` when ``used`` does not hold it. Otherwise the first
         free name of ``<name>-2``, ``<name>-3``, and so on.
 
     Example:

@@ -32,11 +32,10 @@ class AIMETCallback(NeedsCheckpoint):
         """Initialize the callback.
 
         Args:
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `NeedsCheckpoint`. The ``preferred_checkpoint`` value
-                ``"loss"`` selects the loss checkpoint. Every other value
-                selects the metric checkpoint. Any other key raises
-                ``TypeError``.
+            **kwargs: Keyword arguments forwarded to `NeedsCheckpoint`.
+                The ``preferred_checkpoint`` value ``"loss"`` selects
+                the loss checkpoint. Every other value selects the
+                metric checkpoint. Any other key raises ``TypeError``.
 
         """
         super().__init__(**kwargs)
@@ -55,8 +54,8 @@ class AIMETCallback(NeedsCheckpoint):
         deep copy of that module, so the module keeps its weights.
 
         Args:
-            _ (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model to quantize.
+            _: The trainer. Unused.
+            pl_module: The model to quantize.
 
         """
         pl_module.core.quantize(self.get_checkpoint(pl_module))

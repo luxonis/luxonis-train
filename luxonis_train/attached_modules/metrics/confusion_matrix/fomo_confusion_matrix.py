@@ -67,9 +67,9 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
         """Initialize the metric with the IoU threshold ``0``.
 
         Args:
-            iou_threshold (float | None): Ignored. A value other than
-                ``None`` and ``0.0`` logs a warning.
-            **kwargs (``Any``): Keyword arguments forwarded to
+            iou_threshold: Ignored. A value other than ``None`` and
+                ``0.0`` logs a warning.
+            **kwargs: Keyword arguments forwarded to
                 `DetectionConfusionMatrix`, such as ``node``.
 
         """
@@ -95,11 +95,11 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
         `DetectionConfusionMatrix.update` then counts the boxes.
 
         Args:
-            keypoints (``list[Tensor]``): The keypoints of each image, of
-                shape ``[K_i, 1, 4]``, as ``[x, y, probability, class]``
-                in pixels. The length of the list is the batch size.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            keypoints: The keypoints of each image, of shape
+                ``[K_i, 1, 4]``, as ``[x, y, probability, class]`` in
+                pixels. The length of the list is the batch size.
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``. The values are
                 normalized, and ``x`` and ``y`` are the top-left corner.
                 The method writes ``xyxy`` pixels into it.

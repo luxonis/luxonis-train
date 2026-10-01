@@ -121,15 +121,15 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         the weights in the ``loss_params`` of the model.
 
         Args:
-            tal_topk (int): The ``topk`` of `TaskAlignedAssigner`, the
-                largest number of positive anchors for each target box.
-            class_loss_weight (float): Weight of the classification term.
-            bbox_loss_weight (float): Weight of the CIoU box term and of
-                the mask term.
-            dfl_loss_weight (float): Weight of the DFL term.
-            skip_stal (bool): Whether to turn off Small-Target-Aware Label
+            tal_topk: The ``topk`` of `TaskAlignedAssigner`, the largest
+                number of positive anchors for each target box.
+            class_loss_weight: Weight of the classification term.
+            bbox_loss_weight: Weight of the CIoU box term and of the
+                mask term.
+            dfl_loss_weight: Weight of the DFL term.
+            skip_stal: Whether to turn off Small-Target-Aware Label
                 Assignment (STAL) in the assigner.
-            **kwargs (``Any``): Keyword arguments forwarded to
+            **kwargs: Keyword arguments forwarded to
                 `PrecisionDFLDetectionLoss`, such as ``node`` and
                 ``final_loss_weight``.
 
@@ -168,33 +168,31 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         `compute_segmentation_loss`.
 
         Args:
-            features (``list[Tensor]``): One tensor per scale, of shape
+            features: One tensor per scale, of shape
                 ``[B, 4 * reg_max + n_classes, H_i, W_i]``. The
                 ``features`` output of the node.
-            prototypes (``Tensor``): Mask prototypes of shape
-                ``[B, n_masks, h, w]``. The ``prototypes`` output of the
-                node.
-            mask_coefficients (``Tensor``): Mask coefficients of shape
-                ``[B, n_masks, N]``, for the ``N`` anchors of all scales.
-                The ``mask_coefficients`` output of the node.
-            target_boundingbox (``Tensor``): Target boxes of shape
-                ``[N_gt, 6]``, with rows ``[batch_index, class, x, y, w,
-                h]``. The coordinates are ``xywh`` normalized to
-                ``[0, 1]``, with ``x`` and ``y`` at the top-left corner.
-                The ``boundingbox`` label of the task.
-            target_instance_segmentation (``Tensor``): Target masks of
-                shape ``[N_gt, H, W]``, one for each row of
+            prototypes: Mask prototypes of shape ``[B, n_masks, h, w]``.
+                The ``prototypes`` output of the node.
+            mask_coefficients: Mask coefficients of shape
+                ``[B, n_masks, N]``, for the ``N`` anchors of all
+                scales. The ``mask_coefficients`` output of the node.
+            target_boundingbox: Target boxes of shape ``[N_gt, 6]``,
+                with rows ``[batch_index, class, x, y, w, h]``. The
+                coordinates are ``xywh`` normalized to ``[0, 1]``, with
+                ``x`` and ``y`` at the top-left corner. The
+                ``boundingbox`` label of the task.
+            target_instance_segmentation: Target masks of shape
+                ``[N_gt, H, W]``, one for each row of
                 ``target_boundingbox``, in the same order. The
                 ``instance_segmentation`` label of the task.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The scalar weighted total
-            loss, and a dictionary that maps ``"class"``, ``"iou"``,
-            ``"dfl"``, and ``"seg"`` to the detached terms before the
-            weights. The total loss and ``"seg"`` are ``NaN`` when no
-            anchor is positive. The total loss and ``"dfl"`` have the
-            shape ``[1]`` when ``reg_max`` of the node is ``1`` and an
-            anchor is positive.
+            The scalar weighted total loss, and a dictionary that maps
+            ``"class"``, ``"iou"``, ``"dfl"``, and ``"seg"`` to the
+            detached terms before the weights. The total loss and
+            ``"seg"`` are ``NaN`` when no anchor is positive. The total
+            loss and ``"dfl"`` have the shape ``[1]`` when ``reg_max``
+            of the node is ``1`` and an anchor is positive.
 
         """
         self._init_parameters(features)
@@ -316,26 +314,23 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         run first.
 
         Args:
-            fg_mask (``Tensor``): Boolean mask of the positive anchors, of
-                shape ``[B, N]``.
-            gt_masks (``Tensor``): Target masks of all images, of shape
-                ``[N_gt, h, w]``, at the prototype size. The masks of one
-                image are in the order of its target boxes.
-            gt_idx (``Tensor``): For each anchor, the index of the
-                assigned box among the target boxes of its image, of
-                shape ``[B, N]``.
-            bboxes (``Tensor``): Assigned boxes in ``xyxy`` pixels of the
-                input image, of shape ``[B, N, 4]``.
-            batch_ids (``Tensor``): Image index of each target mask, of
-                shape ``[N_gt, 1]``.
-            proto (``Tensor``): Mask prototypes of shape
-                ``[B, n_masks, h, w]``.
-            pred_masks (``Tensor``): Mask coefficients of shape
-                ``[B, N, n_masks]``.
+            fg_mask: Boolean mask of the positive anchors, of shape
+                ``[B, N]``.
+            gt_masks: Target masks of all images, of shape
+                ``[N_gt, h, w]``, at the prototype size. The masks of
+                one image are in the order of its target boxes.
+            gt_idx: For each anchor, the index of the assigned box among
+                the target boxes of its image, of shape ``[B, N]``.
+            bboxes: Assigned boxes in ``xyxy`` pixels of the input
+                image, of shape ``[B, N, 4]``.
+            batch_ids: Image index of each target mask, of shape
+                ``[N_gt, 1]``.
+            proto: Mask prototypes of shape ``[B, n_masks, h, w]``.
+            pred_masks: Mask coefficients of shape ``[B, N, n_masks]``.
 
         Returns:
-            ``Tensor``: The scalar sum of the anchor losses, divided by the
-            number of positive anchors. ``NaN`` when ``fg_mask`` has no
+            The scalar sum of the anchor losses, divided by the number
+            of positive anchors. ``NaN`` when ``fg_mask`` has no
             positive anchor.
 
         """

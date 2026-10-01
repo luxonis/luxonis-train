@@ -35,11 +35,11 @@ def _namespace_version(module: str) -> int | None:
     The version is the number of the last ``v<N>`` package in the path.
 
     Args:
-        module (str): The dotted path of a module.
+        module: The dotted path of a module.
 
     Returns:
-        int | None: The number ``N``, or ``None`` when the path has no
-        ``v<N>`` package.
+        The number ``N``, or ``None`` when the path has no ``v<N>``
+        package.
 
     Example:
         >>> _namespace_version("predefined_models.detection.v2.model")
@@ -89,18 +89,18 @@ class PredefinedModelMeta(VariantMeta):
         - the ``<family>`` entry has a lower or equal version.
 
         Args:
-            name (str): The name of the new class.
-            bases (``tuple[type, ...]``): The base classes.
-            attrs (``dict[str, Any]``): The namespace of the class body.
-            register (bool): Register the class. Set it to ``False``
-                for a base class.
-            register_name (str | None): The family name to register
-                under. ``None`` takes the class name.
-            registry (``Registry | None``): The registry to use. ``None``
-                takes the ``REGISTRY`` attribute of the class.
+            name: The name of the new class.
+            bases: The base classes.
+            attrs: The namespace of the class body.
+            register: Register the class. Set it to ``False`` for a base
+                class.
+            register_name: The family name to register under. ``None``
+                takes the class name.
+            registry: The registry to use. ``None`` takes the
+                ``REGISTRY`` attribute of the class.
 
         Returns:
-            type: The new class.
+            The new class.
 
         Raises:
             ValueError: When the class sets ``_VERSION`` to a value that
@@ -195,8 +195,8 @@ class BasePredefinedModel(
         dictionary value.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: The default variant name,
-            and the variants with their constructor arguments.
+            The default variant name, and the variants with their
+            constructor arguments.
 
         """
 
@@ -214,13 +214,12 @@ class BasePredefinedModel(
         every node. The method edits the configs from `nodes` in place.
 
         Args:
-            include_losses (bool): Keep the losses of the nodes.
-            include_metrics (bool): Keep the metrics of the nodes.
-            include_visualizers (bool): Keep the visualizers of the
-                nodes.
+            include_losses: Keep the losses of the nodes.
+            include_metrics: Keep the metrics of the nodes.
+            include_visualizers: Keep the visualizers of the nodes.
 
         Returns:
-            list[NodeConfig]: The configs from `nodes`, filtered.
+            The configs from `nodes`, filtered.
 
         Example:
             >>> from luxonis_train.config.predefined_models import (
@@ -253,11 +252,11 @@ class BasePredefinedModel(
         the key, the method returns an inactive `FreezingConfig`.
 
         Args:
-            params (``Params``): The constructor parameters of a node.
-                The method removes the ``freezing`` key from them.
+            params: The constructor parameters of a node. The method
+                removes the ``freezing`` key from them.
 
         Returns:
-            FreezingConfig: The freezing config of the node.
+            The freezing config of the node.
 
         Raises:
             ValueError: When ``freezing`` is neither a dictionary nor a
@@ -327,82 +326,74 @@ class SimplePredefinedModel(BasePredefinedModel):
         checks their types at run time.
 
         Args:
-            backbone (str): The class name of the registered backbone
-                node.
-            backbone_variant (str | None): The variant of the backbone.
-                ``None`` builds the backbone without variant
-                parameters.
-            head (str): The class name of the registered head node.
-            head_variant (str | None): The variant of the head.
-                ``None`` builds the head without variant parameters.
-            neck (str | None): The class name of the registered neck
-                node. ``None`` connects the head to the backbone.
-            neck_variant (str | None): The variant of the neck.
-                ``None`` builds the neck without variant parameters.
-            loss (str): The class name of the registered loss. The
-                model attaches it to the head with weight ``1.0``.
-            metrics (str | list[str] | None): The class names of the
-                registered metrics attached to the head. A string
-                names one metric. ``None`` attaches no metric.
-            main_metric (str | None): The metric to mark as the main
-                metric. The trainer keeps the checkpoints with the
-                highest values of this metric in ``best_val_metric``.
-                ``None`` takes the only name in ``metrics``, or no
-                metric when ``metrics`` is empty. A name that is not in
-                ``metrics`` marks no metric. When no metric of the
-                config is marked, `ModelConfig.check_main_metric` marks
-                the first one.
-            visualizer (str | None): The class name of the registered
-                visualizer attached to the head. ``None`` attaches no
+            backbone: The class name of the registered backbone node.
+            backbone_variant: The variant of the backbone. ``None``
+                builds the backbone without variant parameters.
+            head: The class name of the registered head node.
+            head_variant: The variant of the head. ``None`` builds the
+                head without variant parameters.
+            neck: The class name of the registered neck node. ``None``
+                connects the head to the backbone.
+            neck_variant: The variant of the neck. ``None`` builds the
+                neck without variant parameters.
+            loss: The class name of the registered loss. The model
+                attaches it to the head with weight ``1.0``.
+            metrics: The class names of the registered metrics attached
+                to the head. A string names one metric. ``None``
+                attaches no metric.
+            main_metric: The metric to mark as the main metric. The
+                trainer keeps the checkpoints with the highest values of
+                this metric in ``best_val_metric``. ``None`` takes the
+                only name in ``metrics``, or no metric when ``metrics``
+                is empty. A name that is not in ``metrics`` marks no
+                metric. When no metric of the config is marked,
+                `ModelConfig.check_main_metric` marks the first one.
+            visualizer: The class name of the registered visualizer
+                attached to the head. ``None`` attaches no visualizer.
+            confusion_matrix_available: Whether the head supports the
+                `ConfusionMatrix` metric. A subclass sets it for its
+                head.
+            backbone_params: The constructor parameters of the backbone.
+                A ``freezing`` key does not reach the constructor. See
+                the notes.
+            neck_params: The constructor parameters of the neck, with
+                the same ``freezing`` key.
+            use_neck: Build the neck. ``False`` leaves the neck out even
+                when ``neck`` is set, and the head reads from the
+                backbone.
+            head_params: The constructor parameters of the head, with
+                the same ``freezing`` key.
+            loss_params: The constructor parameters of the loss.
+            metrics_params: The constructor parameters that every metric
+                in ``metrics`` receives. The ``ConfusionMatrix`` metric
+                that ``enable_confusion_matrix`` adds does not receive
+                them.
+            visualizer_params: The constructor parameters of the
                 visualizer.
-            confusion_matrix_available (bool): Whether the head
-                supports the `ConfusionMatrix` metric. A subclass sets
-                it for its head.
-            backbone_params (``Params | None``): The constructor
-                parameters of the backbone. A ``freezing`` key does not
-                reach the constructor. See the notes.
-            neck_params (``Params | None``): The constructor parameters
-                of the neck, with the same ``freezing`` key.
-            use_neck (bool): Build the neck. ``False`` leaves the neck
-                out even when ``neck`` is set, and the head reads from
-                the backbone.
-            head_params (``Params | None``): The constructor parameters
-                of the head, with the same ``freezing`` key.
-            loss_params (``Params | None``): The constructor parameters
-                of the loss.
-            metrics_params (``Params | None``): The constructor
-                parameters that every metric in ``metrics`` receives.
-                The ``ConfusionMatrix`` metric that
-                ``enable_confusion_matrix`` adds does not receive them.
-            visualizer_params (``Params | None``): The constructor
-                parameters of the visualizer.
-            enable_confusion_matrix (bool): Attach the
-                ``ConfusionMatrix`` metric to the head, without the
-                main metric flag. It has no effect when
-                ``confusion_matrix_available`` is ``False``.
-            confusion_matrix_params (``Params | None``): The constructor
-                parameters of the ``ConfusionMatrix`` metric.
-            task_name (str | None): The dataset task the head reads. It
-                becomes the ``task_name`` of the head node.
-            torchmetrics_task (``Literal["binary", "multiclass", "multilabel"] | None``):
-                A value for the ``torchmetrics_task`` key that every
-                metric in ``metrics`` receives. ``None`` adds no key.
-                The key goes into ``metrics_params``, so a non-empty
-                ``metrics_params`` dictionary changes in place. No
-                metric of this package reads the key. The
+            enable_confusion_matrix: Attach the ``ConfusionMatrix``
+                metric to the head, without the main metric flag. It has
+                no effect when ``confusion_matrix_available`` is
+                ``False``.
+            confusion_matrix_params: The constructor parameters of the
+                ``ConfusionMatrix`` metric.
+            task_name: The dataset task the head reads. It becomes the
+                ``task_name`` of the head node.
+            torchmetrics_task: A value for the ``torchmetrics_task`` key
+                that every metric in ``metrics`` receives. ``None`` adds
+                no key. The key goes into ``metrics_params``, so a
+                non-empty ``metrics_params`` dictionary changes in
+                place. No metric of this package reads the key. The
                 `TorchMetricWrapper` metrics read ``task`` and pass
                 ``torchmetrics_task`` on to ``torchmetrics``, which
                 raises ``ValueError`` for it. Set ``task`` in
                 ``metrics_params`` for them instead.
-            per_class_metrics (bool | None): A value for the
-                ``per_class_metrics`` key that every metric in
-                ``metrics`` receives. ``None`` adds no key. When
-                `LuxonisLightningModule` builds a metric, the key
-                becomes the per-class parameter that the metric class
-                declares. When the class declares none, the module
+            per_class_metrics: A value for the ``per_class_metrics`` key
+                that every metric in ``metrics`` receives. ``None`` adds
+                no key. When `LuxonisLightningModule` builds a metric,
+                the key becomes the per-class parameter that the metric
+                class declares. When the class declares none, the module
                 drops the key and logs a warning.
-            finetuning (``dict[Literal["backbone", "neck", "head"], list[Params]] | None``):
-                The finetuning entries of each component. Each
+            finetuning: The finetuning entries of each component. Each
                 dictionary becomes a `FinetuningConfig` of that node.
 
         Raises:
@@ -585,20 +576,18 @@ class SimplePredefinedModel(BasePredefinedModel):
         """Store the metric names and the parameters they share.
 
         Args:
-            metrics (str | list[str] | None): The metric names. A string
-                becomes a list of one name, and ``None`` becomes an
-                empty list.
-            main_metric (str | None): The main metric. ``None`` takes the
-                only name in ``metrics``, or stays ``None`` when
-                ``metrics`` is empty.
-            metrics_params (``Params | None``): The parameters every
-                metric receives. When ``torchmetrics_task`` is set, a
-                non-empty dictionary gains that key in place.
-            per_class_metrics (bool | None): The ``per_class_metrics``
-                value for every metric. ``None`` adds no key.
-            torchmetrics_task (``Literal["binary", "multiclass", "multilabel"] | None``):
-                The ``torchmetrics_task`` value for every metric.
-                ``None`` adds no key.
+            metrics: The metric names. A string becomes a list of one
+                name, and ``None`` becomes an empty list.
+            main_metric: The main metric. ``None`` takes the only name
+                in ``metrics``, or stays ``None`` when ``metrics`` is
+                empty.
+            metrics_params: The parameters every metric receives. When
+                ``torchmetrics_task`` is set, a non-empty dictionary
+                gains that key in place.
+            per_class_metrics: The ``per_class_metrics`` value for every
+                metric. ``None`` adds no key.
+            torchmetrics_task: The ``torchmetrics_task`` value for every
+                metric. ``None`` adds no key.
 
         Raises:
             ValueError: When ``main_metric`` is ``None`` and ``metrics``

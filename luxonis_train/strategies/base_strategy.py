@@ -55,9 +55,8 @@ class BaseTrainingStrategy(
         ``trainer.training_strategy.params`` as keyword arguments.
 
         Args:
-            pl_module (LuxonisLightningModule): The module to train.
-            **kwargs (``Any``): The parameters of the strategy from the
-                config.
+            pl_module: The module to train.
+            **kwargs: The parameters of the strategy from the config.
 
         """
         ...
@@ -71,8 +70,8 @@ class BaseTrainingStrategy(
         share one inner optimizer.
 
         Returns:
-            list[StrategyRule]: The rules. A rule without a scheduler
-            uses the scheduler of `get_base_configs`.
+            The rules. A rule without a scheduler uses the scheduler of
+            `get_base_configs`.
 
         """
         ...
@@ -89,8 +88,7 @@ class BaseTrainingStrategy(
         ``trainer.optimizer`` and ``trainer.scheduler``.
 
         Returns:
-            tuple[OptimizerConfig, SchedulerConfig]: The base optimizer
-            config and the base scheduler config.
+            The base optimizer config and the base scheduler config.
 
         """
         ...
@@ -110,11 +108,11 @@ class BaseTrainingStrategy(
         after a checkpoint loads.
 
         Args:
-            runtime (TrainingPlanRuntime): The optimizers and schedulers
-                of the plan. ``runtime.group(handle)`` returns a group.
-            handles (``Mapping[str, tuple[GroupHandle, ...]]``): The
-                handles of the groups of each rule, keyed by the rule
-                tag. A rule that claims no parameter has no entry.
+            runtime: The optimizers and schedulers of the plan.
+                ``runtime.group(handle)`` returns a group.
+            handles: The handles of the groups of each rule, keyed by
+                the rule tag. A rule that claims no parameter has no
+                entry.
 
         """
         self.runtime = runtime
@@ -139,7 +137,7 @@ class BaseTrainingStrategy(
         `LegacyStrategyAdapter` overrides the method.
 
         Returns:
-            set[int]: The ``id()`` of each claimed parameter.
+            The ``id()`` of each claimed parameter.
 
         """
         return set()
@@ -152,9 +150,9 @@ class BaseTrainingStrategy(
         `LegacyStrategyAdapter` overrides the method.
 
         Returns:
-            ``list[tuple[Optimizer, Any]]``: Pairs of an optimizer and
-            its scheduler. The scheduler is a scheduler, a Lightning
-            scheduler config dictionary, or ``None``.
+            Pairs of an optimizer and its scheduler. The scheduler is a
+            scheduler, a Lightning scheduler config dictionary, or
+            ``None``.
 
         """
         return []

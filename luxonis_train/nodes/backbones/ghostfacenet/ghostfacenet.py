@@ -19,9 +19,9 @@ class GhostFaceNet(BaseNode):
 
     GhostFaceNetsV2 is a convolutional network for face recognition that
     also suits other embedding tasks. It builds on GhostNet. The node
-    has a ``3x3`` stem with stride 2 and `torch.nn.PReLU`, one
+    has a ``3x3`` stem with stride 2 and ``torch.nn.PReLU``, one
     `GhostBottleneckLayer` for each entry of ``layer_params``, and a
-    ``1x1`` convolution with `torch.nn.PReLU`.
+    ``1x1`` convolution with ``torch.nn.PReLU``.
 
     Inputs:
         - ``inputs`` (``Tensor``): :math:`\left[B, C, H, W\right]`
@@ -149,16 +149,15 @@ class GhostFaceNet(BaseNode):
         rounds both counts to a multiple of 4.
 
         Args:
-            width_multiplier (int): The scale of the channel counts of
-                the stem, the blocks, and the final convolution.
-            layer_params (``list[LayerParamsDict]``): One entry for each
-                `GhostBottleneckLayer`, in order. Each entry is a
+            width_multiplier: The scale of the channel counts of the
+                stem, the blocks, and the final convolution.
+            layer_params: One entry for each `GhostBottleneckLayer`, in
+                order. Each entry is a
                 `luxonis_train.nodes.backbones.ghostfacenet.ghostfacenet.LayerParamsDict`
                 with the mode, kernel sizes, expansion sizes, output
                 channels, squeeze-and-excite ratios, and strides of the
                 blocks in one layer.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         Raises:
             IndexError: When ``layer_params`` is empty.
@@ -211,17 +210,17 @@ class GhostFaceNet(BaseNode):
         ``method``. It then changes these modules, for every value of
         ``method``:
 
-        - The weight of each `torch.nn.Conv2d` and `torch.nn.Linear`
+        - The weight of each ``torch.nn.Conv2d`` and ``torch.nn.Linear``
           gets values from a normal distribution with mean ``0`` and
           standard deviation :math:`\sqrt{2 / (n (1 + 0.25^2))}`, where
           :math:`n` is the fan-in. The biases do not change.
-        - Each `torch.nn.BatchNorm2d` gets ``momentum`` ``0.9`` and
+        - Each ``torch.nn.BatchNorm2d`` gets ``momentum`` ``0.9`` and
           ``eps`` ``1e-5``. These values replace the values of the
           ``"yolo"`` method.
 
         Args:
-            method (str | None): The name of the initialization method
-                for `BaseNode.initialize_weights`.
+            method: The name of the initialization method for
+                `BaseNode.initialize_weights`.
 
         Example:
             >>> from torch import Size, nn
@@ -251,13 +250,12 @@ class GhostFaceNet(BaseNode):
         """Run the stem, the layers, and the final convolution.
 
         Args:
-            x (``Tensor``): Image batch of shape
-                ``[B, in_channels, H, W]``.
+            x: Image batch of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The output of every module in order: the
-            stem, each layer, and the final convolution. ``V2`` gives 11
-            outputs. The last one has 960 channels at the stride 32.
+            The outputs of the stem, of each layer, and of the final
+            convolution, in order. ``V2`` gives 11 outputs. The last one
+            has 960 channels at the stride 32.
 
         Example:
             >>> import torch
@@ -286,9 +284,8 @@ class GhostFaceNet(BaseNode):
         ``Variants`` section of `GhostFaceNet` lists all values.
 
         Returns:
-            ``tuple[str, dict[str, VariantParamsDict]]``: The name
-            ``"V2"``, and a dictionary that maps ``"V2"`` to its
-            constructor arguments.
+            The name ``"V2"``, and a dictionary that maps ``"V2"`` to
+            its constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes import GhostFaceNet
@@ -387,17 +384,15 @@ class LayerParamsDict(TypedDict):
     have the same length.
 
     Attributes:
-        mode (``Literal["original", "attention"]``): The ghost module of
-            the expansion in each block.
-        kernel_sizes (list[int]): The depthwise kernel size of each
-            block.
-        expand_sizes (list[int]): The hidden channels of each block,
-            before ``width_multiplier``.
-        output_channels (list[int]): The output channels of each block,
-            before ``width_multiplier``.
-        se_ratios (list[float]): The squeeze-and-excite ratio of each
-            block. ``0`` adds no squeeze-and-excite.
-        strides (list[int]): The stride of each block.
+        mode: The ghost module of the expansion in each block.
+        kernel_sizes: The depthwise kernel size of each block.
+        expand_sizes: The hidden channels of each block, before
+            ``width_multiplier``.
+        output_channels: The output channels of each block, before
+            ``width_multiplier``.
+        se_ratios: The squeeze-and-excite ratio of each block. ``0``
+            adds no squeeze-and-excite.
+        strides: The stride of each block.
 
     """
 
@@ -413,9 +408,8 @@ class VariantParamsDict(TypedDict):
     """Constructor arguments of a `GhostFaceNet` variant.
 
     Attributes:
-        width_multiplier (int): The scale of the channel counts.
-        layer_params (``list[LayerParamsDict]``): The parameters of each
-            layer, in order.
+        width_multiplier: The scale of the channel counts.
+        layer_params: The parameters of each layer, in order.
 
     """
 

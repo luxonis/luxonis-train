@@ -99,10 +99,10 @@ class DetectionConfusionMatrix(BaseMetric):
         node, so a metric without a node raises ``RuntimeError``.
 
         Args:
-            iou_threshold (float): The value that the IoU of a target
-                box and a prediction must exceed for a match.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            iou_threshold: The value that the IoU of a target box and a
+                prediction must exceed for a match.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -130,12 +130,11 @@ class DetectionConfusionMatrix(BaseMetric):
         image, as the class docstring describes.
 
         Args:
-            boundingbox (``list[Tensor]``): The predicted boxes of each
-                image, of shape ``[M_i, 6]``, as
-                ``[x1, y1, x2, y2, conf, class]`` in pixels. The length
-                of the list is the batch size.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            boundingbox: The predicted boxes of each image, of shape
+                ``[M_i, 6]``, as ``[x1, y1, x2, y2, conf, class]`` in
+                pixels. The length of the list is the batch size.
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``. The values are
                 normalized, and ``x`` and ``y`` are the top-left corner.
 
@@ -153,12 +152,12 @@ class DetectionConfusionMatrix(BaseMetric):
         """Return the MCC and the matrix since the last reset.
 
         Returns:
-            ``dict[str, Tensor]``: The dictionary holds:
+            A dictionary with two keys.
 
-            - ``"mcc"``: the scalar MCC of the whole matrix, background
-              included, see `compute_mcc`.
-            - ``"confusion_matrix"``: the ``int64`` counts, of shape
-              ``[n_classes + 1, n_classes + 1]``. Rows are target
+            - ``"mcc"`` holds the scalar MCC of the whole matrix,
+              background included, see `compute_mcc`.
+            - ``"confusion_matrix"`` holds the ``int64`` counts, of
+              shape ``[n_classes + 1, n_classes + 1]``. Rows are target
               classes, columns are predicted classes, and index
               ``n_classes`` is the background.
 

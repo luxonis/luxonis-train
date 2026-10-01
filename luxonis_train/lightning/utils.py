@@ -79,12 +79,12 @@ class MainMetric(NamedTuple):
     """The metric that selects the best checkpoint.
 
     Attributes:
-        node_name (str): The identifier of the node that holds the
-            metric. It is the alias of the node when the config sets
-            one, and the class name otherwise.
-        metric_name (str): The identifier of the metric. A metric whose
-            class name contains ``"ConfusionMatrix"`` gets the
-            identifier ``"mcc"``.
+        node_name: The identifier of the node that holds the metric. It
+            is the alias of the node when the config sets one, and the
+            class name otherwise.
+        metric_name: The identifier of the metric. A metric whose class
+            name contains ``"ConfusionMatrix"`` gets the identifier
+            ``"mcc"``.
 
     """
 
@@ -124,9 +124,8 @@ class LossAccumulator(defaultdict[str, float]):
         stored one. It moves the mean.
 
         Args:
-            losses (``dict[str, Tensor]``): Loss names mapped to
-                one-element tensors, as in the second value that
-                `compute_losses` returns.
+            losses: Loss names mapped to one-element tensors, as in the
+                second value that `compute_losses` returns.
 
         """
         for key, value in losses.items():
@@ -148,7 +147,7 @@ class NodeWrapper(nn.Module):
     stores every constructor argument under the same name. ``module`` is
     a registered submodule. The losses, the metrics, and the visualizers
     live in plain dictionaries, so the recursive methods of
-    `torch.nn.Module` do not reach them.
+    ``torch.nn.Module`` do not reach them.
 
     """
 
@@ -167,24 +166,23 @@ class NodeWrapper(nn.Module):
         """Initialize the wrapper.
 
         Args:
-            name (str): The identifier of the node in the graph.
-            module (BaseNode): The node.
-            losses (dict[str, BaseLoss]): The losses attached to the
-                node, keyed by their identifier.
-            metrics (dict[str, BaseMetric]): The metrics attached to
-                the node, keyed by their identifier.
-            visualizers (dict[str, BaseVisualizer]): The visualizers
-                attached to the node, keyed by their identifier.
-            unfreeze_after (int | None): The epoch at which the node
-                starts to train. ``None`` when the node is not frozen.
-            lr_after_unfreeze (float | None): The base learning rate of
-                the node from the unfreeze epoch on. ``None`` keeps the
-                rate that the scheduler reached.
-            finetuning (list[FinetuningConfig]): The optimizer and
-                scheduler overrides of the node.
-            inputs (list[str] | None): The names of the nodes and the
-                loader sources that feed this node. ``None`` becomes an
-                empty list.
+            name: The identifier of the node in the graph.
+            module: The node.
+            losses: The losses attached to the node, keyed by their
+                identifier.
+            metrics: The metrics attached to the node, keyed by their
+                identifier.
+            visualizers: The visualizers attached to the node, keyed by
+                their identifier.
+            unfreeze_after: The epoch at which the node starts to train.
+                ``None`` when the node is not frozen.
+            lr_after_unfreeze: The base learning rate of the node from
+                the unfreeze epoch on. ``None`` keeps the rate that the
+                scheduler reached.
+            finetuning: The optimizer and scheduler overrides of the
+                node.
+            inputs: The names of the nodes and the loader sources that
+                feed this node. ``None`` becomes an empty list.
 
         """
         super().__init__()
@@ -224,16 +222,16 @@ class NodeWrapper(nn.Module):
     def train(self, mode: bool = True) -> "NodeWrapper":
         """Set the training mode of the node and its attached modules.
 
-        `torch.nn.Module.train` reaches only the registered submodules,
+        ``torch.nn.Module.train`` reaches only the registered submodules,
         so this override also sets the mode of every loss, metric, and
         visualizer.
 
         Args:
-            mode (bool): ``True`` for training mode, ``False`` for
-                evaluation mode.
+            mode: ``True`` for training mode, ``False`` for evaluation
+                mode.
 
         Returns:
-            NodeWrapper: This wrapper.
+            This wrapper.
 
         """
         super().train(mode)
@@ -250,22 +248,22 @@ class NodeWrapper(nn.Module):
 class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     """The node graph of a model, built from a config.
 
-    A `torch.nn.ModuleDict` that maps each node identifier to its
+    A ``torch.nn.ModuleDict`` that maps each node identifier to its
     `NodeWrapper`. The constructor builds the nodes in topological
     order. It runs each node on zero tensors, so the nodes that follow
     know the shapes of their inputs.
 
     Attributes:
-        graph (dict[str, list[str]]): Each node identifier mapped to
-            the identifiers of the nodes that feed it.
-        main_metric (MainMetric | None): The metric that selects the
-            best checkpoint, or ``None`` when the config has none.
-        loader_input_shapes (``dict[str, dict[str, Size]]``): Each node
-            identifier mapped to the loader inputs the node reads, as
-            input name to shape without the batch dimension. A node fed
-            only by other nodes maps to an empty dictionary.
-        freeze_schedule (FreezeSchedule): The freeze schedule of the
-            nodes with ``freezing.active``.
+        graph: Each node identifier mapped to the identifiers of the
+            nodes that feed it.
+        main_metric: The metric that selects the best checkpoint, or
+            ``None`` when the config has none.
+        loader_input_shapes: Each node identifier mapped to the loader
+            inputs the node reads, as input name to shape without the
+            batch dimension. A node fed only by other nodes maps to an
+            empty dictionary.
+        freeze_schedule: The freeze schedule of the nodes with
+            ``freezing.active``.
 
     """
 
@@ -282,16 +280,16 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         pass builds each node's losses, metrics, and visualizers.
 
         Args:
-            cfg (Config): The config. ``model.nodes`` lists the nodes,
+            cfg: The config. ``model.nodes`` lists the nodes,
                 ``loader.image_source`` names the image input, and
                 ``trainer.epochs`` resolves a fractional or a missing
                 ``freezing.unfreeze_after``.
-            dataset_metadata (DatasetMetadata): The metadata of the
-                dataset. It fixes the task name of a node that sets
-                none, and it validates the metadata label types. It
-                also reaches every node constructor.
-            input_shapes (``dict[str, Size]``): Each loader input name
-                mapped to its shape, without the batch dimension.
+            dataset_metadata: The metadata of the dataset. It fixes the
+                task name of a node that sets none, and it validates the
+                metadata label types. It also reaches every node
+                constructor.
+            input_shapes: Each loader input name mapped to its shape,
+                without the batch dimension.
 
         Raises:
             RuntimeError: When a node sets no ``task_name`` and the
@@ -531,11 +529,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         """Return the log name of a node.
 
         Args:
-            node_name (str): The identifier of the node.
+            node_name: The identifier of the node.
 
         Returns:
-            str: ``"<task_name>-<node_name>"`` when the node has a task
-            name, and ``node_name`` alone otherwise.
+            ``"<task_name>-<node_name>"`` when the node has a task name,
+            and ``node_name`` alone otherwise.
 
         """
         return self[node_name].formatted_name
@@ -548,9 +546,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         The walk yields a node only after every node that feeds it.
 
         Yields:
-            tuple[str, NodeWrapper, list[str], list[str]]: The node
-            identifier, its wrapper, the identifiers of the nodes that
-            feed it, and the identifiers of the nodes not yet yielded.
+            The node identifier, its wrapper, the identifiers of the
+            nodes that feed it, and the identifiers of the nodes not yet
+            yielded.
 
         Raises:
             RuntimeError: When the walk makes no progress. A node then
@@ -589,11 +587,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         Both checkpoints keep ``trainer.save_top_k`` files.
 
         Args:
-            save_dir (``Path``): The directory that receives the
-                checkpoint subdirectories.
+            save_dir: The directory that receives the checkpoint
+                subdirectories.
 
         Returns:
-            ``list[pl.Callback]``: The callbacks, in the order above.
+            The callbacks, in the order above.
 
         """
         model_name = self._cfg.model.name
@@ -671,20 +669,18 @@ def compute_losses(
     weight.
 
     Args:
-        cfg (Config): The config. ``trainer.log_sub_losses`` decides
-            whether the sub-losses reach the logged dictionary.
-        losses (``dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]``):
-            The losses of one step. The first key is the node
+        cfg: The config. ``trainer.log_sub_losses`` decides whether the
+            sub-losses reach the logged dictionary.
+        losses: The losses of one step. The first key is the node
             identifier and the second key is the loss identifier. A
             value is the loss tensor, or a tuple of the loss tensor and
             its sub-losses.
-        device (torch.device): The device of the total.
+        device: The device of the total.
 
     Returns:
-        ``tuple[Tensor, dict[str, Tensor]]``: The total and the losses
-        for logging. The total is a tensor of shape ``[1]`` on
-        ``device`` that keeps its gradient graph. The dictionary holds
-        ``"loss/<node>/<loss>"`` for every loss,
+        The total and the losses for logging. The total is a tensor of
+        shape ``[1]`` on ``device`` that keeps its gradient graph. The
+        dictionary holds ``"loss/<node>/<loss>"`` for every loss,
         ``"loss/<node>/<loss>/<sub-loss>"`` for every sub-loss when
         ``trainer.log_sub_losses`` is set, and ``"loss"`` for the total.
         The function detaches every logged tensor and moves it to the
@@ -749,14 +745,12 @@ def build_training_strategy(
     of the config.
 
     Args:
-        cfg (Config): The config. ``trainer.training_strategy`` names
-            the strategy and holds its parameters.
-        pl_module (``pl.LightningModule``): The Lightning module the
-            strategy attaches to.
+        cfg: The config. ``trainer.training_strategy`` names the
+            strategy and holds its parameters.
+        pl_module: The Lightning module the strategy attaches to.
 
     Returns:
-        BaseTrainingStrategy | None: The strategy, or ``None`` when the
-        config names none.
+        The strategy, or ``None`` when the config names none.
 
     """
     training_strategy = cfg.trainer.training_strategy
@@ -826,19 +820,17 @@ def postprocess_metrics(
     """Flatten the result of `BaseMetric.compute` into named values.
 
     Args:
-        name (str): The identifier of the metric.
-        values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
-            The computed result. A tensor is the main value. A tuple
-            holds the main value and the sub-metrics. A dictionary
-            holds only sub-metrics.
-        log_sub_metrics (bool): Keep the sub-metrics. When ``False``,
-            only the main value remains, and a dictionary result gives
-            an empty dictionary.
+        name: The identifier of the metric.
+        values: The computed result. A tensor is the main value. A tuple
+            holds the main value and the sub-metrics. A dictionary holds
+            only sub-metrics.
+        log_sub_metrics: Keep the sub-metrics. When ``False``, only the
+            main value remains, and a dictionary result gives an empty
+            dictionary.
 
     Returns:
-        ``dict[str, Tensor]``: ``name`` mapped to the main value, plus
-        each sub-metric under its own key. A dictionary result gives
-        only the sub-metrics.
+        ``name`` mapped to the main value, plus each sub-metric under
+        its own key. A dictionary result gives only the sub-metrics.
 
     Raises:
         ValueError: When ``values`` has none of the three forms.
@@ -893,15 +885,15 @@ def metric_artifact_image_name(
     is.
 
     Args:
-        mode (``Literal["test", "val"]``): The evaluation stage.
-        formatted_node_name (str): The log name of the node, see
+        mode: The evaluation stage.
+        formatted_node_name: The log name of the node, see
             `Nodes.formatted_name`.
-        metric_name (str): The identifier of the metric.
-        artifact_name (str): The name of the artifact, as
+        metric_name: The identifier of the metric.
+        artifact_name: The name of the artifact, as
             `BaseMetric.get_artifacts` keys it.
 
     Returns:
-        str: The image name.
+        The image name.
 
     Example:
         >>> metric_artifact_image_name("val", "head", "pr_curve", "curve")
@@ -923,13 +915,13 @@ def mlflow_image_key(name: str, step: int) -> str:
     the expected artifacts of a run without a tracker.
 
     Args:
-        name (str): The image name that ``log_image`` receives. It must
-            hold at least one ``/``.
-        step (int): The step of the image. The Lightning module passes
-            the epoch.
+        name: The image name that ``log_image`` receives. It must hold
+            at least one ``/``.
+        step: The step of the image. The Lightning module passes the
+            epoch.
 
     Returns:
-        str: ``"<base path>/<step>/<caption>.png"``.
+        ``"<base path>/<step>/<caption>.png"``.
 
     Raises:
         ValueError: When ``name`` holds no ``/``.
@@ -970,16 +962,14 @@ def log_metric_artifacts(
     step.
 
     Args:
-        tracker (LuxonisTrackerPL): The tracker that receives the
-            images.
-        metric (BaseMetric): The metric that produces the artifacts.
-        computed (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
-            The result of `BaseMetric.compute`. The function hands it
-            to `BaseMetric.get_artifacts`.
-        mode (``Literal["test", "val"]``): The evaluation stage.
-        formatted_node_name (str): The log name of the node.
-        metric_name (str): The identifier of the metric.
-        current_epoch (int): The current epoch, used as the step.
+        tracker: The tracker that receives the images.
+        metric: The metric that produces the artifacts.
+        computed: The result of `BaseMetric.compute`. The function hands
+            it to `BaseMetric.get_artifacts`.
+        mode: The evaluation stage.
+        formatted_node_name: The log name of the node.
+        metric_name: The identifier of the metric.
+        current_epoch: The current epoch, used as the step.
 
     """
     try:
@@ -1109,36 +1099,31 @@ def log_balanced_class_images(
     samples of every visualization with `log_sequential_images`.
 
     Args:
-        tracker (LuxonisTrackerPL): The tracker that receives the
-            images.
-        nodes (Nodes): The node graph, used for the log names of the
-            nodes.
-        visualizations (``dict[str, dict[str, Tensor]]``): The node
-            identifier mapped to the visualizer identifier mapped to a
-            batch of images of shape ``[B, C, H, W]``. Must not be
-            empty, because the function reads the batch size from its
-            first entry.
-        labels (Labels): The labels of the batch.
-        cls_task_keys (list[str]): The label keys that hold multi-label
+        tracker: The tracker that receives the images.
+        nodes: The node graph, used for the log names of the nodes.
+        visualizations: The node identifier mapped to the visualizer
+            identifier mapped to a batch of images of shape
+            ``[B, C, H, W]``. Must not be empty, because the function
+            reads the batch size from its first entry.
+        labels: The labels of the batch.
+        cls_task_keys: The label keys that hold multi-label
             classification targets of shape ``[B, n_classes]``. The
-            function concatenates the tensors along the class
-            dimension, in this order. A class is present when its
-            value is above 0.
-        class_log_counts (list[int]): How many selected samples held
-            each class in this epoch. Its length is the total number
-            of classes. The function updates it in place.
-        n_logged_images (int): How many images each node logged in
-            this epoch before this batch.
-        max_log_images (int): The maximum number of images each node
-            logs in one epoch.
-        mode (``Literal["test", "val"]``): The evaluation stage.
-        current_epoch (int): The current epoch, used as the step.
+            function concatenates the tensors along the class dimension,
+            in this order. A class is present when its value is above 0.
+        class_log_counts: How many selected samples held each class in
+            this epoch. Its length is the total number of classes. The
+            function updates it in place.
+        n_logged_images: How many images each node logged in this epoch
+            before this batch.
+        max_log_images: The maximum number of images each node logs in
+            one epoch.
+        mode: The evaluation stage.
+        current_epoch: The current epoch, used as the step.
 
     Returns:
-        tuple[int, list[int], list[int]]: The image counter of the last
-        node after this batch, as `log_sequential_images` returns it,
-        ``class_log_counts`` itself, and the batch indices of the
-        selected samples.
+        The image counter of the last node after this batch, as
+        `log_sequential_images` returns it, ``class_log_counts`` itself,
+        and the batch indices of the selected samples.
 
     """
     logged_indices = _select_balanced_indices(
@@ -1184,21 +1169,18 @@ def log_sequential_images(
     ``<node>`` is the log name from `Nodes.formatted_name`.
 
     Args:
-        tracker (LuxonisTrackerPL): The tracker that receives the
-            images.
-        nodes (Nodes): The node graph, used for the log names of the
-            nodes.
-        visualizations (``dict[str, dict[str, Tensor]]``): The node
-            identifier mapped to the visualizer identifier mapped to a
-            batch of images of shape ``[B, C, H, W]``. Must not be
-            empty.
-        n_logged_images (int): The counter value each node starts at.
-        max_log_images (int): The counter value at which a node stops.
-        mode (``Literal["test", "val"]``): The evaluation stage.
-        current_epoch (int): The current epoch, used as the step.
+        tracker: The tracker that receives the images.
+        nodes: The node graph, used for the log names of the nodes.
+        visualizations: The node identifier mapped to the visualizer
+            identifier mapped to a batch of images of shape
+            ``[B, C, H, W]``. Must not be empty.
+        n_logged_images: The counter value each node starts at.
+        max_log_images: The counter value at which a node stops.
+        mode: The evaluation stage.
+        current_epoch: The current epoch, used as the step.
 
     Returns:
-        int: The counter of the last node after this batch.
+        The counter of the last node after this batch.
 
     """
     for node_name, node_visualizations in visualizations.items():
@@ -1237,22 +1219,19 @@ def compute_visualization_buffer(
     ``logged_idxs``, up to ``max_log_images`` minus the fill level.
 
     Args:
-        seq_buffer (``list[dict[str, dict[str, Tensor]]]``): The batches
-            buffered so far. Each entry has the structure of
-            ``visualizations``.
-        visualizations (``dict[str, dict[str, Tensor]]``): The node
-            identifier mapped to the visualizer identifier mapped to a
-            batch of images of shape ``[B, C, H, W]``. Must not be
-            empty.
-        logged_idxs (list[int]): The batch indices that the balanced
-            logger already logged.
-        max_log_images (int): The number of images to log in one epoch.
+        seq_buffer: The batches buffered so far. Each entry has the
+            structure of ``visualizations``.
+        visualizations: The node identifier mapped to the visualizer
+            identifier mapped to a batch of images of shape
+            ``[B, C, H, W]``. Must not be empty.
+        logged_idxs: The batch indices that the balanced logger already
+            logged.
+        max_log_images: The number of images to log in one epoch.
 
     Returns:
-        ``dict[str, dict[str, Tensor]] | None``: The skipped samples,
-        with the structure of ``visualizations``. ``None`` when the
-        first buffered entry is full, or when the balanced logger took
-        every sample of the batch.
+        The skipped samples, with the structure of ``visualizations``.
+        ``None`` when the first buffered entry is full, or when the
+        balanced logger took every sample of the batch.
 
     Example:
         >>> import torch
@@ -1308,14 +1287,13 @@ def get_model_execution_order(
     **The function leaves the model in evaluation mode.**
 
     Args:
-        model (LuxonisLightningModule): The model. Its
-            ``nodes.loader_input_shapes`` gives the input shapes, and
-            its ``device`` places the inputs.
+        model: The model. Its ``nodes.loader_input_shapes`` gives the
+            input shapes, and its ``device`` places the inputs.
 
     Returns:
-        list[str]: The module names, as ``named_modules`` reports them,
-        in execution order. A module that runs more than once appears
-        once for each run.
+        The module names, as ``named_modules`` reports them, in
+        execution order. A module that runs more than once appears once
+        for each run.
 
     """
     order = []
@@ -1351,13 +1329,13 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
     metric at most, and marks the first metric when none is set.
 
     Args:
-        cfg (Config): The config.
+        cfg: The config.
 
     Returns:
-        MainMetric | None: The node identifier and the metric
-        identifier, or ``None`` when no metric sets ``is_main_metric``.
-        A metric whose class name contains ``"ConfusionMatrix"`` gets
-        the identifier ``"mcc"``, whatever its alias.
+        The node identifier and the metric identifier, or ``None`` when
+        no metric sets ``is_main_metric``. A metric whose class name
+        contains ``"ConfusionMatrix"`` gets the identifier ``"mcc"``,
+        whatever its alias.
 
     Example:
         >>> from luxonis_train.config import Config
@@ -1383,14 +1361,13 @@ def check_tensor_device(
     """Check whether a tensor, or every tensor of a list, is on a device.
 
     Args:
-        x (``Tensor | list[Tensor]``): The tensor, or a list or tuple
-            of tensors.
-        device (torch.device): The device to compare with.
+        x: The tensor, or a list or tuple of tensors.
+        device: The device to compare with.
 
     Returns:
-        bool: ``True`` when the tensor is on ``device``, or when every
-        item of the sequence is a tensor on ``device``. An empty
-        sequence gives ``True``.
+        ``True`` when the tensor is on ``device``, or when every item of
+        the sequence is a tensor on ``device``. An empty sequence gives
+        ``True``.
 
     Raises:
         TypeError: When ``x`` is neither a tensor nor a list or tuple.
@@ -1422,17 +1399,16 @@ def _select_balanced_indices(
     The function updates ``class_log_counts`` in place.
 
     Args:
-        visualizations (``dict[str, dict[str, Tensor]]``): The
-            visualizations of the batch. The function reads only the
-            batch dimension of the first entry.
-        labels (Labels): The labels of the batch.
-        cls_task_keys (list[str]): The label keys that hold the
-            classification targets, of shape ``[B, n_classes]``.
-        class_log_counts (list[int]): How many selected samples held
-            each class in this epoch.
+        visualizations: The visualizations of the batch. The function
+            reads only the batch dimension of the first entry.
+        labels: The labels of the batch.
+        cls_task_keys: The label keys that hold the classification
+            targets, of shape ``[B, n_classes]``.
+        class_log_counts: How many selected samples held each class in
+            this epoch.
 
     Returns:
-        list[int]: The selected batch indices, in ascending order.
+        The selected batch indices, in ascending order.
 
     """
     logged_indices = []

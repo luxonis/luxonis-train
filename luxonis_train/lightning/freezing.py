@@ -56,14 +56,13 @@ def resolve_unfreeze_epoch(
     ``total_epochs``, so the node stays frozen for the whole run.
 
     Args:
-        freezing (FreezingConfig): The ``freezing`` section of a node
-            config.
-        total_epochs (int): The number of epochs of the run, from
+        freezing: The ``freezing`` section of a node config.
+        total_epochs: The number of epochs of the run, from
             ``trainer.epochs``.
 
     Returns:
-        int | None: The first epoch in which the node trains. ``None``
-        when ``freezing.active`` is ``False``.
+        The first epoch in which the node trains. ``None`` when
+        ``freezing.active`` is ``False``.
 
     Example:
         >>> from luxonis_train.config.config import FreezingConfig
@@ -91,24 +90,21 @@ class NodeFreezePlan:
     """The freeze schedule of one node, with its original state.
 
     Attributes:
-        node_name (str): The name of the node in the graph.
-        unfreeze_epoch (int): The first epoch in which the node trains.
-        lr_after_unfreeze (float | None): The base learning rate of the
-            parameter groups of the node from the unfreeze epoch on.
-            ``None`` keeps the rate that the scheduler reached.
-        parameters (``list[nn.Parameter]``): The parameters of the node.
-        original_requires_grad (list[bool]): The ``requires_grad``
-            value of each parameter before any freeze, in the order of
-            ``parameters``.
-        batch_norms (``list[_BatchNorm]``): The batch normalization
-            layers of the node.
-        original_track_running_stats (list[bool]): The
-            ``track_running_stats`` value of each layer before any
-            freeze, in the order of ``batch_norms``.
-        group_handles (``tuple[GroupHandle, ...]``): The parameter
-            groups that hold the parameters of the node.
-            `FreezeSchedule.attach_group_handles` sets them. The tuple
-            is empty before that call.
+        node_name: The name of the node in the graph.
+        unfreeze_epoch: The first epoch in which the node trains.
+        lr_after_unfreeze: The base learning rate of the parameter
+            groups of the node from the unfreeze epoch on. ``None``
+            keeps the rate that the scheduler reached.
+        parameters: The parameters of the node.
+        original_requires_grad: The ``requires_grad`` value of each
+            parameter before any freeze, in the order of ``parameters``.
+        batch_norms: The batch normalization layers of the node.
+        original_track_running_stats: The ``track_running_stats`` value
+            of each layer before any freeze, in the order of
+            ``batch_norms``.
+        group_handles: The parameter groups that hold the parameters of
+            the node. `FreezeSchedule.attach_group_handles` sets them.
+            The tuple is empty before that call.
 
     """
 
@@ -140,16 +136,15 @@ class NodeFreezePlan:
         method before any freeze.
 
         Args:
-            node_name (str): The name of the node in the graph.
-            module (``nn.Module``): The node.
-            unfreeze_epoch (int): The first epoch in which the node
-                trains.
-            lr_after_unfreeze (float | None): The base learning rate of
-                the node from the unfreeze epoch on. ``None`` keeps the
-                rate that the scheduler reached.
+            node_name: The name of the node in the graph.
+            module: The node.
+            unfreeze_epoch: The first epoch in which the node trains.
+            lr_after_unfreeze: The base learning rate of the node from
+                the unfreeze epoch on. ``None`` keeps the rate that the
+                scheduler reached.
 
         Returns:
-            ``Self``: The plan, without group handles.
+            The plan, without group handles.
 
         Example:
             >>> from torch import nn
@@ -188,11 +183,10 @@ class NodeFreezePlan:
         """Return whether the node is frozen in an epoch.
 
         Args:
-            epoch (int): The epoch number, from ``0``.
+            epoch: The epoch number, from ``0``.
 
         Returns:
-            bool: ``True`` when ``epoch`` comes before
-            ``unfreeze_epoch``.
+            ``True`` when ``epoch`` comes before ``unfreeze_epoch``.
 
         """
         return epoch < self.unfreeze_epoch
@@ -201,10 +195,10 @@ class NodeFreezePlan:
         """Return whether the node unfreezes in an epoch.
 
         Args:
-            epoch (int): The epoch number, from ``0``.
+            epoch: The epoch number, from ``0``.
 
         Returns:
-            bool: ``True`` when ``epoch`` is ``unfreeze_epoch``.
+            ``True`` when ``epoch`` is ``unfreeze_epoch``.
 
         """
         return epoch == self.unfreeze_epoch
@@ -222,9 +216,8 @@ class FreezeSchedule:
         """Initialize the schedule.
 
         Args:
-            plans (list[NodeFreezePlan]): One plan for each node with a
-                freeze schedule. The schedule keeps the list itself, not
-                a copy.
+            plans: One plan for each node with a freeze schedule. The
+                schedule keeps the list itself, not a copy.
 
         """
         self._plans = plans
@@ -239,13 +232,12 @@ class FreezeSchedule:
         original state.
 
         Args:
-            nodes (Nodes): The nodes of the model. The method reads the
+            nodes: The nodes of the model. The method reads the
                 ``name``, ``module``, ``unfreeze_after``, and
                 ``lr_after_unfreeze`` of each `NodeWrapper`.
 
         Returns:
-            ``Self``: The schedule, with the plans in the order of
-            ``nodes``.
+            The schedule, with the plans in the order of ``nodes``.
 
         """
         return cls(
@@ -265,7 +257,7 @@ class FreezeSchedule:
         """Return whether the schedule holds at least one plan.
 
         Returns:
-            bool: ``False`` when no node has a freeze schedule.
+            ``False`` when no node has a freeze schedule.
 
         """
         return bool(self._plans)
@@ -283,13 +275,12 @@ class FreezeSchedule:
         """Return whether a node is frozen in an epoch.
 
         Args:
-            node_name (str): The name of the node in the graph.
-            epoch (int): The epoch number, from ``0``.
+            node_name: The name of the node in the graph.
+            epoch: The epoch number, from ``0``.
 
         Returns:
-            bool: ``True`` when the node has a plan and ``epoch`` comes
-            before its unfreeze epoch. ``False`` for a node without a
-            plan.
+            ``True`` when the node has a plan and ``epoch`` comes before
+            its unfreeze epoch. ``False`` for a node without a plan.
 
         """
         for plan in self._plans:
@@ -308,8 +299,7 @@ class FreezeSchedule:
         another node.
 
         Args:
-            runtime (TrainingPlanRuntime): The optimizers and schedulers
-                of the run.
+            runtime: The optimizers and schedulers of the run.
 
         Raises:
             RuntimeError: When a group of a scheduled node also holds
@@ -355,10 +345,9 @@ class FreezeSchedule:
         groups come from `attach_group_handles`.
 
         Args:
-            epoch (int): The epoch number, from ``0``.
-            runtime (``TrainingPlanRuntime | None``): The optimizers and
-                schedulers of the run. ``None`` changes no learning
-                rate.
+            epoch: The epoch number, from ``0``.
+            runtime: The optimizers and schedulers of the run. ``None``
+                changes no learning rate.
 
         Example:
             The example turns the logger off, so the info messages do

@@ -166,37 +166,36 @@ for _loss_name in EMBEDDING_LOSSES:
             ``RuntimeError``.
 
             Args:
-                miner (str | None): The name of a class in
+                miner: The name of a class in
                     ``pytorch_metric_learning.miners``, such as
                     ``"MultiSimilarityMiner"``. ``None`` uses no miner.
-                miner_params (``Params | None``): Keyword arguments of
-                    the miner. ``None`` passes no arguments.
-                distance (str | None): The name of a class in
+                miner_params: Keyword arguments of the miner. ``None``
+                    passes no arguments.
+                distance: The name of a class in
                     ``pytorch_metric_learning.distances``, such as
                     ``"CosineSimilarity"``. ``None`` keeps the default
                     distance of the loss.
-                distance_params (``Params | None``): Keyword arguments of
-                    the distance. ``None`` passes no arguments.
-                reducer (str | None): The name of a class in
+                distance_params: Keyword arguments of the distance.
+                    ``None`` passes no arguments.
+                reducer: The name of a class in
                     ``pytorch_metric_learning.reducers``. ``None`` keeps
                     the default reducer of the loss.
-                reducer_params (``Params | None``): Keyword arguments of
-                    the reducer. ``None`` passes no arguments.
-                regularizer (str | None): The name of a class in
+                reducer_params: Keyword arguments of the reducer.
+                    ``None`` passes no arguments.
+                regularizer: The name of a class in
                     ``pytorch_metric_learning.regularizers``, which the
                     loss applies to the embeddings. ``None`` uses no
                     regularizer.
-                regularizer_params (``Params | None``): Keyword arguments
-                    of the regularizer. ``None`` passes no arguments.
-                node (BaseNode | None): The `GhostFaceNetHead` that the
-                    loss attaches to.
-                final_loss_weight (float): The factor by which
-                    `BaseLoss.run` multiplies the loss.
-                _loss_name (str): The name of the
-                    ``pytorch-metric-learning`` loss class. Its default is
-                    the registered name of this class.
-                **kwargs (``Any``): Keyword arguments of the loss class,
-                    such as ``margin`` for ``TripletMarginLoss``.
+                regularizer_params: Keyword arguments of the
+                    regularizer. ``None`` passes no arguments.
+                node: The `GhostFaceNetHead` that the loss attaches to.
+                final_loss_weight: The factor by which `BaseLoss.run`
+                    multiplies the loss.
+                _loss_name: The name of the ``pytorch-metric-learning``
+                    loss class. Its default is the registered name of
+                    this class.
+                **kwargs: Keyword arguments of the loss class, such as
+                    ``margin`` for ``TripletMarginLoss``.
 
             Raises:
                 ValueError: When ``pytorch-metric-learning`` has no
@@ -273,14 +272,14 @@ for _loss_name in EMBEDDING_LOSSES:
             also adds the batch to its memory.
 
             Args:
-                predictions (``Tensor``): The embeddings of shape
-                    ``[B, D]``, the main output of the node.
-                target (``Tensor``): The identity labels of shape
-                    ``[B]``, from the ``metadata/id`` label.
+                predictions: The embeddings of shape ``[B, D]``, the
+                    main output of the node.
+                target: The identity labels of shape ``[B]``, from the
+                    ``metadata/id`` label.
 
             Returns:
-                ``Tensor``: The value of the wrapped loss, a scalar with
-                the default reducer.
+                The value of the wrapped loss, a scalar with the default
+                reducer.
 
             Example:
                 The example gets the ``TripletMarginLoss`` class from the

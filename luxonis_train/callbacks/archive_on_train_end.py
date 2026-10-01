@@ -52,8 +52,8 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
         hook, ``pl_module`` holds its earlier weights again.
 
         Args:
-            _ (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model to archive.
+            _: The trainer. Unused.
+            pl_module: The model to archive.
 
         """
         onnx_path = pl_module.core._exported_models.get("onnx")

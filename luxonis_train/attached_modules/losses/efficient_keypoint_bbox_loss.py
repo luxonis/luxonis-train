@@ -149,35 +149,34 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
 
         Args:
-            n_warmup_epochs (int): The number of epochs, counted from
-                epoch ``0``, that use `ATSSAssigner`. The later epochs
-                use `TaskAlignedAssigner`, which also reads the
-                keypoints.
-            iou_type (``IoUType``): The IoU variant of the box term:
-                ``"none"`` for the plain IoU, ``"giou"``, ``"diou"``,
-                ``"ciou"``, or ``"siou"``.
-            reduction (``Literal["sum", "mean"]``): The method stores
-                it as ``self.reduction``. The loss does not read it.
-            class_loss_weight (float): The factor :math:`\lambda_{cls}`
-                of the class term.
-            iou_loss_weight (float): The factor :math:`\lambda_{iou}` of
-                the box term.
-            viz_pw (float): The weight of the positive part of the
-                binary cross entropy in the visibility term.
-            regr_kpts_loss_weight (float): The factor
-                :math:`\lambda_{kpt}` of the keypoint regression term.
-            vis_kpts_loss_weight (float): The factor
-                :math:`\lambda_{vis}` of the visibility term.
-            sigmas (list[float] | None): One sigma for each keypoint.
-                ``None`` selects the COCO person sigmas for ``17``
-                keypoints, and ``0.04`` for each keypoint otherwise.
-                `get_sigmas` logs the choice. A list with a length other
-                than the number of keypoints raises ``ValueError``.
-            area_factor (float | None): The factor that scales the area
-                of a box to the pose area, in the keypoint regression
-                term and in `TaskAlignedAssigner`. ``None`` uses
-                ``0.53`` and logs an info message.
-            **kwargs (``Any``): Keyword arguments forwarded to
+            n_warmup_epochs: The number of epochs, counted from epoch
+                ``0``, that use `ATSSAssigner`. The later epochs use
+                `TaskAlignedAssigner`, which also reads the keypoints.
+            iou_type: The IoU variant of the box term: ``"none"`` for
+                the plain IoU, ``"giou"``, ``"diou"``, ``"ciou"``, or
+                ``"siou"``.
+            reduction: The method stores it as ``self.reduction``. The
+                loss does not read it.
+            class_loss_weight: The factor :math:`\lambda_{cls}` of the
+                class term.
+            iou_loss_weight: The factor :math:`\lambda_{iou}` of the box
+                term.
+            viz_pw: The weight of the positive part of the binary cross
+                entropy in the visibility term.
+            regr_kpts_loss_weight: The factor :math:`\lambda_{kpt}` of
+                the keypoint regression term.
+            vis_kpts_loss_weight: The factor :math:`\lambda_{vis}` of
+                the visibility term.
+            sigmas: One sigma for each keypoint. ``None`` selects the
+                COCO person sigmas for ``17`` keypoints, and ``0.04``
+                for each keypoint otherwise. `get_sigmas` logs the
+                choice. A list with a length other than the number of
+                keypoints raises ``ValueError``.
+            area_factor: The factor that scales the area of a box to the
+                pose area, in the keypoint regression term and in
+                `TaskAlignedAssigner`. ``None`` uses ``0.53`` and logs
+                an info message.
+            **kwargs: Keyword arguments forwarded to
                 `AdaptiveDetectionLoss`, such as ``per_class_weights``,
                 ``skip_stal``, ``final_loss_weight``, and ``node``.
 
@@ -230,35 +229,34 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         batch without instances, the method logs a debug message.
 
         Args:
-            features (``list[Tensor]``): The feature maps of the head,
-                one of shape ``[B, C_i, H_i, W_i]`` for each scale. Only
-                the first call uses them, to build the anchors.
-            class_scores (``Tensor``): Sigmoid class scores of shape
+            features: The feature maps of the head, one of shape
+                ``[B, C_i, H_i, W_i]`` for each scale. Only the first
+                call uses them, to build the anchors.
+            class_scores: Sigmoid class scores of shape
                 ``[B, N, n_classes]``, for the ``N`` anchors of all
                 scales.
-            distributions (``Tensor``): The distances from each anchor
-                point to the left, top, right, and bottom side of its
-                box, of shape ``[B, N, 4]``, in stride units.
-            keypoints_raw (``Tensor``): The raw keypoint values of shape
+            distributions: The distances from each anchor point to the
+                left, top, right, and bottom side of its box, of shape
+                ``[B, N, 4]``, in stride units.
+            keypoints_raw: The raw keypoint values of shape
                 ``[B, N, 3 * n_keypoints]``. Each keypoint has the raw
                 ``x`` and ``y`` offsets and a visibility logit.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                shape ``[M, 6]``. Each row holds the batch index, the
-                class, and the normalized ``x``, ``y``, ``w``, and ``h``
-                of one box. ``x`` and ``y`` give the top-left corner.
-            target_keypoints (``Tensor``): The ``keypoints`` label of
-                shape ``[M, 1 + 3 * n_keypoints]``, with the rows in the
-                order of ``target_boundingbox``. Each row holds the batch
+            target_boundingbox: The ``boundingbox`` label of shape
+                ``[M, 6]``. Each row holds the batch index, the class,
+                and the normalized ``x``, ``y``, ``w``, and ``h`` of one
+                box. ``x`` and ``y`` give the top-left corner.
+            target_keypoints: The ``keypoints`` label of shape
+                ``[M, 1 + 3 * n_keypoints]``, with the rows in the order
+                of ``target_boundingbox``. Each row holds the batch
                 index, then the normalized ``x`` and ``y`` and the
                 visibility of each keypoint.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The total loss as a
-            scalar, and the sub-losses ``"class"``, ``"iou"``,
-            ``"regression"``, and ``"visibility"``. The sub-losses are
-            the detached terms without their factors. When no anchor is
-            positive, the total loss and the two keypoint sub-losses are
-            ``nan``.
+            The total loss as a scalar, and the sub-losses ``"class"``,
+            ``"iou"``, ``"regression"``, and ``"visibility"``. The
+            sub-losses are the detached terms without their factors.
+            When no anchor is positive, the total loss and the two
+            keypoint sub-losses are ``nan``.
 
         """
         self._init_parameters(features)
@@ -405,21 +403,20 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         """Convert the keypoint label to padded keypoints per image.
 
         Args:
-            kpts_target (``Tensor``): The keypoints of shape
+            kpts_target: The keypoints of shape
                 ``[M, 2 + 3 * n_keypoints]``, with the batch index and
                 the class in the first two columns. The ``x``, ``y``,
                 and visibility of each keypoint follow, with ``x`` and
                 ``y`` normalized.
-            batch_size (int): The number of images ``B``.
-            scale_tensor (``Tensor``): The width and the height of the
-                input image, of shape ``[2]``.
+            batch_size: The number of images ``B``.
+            scale_tensor: The width and the height of the input image,
+                of shape ``[2]``.
 
         Returns:
-            ``Tensor``: Keypoints of shape ``[B, K, n_keypoints, 3]``.
-            ``K`` is the largest number of instances in one image, or
-            ``0`` for a batch without instances. ``x`` and ``y`` are in
-            pixels of the input image. A padding instance has only
-            zeros.
+            Keypoints of shape ``[B, K, n_keypoints, 3]``. ``K`` is the
+            largest number of instances in one image, or ``0`` for a
+            batch without instances. ``x`` and ``y`` are in pixels of
+            the input image. A padding instance has only zeros.
 
         """
         _, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
@@ -449,15 +446,14 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         the position by the stride. The method does not change ``kpts``.
 
         Args:
-            anchor_points (``Tensor``): The anchor points of shape
-                ``[N, 2]``, as ``(x, y)``. The loss passes them in grid
-                units.
-            kpts (``Tensor``): The raw keypoint values of shape
+            anchor_points: The anchor points of shape ``[N, 2]``, as
+                ``(x, y)``. The loss passes them in grid units.
+            kpts: The raw keypoint values of shape
                 ``[B, N, n_keypoints, 3]``.
 
         Returns:
-            ``Tensor``: The decoded keypoints, of the shape of ``kpts``,
-            in the units of ``anchor_points``.
+            The decoded keypoints, of the shape of ``kpts``, in the
+            units of ``anchor_points``.
 
         """
         adj_kpts = kpts.clone()

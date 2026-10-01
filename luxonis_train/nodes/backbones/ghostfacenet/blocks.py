@@ -48,17 +48,17 @@ class OriginalGhostModuleV2(nn.Module):
         """Build the primary and the cheap convolutions.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Size of the primary kernel. The padding is
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Size of the primary kernel. The padding is
                 ``kernel_size // 2``.
-            ratio (int): The ratio of ``out_channels`` to the channels of
-                the primary convolution.
-            dw_size (int): Size of the depthwise kernel. The padding is
+            ratio: The ratio of ``out_channels`` to the channels of the
+                primary convolution.
+            dw_size: Size of the depthwise kernel. The padding is
                 ``dw_size // 2``.
-            stride (int): Stride of the primary convolution.
-            use_prelu (bool): Whether both convolutions end with
-                `torch.nn.PReLU`. When ``False``, they have no
+            stride: Stride of the primary convolution.
+            use_prelu: Whether both convolutions end with
+                ``torch.nn.PReLU``. When ``False``, they have no
                 activation.
 
         """
@@ -88,11 +88,11 @@ class OriginalGhostModuleV2(nn.Module):
         """Concatenate the primary and the cheap features.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. The
-            stride of the primary convolution sets ``H'`` and ``W'``.
+            Output of shape ``[B, out_channels, H', W']``. The stride of
+            the primary convolution sets ``H'`` and ``W'``.
 
         """
         x1 = self.primary_conv(x)
@@ -134,20 +134,20 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
         """Build the ghost convolutions and the attention branch.
 
         Args:
-            in_channels (int): Number of input channels.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Size of the primary kernel and of the
-                first kernel of the attention branch. The padding is
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            kernel_size: Size of the primary kernel and of the first
+                kernel of the attention branch. The padding is
                 ``kernel_size // 2``.
-            ratio (int): The ratio of ``out_channels`` to the channels of
-                the primary convolution.
-            dw_size (int): Size of the cheap depthwise kernel. The
-                padding is ``dw_size // 2``.
-            stride (int): Stride of the primary convolution and of the
-                first convolution of the attention branch.
-            use_prelu (bool): Whether the primary and the cheap
-                convolutions end with `torch.nn.PReLU`. The attention
-                branch never has an activation before the sigmoid.
+            ratio: The ratio of ``out_channels`` to the channels of the
+                primary convolution.
+            dw_size: Size of the cheap depthwise kernel. The padding is
+                ``dw_size // 2``.
+            stride: Stride of the primary convolution and of the first
+                convolution of the attention branch.
+            use_prelu: Whether the primary and the cheap convolutions
+                end with ``torch.nn.PReLU``. The attention branch never
+                has an activation before the sigmoid.
 
         """
         super().__init__(
@@ -195,13 +195,12 @@ class AttentionGhostModuleV2(OriginalGhostModuleV2):
         """Multiply the ghost features by the attention gate.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. The
-            stride of the primary convolution sets ``H'`` and ``W'``.
-            Each value is the ghost feature times a gate between ``0``
-            and ``1``.
+            Output of shape ``[B, out_channels, H', W']``. The stride of
+            the primary convolution sets ``H'`` and ``W'``. Each value
+            is the ghost feature times a gate between ``0`` and ``1``.
 
         """
         x1 = self.primary_conv(x)
@@ -220,16 +219,16 @@ class GhostBottleneckV2(nn.Module):
 
     The main path has these layers:
 
-    - A ghost module with `torch.nn.PReLU` expands ``in_channels`` to
+    - A ghost module with ``torch.nn.PReLU`` expands ``in_channels`` to
       ``hidden_channels``.
     - For a ``stride`` above ``1``, a depthwise convolution with a batch
       norm and no activation reduces the spatial size.
     - For a ``se_ratio`` above ``0``, a `SqueezeExciteBlock` with a hard
-      sigmoid and `torch.nn.PReLU` scales the channels.
+      sigmoid and ``torch.nn.PReLU`` scales the channels.
     - An `OriginalGhostModuleV2` without an activation projects to
       ``out_channels``.
 
-    The shortcut is `torch.nn.Identity` when ``in_channels`` equals
+    The shortcut is ``torch.nn.Identity`` when ``in_channels`` equals
     ``out_channels`` and ``stride`` is ``1``. Otherwise it is a depthwise
     convolution with ``kernel_size`` and ``stride``, then a ``1x1``
     convolution, each with a batch norm. The block adds the shortcut to
@@ -261,22 +260,20 @@ class GhostBottleneckV2(nn.Module):
         """Build the main path and the shortcut.
 
         Args:
-            in_channels (int): Number of input channels.
-            hidden_channels (int): Number of channels after the
-                expansion.
-            out_channels (int): Number of output channels.
-            kernel_size (int): Size of the depthwise kernels of the main
-                path and of the shortcut. The padding is
+            in_channels: Number of input channels.
+            hidden_channels: Number of channels after the expansion.
+            out_channels: Number of output channels.
+            kernel_size: Size of the depthwise kernels of the main path
+                and of the shortcut. The padding is
                 ``(kernel_size - 1) // 2``.
-            stride (int): Stride of both depthwise convolutions.
-            se_ratio (float): The ratio of the squeeze-and-excite
-                channels to ``hidden_channels``. The block rounds the
-                result to a multiple of 4. ``0`` or less adds no
+            stride: Stride of both depthwise convolutions.
+            se_ratio: The ratio of the squeeze-and-excite channels to
+                ``hidden_channels``. The block rounds the result to a
+                multiple of 4. ``0`` or less adds no
                 `SqueezeExciteBlock`.
-            mode (``Literal["original", "attention"]``): The ghost module
-                of the expansion. ``"original"`` selects
-                `OriginalGhostModuleV2`, and ``"attention"`` selects
-                `AttentionGhostModuleV2`.
+            mode: The ghost module of the expansion. ``"original"``
+                selects `OriginalGhostModuleV2`, and ``"attention"``
+                selects `AttentionGhostModuleV2`.
 
         """
         super().__init__()
@@ -352,11 +349,11 @@ class GhostBottleneckV2(nn.Module):
         """Apply the main path and add the shortcut.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, out_channels, H', W']``. For
-            an odd ``kernel_size``, ``H'`` and ``W'`` are ``H`` and ``W``
+            Output of shape ``[B, out_channels, H', W']``. For an odd
+            ``kernel_size``, ``H'`` and ``W'`` are ``H`` and ``W``
             divided by ``stride`` and rounded up.
 
         """
@@ -382,8 +379,8 @@ class GhostBottleneckLayer(nn.Sequential):
     that rounds below 90% of its value goes up by 4.
 
     Attributes:
-        output_channel (int): Number of output channels of the last
-            block. It is ``input_channel`` when the lists are empty.
+        output_channel: Number of output channels of the last block. It
+            is ``input_channel`` when the lists are empty.
 
     Example:
         >>> import torch
@@ -418,19 +415,18 @@ class GhostBottleneckLayer(nn.Sequential):
         """Build one `GhostBottleneckV2` for each entry of the lists.
 
         Args:
-            width_multiplier (int): The scale of ``expand_sizes`` and
+            width_multiplier: The scale of ``expand_sizes`` and
                 ``output_channels``.
-            input_channel (int): Number of input channels of the first
-                block. The layer does not scale it.
-            kernel_sizes (list[int]): The ``kernel_size`` of each block.
-            expand_sizes (list[int]): The ``hidden_channels`` of each
-                block, before ``width_multiplier``.
-            output_channels (list[int]): The ``out_channels`` of each
-                block, before ``width_multiplier``.
-            se_ratios (list[float]): The ``se_ratio`` of each block.
-            strides (list[int]): The ``stride`` of each block.
-            mode (``Literal["original", "attention"]``): The ``mode`` of
-                all blocks.
+            input_channel: Number of input channels of the first block.
+                The layer does not scale it.
+            kernel_sizes: The ``kernel_size`` of each block.
+            expand_sizes: The ``hidden_channels`` of each block, before
+                ``width_multiplier``.
+            output_channels: The ``out_channels`` of each block, before
+                ``width_multiplier``.
+            se_ratios: The ``se_ratio`` of each block.
+            strides: The ``stride`` of each block.
+            mode: The ``mode`` of all blocks.
 
         Raises:
             ValueError: When the five lists do not have the same length.

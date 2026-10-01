@@ -90,22 +90,21 @@ class SigmoidFocalLoss(BaseLoss):
         it does not accept.
 
         Args:
-            alpha (float): The weight :math:`\alpha` of the positive
-                elements, in ``[0, 1]``. The negative elements get
+            alpha: The weight :math:`\alpha` of the positive elements,
+                in ``[0, 1]``. The negative elements get
                 :math:`1 - \alpha`. ``-1`` turns the weighting off.
-            gamma (float): The exponent of the focal factor
-                :math:`(1 - p_t)`. A larger value lowers the loss of the
-                well-predicted elements more. ``0`` gives the binary
-                cross entropy, weighted by ``alpha``.
-            reduction (``Literal["none", "mean", "sum"]``): How to
-                reduce the loss of the elements:
+            gamma: The exponent of the focal factor :math:`(1 - p_t)`. A
+                larger value lowers the loss of the well-predicted
+                elements more. ``0`` gives the binary cross entropy,
+                weighted by ``alpha``.
+            reduction: How to reduce the loss of the elements:
 
                 - ``"none"``: return the loss of each element.
                 - ``"mean"``: return the mean over all elements.
                 - ``"sum"``: return the sum over all elements.
 
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -122,15 +121,15 @@ class SigmoidFocalLoss(BaseLoss):
         accept.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
-                the main output of the node.
-            target (``Tensor``): Float targets in ``[0, 1]``, of the
-                same shape as ``predictions``.
+            predictions: Logits of shape ``[B, C, ...]``, the main
+                output of the node.
+            target: Float targets in ``[0, 1]``, of the same shape as
+                ``predictions``.
 
         Returns:
-            ``Tensor``: A scalar for the ``"mean"`` and ``"sum"``
-            reductions. For ``"none"``, the loss of each element, of
-            shape ``[B, C, ...]``.
+            A scalar for the ``"mean"`` and ``"sum"`` reductions. For
+            ``"none"``, the loss of each element, of shape
+            ``[B, C, ...]``.
 
         Example:
             With ``alpha=-1`` and ``gamma=0``, the loss is the binary

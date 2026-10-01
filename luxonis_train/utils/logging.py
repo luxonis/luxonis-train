@@ -39,11 +39,11 @@ def setup_logging(
     `LuxonisModel` calls it with the log file of the run.
 
     Args:
-        file (``PathType | None``): The path of the log file. The logger
-            appends to the file. ``None`` writes no log file.
-        use_rich (bool): When ``True``, write the console output with
-            a rich handler to ``stdout``. When ``False``, write plain log
-            lines to ``stderr``.
+        file: The path of the log file. The logger appends to the file.
+            ``None`` writes no log file.
+        use_rich: When ``True``, write the console output with a rich
+            handler to ``stdout``. When ``False``, write plain log lines
+            to ``stderr``.
 
     """
     ml_setup_logging(

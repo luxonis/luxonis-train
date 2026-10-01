@@ -82,8 +82,8 @@ class ClassificationModel(SimplePredefinedModel):
         ``light`` and ``"50"`` for ``heavy``.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
-            variants with their constructor arguments.
+            ``"light"`` and the two variants with their constructor
+            arguments.
 
         Example:
             >>> default, variants = ClassificationModel.get_variants()

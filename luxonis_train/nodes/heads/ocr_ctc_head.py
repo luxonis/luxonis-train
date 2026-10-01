@@ -95,21 +95,21 @@ class OCRCTCHead(BaseHead):
         """Build the encoder, the decoder, and the linear layers.
 
         Args:
-            alphabet (list[str]): The characters that the head predicts.
-                The encoder sorts them and puts the blank class before
-                them. Each character must occur only once.
-            ignore_unknown (bool): Whether the encoder drops a label
-                character that is not in ``alphabet``. With ``False``, the
-                encoder maps the character to the extra class
-                ``"<UNK>"``, so the head predicts one more class.
-            mid_channels (int | None): The number of hidden features
-                between two linear layers. ``None`` gives one linear layer
-                from ``in_channels`` to `out_channels`.
-            return_feats (bool): The head stores the value in the
+            alphabet: The characters that the head predicts. The encoder
+                sorts them and puts the blank class before them. Each
+                character must occur only once.
+            ignore_unknown: Whether the encoder drops a label character
+                that is not in ``alphabet``. With ``False``, the encoder
+                maps the character to the extra class ``"<UNK>"``, so
+                the head predicts one more class.
+            mid_channels: The number of hidden features between two
+                linear layers. ``None`` gives one linear layer from
+                ``in_channels`` to `out_channels`.
+            return_feats: The head stores the value in the
                 ``return_feats`` attribute. `forward` does not read it,
                 so the value has no effect.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``input_shapes`` or ``in_sizes``.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``input_shapes`` or ``in_sizes``.
 
         Raises:
             ValueError: When ``alphabet`` holds a character more than
@@ -144,13 +144,12 @@ class OCRCTCHead(BaseHead):
         over the classes.
 
         Args:
-            x (``Tensor``): The feature map of shape ``[B, C, 1, T]``. With
-                a height other than ``1``, ``permute`` raises
-                ``RuntimeError``.
+            x: The feature map of shape ``[B, C, 1, T]``. With a height
+                other than ``1``, ``permute`` raises ``RuntimeError``.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, T, out_channels]``. In
-            export mode, the softmax probabilities of the same shape.
+            The logits of shape ``[B, T, out_channels]``. In export
+            mode, the softmax probabilities of the same shape.
             `BaseNode.run` puts the result under the ``"ocr"`` key.
 
         Example:
@@ -228,16 +227,16 @@ class OCRCTCHead(BaseHead):
         ``dataset_metadata``.
 
         Returns:
-            ``Params``: A dictionary with these keys:
+            A dictionary with these keys.
 
-            - ``"classes"``: the alphabet of `encoder`, with the blank
-              ``""`` first.
-            - ``"n_classes"``: `out_channels`.
-            - ``"is_softmax"``: ``True``, because the exported model
+            - ``"classes"`` holds the alphabet of `encoder`, with the
+              blank ``""`` first.
+            - ``"n_classes"`` holds `out_channels`.
+            - ``"is_softmax"`` is ``True``, because the exported model
               applies a softmax.
-            - ``"concatenate_classes"``: ``True``.
-            - ``"ignored_indexes"``: ``[0]``, the index of the blank.
-            - ``"remove_duplicates"``: ``True``.
+            - ``"concatenate_classes"`` is ``True``.
+            - ``"ignored_indexes"`` is ``[0]``, the index of the blank.
+            - ``"remove_duplicates"`` is ``True``.
 
         Example:
             >>> from torch import Size
@@ -280,17 +279,17 @@ class OCRCTCHead(BaseHead):
 
         The method first calls `BaseNode.initialize_weights` with
         ``method``. Then it draws the weight and the bias of every
-        `torch.nn.Linear` from the uniform distribution on
+        ``torch.nn.Linear`` from the uniform distribution on
         :math:`\left[-1/\sqrt{n_{in}}, 1/\sqrt{n_{in}}\right]`.
         :math:`n_{in}` is the number of input features of the layer.
         These are the bounds of the PyTorch default initialization of
-        `torch.nn.Linear`.
+        ``torch.nn.Linear``.
 
         Args:
-            method (str | None): The method for
-                `BaseNode.initialize_weights`. With ``mid_channels``,
-                ``"yolo"`` makes the ReLU between the linear layers run in
-                place. Other values change nothing there.
+            method: The method for `BaseNode.initialize_weights`. With
+                ``mid_channels``, ``"yolo"`` makes the ReLU between the
+                linear layers run in place. Other values change nothing
+                there.
 
         """
         super().initialize_weights(method)

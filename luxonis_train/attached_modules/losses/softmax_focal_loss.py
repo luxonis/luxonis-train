@@ -88,27 +88,25 @@ class SoftmaxFocalLoss(BaseLoss):
         r"""Initialize the loss and check the smoothing factor.
 
         Args:
-            alpha (float | list[float]): The class weight
-                :math:`\alpha_t`. A float scales the loss of every
-                element by the same factor, so it does not favor a
-                class. A list holds one weight for each class, in class
-                order. `forward` then checks that the list has one entry
-                for each class.
-            gamma (float): The exponent of the focal factor
-                :math:`(1 - p_t)`. ``0`` turns the focal factor off.
-            smooth (float): The label smoothing factor :math:`s`, in
-                ``[0, 1]``. The class formula shows how it changes the
-                targets and :math:`p_t`.
-            reduction (``Literal["none", "mean", "sum"]``): How to
-                reduce the loss of the elements:
+            alpha: The class weight :math:`\alpha_t`. A float scales the
+                loss of every element by the same factor, so it does not
+                favor a class. A list holds one weight for each class,
+                in class order. `forward` then checks that the list has
+                one entry for each class.
+            gamma: The exponent of the focal factor :math:`(1 - p_t)`.
+                ``0`` turns the focal factor off.
+            smooth: The label smoothing factor :math:`s`, in ``[0, 1]``.
+                The class formula shows how it changes the targets and
+                :math:`p_t`.
+            reduction: How to reduce the loss of the elements:
 
                 - ``"none"``: return the loss of each element.
                 - ``"mean"``: return the mean over all elements.
                 - ``"sum"``: return the sum over all elements.
 
                 `forward` treats any other value as ``"none"``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseLoss`, such as ``final_loss_weight`` and ``node``.
+            **kwargs: Keyword arguments forwarded to `BaseLoss`, such as
+                ``final_loss_weight`` and ``node``.
 
         Raises:
             ValueError: When ``smooth`` is outside ``[0, 1]``.
@@ -132,15 +130,15 @@ class SoftmaxFocalLoss(BaseLoss):
         """Compute the softmax focal loss between logits and targets.
 
         Args:
-            predictions (``Tensor``): Logits of shape ``[B, C, ...]``,
-                with at least two classes. The main output of the node.
-            targets (``Tensor``): One-hot targets of the same shape as
+            predictions: Logits of shape ``[B, C, ...]``, with at least
+                two classes. The main output of the node.
+            targets: One-hot targets of the same shape as
                 ``predictions``.
 
         Returns:
-            ``Tensor``: A ``float32`` scalar for the ``"mean"`` and
-            ``"sum"`` reductions. For any other ``reduction``, the loss
-            of each element, of shape ``[B, ...]``.
+            A ``float32`` scalar for the ``"mean"`` and ``"sum"``
+            reductions. For any other ``reduction``, the loss of each
+            element, of shape ``[B, ...]``.
 
         Raises:
             ValueError: When ``predictions`` has fewer than two classes,

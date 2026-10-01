@@ -55,11 +55,11 @@ class TrainingManager(pl.Callback):
         applies the real epoch.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The module that holds the
-                freeze schedule in ``nodes.freeze_schedule``.
-            stage (str): The stage that starts: ``"fit"``,
-                ``"validate"``, ``"test"``, or ``"predict"``.
+            trainer: The trainer. Unused.
+            pl_module: The module that holds the freeze schedule in
+                ``nodes.freeze_schedule``.
+            stage: The stage that starts: ``"fit"``, ``"validate"``,
+                ``"test"``, or ``"predict"``.
 
         """
         _ = trainer
@@ -89,10 +89,9 @@ class TrainingManager(pl.Callback):
         each time a node freezes or unfreezes.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. The hook reads its
-                ``current_epoch``.
-            pl_module (LuxonisLightningModule): The module that holds the
-                freeze schedule and the training plan.
+            trainer: The trainer. The hook reads its ``current_epoch``.
+            pl_module: The module that holds the freeze schedule and the
+                training plan.
 
         """
         pl_module.nodes.freeze_schedule.apply(
@@ -116,9 +115,8 @@ class TrainingManager(pl.Callback):
         nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The module that holds the
-                training strategy.
+            trainer: The trainer. Unused.
+            pl_module: The module that holds the training strategy.
 
         """
         if pl_module.training_strategy is not None:

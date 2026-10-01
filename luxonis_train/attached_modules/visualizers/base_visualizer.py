@@ -34,12 +34,12 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         """Initialize the visualizer and store the canvas scale.
 
         Args:
-            *args (``Any``): Positional arguments forwarded to
+            *args: Positional arguments forwarded to
                 `BaseAttachedModule`.
-            scale (float): Factor that `run` applies to both canvases
-                with `scale_canvas` before it calls `forward`. Defaults
-                to ``1.0``.
-            **kwargs (``Any``): Keyword arguments forwarded to
+            scale: Factor that `run` applies to both canvases with
+                `scale_canvas` before it calls `forward`. Defaults to
+                ``1.0``.
+            **kwargs: Keyword arguments forwarded to
                 `BaseAttachedModule`, such as ``node``.
 
         """
@@ -55,7 +55,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         on its next access to `colormap`.
 
         Returns:
-            dict: The state of the module without the ``colormap`` key.
+            The state of the module without the ``colormap`` key.
 
         """
         state = super().__getstate__()
@@ -69,12 +69,12 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         interpolation.
 
         Args:
-            canvas (``Tensor``): Images of shape ``[B, C, H, W]``.
-            scale (float): Multiplier for the height and the width.
-                Defaults to ``1.0``.
+            canvas: Images of shape ``[B, C, H, W]``.
+            scale: Multiplier for the height and the width. Defaults to
+                ``1.0``.
 
         Returns:
-            ``Tensor``: Images of shape
+            Images of shape
             ``[B, C, floor(H * scale), floor(W * scale)]``.
 
         Example:
@@ -128,16 +128,14 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         - A list of unrelated images.
 
         Args:
-            target_canvas (``Tensor``): Images to draw the labels on, of
+            target_canvas: Images to draw the labels on, of shape
+                ``[B, 3, H, W]``.
+            prediction_canvas: Images to draw the predictions on, of
                 shape ``[B, 3, H, W]``.
-            prediction_canvas (``Tensor``): Images to draw the
-                predictions on, of shape ``[B, 3, H, W]``.
-            *args (``Unpack[Ts]``): The predictions and labels that
-                `run` resolves from the parameter names of the
-                implementation.
+            *args: The predictions and labels that `run` resolves from
+                the parameter names of the implementation.
 
         Returns:
-            ``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]``:
             The visualizations, in one of the four forms above.
 
         """
@@ -165,18 +163,17 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         `forward` parameters select predictions and labels.
 
         Args:
-            prediction_canvas (``Tensor``): Images to draw the
-                predictions on, of shape ``[B, 3, H, W]``.
-            target_canvas (``Tensor``): Images to draw the labels on, of
+            prediction_canvas: Images to draw the predictions on, of
                 shape ``[B, 3, H, W]``.
-            inputs (``Packet[Tensor]``): The output packet of the node.
-            labels (``Labels | None``): The labels of the batch, keyed
+            target_canvas: Images to draw the labels on, of shape
+                ``[B, 3, H, W]``.
+            inputs: The output packet of the node.
+            labels: The labels of the batch, keyed
                 ``<task_name>/<label>``, or ``None`` when the batch has
                 none. Then every optional ``target`` parameter receives
                 ``None``, and a required one raises ``RuntimeError``.
 
         Returns:
-            ``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]``:
             What `forward` returns.
 
         """

@@ -83,58 +83,53 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         dataset when it starts.
 
         Args:
-            dataset_name (str | None): The name of the dataset. Without
+            dataset_name: The name of the dataset. Without
                 ``dataset_dir``, the loader opens this dataset. With
                 ``dataset_dir``, the parsed dataset gets this name;
                 ``None`` uses the directory name.
-            dataset_dir (str | None): The directory to parse, in a format
-                that ``LuxonisParser`` recognizes. It can be a local path,
-                a remote URL, or a ZIP file. The parser downloads a
-                remote directory to ``data/`` in the working directory.
-            dataset_type (``DatasetType | None``): The format of
-                ``dataset_dir``. ``None`` lets the parser detect it.
-            team_id (str | None): The team ID of the dataset. It selects
-                its local and remote location. ``None`` uses the
+            dataset_dir: The directory to parse, in a format that
+                ``LuxonisParser`` recognizes. It can be a local path, a
+                remote URL, or a ZIP file. The parser downloads a remote
+                directory to ``data/`` in the working directory.
+            dataset_type: The format of ``dataset_dir``. ``None`` lets
+                the parser detect it.
+            team_id: The team ID of the dataset. It selects its local
+                and remote location. ``None`` uses the
                 ``LUXONISML_TEAM_ID`` setting of ``luxonis_ml``.
-            bucket_type (``Literal["internal", "external"]``): The bucket
-                type of a remote dataset. The loader uses it only without
-                ``dataset_dir``.
-            bucket_storage (``Literal["local", "s3", "gcs", "azure"]``):
-                The storage backend of the dataset.
-            update_mode (``Literal["all", "missing"]``): The sync mode for
-                the media files of a remote dataset. ``"all"`` downloads
-                all media files again. ``"missing"`` downloads only the
-                media files that are not local. For a remote dataset, the
-                ``LuxonisLoader`` always downloads the annotations and the
-                metadata.
-            delete_existing (bool): What to do when ``dataset_dir`` is set
-                and a local dataset with the same name exists. ``True``
-                logs a warning, deletes the existing dataset, and parses
-                the directory again. ``False`` opens the existing dataset
+            bucket_type: The bucket type of a remote dataset. The loader
+                uses it only without ``dataset_dir``.
+            bucket_storage: The storage backend of the dataset.
+            update_mode: The sync mode for the media files of a remote
+                dataset. ``"all"`` downloads all media files again.
+                ``"missing"`` downloads only the media files that are
+                not local. For a remote dataset, the ``LuxonisLoader``
+                always downloads the annotations and the metadata.
+            delete_existing: What to do when ``dataset_dir`` is set and
+                a local dataset with the same name exists. ``True`` logs
+                a warning, deletes the existing dataset, and parses the
+                directory again. ``False`` opens the existing dataset
                 and does not parse.
-            filter_task_names (list[str] | None): The names of the tasks
-                to load. ``None`` loads all tasks. A name that is not in
-                the dataset makes ``LuxonisLoader`` raise ``ValueError``.
-            min_bbox_visibility (float): The minimum fraction of a box
-                that must stay visible after the augmentations.
-            bbox_area_threshold (float): The minimum area of a box,
-                relative to the image area, in ``[0, 1]``. The
-                augmentations remove a smaller box and the labels of its
-                instance, such as the keypoints and the instance mask.
-            class_order_per_task (dict[str, list[str]] | None): The class
-                names of each task in their desired order. Each list
-                must contain exactly the classes of its task. ``None``
-                keeps the dataset order.
-            kpts_mapping_per_task (dict[str, list[int]] | None): A new
-                keypoint order for each task. For a list ``m``, the
-                keypoint at position ``j`` is the original keypoint
-                ``m[j]``. Each list must map every keypoint of its task.
-                ``None`` keeps the original order.
-            return_sample_metadata (bool): Whether ``__getitem__``
-                returns the sample metadata as a third element.
-            **kwargs (``Any``): Arguments for `BaseLoaderTorch`, such as
-                ``view``, ``height``, and ``width``. This loader needs
-                ``view``, and values other than ``None`` for ``height``,
+            filter_task_names: The names of the tasks to load. ``None``
+                loads all tasks. A name that is not in the dataset makes
+                ``LuxonisLoader`` raise ``ValueError``.
+            min_bbox_visibility: The minimum fraction of a box that must
+                stay visible after the augmentations.
+            bbox_area_threshold: The minimum area of a box, relative to
+                the image area, in ``[0, 1]``. The augmentations remove
+                a smaller box and the labels of its instance, such as
+                the keypoints and the instance mask.
+            class_order_per_task: The class names of each task in their
+                desired order. Each list must contain exactly the
+                classes of its task. ``None`` keeps the dataset order.
+            kpts_mapping_per_task: A new keypoint order for each task.
+                For a list ``m``, the keypoint at position ``j`` is the
+                original keypoint ``m[j]``. Each list must map every
+                keypoint of its task. ``None`` keeps the original order.
+            return_sample_metadata: Whether ``__getitem__`` returns the
+                sample metadata as a third element.
+            **kwargs: Arguments for `BaseLoaderTorch`, such as ``view``,
+                ``height``, and ``width``. This loader needs ``view``,
+                and values other than ``None`` for ``height``,
                 ``width``, and ``augmentation_config``.
 
         Raises:
@@ -269,12 +264,11 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         string.
 
         Args:
-            idx (int): The index of the sample.
+            idx: The index of the sample.
 
         Returns:
-            ``tuple[dict[str, Tensor] | Tensor, Labels] | tuple[dict[str, Tensor] | Tensor, Labels, Params]``:
             The image, the labels, and the sample metadata when
-            ``return_sample_metadata`` is ``True``:
+            ``return_sample_metadata`` is ``True``.
 
             - The image is a tensor of shape ``[C, H, W]`` when the
               dataset has one image source. For more sources, it is a
@@ -322,12 +316,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         and a task with no instances. It changes ``labels`` in place.
 
         Args:
-            labels (``dict[str, np.ndarray]``): The labels of one sample.
-                A ``"task_name/keypoints"`` array has the shape
+            labels: The labels of one sample. A
+                ``"task_name/keypoints"`` array has the shape
                 ``[N, 3 * K]``.
 
         Returns:
-            ``dict[str, np.ndarray]``: The same ``labels`` dictionary.
+            The same ``labels`` dictionary.
 
         Raises:
             ValueError: If a mapping does not have ``K`` indices.
@@ -375,8 +369,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         loaders of two views can return different mappings.
 
         Returns:
-            dict[str, dict[str, int]]: The class name to class ID
-            mapping of each task, keyed by the task name.
+            The class name to class ID mapping of each task, keyed by
+            the task name.
 
         """
         return self.loader._classes
@@ -390,8 +384,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         in the result.
 
         Returns:
-            dict[str, int]: The number of keypoints, keyed by the task
-            name.
+            The number of keypoints, keyed by the task name.
 
         """
         skeletons = self.dataset.get_skeletons()
@@ -409,7 +402,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         hold the integer code of a category.
 
         Returns:
-            ``dict[str, type[int] | type[Category] | type[float] | type[str]]``:
             The type of each metadata label, keyed by the label name,
             such as ``"task_name/metadata/color"``.
 
@@ -428,9 +420,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         loader hold these codes in place of the category names.
 
         Returns:
-            dict[str, dict[str, int]]: The category to code mapping of
-            each categorical metadata label, keyed by the label name,
-            such as ``"task_name/metadata/color"``.
+            The category to code mapping of each categorical metadata
+            label, keyed by the label name, such as
+            ``"task_name/metadata/color"``.
 
         """
         return self.dataset.get_categorical_encodings()
@@ -444,18 +436,17 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         They include the resize to ``height`` and ``width``.
 
         Args:
-            img (``dict[str, Tensor] | Tensor``): The image of shape
-                ``[H, W, C]``. A dictionary maps each source name to its
-                image. A tensor is the image of ``image_source``.
+            img: The image of shape ``[H, W, C]``. A dictionary maps
+                each source name to its image. A tensor is the image of
+                ``image_source``.
 
         Returns:
-            ``Tensor``: The augmented image of shape
-            ``[height, width, C]``. For a dictionary with more than one
-            source, it is the first image of the augmented dictionary.
-            When the ``LuxonisLoader`` has no augmentations, the method
-            returns the ``image_source`` image with no change. The
-            ``LuxonisLoader`` that ``__init__`` builds always has
-            augmentations.
+            The augmented image of shape ``[height, width, C]``. For a
+            dictionary with more than one source, it is the first image
+            of the augmented dictionary. When the ``LuxonisLoader`` has
+            no augmentations, the method returns the ``image_source``
+            image with no change. The ``LuxonisLoader`` that
+            ``__init__`` builds always has augmentations.
 
         """
         if isinstance(img, Tensor):

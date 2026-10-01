@@ -362,42 +362,39 @@ class MicroNet(BaseNode):
         the values of the ``"M1"`` variant.
 
         Args:
-            stem_channels (int): The number of input channels of the
-                first MicroBlock. The stem does not read this value. The
-                value must be equal to ``stem_groups[0] * stem_groups[1]``,
+            stem_channels: The number of input channels of the first
+                MicroBlock. The stem does not read this value. The value
+                must be equal to ``stem_groups[0] * stem_groups[1]``,
                 the output channels of the stem. Otherwise, `forward`
                 raises ``RuntimeError``.
-            stem_groups (tuple[int, int]): The channel layout of the
-                stem. The first value is the number of output channels
-                of the :math:`3 \times 1` convolution. It is also the
-                number of groups of the :math:`1 \times 3` convolution and
-                of the channel shuffle. The second value is the channel
+            stem_groups: The channel layout of the stem. The first value
+                is the number of output channels of the
+                :math:`3 \times 1` convolution. It is also the number of
+                groups of the :math:`1 \times 3` convolution and of the
+                channel shuffle. The second value is the channel
                 multiplier of the :math:`1 \times 3` convolution.
-            init_a (tuple[float, float]): The offsets that Dynamic
-                Shift-Max adds to the weights of the input features, one
-                for each of its two branches. The MicroBlocks use them in
-                the activations that the first two values of
-                ``dy_shift`` select. Only ``init_a[0]`` has an effect,
-                because `DYShiftMax` adds ``init_b[1]`` to the input
+            init_a: The offsets that Dynamic Shift-Max adds to the
+                weights of the input features, one for each of its two
+                branches. The MicroBlocks use them in the activations
+                that the first two values of ``dy_shift`` select. Only
+                ``init_a[0]`` has an effect, because `DYShiftMax` adds
+                ``init_b[1]`` to the input weights of the second branch.
+            init_b: The offsets that Dynamic Shift-Max adds to the
+                weights of the channel-shifted features, one for each of
+                its two branches. The activations that use ``init_a``
+                also use them. ``init_b[1]`` also goes to the input
                 weights of the second branch.
-            init_b (tuple[float, float]): The offsets that Dynamic
-                Shift-Max adds to the weights of the channel-shifted
-                features, one for each of its two branches. The
-                activations that use ``init_a`` also use them.
-                ``init_b[1]`` also goes to the input weights of the
-                second branch.
-            out_indices (list[int] | None): The indices of the layers
-                whose outputs `forward` returns. Index ``0`` is the stem.
-                Index ``i`` is the MicroBlock of ``layer_params[i - 1]``.
-                The node ignores negative indices and indices without a
-                layer. ``None`` or an empty list selects ``[1, 2, 4, 7]``.
-                This default does not change with ``layer_params``.
-            layer_params (``list[LayerParamsDict] | None``): The
-                parameters of the MicroBlocks, one dictionary for each
-                block, in order. ``None`` or an empty list selects the
-                seven MicroBlocks of the ``"M1"`` variant.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            out_indices: The indices of the layers whose outputs
+                `forward` returns. Index ``0`` is the stem. Index ``i``
+                is the MicroBlock of ``layer_params[i - 1]``. The node
+                ignores negative indices and indices without a layer.
+                ``None`` or an empty list selects ``[1, 2, 4, 7]``. This
+                default does not change with ``layer_params``.
+            layer_params: The parameters of the MicroBlocks, one
+                dictionary for each block, in order. ``None`` or an
+                empty list selects the seven MicroBlocks of the ``"M1"``
+                variant.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -437,12 +434,11 @@ class MicroNet(BaseNode):
           ``[B, 80, H/32, W/32]``, and ``[B, 864, H/32, W/32]``.
 
         Args:
-            inputs (``Tensor``): The input images, of shape
-                ``[B, 3, H, W]``.
+            inputs: The input images, of shape ``[B, 3, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The outputs of the layers whose indices are
-            in ``out_indices``, in layer order. The order of the indices
+            The outputs of the layers whose indices are in
+            ``out_indices``, in layer order. The order of the indices
             and repeated indices do not change the result.
 
         Examples:
@@ -481,10 +477,9 @@ class MicroNet(BaseNode):
         call builds new dictionaries.
 
         Returns:
-            tuple[str, dict[str, MicroNetVariantDict]]: The name of the
-            default variant, ``"M1"``, and a dictionary that maps
-            ``"M1"``, ``"M2"``, and ``"M3"`` to their constructor
-            arguments.
+            The name of the default variant, ``"M1"``, and a dictionary
+            that maps ``"M1"``, ``"M2"``, and ``"M3"`` to their
+            constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes.backbones import MicroNet
@@ -833,50 +828,50 @@ class LayerParamsDict(TypedDict):
     ``out_channels`` is equal to the input channels.
 
     Attributes:
-        out_channels (int): The number of channels after the projection.
-            The next block takes this value as its input channels. For a
+        out_channels: The number of channels after the projection. The
+            next block takes this value as its input channels. For a
             transition block, the value must be equal to the expanded
             number of channels.
-        stride (int): The stride of the depthwise convolution. ``2``
-            halves the height and the width.
-        kernel_size (int): The kernel size :math:`k` of the depthwise
+        stride: The stride of the depthwise convolution. ``2`` halves
+            the height and the width.
+        kernel_size: The kernel size :math:`k` of the depthwise
             convolution. The block splits the convolution into a
             :math:`k \times 1` and a :math:`1 \times k` convolution.
-        expand_ratio (tuple[int, int]): The two channel multipliers of
-            the expansion. A lite block applies one multiplier in each
-            half of its depthwise convolution. The other blocks apply
-            the product in the expansion :math:`1 \times 1` convolution.
-        groups_1 (tuple[int, int]): The groups before the projection.
-            The first value is the number of groups of the expansion
-            :math:`1 \times 1` convolution. ``0`` selects a lite block.
-            The second value is the number of groups of the Dynamic
-            Shift-Max activations before the projection. The activation
-            after the depthwise convolution of a full block is an
-            exception. When the value is not ``1``, the groups of that
-            activation are the expanded channels divided by the value.
-            In a lite or a full block, the value also sets the groups of
-            one channel shuffle before the projection. In a transition
-            block, it sets the groups of the only Dynamic Shift-Max.
-        groups_2 (tuple[int, int]): The groups of the projection and of
-            the layers after it. The first value is the number of groups
-            of the projection :math:`1 \times 1` convolution. The second
-            value sets the groups of the last Dynamic Shift-Max and of one
+        expand_ratio: The two channel multipliers of the expansion. A
+            lite block applies one multiplier in each half of its
+            depthwise convolution. The other blocks apply the product in
+            the expansion :math:`1 \times 1` convolution.
+        groups_1: The groups before the projection. The first value is
+            the number of groups of the expansion :math:`1 \times 1`
+            convolution. ``0`` selects a lite block. The second value is
+            the number of groups of the Dynamic Shift-Max activations
+            before the projection. The activation after the depthwise
+            convolution of a full block is an exception. When the value
+            is not ``1``, the groups of that activation are the expanded
+            channels divided by the value. In a lite or a full block,
+            the value also sets the groups of one channel shuffle before
+            the projection. In a transition block, it sets the groups of
+            the only Dynamic Shift-Max.
+        groups_2: The groups of the projection and of the layers after
+            it. The first value is the number of groups of the
+            projection :math:`1 \times 1` convolution. The second value
+            sets the groups of the last Dynamic Shift-Max and of one
             channel shuffle after the projection. ``0`` selects a
             transition block when ``groups_1[0]`` is not ``0``.
-        dy_shift (tuple[int, int, int]): The activations after the
-            expansion :math:`1 \times 1` convolution, after the depthwise
-            convolution, and after the last convolution. In the first two
-            positions, ``0`` or a negative value selects ``ReLU6``. ``2``
-            selects Dynamic Shift-Max with the maximum of two branches.
-            Another positive value selects Dynamic Shift-Max with one
-            branch. In the last position, a positive value selects
-            Dynamic Shift-Max with one branch. Other values select no
-            activation. A lite block ignores the first value. A
-            transition block reads only the last value. Values other
-            than ``0`` also add channel shuffles to a lite or a full
-            block. In a lite block, the last value adds its shuffle only
-            when ``out_channels`` is even.
-        reduction_factor (int): The reduction of the squeeze network in
+        dy_shift: The activations after the expansion :math:`1 \times 1`
+            convolution, after the depthwise convolution, and after the
+            last convolution. In the first two positions, ``0`` or a
+            negative value selects ``ReLU6``. ``2`` selects Dynamic
+            Shift-Max with the maximum of two branches. Another positive
+            value selects Dynamic Shift-Max with one branch. In the last
+            position, a positive value selects Dynamic Shift-Max with
+            one branch. Other values select no activation. A lite block
+            ignores the first value. A transition block reads only the
+            last value. Values other than ``0`` also add channel
+            shuffles to a lite or a full block. In a lite block, the
+            last value adds its shuffle only when ``out_channels`` is
+            even.
+        reduction_factor: The reduction of the squeeze network in
             Dynamic Shift-Max. Its hidden layer has
             ``channels // (8 * reduction_factor)`` units, where
             ``channels`` is the number of input channels of the
@@ -907,18 +902,17 @@ class MicroNetVariantDict(TypedDict):
     The ``__init__`` docstring of `MicroNet` describes them in full.
 
     Attributes:
-        stem_channels (int): The number of input channels of the first
+        stem_channels: The number of input channels of the first
             MicroBlock. It must be equal to the output channels of the
             stem, ``stem_groups[0] * stem_groups[1]``.
-        stem_groups (tuple[int, int]): The channel layout of the stem.
-        init_a (tuple[float, float]): The Dynamic Shift-Max offsets for
-            the weights of the input features.
-        init_b (tuple[float, float]): The Dynamic Shift-Max offsets for
-            the weights of the channel-shifted features.
-        out_indices (list[int]): The indices of the layers whose outputs
-            the node returns. Index ``0`` is the stem.
-        layer_params (``list[LayerParamsDict]``): The parameters of the
-            MicroBlocks, in order.
+        stem_groups: The channel layout of the stem.
+        init_a: The Dynamic Shift-Max offsets for the weights of the
+            input features.
+        init_b: The Dynamic Shift-Max offsets for the weights of the
+            channel-shifted features.
+        out_indices: The indices of the layers whose outputs the node
+            returns. Index ``0`` is the stem.
+        layer_params: The parameters of the MicroBlocks, in order.
 
     """
 

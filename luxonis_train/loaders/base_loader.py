@@ -65,29 +65,26 @@ class BaseLoaderTorch(
         """Store the settings that every loader shares.
 
         Args:
-            view (list[str]): The splits that form the view. The list
-                usually holds one split, such as ``["train"]``. A dataset
-                can also combine splits, such as
+            view: The splits that form the view. The list usually holds
+                one split, such as ``["train"]``. A dataset can also
+                combine splits, such as
                 ``["train_synthetic", "train_real"]``.
-            height (int | None): The height of the output image. With
-                ``None``, the `height` property raises ``ValueError``.
-            width (int | None): The width of the output image. With
-                ``None``, the `width` property raises ``ValueError``.
-            augmentation_engine (str): The name of the augmentation
-                engine, such as ``"albumentations"``.
-            augmentation_config (list[AugmentationConfig] | None): The
-                augmentations. Each item has a ``name`` and a ``params``
-                dictionary. With ``None``, the `augmentation_config`
-                property raises ``ValueError``.
-            image_source (str): The name of the main image source. For a
-                dataset with more than one source, such as ``"left"`` and
-                ``"right"``, the visualizations use this source.
-            keep_aspect_ratio (bool): Whether the resize keeps the aspect
-                ratio of the image.
-            color_space (``Literal["RGB", "BGR", "GRAY"]``): The color
-                space of the output image.
-            seed (int | None): The random seed of the augmentations, or
-                ``None``.
+            height: The height of the output image. With ``None``, the
+                `height` property raises ``ValueError``.
+            width: The width of the output image. With ``None``, the
+                `width` property raises ``ValueError``.
+            augmentation_engine: The name of the augmentation engine,
+                such as ``"albumentations"``.
+            augmentation_config: The augmentations. Each item has a
+                ``name`` and a ``params`` dictionary. With ``None``, the
+                `augmentation_config` property raises ``ValueError``.
+            image_source: The name of the main image source. For a
+                dataset with more than one source, such as ``"left"``
+                and ``"right"``, the visualizations use this source.
+            keep_aspect_ratio: Whether the resize keeps the aspect ratio
+                of the image.
+            color_space: The color space of the output image.
+            seed: The random seed of the augmentations, or ``None``.
 
         """
         self._view = view
@@ -235,12 +232,11 @@ class BaseLoaderTorch(
         `LuxonisLoaderTorch` overrides it.
 
         Args:
-            img (``dict[str, Tensor] | Tensor``): The raw image of shape
-                ``[H, W, C]``. A dictionary maps each source name to its
-                image.
+            img: The raw image of shape ``[H, W, C]``. A dictionary maps
+                each source name to its image.
 
         Returns:
-            ``Tensor``: An override returns the augmented image of shape
+            An override returns the augmented image of shape
             ``[H, W, C]``.
 
         Raises:
@@ -258,13 +254,13 @@ class BaseLoaderTorch(
         """Load one sample of the view.
 
         Args:
-            idx (int): The index of the sample.
+            idx: The index of the sample.
 
         Returns:
-            LuxonisLoaderTorchOutput: The input and the labels of the
-            sample. The input is an image of shape ``[C, H, W]``, or a
-            dictionary that maps each input name to its image. The
-            labels map each ``"<task_name>/<label>"`` key to a tensor.
+            The input and the labels of the sample. The input is an
+            image of shape ``[C, H, W]``, or a dictionary that maps each
+            input name to its image. The labels map each
+            ``"<task_name>/<label>"`` key to a tensor.
 
         """
         ...
@@ -274,7 +270,7 @@ class BaseLoaderTorch(
         """Return the number of samples in the view.
 
         Returns:
-            int: The number of samples.
+            The number of samples.
 
         """
         ...
@@ -284,8 +280,8 @@ class BaseLoaderTorch(
         """Return the class names and the class IDs of each task.
 
         Returns:
-            dict[str, dict[str, int]]: The class name to class ID
-            mapping of each task, keyed by the task name.
+            The class name to class ID mapping of each task, keyed by
+            the task name.
 
         """
         ...
@@ -297,8 +293,8 @@ class BaseLoaderTorch(
         labels must override it.
 
         Returns:
-            dict[str, int] | None: The number of keypoints, keyed by the
-            task name, or ``None`` when the loader has no keypoints.
+            The number of keypoints, keyed by the task name, or ``None``
+            when the loader has no keypoints.
 
         """
         return None
@@ -313,7 +309,6 @@ class BaseLoaderTorch(
         the result.
 
         Returns:
-            ``dict[str, type[int] | type[Category] | type[float] | type[str]]``:
             The type of each metadata label, keyed by the label name,
             such as ``"task_name/metadata/color"``.
 
@@ -328,8 +323,8 @@ class BaseLoaderTorch(
         that the loader has no categorical metadata labels.
 
         Returns:
-            dict[str, dict[str, int]]: The category to code mapping of
-            each categorical metadata label, keyed by the label name.
+            The category to code mapping of each categorical metadata
+            label, keyed by the label name.
 
         """
         return {}
@@ -344,12 +339,12 @@ class BaseLoaderTorch(
         The method converts the codes to ``torch.float32`` too.
 
         Args:
-            numpy_dictionary (``dict[str, np.ndarray]``): The arrays,
-                such as the labels of one sample.
+            numpy_dictionary: The arrays, such as the labels of one
+                sample.
 
         Returns:
-            ``dict[str, Tensor]``: A new dictionary with the same keys and
-            one tensor for each array.
+            A new dictionary with the same keys and one tensor for each
+            array.
 
         """
         torch_dictionary = {}
@@ -368,11 +363,11 @@ class BaseLoaderTorch(
         converts it to `color_space`.
 
         Args:
-            path (str): The path to the image file.
+            path: The path to the image file.
 
         Returns:
-            ``npt.NDArray[np.uint8]``: The image of shape ``[H, W, 3]``,
-            or ``[H, W]`` for the ``"GRAY"`` color space.
+            The image of shape ``[H, W, 3]``, or ``[H, W]`` for the
+            ``"GRAY"`` color space.
 
         Raises:
             ValueError: If OpenCV cannot read the file.
@@ -410,11 +405,10 @@ class BaseLoaderTorch(
         keeps its shape.
 
         Args:
-            img (``np.ndarray``): The image of shape ``[H, W, C]`` or
-                ``[H, W]``.
+            img: The image of shape ``[H, W, C]`` or ``[H, W]``.
 
         Returns:
-            ``Tensor``: The image of shape ``[C, H, W]`` or ``[H, W]``.
+            The image of shape ``[C, H, W]`` or ``[H, W]``.
 
         Example:
             >>> import numpy as np
@@ -455,13 +449,12 @@ class BaseLoaderTorch(
           dimension.
 
         Args:
-            batch (list[LuxonisLoaderTorchOutput]): The samples. All
-                samples must have the label keys of the first sample.
+            batch: The samples. All samples must have the label keys of
+                the first sample.
 
         Returns:
-            ``tuple[dict[str, Tensor] | Tensor, Labels]``: The batched
-            input and the batched labels, with the keys of the first
-            sample.
+            The batched input and the batched labels, with the keys of
+            the first sample.
 
         Raises:
             TypeError: If the batch mixes tensor inputs and dictionary

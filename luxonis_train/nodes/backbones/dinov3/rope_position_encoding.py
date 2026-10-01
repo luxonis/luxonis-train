@@ -40,8 +40,7 @@ class RopePositionEmbedding(nn.Module):
     ``tile``, because ``tile`` does not export to ONNX.
 
     Attributes:
-        periods (``Tensor``): The :math:`D / 4` periods, in a persistent
-            buffer.
+        periods: The :math:`D / 4` periods, in a persistent buffer.
 
     Example:
         >>> rope = RopePositionEmbedding(64, num_heads=4)
@@ -85,36 +84,35 @@ class RopePositionEmbedding(nn.Module):
         a single ``min_period`` or ``max_period``.
 
         Args:
-            embed_dim (int): The embedding dimension of the transformer.
-                It must be a multiple of ``4 * num_heads``.
-            num_heads (int): The number of attention heads.
-            base (float | None): The base of the periods. ``None``
-                selects the ``min_period`` and ``max_period`` setting.
-            min_period (float | None): The smallest period. The module
-                uses it only when ``base`` is ``None``.
-            max_period (float | None): The largest period. The module
-                uses it only when ``base`` is ``None``.
-            normalize_coords (``Literal["min", "max", "separate"]``): The
-                divisor of the patch coordinates. ``"separate"`` divides
-                the rows by ``H`` and the columns by ``W``. ``"max"``
-                divides both by ``max(H, W)``, and ``"min"`` divides both
-                by ``min(H, W)``.
-            shift_coords (float | None): In training mode, `forward` adds
-                a random shift to each axis. Each axis gets its own
-                shift, uniform in ``[-shift_coords, shift_coords]``.
-                ``None`` adds no shift.
-            jitter_coords (float | None): In training mode, `forward`
-                multiplies each axis by its own random factor. The factor
-                is log-uniform in ``[1 / jitter_coords, jitter_coords]``.
-                ``None`` applies no jitter.
-            rescale_coords (float | None): In training mode, `forward`
-                multiplies both axes by one random factor. The factor is
-                log-uniform in ``[1 / rescale_coords, rescale_coords]``.
-                ``None`` applies no rescale.
-            dtype (torch.dtype | None): The data type of the periods and
-                the coordinates. ``None`` selects the default data type.
-            device (torch.device | None): The device of the periods
-                buffer. `forward` computes on the device of that buffer.
+            embed_dim: The embedding dimension of the transformer. It
+                must be a multiple of ``4 * num_heads``.
+            num_heads: The number of attention heads.
+            base: The base of the periods. ``None`` selects the
+                ``min_period`` and ``max_period`` setting.
+            min_period: The smallest period. The module uses it only
+                when ``base`` is ``None``.
+            max_period: The largest period. The module uses it only when
+                ``base`` is ``None``.
+            normalize_coords: The divisor of the patch coordinates.
+                ``"separate"`` divides the rows by ``H`` and the columns
+                by ``W``. ``"max"`` divides both by ``max(H, W)``, and
+                ``"min"`` divides both by ``min(H, W)``.
+            shift_coords: In training mode, `forward` adds a random
+                shift to each axis. Each axis gets its own shift,
+                uniform in ``[-shift_coords, shift_coords]``. ``None``
+                adds no shift.
+            jitter_coords: In training mode, `forward` multiplies each
+                axis by its own random factor. The factor is log-uniform
+                in ``[1 / jitter_coords, jitter_coords]``. ``None``
+                applies no jitter.
+            rescale_coords: In training mode, `forward` multiplies both
+                axes by one random factor. The factor is log-uniform in
+                ``[1 / rescale_coords, rescale_coords]``. ``None``
+                applies no rescale.
+            dtype: The data type of the periods and the coordinates.
+                ``None`` selects the default data type.
+            device: The device of the periods buffer. `forward` computes
+                on the device of that buffer.
 
         Raises:
             AssertionError: When ``embed_dim`` is not a multiple of
@@ -163,13 +161,12 @@ class RopePositionEmbedding(nn.Module):
         the coordinates, as the constructor arguments enable.
 
         Args:
-            H (int): The number of patch rows.
-            W (int): The number of patch columns.
+            H: The number of patch rows.
+            W: The number of patch columns.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The sine and the cosine of the
-            angles, each of shape ``[H * W, D]``, where ``D`` is the head
-            dimension.
+            The sine and the cosine of the angles, each of shape
+            ``[H * W, D]``, where ``D`` is the head dimension.
 
         Raises:
             ValueError: When ``normalize_coords`` is not ``"min"``,

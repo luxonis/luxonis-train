@@ -28,20 +28,17 @@ def postprocess_metrics(
     value separately. The function changes ``metrics`` in place.
 
     Args:
-        metrics (``dict[str, Tensor]``): The raw metric values. The
-            dictionary must hold the key ``"classes"``, see
-            `process_class_metrics`.
-        class_names (``Mapping[int, str]``): The class names, keyed by
-            the class index.
-        main_metric (str): The key of the main value, such as ``"map"``.
-        device (torch.device): The device of the zero tensor that the
-            function returns when ``metrics`` has no key
-            ``main_metric``.
+        metrics: The raw metric values. The dictionary must hold the key
+            ``"classes"``, see `process_class_metrics`.
+        class_names: The class names, keyed by the class index.
+        main_metric: The key of the main value, such as ``"map"``.
+        device: The device of the zero tensor that the function returns
+            when ``metrics`` has no key ``main_metric``.
 
     Returns:
-        ``tuple[Tensor, dict[str, Tensor]]``: The main value and the
-        dictionary of the other values. The main value is a zero tensor
-        on ``device`` when ``metrics`` has no key ``main_metric``.
+        The main value and the dictionary of the other values. The main
+        value is a zero tensor on ``device`` when ``metrics`` has no key
+        ``main_metric``.
 
     Example:
         >>> import torch
@@ -83,11 +80,10 @@ def add_f1_metrics(metrics: dict[str, Tensor]) -> dict[str, Tensor]:
     changes ``metrics`` in place.
 
     Args:
-        metrics (``dict[str, Tensor]``): The metric values.
+        metrics: The metric values.
 
     Returns:
-        ``dict[str, Tensor]``: The same dictionary, with the F1 scores
-        added.
+        The same dictionary, with the F1 scores added.
 
     Example:
         The key ``"mar"`` does not exist, so ``"map"`` gets no F1 score.
@@ -133,16 +129,15 @@ def process_class_metrics(
     off. The function changes ``metrics`` in place.
 
     Args:
-        metrics (``dict[str, Tensor]``): The metric values. The
-            dictionary must hold the key ``"classes"``, a tensor with
-            the class indices in the order of the per-class values.
-        class_names (``Mapping[int, str]``): The class names, keyed by
-            the class index. It must hold each index of ``"classes"``.
+        metrics: The metric values. The dictionary must hold the key
+            ``"classes"``, a tensor with the class indices in the order
+            of the per-class values.
+        class_names: The class names, keyed by the class index. It must
+            hold each index of ``"classes"``.
 
     Returns:
-        ``dict[str, Tensor]``: The same dictionary, without
-        ``"classes"`` and the per-class tensors, and with the value of
-        each class.
+        The same dictionary, without ``"classes"`` and the per-class
+        tensors, and with the value of each class.
 
     Example:
         >>> import torch
@@ -199,25 +194,24 @@ def compute_metric_lists(
       the image as ``bool``.
 
     Args:
-        boundinbox (``list[Tensor]``): The predicted boxes of each image,
-            of shape ``[M_i, 6]``, as ``[x1, y1, x2, y2, score, class]``
-            in pixels.
-        target_boundingbox (``Tensor``): The target boxes of the batch,
-            of shape ``[N, 6]``, as ``[batch_index, class, x, y, w, h]``.
-            ``x`` and ``y`` are the normalized top-left corner, and
-            ``w`` and ``h`` are the normalized size.
-        height (int): The image height in pixels. It scales the ``y``
+        boundinbox: The predicted boxes of each image, of shape
+            ``[M_i, 6]``, as ``[x1, y1, x2, y2, score, class]`` in
+            pixels.
+        target_boundingbox: The target boxes of the batch, of shape
+            ``[N, 6]``, as ``[batch_index, class, x, y, w, h]``. ``x``
+            and ``y`` are the normalized top-left corner, and ``w`` and
+            ``h`` are the normalized size.
+        height: The image height in pixels. It scales the ``y``
             coordinates of the target boxes.
-        width (int): The image width in pixels. It scales the ``x``
+        width: The image width in pixels. It scales the ``x``
             coordinates of the target boxes.
-        masks (``list[Tensor] | None``): The predicted masks of each
-            image, of shape ``[M_i, H, W]``. ``None`` adds no masks.
-        target_masks (``Tensor | None``): The target masks of the batch,
-            of shape ``[N, H, W]``, one for each row of
-            ``target_boundingbox``. ``None`` adds no masks.
+        masks: The predicted masks of each image, of shape
+            ``[M_i, H, W]``. ``None`` adds no masks.
+        target_masks: The target masks of the batch, of shape
+            ``[N, H, W]``, one for each row of ``target_boundingbox``.
+            ``None`` adds no masks.
 
     Returns:
-        ``tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]``:
         The prediction dictionaries and the target dictionaries, one of
         each for each item of ``boundinbox``.
 

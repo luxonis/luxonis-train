@@ -62,21 +62,19 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """Initialize the dataset and collect the texture images.
 
         Args:
-            *args (``Any``): Positional arguments for
-                `LuxonisLoaderTorch`.
-            anomaly_source_path (``PathType``): The directory of the
-                texture images. The loader collects all files in the
-                directory tree with an extension from ``IMAGE_FORMATS``,
-                in any letter case. The loader downloads a remote URL
-                into ``./data``, and uses a local path directly.
-            noise_prob (float): The probability that a sample of the
-                ``train`` view gets an anomaly.
-            beta (float | None): The weight of the clean image inside the
-                mask. The texture gets the weight ``1 - beta``, so
-                ``0.0`` gives an opaque anomaly. ``None`` draws a new
-                value from ``[0, 0.8)`` for each anomaly.
-            **kwargs (``Any``): Keyword arguments for
-                `LuxonisLoaderTorch`.
+            *args: Positional arguments for `LuxonisLoaderTorch`.
+            anomaly_source_path: The directory of the texture images.
+                The loader collects all files in the directory tree with
+                an extension from ``IMAGE_FORMATS``, in any letter case.
+                The loader downloads a remote URL into ``./data``, and
+                uses a local path directly.
+            noise_prob: The probability that a sample of the ``train``
+                view gets an anomaly.
+            beta: The weight of the clean image inside the mask. The
+                texture gets the weight ``1 - beta``, so ``0.0`` gives
+                an opaque anomaly. ``None`` draws a new value from
+                ``[0, 0.8)`` for each anomaly.
+            **kwargs: Keyword arguments for `LuxonisLoaderTorch`.
 
         Raises:
             FileNotFoundError: If the download of ``anomaly_source_path``
@@ -136,17 +134,17 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         ``return_sample_metadata`` and ``kpts_mapping_per_task``.
 
         Args:
-            idx (int): The index of the sample.
+            idx: The index of the sample.
 
         Returns:
-            ``tuple[Tensor, Labels]``: The image of shape ``[C, H, W]``,
-            with the anomaly when it has one. The labels have two keys,
-            where ``task`` is the name of the dataset task:
+            The image of shape ``[C, H, W]``, with the anomaly when it
+            has one. The labels have two keys, where ``task`` is the
+            name of the dataset task.
 
-            - ``"task/segmentation"``: The one-hot anomaly mask of shape
-              ``[2, H, W]``. Channel ``1`` marks the anomaly.
-            - ``"task/original_segmentation"``: The image before the
-              anomaly, of shape ``[C, H, W]``.
+            - ``"task/segmentation"`` holds the one-hot anomaly mask of
+              shape ``[2, H, W]``. Channel ``1`` marks the anomaly.
+            - ``"task/original_segmentation"`` holds the image before
+              the anomaly, of shape ``[C, H, W]``.
 
             The labels do not include the other labels of the dataset.
 
@@ -208,9 +206,8 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """Return the two classes of the anomaly mask.
 
         Returns:
-            ``dict[str, Mapping[str, int]]``: One entry for the dataset
-            task. Its ``bidict`` maps ``"background"`` to ``0`` and
-            ``"anomaly"`` to ``1``.
+            One entry for the dataset task. Its ``bidict`` maps
+            ``"background"`` to ``0`` and ``"anomaly"`` to ``1``.
 
         """
         names = ["background", "anomaly"]

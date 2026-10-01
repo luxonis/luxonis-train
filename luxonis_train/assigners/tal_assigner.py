@@ -79,26 +79,25 @@ class TaskAlignedAssigner(nn.Module):
         r"""Initialize the task-aligned assigner.
 
         Args:
-            n_classes (int): Number of classes in the dataset. The label
+            n_classes: Number of classes in the dataset. The label
                 ``n_classes`` marks a background anchor in the output.
-            topk (int): Number of anchors with the highest alignment
-                metric that the assigner selects for each ground truth
-                box. It must not be larger than the number of anchors.
-            alpha (float): The exponent :math:`\alpha` of the class score
-                in the alignment metric.
-            beta (float): The exponent :math:`\beta` of the overlap
-                :math:`u` in the alignment metric.
-            eps (float): A small value that prevents a division by zero
-                in the score normalization and in the object keypoint
+            topk: Number of anchors with the highest alignment metric
+                that the assigner selects for each ground truth box. It
+                must not be larger than the number of anchors.
+            alpha: The exponent :math:`\alpha` of the class score in the
+                alignment metric.
+            beta: The exponent :math:`\beta` of the overlap :math:`u` in
+                the alignment metric.
+            eps: A small value that prevents a division by zero in the
+                score normalization and in the object keypoint
                 similarity.
-            strides (``Sequence[int] | Tensor | None``): The strides of
-                the detection head in pixels, for example ``[8, 16, 32]``.
-                The assigner sorts them and removes duplicates. STAL
-                needs the strides, so ``None`` or an empty value turns
-                STAL off.
-            skip_stal (bool): ``True`` turns STAL off. When
-                ``skip_stal`` is ``False`` and ``strides`` is ``None`` or
-                empty, the assigner logs a warning and turns STAL off.
+            strides: The strides of the detection head in pixels, for
+                example ``[8, 16, 32]``. The assigner sorts them and
+                removes duplicates. STAL needs the strides, so ``None``
+                or an empty value turns STAL off.
+            skip_stal: ``True`` turns STAL off. When ``skip_stal`` is
+                ``False`` and ``strides`` is ``None`` or empty, the
+                assigner logs a warning and turns STAL off.
 
         """
         super().__init__()
@@ -148,7 +147,7 @@ class TaskAlignedAssigner(nn.Module):
         and the keypoints use the same units. STAL compares the box sizes
         with the strides, so STAL needs the boxes in pixels. Only the
         boxes with ``mask_gt`` set to ``1`` get positive anchors. The
-        method runs under `torch.no_grad`, so the outputs have no
+        method runs under ``torch.no_grad``, so the outputs have no
         gradient.
 
         To add the object keypoint similarity to the alignment metric,
@@ -156,45 +155,44 @@ class TaskAlignedAssigner(nn.Module):
         ``area_factor``.
 
         Args:
-            pred_scores (``Tensor``): Predicted class probabilities in
-                ``[0, 1]`` with shape ``[bs, n_anchors, n_classes]``. The
-                losses give the sigmoid of the class logits.
-            pred_bboxes (``Tensor``): Predicted boxes with shape
+            pred_scores: Predicted class probabilities in ``[0, 1]``
+                with shape ``[bs, n_anchors, n_classes]``. The losses
+                give the sigmoid of the class logits.
+            pred_bboxes: Predicted boxes with shape
                 ``[bs, n_anchors, 4]``.
-            anchor_points (``Tensor``): Anchor centers ``(x, y)`` with
-                shape ``[n_anchors, 2]``.
-            gt_labels (``Tensor``): Class index of each ground truth box
-                with shape ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            anchor_points: Anchor centers ``(x, y)`` with shape
+                ``[n_anchors, 2]``.
+            gt_labels: Class index of each ground truth box with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
-                padded slot, with shape ``[bs, n_max_boxes, 1]``.
-            pred_kpts (``Tensor | None``): Predicted keypoints with shape
+            mask_gt: ``1`` for a real box and ``0`` for a padded slot,
+                with shape ``[bs, n_max_boxes, 1]``.
+            pred_kpts: Predicted keypoints with shape
                 ``[bs, n_anchors, n_kpts, 3]``. The assigner reads only
                 ``x`` and ``y``.
-            gt_kpts (``Tensor | None``): Ground truth keypoints as
-                ``(x, y, visibility)`` with shape
-                ``[bs, n_max_boxes, n_kpts, 3]``.
-            sigmas (``Tensor | None``): One sigma per keypoint with shape
-                ``[n_kpts]``.
-            area_factor (float | None): The factor that scales the area of
-                a ground truth box to the pose area.
+            gt_kpts: Ground truth keypoints as ``(x, y, visibility)``
+                with shape ``[bs, n_max_boxes, n_kpts, 3]``.
+            sigmas: One sigma per keypoint with shape ``[n_kpts]``.
+            area_factor: The factor that scales the area of a ground
+                truth box to the pose area.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor, Tensor, Tensor]``: Five tensors:
+            Five tensors.
 
-            - ``assigned_labels`` (``[bs, n_anchors]``, ``int64``): The
-              class of the assigned box, or ``n_classes`` for a
+            - ``assigned_labels`` (``[bs, n_anchors]``, ``int64``) holds
+              the class of the assigned box, or ``n_classes`` for a
               background anchor.
-            - ``assigned_bboxes`` (``[bs, n_anchors, 4]``): The assigned
-              box. Only the values at positive anchors are meaningful.
-            - ``assigned_scores`` (``[bs, n_anchors, n_classes]``): A
-              one-hot class vector scaled by the normalized alignment
+            - ``assigned_bboxes`` (``[bs, n_anchors, 4]``) holds the
+              assigned box. Only the values at positive anchors are
+              meaningful.
+            - ``assigned_scores`` (``[bs, n_anchors, n_classes]``) holds
+              a one-hot class vector scaled by the normalized alignment
               metric :math:`\hat{t}`. Zero for a background anchor.
-            - ``mask_positive`` (``[bs, n_anchors]``, ``bool``): ``True``
-              at an anchor with an assigned box.
-            - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``): The
-              index of the assigned box along dimension ``1`` of
+            - ``mask_positive`` (``[bs, n_anchors]``, ``bool``) is
+              ``True`` at an anchor with an assigned box.
+            - ``assigned_gt_idx`` (``[bs, n_anchors]``, ``int64``) holds
+              the index of the assigned box along dimension ``1`` of
               ``gt_bboxes``, ``0`` for a background anchor.
 
             When ``n_max_boxes`` is ``0``, every anchor is background.
@@ -335,13 +333,11 @@ class TaskAlignedAssigner(nn.Module):
         """Convert the strides to a sorted tuple of unique integers.
 
         Args:
-            strides (``Sequence[int] | Tensor | None``): The strides of the
-                detection head.
+            strides: The strides of the detection head.
 
         Returns:
-            ``tuple[int, ...] | None``: The sorted unique strides. ``None``
-            when ``strides`` is ``None``. An empty ``strides`` gives an
-            empty tuple.
+            The sorted unique strides. ``None`` when ``strides`` is
+            ``None``. An empty ``strides`` gives an empty tuple.
 
         """
         if strides is None:
@@ -373,26 +369,25 @@ class TaskAlignedAssigner(nn.Module):
         where :math:`s` is the predicted score of the class of the box.
 
         Args:
-            pred_scores (``Tensor``): Predicted class probabilities in
-                ``[0, 1]`` with shape ``[bs, n_anchors, n_classes]``.
-            pred_bboxes (``Tensor``): Predicted boxes with shape
+            pred_scores: Predicted class probabilities in ``[0, 1]``
+                with shape ``[bs, n_anchors, n_classes]``.
+            pred_bboxes: Predicted boxes with shape
                 ``[bs, n_anchors, 4]``.
-            gt_labels (``Tensor``): Class index of each ground truth box
-                with shape ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            gt_labels: Class index of each ground truth box with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            pred_kpts (``Tensor | None``): Predicted keypoints with shape
+            pred_kpts: Predicted keypoints with shape
                 ``[bs, n_anchors, n_kpts, 3]``.
-            gt_kpts (``Tensor | None``): Ground truth keypoints with shape
+            gt_kpts: Ground truth keypoints with shape
                 ``[bs, n_max_boxes, n_kpts, 3]``.
-            sigmas (``Tensor | None``): One sigma per keypoint with shape
-                ``[n_kpts]``.
-            area_factor (float | None): The factor that scales the area of
-                a ground truth box to the pose area.
+            sigmas: One sigma per keypoint with shape ``[n_kpts]``.
+            area_factor: The factor that scales the area of a ground
+                truth box to the pose area.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The alignment metric and the
-            overlap, both with shape ``[bs, n_max_boxes, n_anchors]``.
+            The alignment metric and the overlap, both with shape
+            ``[bs, n_max_boxes, n_anchors]``.
 
         """
         pred_scores = pred_scores.permute(0, 2, 1)
@@ -431,16 +426,16 @@ class TaskAlignedAssigner(nn.Module):
         ``_expand_small_gt_bboxes``.
 
         Args:
-            anchor_points (``Tensor``): Anchor centers ``(x, y)`` with
-                shape ``[n_anchors, 2]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            anchor_points: Anchor centers ``(x, y)`` with shape
+                ``[n_anchors, 2]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
-                padded slot, with shape ``[bs, n_max_boxes, 1]``.
+            mask_gt: ``1`` for a real box and ``0`` for a padded slot,
+                with shape ``[bs, n_max_boxes, 1]``.
 
         Returns:
-            ``Tensor``: Mask with shape ``[bs, n_max_boxes, n_anchors]``.
-            ``1`` marks an anchor with a center inside the box.
+            Mask with shape ``[bs, n_max_boxes, n_anchors]``. ``1``
+            marks an anchor with a center inside the box.
 
         """
         if not self._skip_stal:
@@ -458,15 +453,15 @@ class TaskAlignedAssigner(nn.Module):
         independently. The center of the box stays.
 
         Args:
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            mask_gt (``Tensor``): ``1`` for a real box and ``0`` for a
-                padded slot, with shape ``[bs, n_max_boxes, 1]``.
+            mask_gt: ``1`` for a real box and ``0`` for a padded slot,
+                with shape ``[bs, n_max_boxes, 1]``.
 
         Returns:
-            ``Tensor``: The boxes with shape ``[bs, n_max_boxes, 4]``.
-            ``gt_bboxes`` itself when ``min_stride`` or
-            ``stal_target_size`` is ``None``.
+            The boxes with shape ``[bs, n_max_boxes, 4]``. ``gt_bboxes``
+            itself when ``min_stride`` or ``stal_target_size`` is
+            ``None``.
 
         """
         if self._min_stride is None or self._stal_target_size is None:
@@ -497,18 +492,18 @@ class TaskAlignedAssigner(nn.Module):
         more than once for a box.
 
         Args:
-            metrics (``Tensor``): The metric of each box and anchor with
-                shape ``[bs, n_max_boxes, n_anchors]``.
-            largest (bool): If ``True``, select the largest values. If
+            metrics: The metric of each box and anchor with shape
+                ``[bs, n_max_boxes, n_anchors]``.
+            largest: If ``True``, select the largest values. If
                 ``False``, select the smallest values.
-            topk_mask (``Tensor | None``): Boolean mask with shape
-                ``[bs, n_max_boxes, topk]``. ``None`` keeps the selection
-                of a box only when its largest selected metric is larger
-                than ``eps``.
+            topk_mask: Boolean mask with shape
+                ``[bs, n_max_boxes, topk]``. ``None`` keeps the
+                selection of a box only when its largest selected metric
+                is larger than ``eps``.
 
         Returns:
-            ``Tensor``: Mask with shape ``[bs, n_max_boxes, n_anchors]``
-            and the dtype of ``metrics``.
+            Mask with shape ``[bs, n_max_boxes, n_anchors]`` and the
+            dtype of ``metrics``.
 
         """
         n_anchors = metrics.shape[-1]
@@ -541,20 +536,21 @@ class TaskAlignedAssigner(nn.Module):
         to ``0``.
 
         Args:
-            gt_labels (``Tensor``): Class index of each ground truth box
-                with shape ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (``Tensor``): Ground truth boxes with shape
+            gt_labels: Class index of each ground truth box with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes: Ground truth boxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            assigned_gt_idx (``Tensor``): Index of the assigned box with
-                shape ``[bs, n_anchors]``.
-            mask_pos_sum (``Tensor``): Number of assigned boxes per anchor
-                with shape ``[bs, n_anchors]``.
+            assigned_gt_idx: Index of the assigned box with shape
+                ``[bs, n_anchors]``.
+            mask_pos_sum: Number of assigned boxes per anchor with shape
+                ``[bs, n_anchors]``.
 
         Returns:
-            ``tuple[Tensor, Tensor, Tensor]``: Three tensors:
+            Three tensors.
 
-            - The ``int64`` assigned labels with shape ``[bs, n_anchors]``.
-              ``n_classes`` for a background anchor.
+            - The ``int64`` assigned labels with shape
+              ``[bs, n_anchors]``. ``n_classes`` for a background
+              anchor.
             - The assigned boxes with shape ``[bs, n_anchors, 4]``.
             - The ``int64`` one-hot scores with shape
               ``[bs, n_anchors, n_classes]``. Zero for a background

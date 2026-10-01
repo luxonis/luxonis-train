@@ -61,34 +61,32 @@ class MetricState:
     list state.
 
     Attributes:
-        default (``Tensor | Number | list | None``): The value of the
-            state after initialization and after ``reset``. A number
-            becomes a zero-dimensional tensor, so ``0`` gives an
-            ``int64`` state and ``0.0`` a ``float32`` state. ``None``
-            selects ``0.0`` for a ``Tensor`` attribute and ``[]`` for a
-            ``list[...]`` attribute. For an attribute of any other type,
-            ``None`` makes `BaseMetric.__init__` raise ``ValueError``.
-            A list default must be empty, else ``add_state`` raises
-            ``ValueError``. **Each instance receives a tensor or list
-            default as it is, not a copy.** All instances of the class
-            then share one state object. An in-place change such as
-            ``+=`` or ``append`` in one metric also changes the others.
-            ``reset`` gives one metric a new tensor, so that metric no
-            longer shares a tensor state. ``reset`` empties a list state
-            in place, so the list stays shared and empties for all
-            metrics. A number or ``None`` gives each instance its own
+        default: The value of the state after initialization and after
+            ``reset``. A number becomes a zero-dimensional tensor, so
+            ``0`` gives an ``int64`` state and ``0.0`` a ``float32``
+            state. ``None`` selects ``0.0`` for a ``Tensor`` attribute
+            and ``[]`` for a ``list[...]`` attribute. For an attribute
+            of any other type, ``None`` makes `BaseMetric.__init__`
+            raise ``ValueError``. A list default must be empty, else
+            ``add_state`` raises ``ValueError``. **Each instance
+            receives a tensor or list default as it is, not a copy.**
+            All instances of the class then share one state object. An
+            in-place change such as ``+=`` or ``append`` in one metric
+            also changes the others. ``reset`` gives one metric a new
+            tensor, so that metric no longer shares a tensor state.
+            ``reset`` empties a list state in place, so the list stays
+            shared and empties for all metrics. A number or ``None``
+            gives each instance its own state.
+        dist_reduce_fx: The reduction that merges the state of all
+            processes. A string selects ``torch.sum``, ``torch.mean``,
+            ``torch.cat``, ``torch.min``, or ``torch.max`` over
+            dimension ``0``. A callable receives the gathered state: the
+            tensor states stacked along a new first dimension, or one
+            list with the items of all processes. ``None`` keeps the
+            gathered state as it is. The default ``...`` selects
+            ``"cat"`` for a list state and ``"sum"`` for a tensor state.
+        persistent: Whether the ``state_dict`` of the metric holds the
             state.
-        dist_reduce_fx (``DistReduceFx | EllipsisType``): The reduction
-            that merges the state of all processes. A string selects
-            ``torch.sum``, ``torch.mean``, ``torch.cat``, ``torch.min``,
-            or ``torch.max`` over dimension ``0``. A callable receives
-            the gathered state: the tensor states stacked along a new
-            first dimension, or one list with the items of all
-            processes. ``None`` keeps the gathered state as it is. The
-            default ``...`` selects ``"cat"`` for a list state and
-            ``"sum"`` for a tensor state.
-        persistent (bool): Whether the ``state_dict`` of the metric
-            holds the state.
 
     Example:
         A subclass with two tensor states. ``register=False`` keeps the
@@ -170,12 +168,12 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         defines its own method, because its mapping depends on the task.
 
         Args:
-            task (Task | None): The task of the node that the metric
-                attaches to, or ``None`` when the node has no task.
+            task: The task of the node that the metric attaches to, or
+                ``None`` when the node has no task.
 
         Returns:
-            dict[str, str]: The predefined model parameter names, mapped
-            to the parameter names of the constructor.
+            The predefined model parameter names, mapped to the
+            parameter names of the constructor.
 
         Example:
             >>> from luxonis_train.attached_modules.metrics import MIoU
@@ -197,7 +195,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         and the reduction of a state follow from the marker.
 
         Args:
-            **kwargs (``Any``): Keyword arguments forwarded to
+            **kwargs: Keyword arguments forwarded to
                 `BaseAttachedModule`, such as ``node``. The remaining
                 arguments reach the ``torchmetrics`` ``Metric``, which
                 accepts only its own options, such as
@@ -270,8 +268,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Add one batch to the metric state.
 
         Args:
-            *args (``Tensor | list[Tensor]``): The inputs of the batch.
-                An implementation replaces them with named parameters.
+            *args: The inputs of the batch. An implementation replaces
+                them with named parameters.
 
         """
         super().update(*args)
@@ -283,8 +281,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Compute the value of the metric from its states.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``:
-            The result in one of three forms:
+            The result in one of three forms.
 
             - The main value as a ``Tensor``.
             - A tuple of the main value and a dictionary of sub-metrics.
@@ -305,11 +302,9 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         artifacts rather than scalar logs.
 
         Args:
-            values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
-                The result of `compute`.
+            values: The result of `compute`.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``:
             The values to log, in one of the forms of `compute`.
 
         """
@@ -322,12 +317,11 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Render images from a computed result.
 
         Args:
-            values (``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``):
-                The result of `compute`.
+            values: The result of `compute`.
 
         Returns:
-            ``dict[str, Tensor]``: The images of shape ``[C, H, W]``,
-            keyed by the names that `get_artifact_names` returns.
+            The images of shape ``[C, H, W]``, keyed by the names that
+            `get_artifact_names` returns.
 
         """
         return {}
@@ -336,8 +330,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Return the stable names emitted by `get_artifacts`.
 
         Returns:
-            ``tuple[str, ...]``: The keys of the dictionary that
-            `get_artifacts` returns.
+            The keys of the dictionary that `get_artifacts` returns.
 
         """
         return ()
@@ -359,8 +352,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         names select predictions and labels.
 
         Args:
-            inputs (``Packet[Tensor]``): The output packet of the node.
-            labels (``Labels``): The labels of the batch, keyed
+            inputs: The output packet of the node.
+            labels: The labels of the batch, keyed
                 ``<task_name>/<label>``.
 
         """

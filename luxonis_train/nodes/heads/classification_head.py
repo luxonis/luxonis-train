@@ -74,12 +74,11 @@ class ClassificationHead(BaseHead):
         """Build the pooling, the dropout, and the linear layer.
 
         Args:
-            dropout_rate (float): The probability that the dropout layer
-                sets a pooled feature to zero in training mode, in
-                ``[0, 1]``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold ``input_shapes`` or ``in_sizes``, and the class
-                count through ``n_classes`` or ``dataset_metadata``.
+            dropout_rate: The probability that the dropout layer sets a
+                pooled feature to zero in training mode, in ``[0, 1]``.
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                ``input_shapes`` or ``in_sizes``, and the class count
+                through ``n_classes`` or ``dataset_metadata``.
 
         """
         super().__init__(**kwargs)
@@ -95,12 +94,11 @@ class ClassificationHead(BaseHead):
         """Compute the class logits.
 
         Args:
-            inputs (``Tensor``): The feature map of shape
-                ``[B, C, h, w]``.
+            inputs: The feature map of shape ``[B, C, h, w]``.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, n_classes]``.
-            `BaseNode.run` puts them under the ``"classification"`` key.
+            The logits of shape ``[B, n_classes]``. `BaseNode.run` puts
+            them under the ``"classification"`` key.
 
         Example:
             >>> import torch

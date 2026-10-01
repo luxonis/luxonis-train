@@ -57,19 +57,15 @@ class DatasetMetadata:
         `dump` writes and a checkpoint stores.
 
         Args:
-            classes (dict[str, dict[str, int]] | None): Task names mapped to
-                the class names of the task and their indices. ``None``
-                means no tasks.
-            n_keypoints (dict[str, int] | None): Task names mapped to the
-                number of keypoints of the task. ``None`` means no
-                keypoints.
-            metadata_types (``dict[str, type[int] | type[Category] | type[float] | type[str]] | None``):
-                Metadata label names, such as
-                ``"<task>/metadata/<name>"``, mapped to the type of their
-                values. ``None`` means no metadata labels.
-            loader (BaseLoaderTorch | None): The loader that gave the
-                metadata. The object keeps a reference to it and does not
-                use it.
+            classes: Task names mapped to the class names of the task
+                and their indices. ``None`` means no tasks.
+            n_keypoints: Task names mapped to the number of keypoints of
+                the task. ``None`` means no keypoints.
+            metadata_types: Metadata label names, such as
+                ``"<task>/metadata/<name>"``, mapped to the type of
+                their values. ``None`` means no metadata labels.
+            loader: The loader that gave the metadata. The object keeps
+                a reference to it and does not use it.
 
         Raises:
             ValueError: When a type name in ``metadata_types`` is not one
@@ -101,9 +97,9 @@ class DatasetMetadata:
         This is how a checkpoint stores and restores the metadata.
 
         Returns:
-            ``dict[str, Any]``: A dictionary with the keys ``"classes"``,
-            ``"n_keypoints"``, and ``"metadata_types"``. The metadata
-            types appear as type names, for example ``"str"``.
+            A dictionary with the keys ``"classes"``, ``"n_keypoints"``,
+            and ``"metadata_types"``. The metadata types appear as type
+            names, for example ``"str"``.
 
         Example:
             >>> metadata = DatasetMetadata(
@@ -151,11 +147,11 @@ class DatasetMetadata:
         """Get the number of classes of a task.
 
         Args:
-            task_name (str | None): The task to read. ``None`` means all
-                tasks, which must then have the same number of classes.
+            task_name: The task to read. ``None`` means all tasks, which
+                must then have the same number of classes.
 
         Returns:
-            int: The number of classes of the task.
+            The number of classes of the task.
 
         Raises:
             ValueError: When ``task_name`` is not a task of the dataset.
@@ -185,11 +181,11 @@ class DatasetMetadata:
         """Get the number of keypoints of a task.
 
         Args:
-            task_name (str | None): The task to read. ``None`` means all
-                tasks, which must then have the same number of keypoints.
+            task_name: The task to read. ``None`` means all tasks, which
+                must then have the same number of keypoints.
 
         Returns:
-            int: The number of keypoints of the task. ``0`` when
+            The number of keypoints of the task. ``0`` when
             ``task_name`` has no keypoint count, for example a task that
             is not in the dataset.
 
@@ -215,13 +211,13 @@ class DatasetMetadata:
         """Get the class names and indices of a task.
 
         Args:
-            task_name (str | None): The task to read. ``None`` means all
-                tasks, which must then have the same classes.
+            task_name: The task to read. ``None`` means all tasks, which
+                must then have the same classes.
 
         Returns:
-            ``bidict[str, int]``: A new bidirectional dictionary that maps
-            the class names to the class indices. Its ``inverse`` maps
-            the indices back to the names.
+            A new bidirectional dictionary that maps the class names to
+            the class indices. Its ``inverse`` maps the indices back to
+            the names.
 
         Raises:
             ValueError: When ``task_name`` is not a task of the dataset.
@@ -269,10 +265,10 @@ class DatasetMetadata:
         The new object keeps a reference to ``loader``.
 
         Args:
-            loader (BaseLoaderTorch): The loader to read.
+            loader: The loader to read.
 
         Returns:
-            DatasetMetadata: The metadata of the dataset of the loader.
+            The metadata of the dataset of the loader.
 
         """
         return cls(

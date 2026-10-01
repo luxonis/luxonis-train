@@ -98,8 +98,8 @@ class FOMOModel(SimplePredefinedModel):
         for the keys the dictionary leaves out.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
-            variants with their constructor arguments.
+            ``"light"`` and the two variants with their constructor
+            arguments.
 
         Example:
             >>> default, variants = FOMOModel.get_variants()

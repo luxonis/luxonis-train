@@ -71,13 +71,12 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         the total loss over the batches of the current epoch so far.
 
         Args:
-            trainer (``pl.Trainer``): The trainer.
-            pl_module (LuxonisLightningModule): The model. Its train
-                loss accumulator provides the ``Loss`` value.
+            trainer: The trainer.
+            pl_module: The model. Its train loss accumulator provides
+                the ``Loss`` value.
 
         Returns:
-            dict[str, int | str | float | dict[str, float]]: The items
-            to show, keyed by name.
+            The items to show, keyed by name.
 
         """
         items = super().get_metrics(trainer, pl_module)
@@ -101,13 +100,13 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         ``matrices``.
 
         Args:
-            stage (str): Name of the stage, for example ``"Validation"``.
-            loss (float): Mean loss of the epoch.
-            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
-                Scalar metrics as ``{node_name: {metric_name: value}}``.
-            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
-                Matrix metrics as ``{node_name: {metric_name: matrix}}``.
-                Each matrix is a dictionary in the format of
+            stage: Name of the stage, for example ``"Validation"``.
+            loss: Mean loss of the epoch.
+            metrics: Scalar metrics as
+                ``{node_name: {metric_name: value}}``.
+            matrices: Matrix metrics as
+                ``{node_name: {metric_name: matrix}}``. Each matrix is a
+                dictionary in the format of
                 `BaseLuxonisProgressBar.format_matrix_for_printing`.
 
         """
@@ -127,10 +126,10 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         ``table``.
 
         Args:
-            title (str): Title of the table.
-            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
-                Each row is a tuple with one value per column.
-            column_names (list[str]): Names of the columns.
+            title: Title of the table.
+            table: The rows. Each row is a tuple with one value per
+                column.
+            column_names: Names of the columns.
 
         """
         ...
@@ -171,15 +170,14 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         (``"GT"``), and ``"col_axis"`` (``"Pred"``).
 
         Args:
-            node (``Any``): The node the metric is attached to. When
-                the object has a ``module`` attribute, as a
-                `NodeWrapper` has, the method reads the class names
-                from that attribute.
-            name (str): Name of the metric. Unused.
-            value (``Tensor``): The matrix, of shape ``[R, C]``.
+            node: The node the metric is attached to. When the object
+                has a ``module`` attribute, as a `NodeWrapper` has, the
+                method reads the class names from that attribute.
+            name: Name of the metric. Unused.
+            value: The matrix, of shape ``[R, C]``.
 
         Returns:
-            ``dict[str, Any]``: The matrix values and their labels.
+            The matrix values and their labels.
 
         Example:
             >>> import torch
@@ -272,13 +270,12 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         so it reaches the console and the log file.
 
         Args:
-            stage (str): Name of the stage, for example ``"Validation"``.
-            loss (float): Mean loss of the epoch.
-            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
-                Scalar metrics as ``{node_name: {metric_name: value}}``.
-            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
-                Matrix metrics as ``{node_name: {metric_name: matrix}}``,
-                in the format of
+            stage: Name of the stage, for example ``"Validation"``.
+            loss: Mean loss of the epoch.
+            metrics: Scalar metrics as
+                ``{node_name: {metric_name: value}}``.
+            matrices: Matrix metrics as
+                ``{node_name: {metric_name: matrix}}``, in the format of
                 `BaseLuxonisProgressBar.format_matrix_for_printing`.
 
         """
@@ -322,10 +319,10 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         ``fancy_grid`` format with right-aligned numbers.
 
         Args:
-            title (str): Title of the table.
-            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
-                Each row is a tuple with one value per column.
-            column_names (list[str]): Names of the columns.
+            title: Title of the table.
+            table: The rows. Each row is a tuple with one value per
+                column.
+            column_names: Names of the columns.
 
         """
         self._rule(title)
@@ -372,8 +369,8 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         `LuxonisTQDMProgressBar.on_train_epoch_end`.
 
         Args:
-            trainer (``pl.Trainer``): The trainer.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer.
+            pl_module: The model. Unused.
 
         """
         super().on_train_epoch_start(trainer, pl_module)
@@ -402,9 +399,9 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         in the first epoch.
 
         Args:
-            trainer (``pl.Trainer``): The trainer.
-            pl_module (LuxonisLightningModule): The model. The base
-                class reads its metrics for the bar postfix.
+            trainer: The trainer.
+            pl_module: The model. The base class reads its metrics for
+                the bar postfix.
 
         """
         super().on_train_epoch_end(trainer, pl_module)
@@ -484,13 +481,12 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         method then clears the log buffer.
 
         Args:
-            stage (str): Name of the stage, for example ``"Validation"``.
-            loss (float): Mean loss of the epoch.
-            metrics (``Mapping[str, Mapping[str, int | str | float]]``):
-                Scalar metrics as ``{node_name: {metric_name: value}}``.
-            matrices (``Mapping[str, Mapping[str, Mapping[str, Any]]]``):
-                Matrix metrics as ``{node_name: {metric_name: matrix}}``,
-                in the format of
+            stage: Name of the stage, for example ``"Validation"``.
+            loss: Mean loss of the epoch.
+            metrics: Scalar metrics as
+                ``{node_name: {metric_name: value}}``.
+            matrices: Matrix metrics as
+                ``{node_name: {metric_name: matrix}}``, in the format of
                 `BaseLuxonisProgressBar.format_matrix_for_printing`.
 
         Raises:
@@ -564,12 +560,12 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         prints with ``str``.
 
         Args:
-            title (str): Title of the table.
-            table (``Iterable[tuple[str | int | float, ...]]``): The rows.
-                Each row is a tuple with one value per column.
-            column_names (list[str]): Names of the columns.
-            console (``Console | None``): The console to print to.
-                ``None`` means the console of the bar, the terminal.
+            title: Title of the table.
+            table: The rows. Each row is a tuple with one value per
+                column.
+            column_names: Names of the columns.
+            console: The console to print to. ``None`` means the console
+                of the bar, the terminal.
 
         Raises:
             RuntimeError: When ``console`` is ``None`` and the console
@@ -646,8 +642,8 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         `LuxonisRichProgressBar.on_train_epoch_end`.
 
         Args:
-            trainer (``pl.Trainer``): The trainer.
-            pl_module (LuxonisLightningModule): The model. Unused.
+            trainer: The trainer.
+            pl_module: The model. Unused.
 
         """
         super().on_train_epoch_start(trainer, pl_module)
@@ -677,9 +673,9 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         in the first epoch.
 
         Args:
-            trainer (``pl.Trainer``): The trainer.
-            pl_module (LuxonisLightningModule): The model. The base
-                class reads its metrics for the metrics column.
+            trainer: The trainer.
+            pl_module: The model. The base class reads its metrics for
+                the metrics column.
 
         """
         super().on_train_epoch_end(trainer, pl_module)
@@ -745,20 +741,19 @@ def build_optimizer_summary(
     and frozen counts.
 
     Args:
-        optimizers (``Sequence[Optimizer]``): The optimizers, in order.
-        schedulers (``Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]``):
-            One entry per optimizer. A dictionary contributes the
-            class name of its ``"scheduler"`` entry, as a Lightning
+        optimizers: The optimizers, in order.
+        schedulers: One entry per optimizer. A dictionary contributes
+            the class name of its ``"scheduler"`` entry, as a Lightning
             scheduler config dictionary holds one. Any other object
-            contributes its own class name, so ``None`` for an
-            optimizer without a scheduler shows as ``"NoneType"``. A
-            Lightning ``LRSchedulerConfig`` dataclass is not a
-            dictionary, so it shows as ``"LRSchedulerConfig"``.
-        modules (``Mapping[str, nn.Module]``): The owner modules keyed by
-            name, usually the nodes of the model keyed by node name.
+            contributes its own class name, so ``None`` for an optimizer
+            without a scheduler shows as ``"NoneType"``. A Lightning
+            ``LRSchedulerConfig`` dataclass is not a dictionary, so it
+            shows as ``"LRSchedulerConfig"``.
+        modules: The owner modules keyed by name, usually the nodes of
+            the model keyed by node name.
 
     Returns:
-        ``dict[str, Any]``: The summary described above.
+        The summary described above.
 
     Raises:
         ValueError: When ``optimizers`` and ``schedulers`` differ in
@@ -827,10 +822,8 @@ def log_optimizer_summary(
     encode.
 
     Args:
-        summary (``dict[str, Any]``): The summary from
-            `build_optimizer_summary`.
-        use_rich (bool): Whether to render the summary with ``rich``
-            panels.
+        summary: The summary from `build_optimizer_summary`.
+        use_rich: Whether to render the summary with ``rich`` panels.
 
     """
     if use_rich:

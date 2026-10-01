@@ -76,9 +76,8 @@ class OCRRecognitionModel(SimplePredefinedModel):
         """Initialize the model with its default components.
 
         Args:
-            alphabet (``list[str] | AlphabetName``): The characters that
-                the head predicts. A name selects a predefined alphabet
-                and logs an info message:
+            alphabet: The characters that the head predicts. A name
+                selects a predefined alphabet and logs an info message:
 
                 - ``"english"``: ``a`` to ``z`` and ``A`` to ``Z``;
                 - ``"english_lowercase"``: ``a`` to ``z``;
@@ -94,13 +93,12 @@ class OCRRecognitionModel(SimplePredefinedModel):
                 The model passes a list on without a change. It does
                 not read the value when ``head_params`` holds
                 ``alphabet``.
-            max_text_len (int): The number of sequence steps of the
-                backbone output, and so the longest text the model can
-                predict.
-            ignore_unknown (bool): Whether the head drops a label
-                character that is not in the alphabet. With ``False``,
-                the head maps it to an extra ``"<UNK>"`` class.
-            **kwargs (``Any``): Keyword arguments for
+            max_text_len: The number of sequence steps of the backbone
+                output, and so the longest text the model can predict.
+            ignore_unknown: Whether the head drops a label character
+                that is not in the alphabet. With ``False``, the head
+                maps it to an extra ``"<UNK>"`` class.
+            **kwargs: Keyword arguments for
                 `SimplePredefinedModel.__init__`.
 
         Raises:
@@ -149,8 +147,8 @@ class OCRRecognitionModel(SimplePredefinedModel):
         loads a checkpoint.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the single
-            variant with its constructor arguments.
+            ``"light"`` and the single variant with its constructor
+            arguments.
 
         Example:
             >>> OCRRecognitionModel.get_variants()

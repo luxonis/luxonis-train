@@ -82,13 +82,13 @@ class TransformerClassificationHead(BaseHead):
         logits.
 
         Args:
-            dropout_rate (float): The probability that the dropout layer
-                sets a value of the CLS token to zero in training mode,
-                in ``[0, 1]``. The layer scales the other values by
+            dropout_rate: The probability that the dropout layer sets a
+                value of the CLS token to zero in training mode, in
+                ``[0, 1]``. The layer scales the other values by
                 :math:`1 / (1 - p)`, where :math:`p` is
                 ``dropout_rate``. Defaults to ``0.2``.
-            **kwargs (``Any``): Keyword arguments for `BaseNode`. They
-                must hold the input sizes through ``input_shapes`` or
+            **kwargs: Keyword arguments for `BaseNode`. They must hold
+                the input sizes through ``input_shapes`` or
                 ``in_sizes``, and the class count through ``n_classes``
                 or ``dataset_metadata``.
 
@@ -125,12 +125,12 @@ class TransformerClassificationHead(BaseHead):
         dropout acts only in training mode.
 
         Args:
-            x (``Tensor``): The CLS token of shape ``[B, C]``, where ``C``
-                is the embedding size.
+            x: The CLS token of shape ``[B, C]``, where ``C`` is the
+                embedding size.
 
         Returns:
-            ``Tensor``: The logits of shape ``[B, n_classes]``.
-            `BaseNode.run` puts them under the ``"classification"`` key.
+            The logits of shape ``[B, n_classes]``. `BaseNode.run` puts
+            them under the ``"classification"`` key.
 
         Example:
             >>> import torch

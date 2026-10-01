@@ -86,27 +86,25 @@ class ReXNetV1_lite(BaseNode):
         multiple of ``divisible_value``.
 
         Args:
-            fix_head_stem (bool): Whether to keep the stem at 32 channels
-                and the final convolution at 1280 channels. It changes
-                the network only for a ``multiplier`` above ``1``.
-            divisible_value (int): The number that the channel counts of
-                the stem and the bottlenecks are multiples of.
-            input_ch (int): The output channels of the first bottleneck,
+            fix_head_stem: Whether to keep the stem at 32 channels and
+                the final convolution at 1280 channels. It changes the
+                network only for a ``multiplier`` above ``1``.
+            divisible_value: The number that the channel counts of the
+                stem and the bottlenecks are multiples of.
+            input_ch: The output channels of the first bottleneck,
                 before ``multiplier``.
-            final_ch (int): The channel growth from the first to the last
+            final_ch: The channel growth from the first to the last
                 bottleneck, before ``multiplier``. It is not the channel
                 count of the last bottleneck.
-            multiplier (float): The scale of the channel counts.
-            kernel_sizes (int | list[int]): The size of the depthwise
-                kernels. A list gives one size for each of the six
-                stages.
-            out_indices (list[int] | None): The indices of the modules
-                whose outputs `forward` returns. ``0`` is the stem, ``1``
-                to ``16`` are the bottlenecks, and ``17`` is the final
+            multiplier: The scale of the channel counts.
+            kernel_sizes: The size of the depthwise kernels. A list
+                gives one size for each of the six stages.
+            out_indices: The indices of the modules whose outputs
+                `forward` returns. ``0`` is the stem, ``1`` to ``16``
+                are the bottlenecks, and ``17`` is the final
                 convolution. ``None`` or an empty list selects
                 ``[1, 4, 10, 17]``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         Raises:
             ValueError: When ``kernel_sizes`` is a list that does not
@@ -245,10 +243,10 @@ class ReXNetV1_lite(BaseNode):
         """Run all 18 modules and collect the selected outputs.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, 3, H, W]``.
+            inputs: Image batch of shape ``[B, 3, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The outputs of the modules whose index is in
+            The outputs of the modules whose index is in
             ``out_indices``, in module order. An index outside ``0`` to
             ``17`` selects nothing. The default indices give the strides
             2, 8, 16, and 32, with 16, 56, 120, and 1280 channels.
@@ -283,8 +281,7 @@ class LinearBottleneck(nn.Module):
     other output channels get no shortcut.
 
     Attributes:
-        out (``nn.Sequential``): The expansion, depthwise, and
-            projection layers.
+        out: The expansion, depthwise, and projection layers.
 
     Example:
         >>> import torch
@@ -309,14 +306,14 @@ class LinearBottleneck(nn.Module):
         layers.
 
         Args:
-            in_channels (int): Number of input channels.
-            channels (int): Number of output channels.
-            t (int): Expansion factor. The depthwise convolution has
-                ``in_channels * t`` channels. For ``1``, the block has no
-                expansion convolution.
-            kernel_size (int): Size of the depthwise kernel. The padding
-                is ``kernel_size // 2``.
-            stride (int): Stride of the depthwise convolution.
+            in_channels: Number of input channels.
+            channels: Number of output channels.
+            t: Expansion factor. The depthwise convolution has
+                ``in_channels * t`` channels. For ``1``, the block has
+                no expansion convolution.
+            kernel_size: Size of the depthwise kernel. The padding is
+                ``kernel_size // 2``.
+            stride: Stride of the depthwise convolution.
 
         """
         super().__init__()
@@ -362,13 +359,13 @@ class LinearBottleneck(nn.Module):
         """Apply the layers and add the partial shortcut.
 
         Args:
-            x (``Tensor``): Input of shape ``[B, in_channels, H, W]``.
+            x: Input of shape ``[B, in_channels, H, W]``.
 
         Returns:
-            ``Tensor``: Output of shape ``[B, channels, H', W']``. The
-            stride of the depthwise convolution sets ``H'`` and ``W'``.
-            With the shortcut, the first ``in_channels`` channels hold
-            the sum of the input and the projection.
+            Output of shape ``[B, channels, H', W']``. The stride of the
+            depthwise convolution sets ``H'`` and ``W'``. With the
+            shortcut, the first ``in_channels`` channels hold the sum of
+            the input and the projection.
 
         """
         out = self.out(x)

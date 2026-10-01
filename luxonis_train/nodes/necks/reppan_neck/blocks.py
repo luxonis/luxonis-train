@@ -30,12 +30,12 @@ class PANUpBlockBase(ABC, nn.Module):
         """Build the ``1x1`` convolution and the upsampling layer.
 
         Args:
-            in_channels (int): Number of channels of the coarse input.
-            out_channels (int): Number of channels after the ``1x1``
+            in_channels: Number of channels of the coarse input.
+            out_channels: Number of channels after the ``1x1``
                 convolution. The upsampling layer keeps this number.
-            encode_block (``nn.Module``): Block that runs on the
-                concatenation. Its input has ``out_channels`` plus the
-                channels of the finer input.
+            encode_block: Block that runs on the concatenation. Its
+                input has ``out_channels`` plus the channels of the
+                finer input.
 
         """
         super().__init__()
@@ -59,17 +59,17 @@ class PANUpBlockBase(ABC, nn.Module):
         """Upsample the coarse map and fuse it with the finer map.
 
         Args:
-            x0 (``Tensor``): Coarse map of shape ``[B, in_channels, H, W]``.
-            x1 (``Tensor``): Finer map of shape ``[B, C1, 2 * H, 2 * W]``.
-                In the subclasses, ``C1`` is ``in_channels_next``.
+            x0: Coarse map of shape ``[B, in_channels, H, W]``.
+            x1: Finer map of shape ``[B, C1, 2 * H, 2 * W]``. In the
+                subclasses, ``C1`` is ``in_channels_next``.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: The tuple ``(conv_out, out)``.
-            ``conv_out`` is the output of the ``1x1`` convolution, of
-            shape ``[B, out_channels, H, W]``. `RepPANNeck` gives it to a
-            bottom-up step as the lateral input. ``out`` is the output of
-            ``encode_block``. In the subclasses, ``out`` has the shape
-            ``[B, out_channels, 2 * H, 2 * W]``.
+            The tuple ``(conv_out, out)``. ``conv_out`` is the output of
+            the ``1x1`` convolution, of shape
+            ``[B, out_channels, H, W]``. `RepPANNeck` gives it to a
+            bottom-up step as the lateral input. ``out`` is the output
+            of ``encode_block``. In the subclasses, ``out`` has the
+            shape ``[B, out_channels, 2 * H, 2 * W]``.
 
         Example:
             >>> import torch
@@ -118,12 +118,12 @@ class RepUpBlock(PANUpBlockBase):
         """Initialize the upsampling layers and the RepVGG-style stack.
 
         Args:
-            in_channels (int): Number of channels of the coarse input.
-            in_channels_next (int): Number of channels of the finer
-                input, which the step concatenates.
-            out_channels (int): Number of output channels.
-            n_repeats (int): Number of `GeneralReparameterizableBlock`
-                layers. A value below ``1`` still builds one layer.
+            in_channels: Number of channels of the coarse input.
+            in_channels_next: Number of channels of the finer input,
+                which the step concatenates.
+            out_channels: Number of output channels.
+            n_repeats: Number of `GeneralReparameterizableBlock` layers.
+                A value below ``1`` still builds one layer.
 
         """
         super().__init__(
@@ -168,17 +168,17 @@ class CSPUpBlock(PANUpBlockBase):
         """Initialize the upsampling layers and the CSP block.
 
         Args:
-            in_channels (int): Number of channels of the coarse input.
-            in_channels_next (int): Number of channels of the finer
-                input, which the step concatenates.
-            out_channels (int): Number of output channels.
-            n_repeats (int): Controls the number of RepVGG-style blocks
-                in the `CSPStackRepBlock`. Each `BottleRep` holds two of
-                them, so the stack has ``max(1, n_repeats // 2)``
-                `BottleRep` blocks and ``2 * max(1, n_repeats // 2)``
-                RepVGG-style blocks.
-            e (float): Fraction of ``out_channels`` in each of the two
-                paths of the `CSPStackRepBlock`.
+            in_channels: Number of channels of the coarse input.
+            in_channels_next: Number of channels of the finer input,
+                which the step concatenates.
+            out_channels: Number of output channels.
+            n_repeats: Controls the number of RepVGG-style blocks in the
+                `CSPStackRepBlock`. Each `BottleRep` holds two of them,
+                so the stack has ``max(1, n_repeats // 2)`` `BottleRep`
+                blocks and ``2 * max(1, n_repeats // 2)`` RepVGG-style
+                blocks.
+            e: Fraction of ``out_channels`` in each of the two paths of
+                the `CSPStackRepBlock`.
 
         """
         super().__init__(
@@ -213,12 +213,12 @@ class PANDownBlockBase(ABC, nn.Module):
         """Initialize the downsampling convolution.
 
         Args:
-            in_channels (int): Number of channels of the fine input.
-            downsample_out_channels (int): Number of channels after the
+            in_channels: Number of channels of the fine input.
+            downsample_out_channels: Number of channels after the
                 downsampling convolution.
-            encode_block (``nn.Module``): Block that runs on the
-                concatenation. Its input has ``downsample_out_channels``
-                plus the channels of the lateral input.
+            encode_block: Block that runs on the concatenation. Its
+                input has ``downsample_out_channels`` plus the channels
+                of the lateral input.
 
         """
         super().__init__()
@@ -236,14 +236,14 @@ class PANDownBlockBase(ABC, nn.Module):
         """Downsample the fine map and fuse it with the lateral map.
 
         Args:
-            x0 (``Tensor``): Fine map of shape ``[B, in_channels, H, W]``.
-            x1 (``Tensor``): Lateral map of shape ``[B, C1, H / 2, W / 2]``.
-                An odd ``H`` or ``W`` rounds up. In the subclasses, ``C1``
-                is ``in_channels_next``.
+            x0: Fine map of shape ``[B, in_channels, H, W]``.
+            x1: Lateral map of shape ``[B, C1, H / 2, W / 2]``. An odd
+                ``H`` or ``W`` rounds up. In the subclasses, ``C1`` is
+                ``in_channels_next``.
 
         Returns:
-            ``Tensor``: The output of ``encode_block``. In the subclasses,
-            it has the shape ``[B, out_channels, H / 2, W / 2]``.
+            The output of ``encode_block``. In the subclasses, it has
+            the shape ``[B, out_channels, H / 2, W / 2]``.
 
         Example:
             >>> import torch
@@ -290,14 +290,14 @@ class RepDownBlock(PANDownBlockBase):
         """Initialize the downsampling layer and the RepVGG-style stack.
 
         Args:
-            in_channels (int): Number of channels of the fine input.
-            downsample_out_channels (int): Number of channels after the
+            in_channels: Number of channels of the fine input.
+            downsample_out_channels: Number of channels after the
                 downsampling convolution.
-            in_channels_next (int): Number of channels of the lateral
-                input, which the step concatenates.
-            out_channels (int): Number of output channels.
-            n_repeats (int): Number of `GeneralReparameterizableBlock`
-                layers. A value below ``1`` still builds one layer.
+            in_channels_next: Number of channels of the lateral input,
+                which the step concatenates.
+            out_channels: Number of output channels.
+            n_repeats: Number of `GeneralReparameterizableBlock` layers.
+                A value below ``1`` still builds one layer.
 
         """
         super().__init__(
@@ -345,19 +345,19 @@ class CSPDownBlock(PANDownBlockBase):
         """Initialize the downsampling layer and the CSP block.
 
         Args:
-            in_channels (int): Number of channels of the fine input.
-            downsample_out_channels (int): Number of channels after the
+            in_channels: Number of channels of the fine input.
+            downsample_out_channels: Number of channels after the
                 downsampling convolution.
-            in_channels_next (int): Number of channels of the lateral
-                input, which the step concatenates.
-            out_channels (int): Number of output channels.
-            n_repeats (int): Controls the number of RepVGG-style blocks
-                in the `CSPStackRepBlock`. Each `BottleRep` holds two of
-                them, so the stack has ``max(1, n_repeats // 2)``
-                `BottleRep` blocks and ``2 * max(1, n_repeats // 2)``
-                RepVGG-style blocks.
-            e (float): Fraction of ``out_channels`` in each of the two
-                paths of the `CSPStackRepBlock`.
+            in_channels_next: Number of channels of the lateral input,
+                which the step concatenates.
+            out_channels: Number of output channels.
+            n_repeats: Controls the number of RepVGG-style blocks in the
+                `CSPStackRepBlock`. Each `BottleRep` holds two of them,
+                so the stack has ``max(1, n_repeats // 2)`` `BottleRep`
+                blocks and ``2 * max(1, n_repeats // 2)`` RepVGG-style
+                blocks.
+            e: Fraction of ``out_channels`` in each of the two paths of
+                the `CSPStackRepBlock`.
 
         """
         super().__init__(

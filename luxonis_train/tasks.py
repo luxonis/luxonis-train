@@ -44,11 +44,11 @@ class Metadata:
     on ``name``.
 
     Attributes:
-        name (str): The name of the metadata label, for example
-            ``"id"``. The ``metadata_task_override`` field of a node
-            config can rename it.
-        typ (types.UnionType | type): The type that the label values
-            must have, or a union of the accepted types.
+        name: The name of the metadata label, for example ``"id"``. The
+            ``metadata_task_override`` field of a node config can rename
+            it.
+        typ: The type that the label values must have, or a union of the
+            accepted types.
 
     Example:
         >>> from luxonis_train.tasks import Metadata
@@ -79,11 +79,11 @@ class Metadata:
         an accepted type does not match.
 
         Args:
-            typ (types.UnionType | type): The type to check, for example
-                the type of the label in the dataset metadata.
+            typ: The type to check, for example the type of the label in
+                the dataset metadata.
 
         Returns:
-            bool: ``True`` when the label accepts ``typ``.
+            ``True`` when the label accepts ``typ``.
 
         Example:
             >>> from luxonis_train.tasks import Metadata
@@ -109,12 +109,12 @@ class Task(ABC):
     class and the same ``name``.
 
     A subclass must override `required_labels`. Python does not enforce
-    this rule, because `functools.cached_property` hides the abstract
+    this rule, because ``functools.cached_property`` hides the abstract
     method. An instance of a subclass without the override returns
     ``None`` for `required_labels`.
 
     Attributes:
-        name (str): The name of the task. It is the default value of
+        name: The name of the task. It is the default value of
             `main_output`.
 
     """

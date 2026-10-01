@@ -53,24 +53,23 @@ def annotate_from_directory(
     them before the call.
 
     Args:
-        model (LuxonisModel): The model that predicts the annotations.
-            The loader applies its ``trainer.preprocessing``.
-        img_paths (``Iterable[PathType]``): The image files to annotate.
-        dataset_name (str): The name of the new dataset.
-        bucket_storage (``Literal["local", "gcs"]``): The storage
-            backend of the new dataset.
-        delete_local (bool): Delete the local files of an existing
-            dataset named ``dataset_name`` before the function creates
-            the new dataset. With ``False`` and ``"local"`` storage, the
-            records go into the existing dataset.
-        delete_remote (bool): Delete the remote files of an existing
-            dataset named ``dataset_name``. The value has an effect only
-            with ``"gcs"`` storage.
-        team_id (str | None): The team that owns the dataset. ``None``
-            reads ``LUXONISML_TEAM_ID`` from the environment.
+        model: The model that predicts the annotations. The loader
+            applies its ``trainer.preprocessing``.
+        img_paths: The image files to annotate.
+        dataset_name: The name of the new dataset.
+        bucket_storage: The storage backend of the new dataset.
+        delete_local: Delete the local files of an existing dataset
+            named ``dataset_name`` before the function creates the new
+            dataset. With ``False`` and ``"local"`` storage, the records
+            go into the existing dataset.
+        delete_remote: Delete the remote files of an existing dataset
+            named ``dataset_name``. The value has an effect only with
+            ``"gcs"`` storage.
+        team_id: The team that owns the dataset. ``None`` reads
+            ``LUXONISML_TEAM_ID`` from the environment.
 
     Returns:
-        ``LuxonisDataset``: The new dataset with the annotations.
+        The new dataset with the annotations.
 
     """
     img_paths = list(img_paths)
@@ -120,15 +119,14 @@ def annotated_dataset_generator(
     record and logs a debug message.
 
     Args:
-        model (LuxonisModel): The model that predicts the annotations.
-        loader (torch.utils.data.DataLoader): A loader whose batches hold
-            the inputs, the labels, and a list with the metadata of each
-            sample, as `create_loader_from_directory` builds with
+        model: The model that predicts the annotations.
+        loader: A loader whose batches hold the inputs, the labels, and
+            a list with the metadata of each sample, as
+            `create_loader_from_directory` builds with
             ``return_sample_metadata=True``.
 
     Yields:
-        ``DatasetRecord``: The records that the heads give for the
-        images.
+        The records that the heads give for the images.
 
     Raises:
         ValidationError: When a record fails the validation of

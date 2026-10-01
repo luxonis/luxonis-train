@@ -126,22 +126,22 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         first scale.
 
         Args:
-            n_heads (``Literal[2, 3, 4]``): Number of scales. The head
-                reads the last ``n_heads`` outputs of the input node. An
-                ``attach_index`` param replaces this selection. The value
-                is usually equal to the number of neck outputs. When the
-                input node gives fewer outputs, the head logs a warning
-                and uses that number. Defaults to ``3``.
-            conf_thres (float): NMS keeps only the boxes whose maximum
-                class score is above this value. The value must be in
+            n_heads: Number of scales. The head reads the last
+                ``n_heads`` outputs of the input node. An
+                ``attach_index`` param replaces this selection. The
+                value is usually equal to the number of neck outputs.
+                When the input node gives fewer outputs, the head logs a
+                warning and uses that number. Defaults to ``3``.
+            conf_thres: NMS keeps only the boxes whose maximum class
+                score is above this value. The value must be in
                 ``[0, 1]``. Defaults to ``0.25``.
-            iou_thres (float): NMS removes a box when its IoU with a box of
-                the same class and a higher score is above this value.
-                The value must be in ``[0, 1]``. Defaults to ``0.45``.
-            max_det (int): Maximum number of boxes that NMS keeps for each
+            iou_thres: NMS removes a box when its IoU with a box of the
+                same class and a higher score is above this value. The
+                value must be in ``[0, 1]``. Defaults to ``0.45``.
+            max_det: Maximum number of boxes that NMS keeps for each
                 image. Defaults to ``300``.
-            **kwargs (``Any``): Keyword arguments for `EfficientBBoxHead`,
-                such as ``bias_init_p``, and for `BaseNode`, such as
+            **kwargs: Keyword arguments for `EfficientBBoxHead`, such as
+                ``bias_init_p``, and for `BaseNode`, such as
                 ``n_classes``, ``n_keypoints``, and ``input_shapes``.
 
         """
@@ -224,11 +224,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
           ``[B, N, 5 + n_classes + 3 * n_keypoints]``.
 
         Args:
-            inputs (``list[Tensor]``): One feature map for each scale, of
-                shape ``[B, C_i, H_i, W_i]``.
+            inputs: One feature map for each scale, of shape
+                ``[B, C_i, H_i, W_i]``.
 
         Returns:
-            ``Packet[Tensor]``: The packet of the current mode.
+            The packet of the current mode.
 
         Example:
             >>> import torch
@@ -373,20 +373,20 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         """Decode the raw keypoint values of one scale.
 
         Args:
-            keypoints (``Tensor``): Raw values of shape
+            keypoints: Raw values of shape
                 ``[B, 3 * n_keypoints, H_i * W_i]``.
-            features (``list[Tensor]``): Feature maps of all scales. The
-                method builds the anchor points from them.
-            batch_size (int): The batch size ``B``.
-            index (int): Index of the scale.
-            apply_sigmoid (bool): Whether to apply a sigmoid to the
-                confidence. Defaults to ``True``.
+            features: Feature maps of all scales. The method builds the
+                anchor points from them.
+            batch_size: The batch size ``B``.
+            index: Index of the scale.
+            apply_sigmoid: Whether to apply a sigmoid to the confidence.
+                Defaults to ``True``.
 
         Returns:
-            ``Tensor``: Tensor of shape ``[B, 3 * n_keypoints, H_i * W_i]``
-            with ``(x, y, conf)`` for each keypoint. ``x`` and ``y`` are
-            in pixels. ``conf`` is a probability when ``apply_sigmoid``
-            is ``True``, and a logit otherwise.
+            Tensor of shape ``[B, 3 * n_keypoints, H_i * W_i]`` with
+            ``(x, y, conf)`` for each keypoint. ``x`` and ``y`` are in
+            pixels. ``conf`` is a probability when ``apply_sigmoid`` is
+            ``True``, and a logit otherwise.
 
         """
         _, anchor_points, n_anchors_list, _ = anchors_for_fpn_features(
@@ -417,13 +417,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         """Split the NMS output into boxes and keypoints.
 
         Args:
-            detections (``list[Tensor]``): One tensor of shape
+            detections: One tensor of shape
                 ``[M_i, 6 + 3 * n_keypoints]`` for each image. An empty
                 tensor can have a different number of columns.
 
         Returns:
-            ``tuple[list[Tensor], list[Tensor]]``: The boxes of shape
-            ``[M_i, 6]`` and the keypoints of shape
+            The boxes of shape ``[M_i, 6]`` and the keypoints of shape
             ``[M_i, n_keypoints, 3]`` for each image.
 
         """

@@ -56,11 +56,11 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         """Initialize the loss and store the factor of its main value.
 
         Args:
-            final_loss_weight (float): The factor by which `run`
-                multiplies the main value of the loss. The sub-losses
-                stay unscaled. The trainer passes the ``weight`` of the
-                loss config here.
-            **kwargs (``Any``): Keyword arguments forwarded to
+            final_loss_weight: The factor by which `run` multiplies the
+                main value of the loss. The sub-losses stay unscaled.
+                The trainer passes the ``weight`` of the loss config
+                here.
+            **kwargs: Keyword arguments forwarded to
                 `BaseAttachedModule`, such as ``node``.
 
         """
@@ -80,15 +80,15 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         or the labels.
 
         Args:
-            *args (``Tensor | list[Tensor]``): The inputs of the batch.
-                An implementation replaces them with named parameters.
+            *args: The inputs of the batch. An implementation replaces
+                them with named parameters.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The main value
-            of the loss, or a tuple of the main value and a dictionary
-            of sub-losses. The trainer logs the sub-losses only when
-            ``trainer.log_sub_losses`` is ``True``. The total loss does
-            not include them, so they do not reach the gradient.
+            The main value of the loss, or a tuple of the main value and
+            a dictionary of sub-losses. The trainer logs the sub-losses
+            only when ``trainer.log_sub_losses`` is ``True``. The total
+            loss does not include them, so they do not reach the
+            gradient.
 
         """
         ...
@@ -106,14 +106,13 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         names select predictions and labels.
 
         Args:
-            inputs (``Packet[Tensor]``): The output packet of the node.
-            labels (``Labels``): The labels of the batch, keyed
+            inputs: The output packet of the node.
+            labels: The labels of the batch, keyed
                 ``<task_name>/<label>``.
 
         Returns:
-            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The result of
-            `forward`, with ``final_loss_weight`` applied to the main
-            value. Sub-losses remain unscaled.
+            The result of `forward`, with ``final_loss_weight`` applied
+            to the main value. Sub-losses remain unscaled.
 
         """
         loss = self(**self.get_parameters(inputs, labels))

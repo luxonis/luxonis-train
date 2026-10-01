@@ -85,8 +85,8 @@ class AnomalyDetectionModel(SimplePredefinedModel):
         ``"l"`` for ``heavy``.
 
         Returns:
-            ``tuple[str, dict[str, Params]]``: ``"light"`` and the two
-            variants with their constructor arguments.
+            ``"light"`` and the two variants with their constructor
+            arguments.
 
         Example:
             >>> default, variants = AnomalyDetectionModel.get_variants()

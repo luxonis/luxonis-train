@@ -102,22 +102,20 @@ class InstanceSegmentationConfusionMatrix(
         `RecognitionConfusionMatrix.update` counts their pixels.
 
         Args:
-            boundingbox (``list[Tensor]``): The predicted boxes of each
-                image, of shape ``[M_i, 6]``, as
-                ``[x1, y1, x2, y2, conf, class]`` in pixels. The length
-                of the list is the batch size.
-            instance_segmentation (``list[Tensor]``): The predicted masks
-                of each image, of shape ``[M_i, H, W]``, one for each
-                box. A nonzero value marks the object. ``H`` and ``W``
-                are the height and width of
-                `BaseAttachedModule.original_in_shape`.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            boundingbox: The predicted boxes of each image, of shape
+                ``[M_i, 6]``, as ``[x1, y1, x2, y2, conf, class]`` in
+                pixels. The length of the list is the batch size.
+            instance_segmentation: The predicted masks of each image, of
+                shape ``[M_i, H, W]``, one for each box. A nonzero value
+                marks the object. ``H`` and ``W`` are the height and
+                width of `BaseAttachedModule.original_in_shape`.
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``. The values are
                 normalized, and ``x`` and ``y`` are the top-left corner.
-            target_instance_segmentation (``Tensor``): The
-                ``instance_segmentation`` label of the batch, of shape
-                ``[N, H, W]``, one mask for each target box.
+            target_instance_segmentation: The ``instance_segmentation``
+                label of the batch, of shape ``[N, H, W]``, one mask for
+                each target box.
 
         """
         DetectionConfusionMatrix.update(self, boundingbox, target_boundingbox)
@@ -139,14 +137,14 @@ class InstanceSegmentationConfusionMatrix(
         """Return the MCC and the matrix of the boxes and the pixels.
 
         Returns:
-            ``dict[str, Tensor]``: The dictionary holds:
+            A dictionary with four keys.
 
-            - ``"detection_mcc"`` and ``"detection_confusion_matrix"``:
-              the ``"mcc"`` and the ``"confusion_matrix"`` of
+            - ``"detection_mcc"`` and ``"detection_confusion_matrix"``
+              hold the ``"mcc"`` and the ``"confusion_matrix"`` of
               `DetectionConfusionMatrix.compute`.
             - ``"segmentation_mcc"`` and
-              ``"segmentation_confusion_matrix"``: the ``"mcc"`` and the
-              ``"confusion_matrix"`` of
+              ``"segmentation_confusion_matrix"`` hold the ``"mcc"`` and
+              the ``"confusion_matrix"`` of
               `RecognitionConfusionMatrix.compute`, over the pixels.
 
         Example:

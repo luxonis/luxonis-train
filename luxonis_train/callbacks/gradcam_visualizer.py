@@ -41,10 +41,9 @@ class PLModuleWrapper(pl.LightningModule):
         """Initialize the wrapper.
 
         Args:
-            pl_module (LuxonisLightningModule): The model to wrap.
-            task (str): Selects the output that
-                `PLModuleWrapper.forward` returns. One of
-                ``"segmentation"``, ``"detection"``,
+            pl_module: The model to wrap.
+            task: Selects the output that `PLModuleWrapper.forward`
+                returns. One of ``"segmentation"``, ``"detection"``,
                 ``"classification"``, or ``"keypoints"``. The
                 constructor does not check the value.
 
@@ -71,17 +70,16 @@ class PLModuleWrapper(pl.LightningModule):
           anchors, the result has the shape ``[B, n_classes]``.
 
         Args:
-            inputs (``Tensor``): The images, of shape ``[B, C, H, W]``.
-                The method passes them as the input named ``"image"``.
-                The name does not follow ``loader.image_source`` of the
-                config.
-            *args (``Any``): Extra positional arguments for
+            inputs: The images, of shape ``[B, C, H, W]``. The method
+                passes them as the input named ``"image"``. The name
+                does not follow ``loader.image_source`` of the config.
+            *args: Extra positional arguments for
                 `LuxonisLightningModule.full_forward`.
-            **kwargs (``Any``): Extra keyword arguments for
+            **kwargs: Extra keyword arguments for
                 `LuxonisLightningModule.full_forward`.
 
         Returns:
-            ``Tensor``: The scores for ``task``.
+            The scores for ``task``.
 
         Raises:
             ValueError: When ``task`` is not one of the four supported
@@ -151,19 +149,19 @@ class GradCamCallback(pl.Callback):
         """Initialize the callback.
 
         Args:
-            target_layer (int): The index of the layer that Grad-CAM
-                reads, in the order of ``named_modules()`` of the
+            target_layer: The index of the layer that Grad-CAM reads, in
+                the order of ``named_modules()`` of the
                 `PLModuleWrapper`. Index ``0`` is the wrapper and index
                 ``1`` is the wrapped model. The callback selects the
                 layer with the slice
-                ``[target_layer : target_layer + 1]``. When the slice
-                is empty, for example for ``-1`` or an index out of
-                range, Grad-CAM raises ``ValueError``.
-            class_idx (int): The index of the class that the heat maps
+                ``[target_layer : target_layer + 1]``. When the slice is
+                empty, for example for ``-1`` or an index out of range,
+                Grad-CAM raises ``ValueError``.
+            class_idx: The index of the class that the heat maps
                 explain.
-            log_n_batches (int): The number of batches to log in each
+            log_n_batches: The number of batches to log in each
                 validation epoch, from the first batch.
-            task (str): The type of the output to explain. One of
+            task: The type of the output to explain. One of
                 ``"segmentation"``, ``"detection"``,
                 ``"classification"``, or ``"keypoints"``. See
                 `PLModuleWrapper.forward`.
@@ -188,9 +186,9 @@ class GradCamCallback(pl.Callback):
         `visualize_gradients`.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. Unused.
-            pl_module (LuxonisLightningModule): The model to wrap.
-            stage (str): The stage that starts. Unused.
+            trainer: The trainer. Unused.
+            pl_module: The model to wrap.
+            stage: The stage that starts. Unused.
 
         """
         self._pl_module = PLModuleWrapper(pl_module, self._task)
@@ -213,16 +211,13 @@ class GradCamCallback(pl.Callback):
         hook does nothing.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. It gives the step of
-                the logged images.
-            pl_module (LuxonisLightningModule): The model. It gives
-                ``image_source``, the config, and the tracker.
-            outputs (``STEP_OUTPUT``): The output of the validation
-                step. Unused.
-            batch (``tuple[dict[str, Tensor], Packet[Tensor]]``): The
-                inputs and the labels of the batch.
-            batch_idx (int): The index of the batch in the validation
-                epoch.
+            trainer: The trainer. It gives the step of the logged
+                images.
+            pl_module: The model. It gives ``image_source``, the config,
+                and the tracker.
+            outputs: The output of the validation step. Unused.
+            batch: The inputs and the labels of the batch.
+            batch_idx: The index of the batch in the validation epoch.
 
         """
         if batch_idx < self._log_n_batches:
@@ -269,14 +264,13 @@ class GradCamCallback(pl.Callback):
         ``<i>`` is the index of the image in the batch.
 
         Args:
-            trainer (``pl.Trainer``): The trainer. It gives the step of
-                the logged images.
-            pl_module (LuxonisLightningModule): The model. It gives the
-                config for the denormalization and the tracker.
-            images (``Tensor``): The normalized images, of shape
-                ``[B, C, H, W]``.
-            batch_idx (int): The index of the batch. It is part of the
-                image names.
+            trainer: The trainer. It gives the step of the logged
+                images.
+            pl_module: The model. It gives the config for the
+                denormalization and the tracker.
+            images: The normalized images, of shape ``[B, C, H, W]``.
+            batch_idx: The index of the batch. It is part of the image
+                names.
 
         """
         target_layers = [m[1] for m in self._pl_module.named_modules()][

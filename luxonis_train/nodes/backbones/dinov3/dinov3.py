@@ -36,10 +36,10 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     ``[B, C]``.
 
     Attributes:
-        embed_dim (int): The embedding dimension of the model.
-        num_heads (int): The number of attention heads.
-        rope_embed (``nn.Module``): The rotary position embedding.
-            `DinoV3` replaces it with `RopePositionEmbedding`.
+        embed_dim: The embedding dimension of the model.
+        num_heads: The number of attention heads.
+        rope_embed: The rotary position embedding. `DinoV3` replaces it
+            with `RopePositionEmbedding`.
 
     """
 
@@ -196,26 +196,25 @@ class DinoV3(BaseNode):
         patch size.
 
         Args:
-            weights_link (str): The path or URL of the pretrained
-                weights. The constructor passes it as ``weights`` to
+            weights_link: The path or URL of the pretrained weights. The
+                constructor passes it as ``weights`` to
                 ``torch.hub.load``.
-            return_sequence (bool): Whether `forward` returns the CLS
-                token, of shape ``[B, C]``, for a classification head.
-                When ``False``, `forward` returns ``depth`` feature maps
-                for a dense head.
-            variant (``DINOv3Variant``): The DINOv3 model to load.
-            repo_or_dir (str): The GitHub repository that holds the hub
-                entry points, as ``"owner/name"`` or
-                ``"owner/name:ref"``. The constructor always loads with
-                ``source="github"``.
-            freeze_backbone (bool): Whether to set ``requires_grad`` to
+            return_sequence: Whether `forward` returns the CLS token, of
+                shape ``[B, C]``, for a classification head. When
+                ``False``, `forward` returns ``depth`` feature maps for
+                a dense head.
+            variant: The DINOv3 model to load.
+            repo_or_dir: The GitHub repository that holds the hub entry
+                points, as ``"owner/name"`` or ``"owner/name:ref"``. The
+                constructor always loads with ``source="github"``.
+            freeze_backbone: Whether to set ``requires_grad`` to
                 ``False`` for all parameters of the loaded model. Then
                 only the nodes after the backbone train.
-            depth (int): The number of last blocks whose outputs become
+            depth: The number of last blocks whose outputs become
                 feature maps. `forward` ignores it with
                 ``return_sequence``.
-            **kwargs (``Any``): Keyword arguments forwarded to both
-                `BaseNode` and ``torch.hub.load``.
+            **kwargs: Keyword arguments forwarded to both `BaseNode` and
+                ``torch.hub.load``.
 
         Raises:
             ValueError: When ``variant`` is not a ``DINOv3Variant``
@@ -292,13 +291,13 @@ class DinoV3(BaseNode):
         not from ``inputs``.
 
         Args:
-            inputs (``Tensor``): Image batch of shape ``[B, C, H, W]``.
+            inputs: Image batch of shape ``[B, C, H, W]``.
 
         Returns:
-            ``list[Tensor]``: With ``return_sequence``, one CLS token of
-            shape ``[B, C]``. Otherwise, ``depth`` feature maps of shape
-            ``[B, C, H // p, W // p]``, where ``p`` is the patch size and
-            ``C`` is the embedding dimension.
+            With ``return_sequence``, one CLS token of shape ``[B, C]``.
+            Otherwise, ``depth`` feature maps of shape
+            ``[B, C, H // p, W // p]``, where ``p`` is the patch size
+            and ``C`` is the embedding dimension.
 
         Raises:
             AssertionError: When the number of patch tokens of a block is
@@ -365,9 +364,8 @@ class DinoV3(BaseNode):
         constructor then loads the hub model ``dinov3_<variant>``.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name ``"vits16"``, and
-            a dictionary that maps each of the ten ``DINOv3Variant``
-            values to ``{"variant": name}``.
+            The name ``"vits16"``, and a dictionary that maps each of
+            the ten ``DINOv3Variant`` values to ``{"variant": name}``.
 
         Example:
             >>> from luxonis_train.nodes import DinoV3

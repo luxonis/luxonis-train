@@ -16,13 +16,13 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
     not hold, and logs a warning for each.
 
     Args:
-        all_augs (list[str]): The names of the augmentations in
+        all_augs: The names of the augmentations in
             ``trainer.preprocessing.augmentations``, in config order.
-        aug_names (list[str]): The names to map.
+        aug_names: The names to map.
 
     Returns:
-        list[int]: The index of each name that the function keeps, in
-        the order of ``aug_names``.
+        The index of each name that the function keeps, in the order of
+        ``aug_names``.
 
     """
     aug_indices = []
@@ -70,19 +70,16 @@ def get_trial_params(
     The name of an Optuna parameter is the key without the suffix.
 
     Args:
-        all_augs (list[str]): The names of the augmentations in
-            ``trainer.preprocessing.augmentations``, in config order.
-            A ``subset`` key uses them to find the indices.
-        params (``dict[str, Any]``): The ``tuner.params`` section of the
-            config.
-        trial (``optuna.trial.Trial``): The trial that samples the
-            values.
+        all_augs: The names of the augmentations in
+            ``trainer.preprocessing.augmentations``, in config order. A
+            ``subset`` key uses them to find the indices.
+        params: The ``tuner.params`` section of the config.
+        trial: The trial that samples the values.
 
     Returns:
-        ``dict[str, Any]``: The sampled value of each key without the
-        suffix. A ``subset`` key gives one boolean entry
-        ``<key>.<index>.active`` for each kept augmentation name.
-        ``True`` marks a picked augmentation.
+        The sampled value of each key without the suffix. A ``subset``
+        key gives one boolean entry ``<key>.<index>.active`` for each
+        kept augmentation name. ``True`` marks a picked augmentation.
 
     Raises:
         ValueError: When the result has no entry, for example for an
@@ -140,14 +137,14 @@ def rename_params_for_logging(
     list. The other keys keep their names too.
 
     Args:
-        params (dict): The sampled parameters of a trial, as
-            `get_trial_params` returns them.
-        tuner_params (dict | None): The ``tuner.params`` section of the
-            config. Without a ``subset`` entry for the augmentations,
-            the function changes no key.
+        params: The sampled parameters of a trial, as `get_trial_params`
+            returns them.
+        tuner_params: The ``tuner.params`` section of the config.
+            Without a ``subset`` entry for the augmentations, the
+            function changes no key.
 
     Returns:
-        dict: A new dictionary with the same values as ``params``.
+        A new dictionary with the same values as ``params``.
 
     Example:
         >>> params = {

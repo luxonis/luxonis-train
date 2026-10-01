@@ -98,26 +98,23 @@ class RepVGG(BaseNode):
         """Initialize the stem and the four stages.
 
         Args:
-            n_blocks (tuple[int, int, int, int]): The number of blocks in
-                each stage. The first block of each stage has a stride
-                of ``2``.
-            width_multiplier (tuple[float, float, float, float]): The
-                channel multipliers ``w`` of the four stages. The stages
-                have ``int(64 * w[0])``, ``int(128 * w[1])``,
-                ``int(256 * w[2])``, and ``int(512 * w[3])`` output
-                channels. The stem has ``min(64, int(64 * w[0]))``
-                output channels.
-            override_groups_map (dict[int, int] | None): The number of
-                groups of the convolutions in each stage, keyed by the
-                stage index from ``0`` to ``3``. The key is not a block
-                index. A stage without a key, and the stem, use ``1``.
-                ``None`` gives ``1`` to all stages.
-            use_se (bool): Whether to add a `SqueezeExciteBlock` to the
-                stem and to each block. It runs on the sum of the
-                branches, before the ``ReLU``, with ``out_channels // 16``
-                hidden channels.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseNode`.
+            n_blocks: The number of blocks in each stage. The first
+                block of each stage has a stride of ``2``.
+            width_multiplier: The channel multipliers ``w`` of the four
+                stages. The stages have ``int(64 * w[0])``,
+                ``int(128 * w[1])``, ``int(256 * w[2])``, and
+                ``int(512 * w[3])`` output channels. The stem has
+                ``min(64, int(64 * w[0]))`` output channels.
+            override_groups_map: The number of groups of the
+                convolutions in each stage, keyed by the stage index
+                from ``0`` to ``3``. The key is not a block index. A
+                stage without a key, and the stem, use ``1``. ``None``
+                gives ``1`` to all stages.
+            use_se: Whether to add a `SqueezeExciteBlock` to the stem
+                and to each block. It runs on the sum of the branches,
+                before the ``ReLU``, with ``out_channels // 16`` hidden
+                channels.
+            **kwargs: Keyword arguments forwarded to `BaseNode`.
 
         """
         super().__init__(**kwargs)
@@ -155,14 +152,13 @@ class RepVGG(BaseNode):
         """Run the stem and the four stages on a batch of images.
 
         Args:
-            inputs (``Tensor``): The input images, of shape
-                ``[B, C, H, W]``.
+            inputs: The input images, of shape ``[B, C, H, W]``.
 
         Returns:
-            ``list[Tensor]``: The output of each block of the four
-            stages, in order. The list holds ``sum(n_blocks)`` tensors
-            and not the stem output. The blocks of stage ``i``, from
-            ``0`` to ``3``, have a stride of ``2 ** (i + 2)``.
+            The output of each block of the four stages, in order. The
+            list holds ``sum(n_blocks)`` tensors and not the stem
+            output. The blocks of stage ``i``, from ``0`` to ``3``, have
+            a stride of ``2 ** (i + 2)``.
 
         Example:
             The indices ``1``, ``5``, ``19``, and ``20`` select the last
@@ -192,9 +188,9 @@ class RepVGG(BaseNode):
         ``use_se``. Each call builds new dictionaries.
 
         Returns:
-            ``tuple[str, dict[str, Kwargs]]``: The name of the default
-            variant, ``"A0"``, and a dictionary that maps ``"A0"``,
-            ``"A1"``, and ``"A2"`` to their constructor arguments.
+            The name of the default variant, ``"A0"``, and a dictionary
+            that maps ``"A0"``, ``"A1"``, and ``"A2"`` to their
+            constructor arguments.
 
         Example:
             >>> from luxonis_train.nodes.backbones import RepVGG

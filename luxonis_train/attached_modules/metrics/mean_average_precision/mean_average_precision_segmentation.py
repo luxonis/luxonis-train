@@ -93,17 +93,17 @@ class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
         """Initialize the metric with ``iou_type=("bbox", "segm")``.
 
         Args:
-            **kwargs (``Any``): Keyword arguments forwarded to the
+            **kwargs: Keyword arguments forwarded to the
                 ``torchmetrics`` ``MeanAveragePrecision``, such as
                 ``iou_thresholds``, ``max_detection_thresholds``,
                 ``class_metrics``, and ``backend``. The other arguments,
-                such as ``node``, reach `BaseMetric`. A name that no base
-                class accepts raises ``ValueError``. An ``iou_type``
-                argument raises ``TypeError``. Keep ``box_format`` at
-                ``"xyxy"``, because `update` gives all boxes in the
-                ``xyxy`` format. Keep ``extended_summary`` at ``False``.
-                With ``True``, `compute` raises ``AttributeError`` after
-                any `update`.
+                such as ``node``, reach `BaseMetric`. A name that no
+                base class accepts raises ``ValueError``. An
+                ``iou_type`` argument raises ``TypeError``. Keep
+                ``box_format`` at ``"xyxy"``, because `update` gives all
+                boxes in the ``xyxy`` format. Keep ``extended_summary``
+                at ``False``. With ``True``, `compute` raises
+                ``AttributeError`` after any `update`.
 
         """
         super().__init__(iou_type=("bbox", "segm"), **kwargs)
@@ -130,20 +130,18 @@ class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
         ``max_detection_thresholds``, ``100`` by default.
 
         Args:
-            boundingbox (``list[Tensor]``): The predicted boxes of each
-                image, of shape ``[M_i, 6]``, as
-                ``[x1, y1, x2, y2, score, class]`` in pixels.
-            instance_segmentation (``list[Tensor]``): The predicted
-                masks of each image, of shape ``[M_i, H, W]``, one for
-                each predicted box.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            boundingbox: The predicted boxes of each image, of shape
+                ``[M_i, 6]``, as ``[x1, y1, x2, y2, score, class]`` in
+                pixels.
+            instance_segmentation: The predicted masks of each image, of
+                shape ``[M_i, H, W]``, one for each predicted box.
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``. The values are
                 normalized, and ``x`` and ``y`` are the top-left corner.
-            target_instance_segmentation (``Tensor``): The
-                ``instance_segmentation`` label of the batch, of shape
-                ``[N, H, W]``, one mask for each row of
-                ``target_boundingbox``.
+            target_instance_segmentation: The ``instance_segmentation``
+                label of the batch, of shape ``[N, H, W]``, one mask for
+                each row of ``target_boundingbox``.
 
         """
         super().update(
@@ -170,11 +168,10 @@ class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
         ``segm_map_small`` when no target is small.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The scalar ``segm_map``
-            and a dictionary of the other values. The dictionary holds
-            the values that
+            The scalar ``segm_map`` and a dictionary of the other
+            values. The dictionary holds the values that
             `luxonis_train.attached_modules.metrics.mean_average_precision.MeanAveragePrecisionBBox.compute`
-            returns, two times:
+            returns, two times.
 
             - With the prefix ``bbox_`` for the boxes, such as
               ``bbox_map``, ``bbox_mar_100``, and ``bbox_f1_large``.

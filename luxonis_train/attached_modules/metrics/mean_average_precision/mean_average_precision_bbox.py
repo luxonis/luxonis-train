@@ -88,17 +88,17 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
         """Initialize the metric with ``iou_type="bbox"``.
 
         Args:
-            **kwargs (``Any``): Keyword arguments forwarded to the
+            **kwargs: Keyword arguments forwarded to the
                 ``torchmetrics`` ``MeanAveragePrecision``, such as
                 ``iou_thresholds``, ``max_detection_thresholds``,
                 ``class_metrics``, and ``backend``. The other arguments,
-                such as ``node``, reach `BaseMetric`. A name that no base
-                class accepts raises ``ValueError``. An ``iou_type``
-                argument raises ``TypeError``. Keep ``box_format`` at
-                ``"xyxy"``, because `update` gives all boxes in the
-                ``xyxy`` format. Keep ``extended_summary`` at ``False``.
-                With ``True``, `compute` raises ``AttributeError`` after
-                any `update`.
+                such as ``node``, reach `BaseMetric`. A name that no
+                base class accepts raises ``ValueError``. An
+                ``iou_type`` argument raises ``TypeError``. Keep
+                ``box_format`` at ``"xyxy"``, because `update` gives all
+                boxes in the ``xyxy`` format. Keep ``extended_summary``
+                at ``False``. With ``True``, `compute` raises
+                ``AttributeError`` after any `update`.
 
         """
         super().__init__(iou_type="bbox", **kwargs)
@@ -120,11 +120,11 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
         of ``max_detection_thresholds``, ``100`` by default.
 
         Args:
-            boundingbox (``list[Tensor]``): The predicted boxes of each
-                image, of shape ``[M_i, 6]``, as
-                ``[x1, y1, x2, y2, score, class]`` in pixels.
-            target_boundingbox (``Tensor``): The ``boundingbox`` label of
-                the batch, of shape ``[N, 6]``, as
+            boundingbox: The predicted boxes of each image, of shape
+                ``[M_i, 6]``, as ``[x1, y1, x2, y2, score, class]`` in
+                pixels.
+            target_boundingbox: The ``boundingbox`` label of the batch,
+                of shape ``[N, 6]``, as
                 ``[batch_index, class, x, y, w, h]``. The values are
                 normalized, and ``x`` and ``y`` are the top-left corner.
 
@@ -150,22 +150,22 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
         when no target box is small.
 
         Returns:
-            ``tuple[Tensor, dict[str, Tensor]]``: The scalar ``map`` and
-            a dictionary of the other values. With the default
-            ``max_detection_thresholds``, the dictionary holds:
+            The scalar ``map`` and a dictionary of the other values.
+            With the default ``max_detection_thresholds``, the
+            dictionary holds these values.
 
-            - ``map_50`` and ``map_75``: the mAP at the IoU thresholds
-              ``0.5`` and ``0.75``.
-            - ``map_small``, ``map_medium``, and ``map_large``: the mAP
-              for small, medium, and large objects.
-            - ``mar_1``, ``mar_10``, and ``mar_100``: the mAR with at
-              most ``1``, ``10``, and ``100`` detections per image.
-            - ``mar_small``, ``mar_medium``, and ``mar_large``: the mAR
-              for small, medium, and large objects.
-            - ``f1_small``, ``f1_medium``, and ``f1_large``: the F1
+            - ``map_50`` and ``map_75`` hold the mAP at the IoU
+              thresholds ``0.5`` and ``0.75``.
+            - ``map_small``, ``map_medium``, and ``map_large`` hold the
+              mAP for small, medium, and large objects.
+            - ``mar_1``, ``mar_10``, and ``mar_100`` hold the mAR with
+              at most ``1``, ``10``, and ``100`` detections per image.
+            - ``mar_small``, ``mar_medium``, and ``mar_large`` hold the
+              mAR for small, medium, and large objects.
+            - ``f1_small``, ``f1_medium``, and ``f1_large`` hold the F1
               score of each object size.
             - ``map_per_class_<class name>`` and
-              ``mar_100_per_class_<class name>``: the values of each
+              ``mar_100_per_class_<class name>`` hold the values of each
               class. They are present only with ``class_metrics``, and
               only when the predictions and the targets together have
               more than one class.

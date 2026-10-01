@@ -13,13 +13,12 @@ def seg_output_to_bool(data: Tensor, binary_threshold: float = 0.5) -> Tensor:
     `default_annotate` use the masks.
 
     Args:
-        data (``Tensor``): The logits of shape ``[C, H, W]``.
-        binary_threshold (float): The sigmoid threshold for a single
-            channel. The function ignores it for more channels.
+        data: The logits of shape ``[C, H, W]``.
+        binary_threshold: The sigmoid threshold for a single channel.
+            The function ignores it for more channels.
 
     Returns:
-        ``Tensor``: The boolean masks, with the shape and the device of
-        ``data``.
+        The boolean masks, with the shape and the device of ``data``.
 
     Example:
         >>> import torch

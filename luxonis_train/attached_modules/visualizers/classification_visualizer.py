@@ -86,31 +86,30 @@ class ClassificationVisualizer(BaseVisualizer):
         options.
 
         Args:
-            include_plot (bool): Whether `forward` also returns a bar
-                plot of the class probabilities as a second image.
-                Defaults to ``True``.
-            font_scale (float | None): Font scale of the OpenCV text.
-                When ``None``, `dynamically_determine_font_scale`
-                derives the scale from the image size. The text lines
-                then sit at 15 and 25 percent of the image height. A
-                value of ``0`` selects the same line positions, but
-                keeps the font scale ``0`` and sets the thickness to
-                ``1``. Any other value applies as given, together with
-                ``thickness``, and puts the text lines at ``y = 50`` and
-                ``y = 75`` pixels.
-            color (tuple[int, int, int]): RGB color of the text.
-                Defaults to ``(255, 0, 0)``, red.
-            thickness (int): Thickness of the text strokes. With a
-                derived font scale below ``1``, the thickness becomes
-                ``1``. Defaults to ``2``.
-            multilabel (bool): Whether the task is multi-label. When
-                ``True``, the text lists every class whose raw value is
-                greater than ``0.5``, and the plot shows sigmoid
-                probabilities. When ``False``, the text shows the class
-                with the highest value, and the plot shows softmax
-                probabilities. Defaults to ``False``.
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseVisualizer`, such as ``scale`` and ``node``.
+            include_plot: Whether `forward` also returns a bar plot of
+                the class probabilities as a second image. Defaults to
+                ``True``.
+            font_scale: Font scale of the OpenCV text. When ``None``,
+                `dynamically_determine_font_scale` derives the scale
+                from the image size. The text lines then sit at 15 and
+                25 percent of the image height. A value of ``0`` selects
+                the same line positions, but keeps the font scale ``0``
+                and sets the thickness to ``1``. Any other value applies
+                as given, together with ``thickness``, and puts the text
+                lines at ``y = 50`` and ``y = 75`` pixels.
+            color: RGB color of the text. Defaults to ``(255, 0, 0)``,
+                red.
+            thickness: Thickness of the text strokes. With a derived
+                font scale below ``1``, the thickness becomes ``1``.
+                Defaults to ``2``.
+            multilabel: Whether the task is multi-label. When ``True``,
+                the text lists every class whose raw value is greater
+                than ``0.5``, and the plot shows sigmoid probabilities.
+                When ``False``, the text shows the class with the
+                highest value, and the plot shows softmax probabilities.
+                Defaults to ``False``.
+            **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
+                such as ``scale`` and ``node``.
 
         """
         super().__init__(**kwargs)
@@ -128,10 +127,10 @@ class ClassificationVisualizer(BaseVisualizer):
         name of the class with the highest value.
 
         Args:
-            pred (``Tensor``): Values of shape ``[n_classes]``.
+            pred: Values of shape ``[n_classes]``.
 
         Returns:
-            str: The selected class names.
+            The selected class names.
 
         """
         if self._multilabel:
@@ -148,12 +147,12 @@ class ClassificationVisualizer(BaseVisualizer):
         axis lists the class names of the node.
 
         Args:
-            prediction (``Tensor``): Logits of shape ``[n_classes]``.
-            width (int): Width of the image, in pixels.
-            height (int): Height of the image, in pixels.
+            prediction: Logits of shape ``[n_classes]``.
+            width: Width of the image, in pixels.
+            height: Height of the image, in pixels.
 
         Returns:
-            ``Tensor``: A ``uint8`` image of shape ``[3, height, width]``.
+            A ``uint8`` image of shape ``[3, height, width]``.
 
         """
         prediction = prediction.to(torch.float32)
@@ -189,21 +188,21 @@ class ClassificationVisualizer(BaseVisualizer):
         probabilities at the size of the prediction canvas.
 
         Args:
-            prediction_canvas (``Tensor``): Images of shape
-                ``[B, 3, H, W]``. The method reads only its shape,
-                dtype, and device, for the plots.
-            target_canvas (``Tensor``): Images of shape ``[B, 3, H, W]``
-                to write the text on.
-            predictions (``Tensor``): Logits of shape ``[B, n_classes]``.
-            target (``Tensor | None``): One-hot labels of shape
-                ``[B, n_classes]``, or multi-hot with ``multilabel``.
-                ``None`` when the batch has no ``classification``
-                labels; then the method writes no ``GT`` line.
+            prediction_canvas: Images of shape ``[B, 3, H, W]``. The
+                method reads only its shape, dtype, and device, for the
+                plots.
+            target_canvas: Images of shape ``[B, 3, H, W]`` to write the
+                text on.
+            predictions: Logits of shape ``[B, n_classes]``.
+            target: One-hot labels of shape ``[B, n_classes]``, or
+                multi-hot with ``multilabel``. ``None`` when the batch
+                has no ``classification`` labels; then the method writes
+                no ``GT`` line.
 
         Returns:
-            ``Tensor | tuple[Tensor, Tensor]``: With ``include_plot``,
-            the pair ``(text_images, plots)``, both of shape
-            ``[B, 3, H, W]``. Otherwise only the text images.
+            With ``include_plot``, the pair ``(text_images, plots)``,
+            both of shape ``[B, 3, H, W]``. Otherwise only the text
+            images.
 
         """
         overlay = torch.zeros_like(target_canvas)

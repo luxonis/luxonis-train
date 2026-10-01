@@ -87,8 +87,8 @@ class RecognitionConfusionMatrix(BaseMetric):
         it is a ``MulticlassConfusionMatrix`` with ``n_classes`` classes.
 
         Args:
-            **kwargs (``Any``): Keyword arguments forwarded to
-                `BaseMetric`, such as ``node``.
+            **kwargs: Keyword arguments forwarded to `BaseMetric`, such
+                as ``node``.
 
         """
         super().__init__(**kwargs)
@@ -107,10 +107,10 @@ class RecognitionConfusionMatrix(BaseMetric):
         matrix counts them.
 
         Args:
-            predictions (``Tensor``): The main output of the node, as
-                logits of shape ``[B, n_classes]`` for classification,
-                or ``[B, n_classes, H, W]`` for segmentation.
-            targets (``Tensor``): One-hot labels of the same shape, the
+            predictions: The main output of the node, as logits of shape
+                ``[B, n_classes]`` for classification, or
+                ``[B, n_classes, H, W]`` for segmentation.
+            targets: One-hot labels of the same shape, the
                 ``classification`` or ``segmentation`` label of the
                 task. With one class, the values must be ``0`` or ``1``.
                 Other values make ``torchmetrics`` raise
@@ -129,12 +129,12 @@ class RecognitionConfusionMatrix(BaseMetric):
         """Return the MCC and the matrix since the last reset.
 
         Returns:
-            ``dict[str, Tensor]``: The dictionary holds:
+            A dictionary with two keys.
 
-            - ``"mcc"``: the scalar MCC of the matrix, see
+            - ``"mcc"`` holds the scalar MCC of the matrix, see
               `compute_mcc`.
-            - ``"confusion_matrix"``: the ``int64`` counts. Rows are
-              target classes and columns are predicted classes. The
+            - ``"confusion_matrix"`` holds the ``int64`` counts. Rows
+              are target classes and columns are predicted classes. The
               shape is ``[n_classes, n_classes]``, or ``[2, 2]`` for one
               class.
 
