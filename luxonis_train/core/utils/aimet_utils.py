@@ -166,8 +166,7 @@ def post_training_quantization(
     The function runs these steps:
 
     - It moves ``model`` and ``dummy_inputs`` to the GPU when CUDA is
-      available, and puts ``model`` in eval mode. It raises
-      ``ValueError`` when a weight of ``model`` is not finite.
+      available, and puts ``model`` in eval mode.
     - With ``fold_batch_norms`` and without ``batch_norm_reestimation``,
       it folds the batch norms of ``model`` into the preceding layers.
     - With ``cross_layer_equalization``, it equalizes the weight ranges
@@ -176,8 +175,7 @@ def post_training_quantization(
       most :math:`\lceil 2000 / B \rceil` batches of ``val_loader``,
       where :math:`B` is the batch size. AdaRound writes its files with
       the prefix ``adaround`` to ``save_dir``. The next steps use the
-      module that AdaRound returns instead of ``model``. The function
-      raises ``ValueError`` when a weight of that module is not finite.
+      module that AdaRound returns instead of ``model``.
     - It builds a ``QuantizationSimModel`` around the module with
       ``in_place=True``.
     - With ``sequential_mse``, it applies sequential MSE on
@@ -233,10 +231,8 @@ def post_training_quantization(
     Raises:
         ImportError: When ``aimet_torch`` is not installed.
         AssertionError: When ``val_loader`` has no batch.
-        ValueError: When a weight is not finite before the quantization
-            or after AdaRound. AdaRound gives non-finite weights when
-            the eval-mode activations of ``model`` overflow, which is a
-            sign of a diverged model.
+        ValueError: When a parameter is not finite before the
+            quantization or after AdaRound.
 
     """
     check_aimet_available()
@@ -290,7 +286,7 @@ def post_training_quantization(
         model.cuda()
 
     model.eval()
-    _check_finite_weights(model, "before the quantization")
+    _check_finite_params(model, "before the quantization")
 
     if fold_batch_norms and not batch_norm_reestimation:
         logger.info("Folding batch norms into preceding layers")
@@ -325,7 +321,7 @@ def post_training_quantization(
                 filename_prefix="adaround",
             ),
         )
-        _check_finite_weights(model, "after AdaRound")
+        _check_finite_params(model, "after AdaRound")
 
     if batch_norm_reestimation and config_file is None:
         config_file = get_path_for_per_channel_config()
@@ -477,41 +473,13 @@ def quantization_aware_training(
     return model
 
 
-def _check_finite_weights(model: nn.Module, stage: str) -> None:
-    """Raise ``ValueError`` when a parameter of ``model`` is not
-    finite.
-
-    Args:
-        model: The module to check.
-        stage: Where the check runs, for the error message.
-
-    Raises:
-        ValueError: With the count and the first names of the
-            parameters that hold a NaN or an infinity.
-
-    Example:
-        >>> import torch
-        >>> from torch import nn
-        >>> layer = nn.Linear(2, 2)
-        >>> _check_finite_weights(layer, "after AdaRound")
-        >>> with torch.no_grad():
-        ...     layer.bias[0] = float("nan")
-        >>> _check_finite_weights(layer, "after AdaRound")
-        Traceback (most recent call last):
-            ...
-        ValueError: 1 parameter tensors are not finite after AdaRound, ...
-
-    """
-    names = [
-        name
-        for name, param in model.named_parameters()
-        if not param.isfinite().all()
-    ]
-    if names:
+def _check_finite_params(model: nn.Module, stage: str) -> None:
+    bad = [n for n, p in model.named_parameters() if not p.isfinite().all()]
+    if bad:
         raise ValueError(
-            f"{len(names)} parameter tensors are not finite {stage}, "
-            f"for example {names[:3]}. The model probably diverged. "
-            "Check its test loss before the quantization."
+            f"Parameters are not finite {stage}: {bad[:3]}, {len(bad)} in "
+            "total. The model probably diverged. Check its test loss "
+            "before the quantization."
         )
 
 

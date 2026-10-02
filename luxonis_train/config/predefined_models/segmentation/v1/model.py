@@ -132,16 +132,16 @@ class SegmentationModel(SimplePredefinedModel):
         """Get the default variant name and the available variants.
 
         The default is ``light``. Both variants set ``backbone`` to
-        ``"DDRNet"`` and ``head`` to ``"DDRNetSegmentationHead"``. They
-        differ in the backbone variant: ``light`` uses the ``"23-slim"``
-        variant of `DDRNet`, and ``heavy`` uses the ``"23"`` variant.
+        ``"DDRNet"`` and ``head`` to ``"DDRNetSegmentationHead"``. The
+        ``light`` variant uses the ``"23-slim"`` variant of `DDRNet`,
+        and ``heavy`` uses ``"23"``.
 
         Both variants set ``weights`` to ``"download"`` in
         ``backbone_params`` and in ``head_params``, so the backbone and
-        the head load their COCO checkpoints. A
-        ``backbone_params`` or ``head_params`` given in the config
-        replaces the whole dictionary of the variant. The auxiliary head
-        loads no checkpoint.
+        the head load their COCO checkpoints. A ``backbone_params`` or
+        ``head_params`` given in the config replaces the whole
+        dictionary of the variant. The auxiliary head loads no
+        checkpoint.
 
         Returns:
             ``"light"`` and the two variants with their constructor
