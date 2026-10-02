@@ -1,17 +1,45 @@
 """Distill a light classification model from a heavy one.
 
-The test trains, so it runs on a machine with a GPU and the test data,
-not on a laptop.
+The test trains, so it runs on a machine with a GPU, not on a laptop.
+Its dataset comes from the public CIFAR-10 download of ``torchvision``,
+so it needs no cloud credentials.
 
 """
 
 from pathlib import Path
 
+import pytest
 import torch
+import torchvision
+from luxonis_ml.data import DatasetIterator
 from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 from tests.conftest import LuxonisTestDataset
+
+N_IMAGES = 40
+
+
+@pytest.fixture(scope="module")
+def cifar10_subset(data_dir: Path) -> LuxonisTestDataset:
+    root = data_dir / "cifar10_public"
+    images = root / "images"
+    images.mkdir(parents=True, exist_ok=True)
+    cifar = torchvision.datasets.CIFAR10(root=root, train=False, download=True)
+
+    def generator() -> DatasetIterator:
+        for i in range(N_IMAGES):
+            image, label = cifar[i]
+            path = images / f"cifar_{i}.png"
+            image.save(path)
+            yield {"file": path, "annotation": {"class": cifar.classes[label]}}
+
+    dataset = LuxonisTestDataset(
+        "cifar10_kd_test", delete_local=True, source_path=images
+    )
+    dataset.add(generator())
+    dataset.make_splits()
+    return dataset
 
 
 def classification_model(
@@ -26,11 +54,11 @@ def classification_model(
 
 
 def test_light_student_distills_from_heavy_teacher(
-    opts: Params, cifar10_dataset: LuxonisTestDataset, tmp_path: Path
+    opts: Params, cifar10_subset: LuxonisTestDataset, tmp_path: Path
 ):
     config = "luxonis_train/configs/classification_light_model.yaml"
     teacher = LuxonisModel(
-        config, classification_model("heavy", opts, cifar10_dataset)
+        config, classification_model("heavy", opts, cifar10_subset)
     )
     teacher.train()
     teacher_file = tmp_path / "teacher.ckpt"
@@ -40,7 +68,7 @@ def test_light_student_distills_from_heavy_teacher(
     # The teacher path is the only distillation setting.
     student = LuxonisModel(
         config,
-        classification_model("light", opts, cifar10_dataset)
+        classification_model("light", opts, cifar10_subset)
         | {"model.teacher.weights": str(teacher_file)},
     )
     module = student.lightning_module
