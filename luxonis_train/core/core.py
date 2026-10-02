@@ -335,7 +335,7 @@ class LuxonisModel:
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
             _auto_finalize=False,
-            **get_tracker_init_params(self.cfg.tracker),
+            **self._tracker_params(),
         )
 
         self.run_save_dir = (
@@ -628,6 +628,18 @@ class LuxonisModel:
             ckpt = torch.load(checkpoint_path, map_location="cpu")
             checkpoint_path.unlink(missing_ok=True)
         return ckpt
+
+    def _tracker_params(self) -> dict[str, Any]:
+        params = get_tracker_init_params(self.cfg.tracker)
+        # the MLflow backend reads only the process environment, not
+        # the ENVIRON section of the config
+        uri = self.environ.MLFLOW_TRACKING_URI
+        if uri and params["mlflow"] is not False:
+            options = params["mlflow"]
+            if not isinstance(options, dict):
+                options = {}
+            params["mlflow"] = {"tracking_uri": uri, **options}
+        return params
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         # the SystemExit of an interrupt is no Exception, and it also
@@ -1324,7 +1336,7 @@ class LuxonisModel:
         assert self.cfg.tuner is not None
 
         cfg_tracker = self.cfg.tracker
-        tracker_params = get_tracker_init_params(cfg_tracker)
+        tracker_params = self._tracker_params()
         tracker_params["run_name"] = (
             tracker_params["run_name"] or self.tracker.run_name
         )
@@ -1464,8 +1476,7 @@ class LuxonisModel:
 
     def _init_parent_tracker(self) -> None:
         rank = rank_zero_only.rank
-        cfg_tracker = self.cfg.tracker
-        tracker_params = get_tracker_init_params(cfg_tracker)
+        tracker_params = self._tracker_params()
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["wandb"] = False
         tracker_params["run_name"] = (
