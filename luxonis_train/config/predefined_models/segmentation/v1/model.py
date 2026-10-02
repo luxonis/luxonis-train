@@ -133,15 +133,12 @@ class SegmentationModel(SimplePredefinedModel):
 
         The default is ``light``. Both variants set ``backbone`` to
         ``"DDRNet"`` and ``head`` to ``"DDRNetSegmentationHead"``. They
-        differ in the backbone:
-
-        - ``light``: the ``"23-slim"`` variant of `DDRNet`, with
-          ``weights`` set to ``"download"`` in ``backbone_params``;
-        - ``heavy``: the ``"23"`` variant of `DDRNet`, without
-          ``backbone_params``, so the backbone loads no checkpoint.
+        differ in the backbone variant: ``light`` uses the ``"23-slim"``
+        variant of `DDRNet`, and ``heavy`` uses the ``"23"`` variant.
 
         Both variants set ``weights`` to ``"download"`` in
-        ``head_params``, so the head loads its COCO checkpoint. A
+        ``backbone_params`` and in ``head_params``, so the backbone and
+        the head load their COCO checkpoints. A
         ``backbone_params`` or ``head_params`` given in the config
         replaces the whole dictionary of the variant. The auxiliary head
         loads no checkpoint.
@@ -154,8 +151,8 @@ class SegmentationModel(SimplePredefinedModel):
             >>> default, variants = SegmentationModel.get_variants()
             >>> default, variants["heavy"]["backbone_variant"]
             ('light', '23')
-            >>> "backbone_params" in variants["heavy"]
-            False
+            >>> variants["heavy"]["backbone_params"]
+            {'weights': 'download'}
 
         """
         return "light", {
@@ -169,6 +166,7 @@ class SegmentationModel(SimplePredefinedModel):
             "heavy": {
                 "backbone": "DDRNet",
                 "backbone_variant": "23",
+                "backbone_params": {"weights": "download"},
                 "head": "DDRNetSegmentationHead",
                 "head_params": {"weights": "download"},
             },
