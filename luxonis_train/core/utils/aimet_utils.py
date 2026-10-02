@@ -477,7 +477,20 @@ def quantization_aware_training(
 
 
 def _check_finite_params(model: nn.Module, stage: str) -> None:
-    """Raise ``ValueError`` when a parameter holds a NaN or an inf."""
+    """Raise ``ValueError`` when a parameter holds a NaN or an inf.
+
+    Example:
+        >>> import torch
+        >>> layer = nn.Linear(2, 2)
+        >>> _check_finite_params(layer, "after AdaRound")
+        >>> with torch.no_grad():
+        ...     layer.bias[0] = float("nan")
+        >>> _check_finite_params(layer, "after AdaRound")
+        Traceback (most recent call last):
+            ...
+        ValueError: Parameters are not finite after AdaRound: ['bias'], ...
+
+    """
     bad = [n for n, p in model.named_parameters() if not p.isfinite().all()]
     if bad:
         raise ValueError(
