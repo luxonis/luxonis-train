@@ -717,26 +717,58 @@ def test_config_validators_and_storage(monkeypatch: pytest.MonkeyPatch):
     assert cast(Any, constructed).check_tune_storage() is constructed
 
 
-def test_tracker_config_turns_deprecated_flags_into_backend_keys():
-    tracker = TrackerConfig.model_validate(
-        {
-            "is_tensorboard": False,
-            "is_wandb": True,
-            "wandb_entity": "my-team",
-            "is_mlflow": True,
-            "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
-        }
-    )
+@pytest.mark.parametrize(
+    ("data", "backends"),
+    [
+        (
+            {"is_tensorboard": False, "is_mlflow": True},
+            {"tensorboard": False, "wandb": False, "mlflow": True},
+        ),
+        # an override of a dumped config, as the CLI passes it
+        (
+            {
+                "tensorboard": True,
+                "is_tensorboard": "false",
+                "mlflow": False,
+                "is_mlflow": "true",
+            },
+            {"tensorboard": False, "wandb": False, "mlflow": True},
+        ),
+        (
+            {
+                "is_mlflow": True,
+                "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
+            },
+            {
+                "tensorboard": True,
+                "wandb": False,
+                "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
+            },
+        ),
+        (
+            {
+                "is_wandb": 1,
+                "wandb_entity": "my-team",
+                "wandb": {"tags": ["baseline"]},
+            },
+            {
+                "tensorboard": True,
+                "wandb": {"entity": "my-team", "tags": ["baseline"]},
+                "mlflow": False,
+            },
+        ),
+        (
+            {"is_wandb": False, "wandb_entity": "my-team"},
+            {"tensorboard": True, "wandb": False, "mlflow": False},
+        ),
+    ],
+)
+def test_tracker_config_replaces_deprecated_flags(
+    data: Params, backends: Params
+):
+    tracker = TrackerConfig.model_validate(data)
 
-    assert tracker.tensorboard is False
-    assert tracker.wandb == {"entity": "my-team"}
-    assert tracker.mlflow == {"tracking_uri": "sqlite:///mlflow.db"}
-    assert tracker.model_extra == {}
-
-    tracker = TrackerConfig.model_validate(
-        {"is_wandb": False, "wandb_entity": "my-team"}
-    )
-    assert tracker.wandb is False
+    assert tracker.model_dump(include=set(backends)) == backends
     assert tracker.model_extra == {}
 
 
@@ -744,14 +776,14 @@ def test_tracker_config_passes_backend_options_and_plugins():
     tracker = TrackerConfig.model_validate(
         {
             "wandb": {"entity": "my-team", "tags": ["baseline"]},
-            "my_service": {"api_key": "key"},
+            "my_service": {"url": "https://tracking.example.com"},
             "other_service": True,
         }
     )
 
     dumped = tracker.model_dump()
     assert dumped["wandb"] == {"entity": "my-team", "tags": ["baseline"]}
-    assert dumped["my_service"] == {"api_key": "key"}
+    assert dumped["my_service"] == {"url": "https://tracking.example.com"}
     assert dumped["other_service"] is True
 
     # each extra key is a backend, so a key with a scalar value fails

@@ -55,7 +55,11 @@ from typing_extensions import Self, override
 
 import luxonis_train as lxt
 from luxonis_train.registry import NODES
-from luxonis_train.upgrade import upgrade_config
+from luxonis_train.upgrade import (
+    DEPRECATED_TRACKER_KEYS,
+    replace_tracker_flags,
+    upgrade_config,
+)
 
 if TYPE_CHECKING:
     from luxonis_train.config.predefined_models import BasePredefinedModel
@@ -1013,7 +1017,12 @@ class TrackerConfig(BaseModel):
 
     The keys ``is_tensorboard``, ``is_wandb``, ``wandb_entity``, and
     ``is_mlflow`` are deprecated. The config turns them into the
-    backend keys and logs a warning.
+    backend keys with `luxonis_train.upgrade.replace_tracker_flags`,
+    and logs a warning.
+
+    The options go into ``training_config.yaml`` and into each
+    checkpoint. Keep the credentials of a backend in environment
+    variables.
 
     Example:
         A run that logs to TensorBoard, to the WandB team ``my-team``,
@@ -1026,7 +1035,7 @@ class TrackerConfig(BaseModel):
               wandb:
                 entity: my-team
               my_service:
-                api_key: ...
+                url: https://tracking.example.com
 
     Attributes:
         project_name: The project the run belongs to.
@@ -1066,9 +1075,6 @@ class TrackerConfig(BaseModel):
         """Turn the ``is_*`` keys and ``wandb_entity`` into the backend
         keys.
 
-        A backend key that the data also holds wins over its ``is_*``
-        key.
-
         Args:
             data: The raw tracker section.
 
@@ -1077,27 +1083,18 @@ class TrackerConfig(BaseModel):
             it has no deprecated key.
 
         """
-        deprecated = {
-            "is_tensorboard",
-            "is_wandb",
-            "wandb_entity",
-            "is_mlflow",
-        }
-        if not isinstance(data, dict) or not deprecated & data.keys():
+        if not isinstance(data, dict):
+            return data
+        deprecated = sorted(DEPRECATED_TRACKER_KEYS & data.keys())
+        if not deprecated:
             return data
         logger.warning(
-            f"The tracker keys {sorted(deprecated & data.keys())} are "
-            "deprecated. Use `tensorboard`, `wandb` and `mlflow`, for "
-            "example `wandb: {entity: my-team}`."
+            f"The tracker keys {deprecated} are deprecated. Use "
+            "`tensorboard`, `wandb` and `mlflow`, for example "
+            "`wandb: {entity: my-team}`."
         )
         data = dict(data)
-        entity = data.pop("wandb_entity", None)
-        for backend in ("tensorboard", "wandb", "mlflow"):
-            flag = data.pop(f"is_{backend}", None)
-            if flag is not None:
-                data.setdefault(backend, flag)
-        if entity is not None and data.get("wandb") is True:
-            data["wandb"] = {"entity": entity}
+        replace_tracker_flags(data)
         return data
 
 

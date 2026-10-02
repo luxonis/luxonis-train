@@ -62,6 +62,27 @@ def test_upgrade_moves_exporter_output_names_to_the_only_head():
     }
 
 
+def test_upgrade_replaces_the_deprecated_tracker_keys():
+    assert upgrade_config(
+        {
+            "version": "0.3.0",
+            "tracker": {
+                "is_tensorboard": True,
+                "is_wandb": True,
+                "wandb_entity": "my-team",
+                "is_mlflow": False,
+            },
+        }
+    ) == {
+        "version": lxt.__version__,
+        "tracker": {
+            "tensorboard": True,
+            "wandb": {"entity": "my-team"},
+            "mlflow": False,
+        },
+    }
+
+
 def test_get_latest_version_uses_pypi_resolved_version(
     monkeypatch: pytest.MonkeyPatch,
 ):
