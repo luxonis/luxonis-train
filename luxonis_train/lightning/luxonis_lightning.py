@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch
@@ -66,8 +66,13 @@ from .utils import (
     log_sequential_images,
     metric_artifact_image_name,
     mlflow_image_key,
+    node_inputs,
+    node_state_dict,
     postprocess_metrics,
 )
+
+if TYPE_CHECKING:
+    from luxonis_train.distillation.controller import DistillationController
 
 _TRAINING_PROGRESS_METRIC_KEYS = {
     f"{mode}/{suffix}"
@@ -202,6 +207,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self._restore_validation_interval_after_first_epoch = False
         self._original_check_val_every_n_epoch: int | None = None
         self._training_plan: TrainingPlanRuntime | None = None
+        self.distillation: DistillationController | None = None
 
     @override
     def load_state_dict(
@@ -388,6 +394,12 @@ class LuxonisLightningModule(pl.LightningModule):
           the node runs on the outputs and the labels. While the module
           is in training mode, the method puts the loss in training
           mode first.
+        - In training mode, with ``compute_loss`` on, ``labels`` given,
+          and a teacher attached by `attach_distillation`, the teacher
+          runs once on the inputs before the nodes. Every distillation
+          loss of a node then runs on the outputs of the node, the
+          labels, and the outputs of its teacher node. Validation and
+          test never run the teacher.
         - With ``compute_metrics`` on and ``labels`` given, every
           metric of the node updates its state. The method does not
           return the metric values.
@@ -428,15 +440,23 @@ class LuxonisLightningModule(pl.LightningModule):
             labels = {k: v.to(self.device) for k, v in labels.items()}
         losses: _NodeLosses = defaultdict(dict)
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
+        teacher_outputs = (
+            self.distillation.run_teachers(inputs)
+            if self.distillation is not None
+            and self.training
+            and compute_loss
+            and labels is not None
+            else None
+        )
 
         computed: dict[str, Packet[Tensor]] = {}
         for node_name, node, _, unprocessed in self.nodes.traverse():
             if node.module.export and node.module.remove_on_export:
                 continue
-            node_inputs = _node_inputs(node.inputs, computed, inputs)
-            outputs = node.module.run(node_inputs)
+            outputs = node.module.run(
+                node_inputs(node.inputs, computed, inputs)
+            )
             computed[node_name] = outputs
-            del node_inputs
 
             self._collect_node_results(
                 node,
@@ -446,6 +466,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 images,
                 losses,
                 visualizations,
+                teacher_outputs,
                 compute_loss=compute_loss,
                 compute_metrics=compute_metrics,
                 compute_visualizations=compute_visualizations,
@@ -906,11 +927,22 @@ class LuxonisLightningModule(pl.LightningModule):
           ``cfg.trainer.accumulate_grad_batches`` is set and no
           callback of that class is present yet.
 
+        With a teacher attached, a `ReleaseTeacherCallback` comes
+        first, so the teacher leaves the accelerator before the other
+        callbacks run their end-of-training work.
+
         Returns:
             The callbacks, in that order.
 
         """
-        return self.nodes.build_callbacks(self.save_dir)
+        callbacks = self.nodes.build_callbacks(self.save_dir)
+        if self.distillation is not None:
+            from luxonis_train.distillation.controller import (
+                ReleaseTeacherCallback,
+            )
+
+            callbacks.insert(0, ReleaseTeacherCallback())
+        return callbacks
 
     @override
     def configure_optimizers(
@@ -941,7 +973,12 @@ class LuxonisLightningModule(pl.LightningModule):
 
         """
         plan = resolve_training_plan(
-            self.cfg, self.nodes, self.training_strategy
+            self.cfg,
+            self.nodes,
+            self.training_strategy,
+            extra_modules={}
+            if self.distillation is None
+            else {"distillation": self.distillation.connectors},
         )
         runtime = build_training_plan(
             plan,
@@ -1052,11 +1089,37 @@ class LuxonisLightningModule(pl.LightningModule):
             self._load_node_checkpoint(
                 node_name,
                 node,
-                self._node_state_dict(node_name, state_dict, ver),
+                node_state_dict(state_dict, node_name, ver),
                 strict_weights_loading,
                 old_order,
                 new_order,
             )
+
+    def attach_distillation(self, input_shapes: dict[str, Size]) -> None:
+        """Load the teacher of ``cfg.model.teacher`` for training.
+
+        `LuxonisModel.train` calls the method before ``Trainer.fit``,
+        so the connectors of the distillation losses exist before
+        Lightning restores a checkpoint and builds the optimizer. The
+        other commands never call it, so they never need the teacher
+        file. Without ``cfg.model.teacher``, the method does nothing.
+        A second call only turns the teacher back on.
+
+        Args:
+            input_shapes: The shapes of the loader inputs, without the
+                batch dimension.
+
+        """
+        if self.cfg.model.teacher is None:
+            return
+        if self.distillation is not None:
+            self.distillation.active = True
+            return
+        from luxonis_train.distillation.controller import build_controller
+
+        self.distillation = build_controller(
+            self.cfg, self.nodes, input_shapes
+        )
 
     def detach(self) -> None:
         """Detach the module from its trainer.
@@ -1365,6 +1428,7 @@ class LuxonisLightningModule(pl.LightningModule):
         images: Tensor | None,
         losses: _NodeLosses,
         visualizations: dict[str, dict[str, Tensor]],
+        teacher_outputs: dict[str, Packet[Tensor]] | None,
         *,
         compute_loss: bool,
         compute_metrics: bool,
@@ -1372,6 +1436,11 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> None:
         if compute_loss and node.losses and labels is not None:
             self._collect_losses(node, node_name, outputs, labels, losses)
+
+        if compute_loss and teacher_outputs is not None and labels is not None:
+            self._collect_distillation_losses(
+                node, node_name, outputs, labels, teacher_outputs, losses
+            )
 
         if compute_metrics and node.metrics and labels is not None:
             self._update_metrics(node, outputs, labels)
@@ -1394,6 +1463,21 @@ class LuxonisLightningModule(pl.LightningModule):
             if self.training:
                 loss.train()
             losses[node_name][loss_name] = loss.run(outputs, labels)
+
+    def _collect_distillation_losses(
+        self,
+        node: NodeWrapper,
+        node_name: str,
+        outputs: Packet[Tensor],
+        labels: Labels,
+        teacher_outputs: dict[str, Packet[Tensor]],
+        losses: _NodeLosses,
+    ) -> None:
+        for loss_name, loss in node.distillation.items():
+            loss.to(self.device)
+            loss.train()
+            teacher = teacher_outputs[cast(str, loss.teacher_node)]
+            losses[node_name][loss_name] = loss.run(outputs, labels, teacher)
 
     def _update_metrics(
         self, node: NodeWrapper, outputs: Packet[Tensor], labels: Labels
@@ -1430,18 +1514,6 @@ class LuxonisLightningModule(pl.LightningModule):
             )
             if not needed:
                 del computed[computed_name]
-
-    def _node_state_dict(
-        self, node_name: str, state_dict: dict[str, Tensor], ver: Version
-    ) -> dict[str, Tensor]:
-        prefix = (
-            f"nodes.{node_name}.{'module.' if ver >= Version(0, 4) else ''}"
-        )
-        return {
-            self._strip_state_prefix(k): v
-            for k, v in state_dict.items()
-            if k.startswith(prefix)
-        }
 
     def _load_node_checkpoint(
         self,
@@ -1640,17 +1712,6 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
     return dumped
 
 
-def _node_inputs(
-    input_names: list[str],
-    computed: dict[str, Packet[Tensor]],
-    inputs: dict[str, Tensor],
-) -> list[Packet[Tensor]]:
-    return [
-        computed[name] if name in computed else {"features": [inputs[name]]}
-        for name in input_names
-    ]
-
-
 def _output_order(
     outputs: dict[str, Packet[Tensor]],
 ) -> list[tuple[str, str, int]]:
@@ -1837,7 +1898,10 @@ def _loss_metric_keys(module: LuxonisLightningModule) -> set[str]:
         metric_keys.add(f"{mode}/loss")
         for node_name, node in module.nodes.items():
             formatted_node_name = module.nodes.formatted_name(node_name)
-            for loss_name in node.losses:
+            loss_names = [*node.losses]
+            if mode == "train":
+                loss_names += node.distillation
+            for loss_name in loss_names:
                 metric_keys.add(
                     f"{mode}/loss/{formatted_node_name}/{loss_name}"
                 )

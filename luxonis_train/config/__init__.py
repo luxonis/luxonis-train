@@ -14,6 +14,7 @@ from .config import (
     LossModuleConfig,
     MetricModuleConfig,
     NodeConfig,
+    TeacherConfig,
     TrainerConfig,
 )
 
@@ -29,5 +30,6 @@ __all__ = [
     "LossModuleConfig",
     "MetricModuleConfig",
     "NodeConfig",
+    "TeacherConfig",
     "TrainerConfig",
 ]

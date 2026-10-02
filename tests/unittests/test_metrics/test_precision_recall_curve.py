@@ -578,6 +578,7 @@ def make_epoch_end_harness(
     node = SimpleNamespace(
         metrics={"PrecisionRecallCurve": metric},
         losses={},
+        distillation={},
         visualizers={},
     )
     cfg = SimpleNamespace(

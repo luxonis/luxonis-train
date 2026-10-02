@@ -10,7 +10,7 @@ the tracker.
 """
 
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -32,6 +32,7 @@ from lightning.pytorch.callbacks import (
 from loguru import logger
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import Registry, traverse_graph
+from semver import Version
 from torch import Size, Tensor, nn
 from typing_extensions import override
 
@@ -40,6 +41,7 @@ from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.attached_modules.base_attached_module import (
     BaseAttachedModule,
 )
+from luxonis_train.attached_modules.losses import BaseDistillationLoss
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
@@ -149,6 +151,12 @@ class NodeWrapper(nn.Module):
     live in plain dictionaries, so the recursive methods of
     ``torch.nn.Module`` do not reach them.
 
+    Attributes:
+        distillation: The distillation losses of the node, keyed by
+            their identifier. The dictionary stays empty until
+            `LuxonisLightningModule.attach_distillation` fills it, so
+            only training with a teacher builds them.
+
     """
 
     def __init__(
@@ -195,6 +203,7 @@ class NodeWrapper(nn.Module):
         self.lr_after_unfreeze = lr_after_unfreeze
         self.finetuning = finetuning
         self.inputs = inputs or []
+        self.distillation: dict[str, BaseDistillationLoss] = {}
 
     @property
     def task_name(self) -> str:
@@ -223,8 +232,8 @@ class NodeWrapper(nn.Module):
         """Set the training mode of the node and its attached modules.
 
         ``torch.nn.Module.train`` reaches only the registered submodules,
-        so this override also sets the mode of every loss, metric, and
-        visualizer.
+        so this override also sets the mode of every loss, distillation
+        loss, metric, and visualizer.
 
         Args:
             mode: ``True`` for training mode, ``False`` for evaluation
@@ -236,7 +245,7 @@ class NodeWrapper(nn.Module):
         """
         super().train(mode)
         self.module.train(mode)
-        for loss in self.losses.values():
+        for loss in [*self.losses.values(), *self.distillation.values()]:
             loss.train(mode)
         for metric in self.metrics.values():
             metric.train(mode)
@@ -264,6 +273,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             empty dictionary.
         freeze_schedule: The freeze schedule of the nodes with
             ``freezing.active``.
+        output_shapes: Each node identifier mapped to the shapes of its
+            output packet, as the constructor recorded them on a batch
+            of two.
 
     """
 
@@ -307,6 +319,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         """
         self._cfg = cfg
         self.graph: dict[str, list[str]] = {}
+        self.output_shapes: dict[str, Packet[Size]] = {}
         self._nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
 
@@ -388,6 +401,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             node_outputs = node.module.run(node_dummy_inputs)
 
             dummy_inputs[node_name] = node_outputs
+            self.output_shapes[node_name] = to_shape_packet(node_outputs)
             self._nodes[node_name] = node
 
         super().__init__(self._nodes)
@@ -1270,6 +1284,69 @@ def compute_visualization_buffer(
             leftovers[node_name] = node_buf
 
     return leftovers or None
+
+
+def node_inputs(
+    input_names: list[str],
+    computed: dict[str, Packet[Tensor]],
+    inputs: dict[str, Tensor],
+) -> list[Packet[Tensor]]:
+    """Collect the input packets of a node during a forward pass.
+
+    Args:
+        input_names: The `NodeWrapper.inputs` of the node: node
+            identifiers and loader input names.
+        computed: The output packets of the nodes that already ran,
+            keyed by node identifier.
+        inputs: The loader inputs, keyed by input name.
+
+    Returns:
+        One packet for each name. A loader input becomes
+        ``{"features": [tensor]}``.
+
+    """
+    return [
+        computed[name] if name in computed else {"features": [inputs[name]]}
+        for name in input_names
+    ]
+
+
+def node_state_dict(
+    state_dict: Mapping[str, Tensor], node_name: str, version: Version
+) -> dict[str, Tensor]:
+    """Select the weights of one node from a model state dict.
+
+    A checkpoint of version 0.4 or later keys a node as
+    ``nodes.<node>.module.``, an older one as ``nodes.<node>.``.
+
+    Args:
+        state_dict: The state dict of a `LuxonisLightningModule`
+            checkpoint.
+        node_name: The identifier of the node.
+        version: The luxonis-train version that wrote the checkpoint.
+
+    Returns:
+        The weights of the node, keyed without the prefix.
+
+    Example:
+        >>> import torch
+        >>> from semver import Version
+        >>> weights = {
+        ...     "nodes.ResNet.module.conv.weight": torch.zeros(1),
+        ...     "nodes.Head.module.fc.bias": torch.zeros(1),
+        ... }
+        >>> list(node_state_dict(weights, "ResNet", Version(0, 5, 0)))
+        ['conv.weight']
+
+    """
+    prefix = (
+        f"nodes.{node_name}.{'module.' if version >= Version(0, 4) else ''}"
+    )
+    return {
+        key[len(prefix) :]: value
+        for key, value in state_dict.items()
+        if key.startswith(prefix)
+    }
 
 
 def get_model_execution_order(

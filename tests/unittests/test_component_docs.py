@@ -24,10 +24,11 @@ DIRECTIVE = ".. code-block:: yaml"
 REGISTRIES = {
     "nodes": NODES,
     "losses": LOSSES,
+    "distillation": LOSSES,
     "metrics": METRICS,
     "visualizers": VISUALIZERS,
 }
-ATTACHED_PLACES = ("losses", "metrics", "visualizers")
+ATTACHED_PLACES = ("losses", "distillation", "metrics", "visualizers")
 VariantValue: TypeAlias = "bool | int | float | str | tuple[VariantValue, ...] | list[VariantValue] | None"
 
 
@@ -99,7 +100,8 @@ def test_example_is_a_valid_node_graph(cls_name: str, entries: list[dict]):
     """The examples must load as the ``model.nodes`` they claim to be.
 
     Every name must be in the registry of its place: ``model.nodes``,
-    or the ``losses``, ``metrics``, or ``visualizers`` of a node. The
+    or the ``losses``, ``distillation``, ``metrics``, or
+    ``visualizers`` of a node. The
     example of an attached module can also be a fragment of that list,
     with no node around it.
 
@@ -120,13 +122,20 @@ def test_example_is_a_valid_node_graph(cls_name: str, entries: list[dict]):
         (place, module.name)
         for node in nodes
         for place in ATTACHED_PLACES
-        for module in getattr(node, place)
+        for module in _attached(node, place)
     ]
     for place, name in placed:
         assert name in REGISTRIES[place]._module_dict, (
             f"{name!r} is not in the {place!r} registry"
         )
     assert {name for _, name in placed} & _registered_names(cls_name)
+
+
+def _attached(node: NodeConfig, place: str) -> list:
+    # `distillation` also takes the strings "auto" and "off".
+    if place == "distillation":
+        return node.distillation_losses
+    return getattr(node, place)
 
 
 def _fragment_of(cls_name: str, entries: list[dict]) -> str | None:

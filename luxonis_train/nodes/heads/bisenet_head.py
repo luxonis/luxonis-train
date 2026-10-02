@@ -86,6 +86,7 @@ class BiSeNetHead(BaseHead):
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
+    distillation_loss = {"name": "LogitKDLoss"}
 
     def __init__(self, intermediate_channels: int = 64, **kwargs):
         """Build the convolutions and the pixel shuffle upsampling.

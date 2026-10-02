@@ -86,6 +86,7 @@ class TransformerSegmentationHead(BaseHead):
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
+    distillation_loss = {"name": "LogitKDLoss"}
 
     def __init__(self, **kwargs: Any):
         """Build the decoder and one projection for each feature map.
