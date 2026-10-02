@@ -18,6 +18,7 @@ from luxonis_train.config import (
     LossModuleConfig,
     MetricModuleConfig,
     NodeConfig,
+    TeacherConfig,
     TrainerConfig,
     predefined,
 )
@@ -280,6 +281,48 @@ def test_model_config_rejects_invalid_graph_and_names():
                         "name": "Head",
                         "metrics": [
                             {"name": "Metric", "alias": "Invalid/Alias"}
+                        ],
+                    }
+                ]
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(True, "auto"), (False, "off"), (None, "off"), ("off", "off")],
+)
+def test_node_distillation_reads_yaml_booleans(value: object, expected: str):
+    node = NodeConfig.model_validate({"name": "Head", "distillation": value})
+    assert node.distillation == expected
+    assert node.distillation_losses == []
+
+
+def test_node_distillation_list_shares_names_with_losses():
+    model = ModelConfig.model_validate(
+        {
+            "teacher": {"weights": "teacher.ckpt"},
+            "nodes": [
+                {
+                    "name": "Head",
+                    "losses": [{"name": "CrossEntropyLoss", "alias": "kd"}],
+                    "distillation": [{"name": "LogitKDLoss", "alias": "kd"}],
+                }
+            ],
+        }
+    )
+    node = model.nodes[0]
+    assert node.distillation_losses[0].identifier == "kd_0"
+    assert model.teacher == TeacherConfig(weights="teacher.ckpt", strict=True)
+
+    with pytest.raises(ValueError, match="contain a '/'"):
+        ModelConfig.model_validate(
+            {
+                "nodes": [
+                    {
+                        "name": "Head",
+                        "distillation": [
+                            {"name": "LogitKDLoss", "alias": "a/b"}
                         ],
                     }
                 ]
