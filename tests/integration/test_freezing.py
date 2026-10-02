@@ -104,7 +104,7 @@ def test_freezing_parametrized(
     }
     model = LuxonisModel(config_file, opts)
     model.train()
-    log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
+    log_dir = model.tracker.tensorboard.log_dir
 
     ea = event_accumulator.EventAccumulator(
         str(Path(log_dir)),

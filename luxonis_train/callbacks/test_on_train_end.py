@@ -47,8 +47,8 @@ class TestOnTrainEnd(NeedsCheckpoint):
         Lightning calls this hook once when ``trainer.fit`` ends. The
         hook selects a checkpoint with `NeedsCheckpoint.get_checkpoint`
         and passes it to `LuxonisModel.test` with ``view``. The test logs
-        its values to the tracker. It does not finalize the tracker.
-        `LuxonisModel.train` does that at the end of the run.
+        its values to the tracker. It does not upload the log and the
+        config. `LuxonisModel.train` does that when the training ends.
 
         When no checkpoint exists, the hook logs a warning. The test then
         uses the weights of the `LuxonisModel` constructor, or

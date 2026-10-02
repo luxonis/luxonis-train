@@ -55,7 +55,7 @@ def test_smart_vis_logging(tmp_path: Path):
 
     model.test()
 
-    log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
+    log_dir = model.tracker.tensorboard.log_dir
 
     ea = event_accumulator.EventAccumulator(str(log_dir))
     ea.Reload()

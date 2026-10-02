@@ -182,7 +182,7 @@ def test_public_config_exports_are_importable():
     assert ArchiveConfig().upload_to_run is True
     assert BlobconverterExportConfig().version == "2022.1"
     assert OnnxExportConfig().opset_version == 16
-    assert TrackerConfig().is_tensorboard is True
+    assert TrackerConfig().tensorboard is True
     assert TunerConfig().storage.active is True
     assert StorageConfig(active=False).active is False
     assert NormalizeAugmentationConfig().active is True
@@ -715,6 +715,85 @@ def test_config_validators_and_storage(monkeypatch: pytest.MonkeyPatch):
 
     constructed = Config.model_construct(tuner=None)
     assert cast(Any, constructed).check_tune_storage() is constructed
+
+
+@pytest.mark.parametrize(
+    ("data", "backends"),
+    [
+        (
+            {"is_tensorboard": False, "is_mlflow": True},
+            {"tensorboard": False, "wandb": False, "mlflow": True},
+        ),
+        # an override of a dumped config, as the CLI passes it
+        (
+            {
+                "tensorboard": True,
+                "is_tensorboard": "false",
+                "mlflow": False,
+                "is_mlflow": "true",
+            },
+            {"tensorboard": False, "wandb": False, "mlflow": True},
+        ),
+        (
+            {
+                "is_mlflow": True,
+                "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
+            },
+            {
+                "tensorboard": True,
+                "wandb": False,
+                "mlflow": {"tracking_uri": "sqlite:///mlflow.db"},
+            },
+        ),
+        (
+            {
+                "is_wandb": 1,
+                "wandb_entity": "my-team",
+                "wandb": {"tags": ["baseline"]},
+            },
+            {
+                "tensorboard": True,
+                "wandb": {"entity": "my-team", "tags": ["baseline"]},
+                "mlflow": False,
+            },
+        ),
+        (
+            {"is_wandb": False, "wandb_entity": "my-team"},
+            {"tensorboard": True, "wandb": False, "mlflow": False},
+        ),
+    ],
+)
+def test_tracker_config_replaces_deprecated_flags(
+    data: Params, backends: Params
+):
+    tracker = TrackerConfig.model_validate(data)
+
+    assert tracker.model_dump(include=set(backends)) == backends
+    assert tracker.model_extra == {}
+
+
+def test_tracker_config_rejects_a_section_that_is_no_mapping():
+    with pytest.raises(ValidationError, match="TrackerConfig"):
+        TrackerConfig.model_validate(True)
+
+
+def test_tracker_config_passes_backend_options_and_plugins():
+    tracker = TrackerConfig.model_validate(
+        {
+            "wandb": {"entity": "my-team", "tags": ["baseline"]},
+            "my_service": {"url": "https://tracking.example.com"},
+            "other_service": True,
+        }
+    )
+
+    dumped = tracker.model_dump()
+    assert dumped["wandb"] == {"entity": "my-team", "tags": ["baseline"]}
+    assert dumped["my_service"] == {"url": "https://tracking.example.com"}
+    assert dumped["other_service"] is True
+
+    # each extra key is a backend, so a key with a scalar value fails
+    with pytest.raises(ValidationError, match="run_label"):
+        TrackerConfig.model_validate({"run_label": "baseline"})
 
 
 def test_config_get_config_handles_string_mlflow_paths(

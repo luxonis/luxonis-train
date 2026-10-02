@@ -20,6 +20,7 @@ from typing import Any
 import yaml
 from loguru import logger
 from luxonis_ml.typing import Params, ParamValue, PathType
+from pydantic import TypeAdapter
 from semver import Version
 
 import luxonis_train as lxt
@@ -263,6 +264,9 @@ def upgrade_config(config: PathType | Params) -> Params:
         ``"postgresql"``.
 
     - It removes a ``tuner`` field with the value ``None``.
+    - It replaces the deprecated tracker keys ``is_tensorboard``,
+      ``is_wandb``, ``wandb_entity``, and ``is_mlflow`` with
+      `replace_tracker_flags`.
     - In each node of ``model.nodes``, it moves ``params.variant`` to
       ``variant``. For a ``FOMOHead``, it renames
       ``params.num_conv_layers`` to ``params.n_conv_layers``. It removes
@@ -288,7 +292,8 @@ def upgrade_config(config: PathType | Params) -> Params:
     current, and one when the upgrade starts. At the same level, it logs
     each renamed field, each moved ``params.variant``, each moved
     module, and the new ``version``. The removal of ``tuner``, the
-    change of ``params.download_weights``, and the move of
+    replacement of the tracker keys, the change of
+    ``params.download_weights``, and the move of
     ``exporter.output_names`` have no ``INFO`` message.
 
     Args:
@@ -420,6 +425,52 @@ def _apply_field_replacements(cfg: NestedDict) -> None:
     )
     if "tuner" in cfg and cfg["tuner"] is None:
         cfg.pop("tuner")
+    if isinstance(cfg.get("tracker"), dict):
+        replace_tracker_flags(cfg["tracker"])
+
+
+DEPRECATED_TRACKER_KEYS = frozenset(
+    {"is_tensorboard", "is_wandb", "wandb_entity", "is_mlflow"}
+)
+
+
+def replace_tracker_flags(tracker: dict[str, Any]) -> None:
+    """Replace the deprecated keys of a tracker section in place.
+
+    An ``is_<backend>`` flag turns its backend on or off. A backend
+    that is on keeps its options when the section already holds them.
+    ``wandb_entity`` becomes the ``entity`` option of an enabled
+    ``wandb``. An ``entity`` in the options wins over it.
+
+    Args:
+        tracker: The ``tracker`` section of a config.
+
+    Example:
+        >>> from luxonis_train.upgrade import replace_tracker_flags
+        >>> tracker = {
+        ...     "is_mlflow": "true",
+        ...     "mlflow": False,
+        ...     "is_wandb": True,
+        ...     "wandb_entity": "my-team",
+        ... }
+        >>> replace_tracker_flags(tracker)
+        >>> tracker
+        {'mlflow': True, 'wandb': {'entity': 'my-team'}}
+
+    """
+    entity = tracker.pop("wandb_entity", None)
+    for backend in ("tensorboard", "wandb", "mlflow"):
+        flag = tracker.pop(f"is_{backend}", None)
+        if flag is None:
+            continue
+        if not TypeAdapter(bool).validate_python(flag):
+            tracker[backend] = False
+        elif not isinstance(tracker.get(backend), dict):
+            tracker[backend] = True
+    wandb = tracker.get("wandb")
+    if entity is not None and wandb not in (None, False):
+        options = wandb if isinstance(wandb, dict) else {}
+        tracker["wandb"] = {"entity": entity, **options}
 
 
 def _migrate_nodes(cfg: NestedDict) -> dict[str, NestedDict]:

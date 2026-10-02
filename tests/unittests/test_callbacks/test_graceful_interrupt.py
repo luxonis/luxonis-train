@@ -1,5 +1,7 @@
 import signal
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
@@ -7,6 +9,7 @@ import pytest
 from luxonis_train.callbacks.graceful_interrupt import (
     GracefulInterruptCallback,
 )
+from luxonis_train.core import LuxonisModel
 
 
 def test_graceful_interrupt_ignores_non_fit_stages(
@@ -56,3 +59,33 @@ def test_graceful_interrupt_restores_handlers_after_fit(
         (signal.SIGTERM, original_handlers[signal.SIGTERM]),
     ]
     assert callback._signal_handlers == {}
+
+
+def test_graceful_interrupt_uploads_the_checkpoint_and_keeps_the_run_open(
+    tmp_path: Path,
+) -> None:
+    tracker = Mock()
+    trainer = Mock()
+    callback = GracefulInterruptCallback(tmp_path, tracker)
+    callback.setup(trainer, Mock(), stage="validate")
+
+    callback._handle_signal(signal.SIGINT, None)
+
+    ckpt_path = tmp_path / "resume.ckpt"
+    trainer.save_checkpoint.assert_called_once_with(ckpt_path)
+    tracker.upload_artifact.assert_called_once_with(
+        ckpt_path, typ="checkpoints", name="resume.ckpt"
+    )
+    # the training closes the run after it uploads the log and the config
+    tracker.close.assert_not_called()
+    assert trainer.should_stop is True
+
+
+def test_an_interrupted_training_ends_as_failed() -> None:
+    model = SimpleNamespace(pl_trainer=Mock(), _end_stage=Mock())
+    model.pl_trainer.fit.side_effect = SystemExit(0)
+
+    with pytest.raises(SystemExit):
+        LuxonisModel._train(cast(LuxonisModel, model), None)
+
+    model._end_stage.assert_called_once_with("failed")

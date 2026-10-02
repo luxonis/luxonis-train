@@ -526,7 +526,7 @@ model = LuxonisModel("my_config.yaml")
 model.test(weights="path/to/checkpoint.ckpt")
 ```
 
-If you plan to continue using the same `LuxonisModel` run after testing, for example to call `export()` or `archive()`, use `model.test(..., finalize_tracker=False)` to keep the tracker run open and call `model.finalize_run()` once the full sequence is complete.
+The tracker run stays open after `train()` and `test()`, so a later `export()` or `archive()` still uploads to it. The run closes when the process exits. To close it earlier, call `model.finalize_run()` once the full sequence is complete.
 
 The testing process can be started automatically at the end of the training by using the `TestOnTrainEnd` callback.
 To learn more about callbacks, see [Callbacks](https://docs.luxonis.com/software-v3/ai-inference/model-source/training/luxonis-train/api-reference/luxonis_train.callbacks.html).

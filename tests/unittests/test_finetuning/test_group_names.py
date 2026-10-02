@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pytest
 from luxonis_ml.typing import Params
@@ -145,9 +146,9 @@ def test_learning_rate_monitor_logs_one_named_series_per_group(
     tracker = model.tracker
     original = tracker.log_metrics
 
-    def spy(metrics: dict[str, float], step: int) -> Any:
+    def spy(metrics: Mapping[str, float], step: int) -> None:
         logged.update(metrics)
-        return original(metrics, step)
+        original(metrics, step)
 
     tracker.log_metrics = spy
     model.train()

@@ -1010,7 +1010,7 @@ def log_metric_artifacts(
                 name=metric_artifact_image_name(
                     mode, formatted_node_name, metric_name, artifact_name
                 ),
-                img=artifact.detach().cpu().numpy().transpose(1, 2, 0),
+                image=artifact.detach().cpu().numpy().transpose(1, 2, 0),
                 step=current_epoch,
             )
         except Exception:
