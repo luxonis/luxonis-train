@@ -772,6 +772,11 @@ def test_tracker_config_replaces_deprecated_flags(
     assert tracker.model_extra == {}
 
 
+def test_tracker_config_rejects_a_section_that_is_no_mapping():
+    with pytest.raises(ValidationError, match="TrackerConfig"):
+        TrackerConfig.model_validate(True)
+
+
 def test_tracker_config_passes_backend_options_and_plugins():
     tracker = TrackerConfig.model_validate(
         {
