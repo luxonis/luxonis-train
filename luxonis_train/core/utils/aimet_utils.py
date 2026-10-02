@@ -232,7 +232,8 @@ def post_training_quantization(
         ImportError: When ``aimet_torch`` is not installed.
         AssertionError: When ``val_loader`` has no batch.
         ValueError: When a parameter is not finite before the
-            quantization or after AdaRound.
+            quantization, or after the batch norm folding, the
+            cross-layer equalization, or AdaRound.
 
     """
     check_aimet_available()
@@ -293,11 +294,13 @@ def post_training_quantization(
         fold_all_batch_norms(
             model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
         )
+        _check_finite_params(model, "after the batch norm folding")
     if cross_layer_equalization:
         logger.info("Applying cross-layer equalization")
         equalize_model(
             model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
         )
+        _check_finite_params(model, "after the cross-layer equalization")
 
     if adaround:
         ada_params = AdaroundParameters(
@@ -474,6 +477,7 @@ def quantization_aware_training(
 
 
 def _check_finite_params(model: nn.Module, stage: str) -> None:
+    """Raise ``ValueError`` when a parameter holds a NaN or an inf."""
     bad = [n for n, p in model.named_parameters() if not p.isfinite().all()]
     if bad:
         raise ValueError(
