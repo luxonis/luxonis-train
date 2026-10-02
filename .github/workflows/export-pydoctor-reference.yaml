@@ -1,0 +1,22 @@
+name: Export pydoctor reference
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    # The shared workflow exports internal release/* PRs and manual runs.
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-export-pydoctor-reference.yaml@1556182be18dd350dbeb5b07bc7282e17828b655
+    with:
+      package-id: luxonis-train
+    secrets:
+      DOCS_CONTENT_SSH_KEY: ${{ secrets.DOCS_CONTENT_SSH_KEY }}
