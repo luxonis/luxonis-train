@@ -231,6 +231,9 @@ def post_training_quantization(
     Raises:
         ImportError: When ``aimet_torch`` is not installed.
         AssertionError: When ``val_loader`` has no batch.
+        ValueError: When a parameter is not finite before the
+            quantization, or after the batch norm folding, the
+            cross-layer equalization, or AdaRound.
 
     """
     check_aimet_available()
@@ -284,17 +287,20 @@ def post_training_quantization(
         model.cuda()
 
     model.eval()
+    _check_finite_params(model, "before the quantization")
 
     if fold_batch_norms and not batch_norm_reestimation:
         logger.info("Folding batch norms into preceding layers")
         fold_all_batch_norms(
             model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
         )
+        _check_finite_params(model, "after the batch norm folding")
     if cross_layer_equalization:
         logger.info("Applying cross-layer equalization")
         equalize_model(
             model, input_shapes=dummy_inputs.shape, dummy_input=dummy_inputs
         )
+        _check_finite_params(model, "after the cross-layer equalization")
 
     if adaround:
         ada_params = AdaroundParameters(
@@ -318,6 +324,7 @@ def post_training_quantization(
                 filename_prefix="adaround",
             ),
         )
+        _check_finite_params(model, "after AdaRound")
 
     if batch_norm_reestimation and config_file is None:
         config_file = get_path_for_per_channel_config()
@@ -467,6 +474,30 @@ def quantization_aware_training(
     finally:
         model.automatic_optimization = previous_automatic_optimization
     return model
+
+
+def _check_finite_params(model: nn.Module, stage: str) -> None:
+    """Raise ``ValueError`` when a parameter holds a NaN or an inf.
+
+    Example:
+        >>> import torch
+        >>> layer = nn.Linear(2, 2)
+        >>> _check_finite_params(layer, "after AdaRound")
+        >>> with torch.no_grad():
+        ...     layer.bias[0] = float("nan")
+        >>> _check_finite_params(layer, "after AdaRound")
+        Traceback (most recent call last):
+            ...
+        ValueError: Parameters are not finite after AdaRound: ['bias'], ...
+
+    """
+    bad = [n for n, p in model.named_parameters() if not p.isfinite().all()]
+    if bad:
+        raise ValueError(
+            f"Parameters are not finite {stage}: {bad[:3]}, {len(bad)} in "
+            "total. The model probably diverged. Check its test loss "
+            "before the quantization."
+        )
 
 
 def _is_aimet_graph_trace_error(exc: Exception) -> bool:  # pragma: no cover
