@@ -630,12 +630,14 @@ class LuxonisModel:
         return ckpt
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
-        status = "success"
+        # the SystemExit of an interrupt is no Exception, and it also
+        # fails the training
+        status = "failed"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
+            status = "success"
         except Exception:  # pragma: no cover
             logger.exception("Encountered an exception during training.")
-            status = "failed"
             raise
         finally:
             self._end_stage(status)
@@ -990,19 +992,20 @@ class LuxonisModel:
         loader = self.pytorch_loaders[view]
 
         def _run_test() -> Mapping[str, float]:
-            status = "success"
+            status = "failed"
             try:
                 with replace_weights(self.lightning_module, weights):
-                    return self.pl_trainer.test(self.lightning_module, loader)[
-                        0
-                    ]
+                    results = self.pl_trainer.test(
+                        self.lightning_module, loader
+                    )[0]
+                status = "success"
             except Exception:  # pragma: no cover
                 logger.exception("Encountered an exception during testing.")
-                status = "failed"
                 raise
             finally:
                 if finalize_tracker:
                     self._end_stage(status)
+            return results
 
         if new_thread:  # pragma: no cover
             self.thread = threading.Thread(

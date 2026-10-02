@@ -29,11 +29,11 @@ class GracefulInterruptCallback(pl.Callback):
 
     - **First signal**: the handler logs a warning with the path and
       saves ``resume.ckpt`` in ``save_dir``. When the callback has a
-      tracker, the handler then uploads the checkpoint and closes the
-      run with the status ``"failed"``. The handler logs the error of a
-      failed step and does not raise it. A failed save does not stop
-      the upload. A failed upload skips the close. Then the
-      handler sets ``trainer.should_stop`` to ``True``.
+      tracker, the handler then uploads the checkpoint. The handler
+      logs the error of a failed step and does not raise it. A failed
+      save does not stop the upload. Then the handler sets
+      ``trainer.should_stop`` to ``True``. `LuxonisModel.train` then
+      closes the run as failed.
     - **Second signal**: the handler logs a warning and calls
       ``os._exit(1)``. The process ends at once, without cleanup.
 
@@ -60,9 +60,7 @@ class GracefulInterruptCallback(pl.Callback):
                 converts the value to a ``pathlib.Path``, so a ``str`` is
                 also valid.
             tracker: The tracker that receives ``resume.ckpt`` on the
-                first interrupt. The first interrupt also closes its run
-                with the status ``"failed"``. ``None`` skips the upload
-                and the close.
+                first interrupt. ``None`` skips the upload.
 
         """
         super().__init__()
@@ -176,9 +174,8 @@ class GracefulInterruptCallback(pl.Callback):
                 self._tracker.upload_artifact(
                     ckpt_path, typ="checkpoints", name="resume.ckpt"
                 )
-                self._tracker.close(status="failed")
         except Exception:
-            logger.exception("Failed to upload checkpoint or close tracker.")
+            logger.exception("Failed to upload interrupt checkpoint.")
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
