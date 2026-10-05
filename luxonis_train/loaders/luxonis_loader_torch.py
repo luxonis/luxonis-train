@@ -32,6 +32,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         class_order_per_task: dict[str, list[str]] | None = None,
         kpts_mapping_per_task: dict[str, list[int]] | None = None,
         kpts_mapping_per_class: dict[str, list[int]] | None = None,
+        max_bbox_width: float = 1.0,
+        max_bbox_height: float = 1.0,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -83,6 +85,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type bbox_area_threshold: float
         @param bbox_area_threshold: Minimum area threshold for bounding boxes to be considered valid. In the range [0, 1].
             Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
+        @type max_bbox_width: float
+        @param max_bbox_width: Maximum box width as a fraction of its original
+            source image, in [0, 1]. Defaults to 1.0 (disabled). Excludes whole
+            images containing any wider box in all training/validation/test
+            views, before resizing and augmentation.
+        @type max_bbox_height: float
+        @param max_bbox_height: Maximum box height as a fraction of its original
+            source image, in [0, 1]. Defaults to 1.0 (disabled). Excludes whole
+            images containing any taller box in every view. Equality is allowed.
         @type class_order_per_task: dict[str, list[str]] | None
         @param class_order_per_task: Dictionary mapping task names to a list of class names.
             If provided, the classes for the specified tasks will be reordered.
@@ -188,6 +199,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
+            max_bbox_width=max_bbox_width,
+            max_bbox_height=max_bbox_height,
             seed=self.seed,
         )
 
