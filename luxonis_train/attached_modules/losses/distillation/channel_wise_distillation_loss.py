@@ -2,15 +2,17 @@
 
 import torch
 import torch.nn.functional as F
+from luxonis_ml.typing import Params
 from torch import Size, Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.typing import Packet
 
-from .base_distillation_loss import BaseDistillationLoss
+from .base_distillation_loss import BaseDistillationLoss, StudentContext
 
 
-class CWDDistillationLoss(BaseDistillationLoss):
+class ChannelWiseDistillationLoss(BaseDistillationLoss):
     r"""Match the spatial distribution of every teacher channel.
 
     The loss turns each channel of a feature map into a probability
@@ -50,7 +52,10 @@ class CWDDistillationLoss(BaseDistillationLoss):
         - License: Apache-2.0 (this project)
 
     Notes:
-        `build` creates one adapter for each level: a 1x1 convolution
+        Without ``levels``, the loss compares the levels that the nodes
+        fed by its node read, as `derive_params` sets them.
+
+        `setup` creates one adapter for each level: a 1x1 convolution
         with batch norm when the channel counts differ, and an identity
         otherwise. When the spatial sizes differ, the loss resizes the
         teacher map to the student map with bilinear interpolation.
@@ -59,14 +64,13 @@ class CWDDistillationLoss(BaseDistillationLoss):
 
     Example:
         The automatic recipe adds the loss to the node that feeds a
-        distilled head, with ``levels`` set to the outputs the head
-        reads. Set it explicitly on a neck:
+        matched head. Set it explicitly on a neck:
 
         .. code-block:: yaml
 
             - name: RepPANNeck
               distillation:
-                - name: CWDDistillationLoss
+                - name: ChannelWiseDistillationLoss
                   params:
                     tau: 1.0
 
@@ -83,8 +87,8 @@ class CWDDistillationLoss(BaseDistillationLoss):
 
         Args:
             tau: The temperature of the softmax.
-            levels: The indices of the levels to compare. ``None``
-                compares all of them.
+            levels: The indices of the levels to compare, in both
+                nodes. ``None`` compares all of them.
             **kwargs: Keyword arguments forwarded to
                 `BaseDistillationLoss`.
 
@@ -94,7 +98,29 @@ class CWDDistillationLoss(BaseDistillationLoss):
         self.levels = levels
         self.adapters: nn.ModuleList | None = None
 
-    def build(
+    @classmethod
+    @override
+    def derive_params(cls, student: StudentContext) -> Params:
+        """Compare the levels that the nodes fed by the node read.
+
+        Args:
+            student: The student node of the loss.
+
+        Returns:
+            ``levels``, or nothing when no node reads the feature maps.
+
+        Example:
+            >>> context = StudentContext(losses={}, levels_read=[2, 3])
+            >>> ChannelWiseDistillationLoss.derive_params(context)
+            {'levels': [2, 3]}
+
+        """
+        if student.levels_read is None:
+            return {}
+        return {"levels": student.levels_read}
+
+    @override
+    def setup(
         self, student_shapes: Packet[Size], teacher_shapes: Packet[Size]
     ) -> nn.Module:
         """Create one channel adapter for each compared level.
@@ -107,12 +133,20 @@ class CWDDistillationLoss(BaseDistillationLoss):
             The adapters, in level order.
 
         Raises:
-            ValueError: When the two nodes have a different number of
-                levels.
+            ValueError: When the teacher node gives no ``features``,
+                when it has fewer levels than ``levels`` names, or when
+                the two nodes give a different number of levels.
 
         """
+        super().setup(student_shapes, teacher_shapes)
         student = self._select(student_shapes["features"])
-        teacher = self._select(teacher_shapes["features"])
+        try:
+            teacher = self._select(teacher_shapes["features"])
+        except IndexError as error:
+            raise ValueError(
+                f"'{self.name}' compares the levels {self.levels}, but the "
+                "teacher node has fewer levels."
+            ) from error
         if len(student) != len(teacher):
             raise ValueError(
                 f"'{self.name}' compares {len(student)} student levels "
@@ -141,15 +175,17 @@ class CWDDistillationLoss(BaseDistillationLoss):
 
         Raises:
             RuntimeError: When a level has different channel counts and
-                `build` has not run.
+                `setup` has not run.
 
         Examples:
             >>> import torch
             >>> student = torch.tensor([[[[1.0, 0.0], [0.0, 0.0]]]])
             >>> teacher = torch.tensor([[[[2.0, 0.0], [0.0, 0.0]]]])
-            >>> CWDDistillationLoss()(student, student).item()
+            >>> ChannelWiseDistillationLoss()(student, student).item()
             0.0
-            >>> round(CWDDistillationLoss()(student, teacher).item(), 4)
+            >>> round(
+            ...     ChannelWiseDistillationLoss()(student, teacher).item(), 4
+            ... )
             0.1141
 
         """
@@ -174,11 +210,12 @@ class CWDDistillationLoss(BaseDistillationLoss):
         return student
 
     def _level_loss(self, student: Tensor, teacher: Tensor) -> Tensor:
+        """Compute the loss of one level, after the adapter."""
         if student.shape[1] != teacher.shape[1]:
             raise RuntimeError(
                 f"'{self.name}' got {student.shape[1]} student channels "
                 f"and {teacher.shape[1]} teacher channels, but has no "
-                "adapter. Call `build` first."
+                "adapter. Call `setup` first."
             )
         if student.shape[-2:] != teacher.shape[-2:]:
             teacher = F.interpolate(

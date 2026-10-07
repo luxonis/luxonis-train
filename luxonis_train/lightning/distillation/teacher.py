@@ -106,9 +106,9 @@ class Teacher(nn.Module):
     the batch norm statistics and the dropout of the teacher never
     change.
 
-    `LuxonisLightningModule` does not register the teacher as a
-    submodule. The teacher is therefore not in the state dict, the
-    checkpoints, the EMA copy, the optimizer, or the DDP wrapper.
+    `Distiller` does not register the teacher as a submodule. The
+    teacher is therefore not in the state dict, the checkpoints, the EMA
+    copy, the optimizer, or the DDP wrapper.
 
     Attributes:
         nodes: The nodes of the teacher.
@@ -296,7 +296,7 @@ def _clean_node(node: dict[str, Any]) -> dict[str, Any]:
         "metrics": [],
         "visualizers": [],
         "finetuning": [],
-        "distillation": "off",
+        "distillation": False,
         "metadata_task_override": None,
     }
     cleaned.pop("freezing", None)

@@ -5,7 +5,7 @@ import torch
 from torch import Size, Tensor, nn
 
 import luxonis_train
-from luxonis_train.config import Config
+from luxonis_train.config import Config, LossModuleConfig
 from luxonis_train.lightning.utils import Nodes
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads.base_head import BaseHead
@@ -32,7 +32,9 @@ class KDBackbone(BaseNode):
 class KDHead(BaseHead):
     task = Tasks.CLASSIFICATION
     attach_index = -1
-    distillation_loss = {"name": "LogitKDLoss", "params": {"temperature": 4.0}}
+    distillation_loss = LossModuleConfig(
+        name="LogitDistillationLoss", params={"temperature": 4.0}
+    )
     in_channels: int
 
     def __init__(self, **kwargs):
@@ -41,6 +43,12 @@ class KDHead(BaseHead):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.fc(x.mean((2, 3)))
+
+
+class KDPlainHead(KDHead):
+    """A head without a default loss, like a detection head."""
+
+    distillation_loss = None
 
 
 def make_config(
@@ -81,10 +89,15 @@ def make_config(
 
 
 def save_teacher(
-    path: Path, *, width: int = 8, classes: dict | None = None
+    path: Path,
+    *,
+    width: int = 8,
+    classes: dict | None = None,
+    backbone: dict[str, Any] | None = None,
+    head: dict[str, Any] | None = None,
 ) -> tuple[Path, Nodes]:
     """Save a checkpoint in the layout of a luxonis-train checkpoint."""
-    cfg = make_config(width)
+    cfg = make_config(width, backbone=backbone, head=head)
     metadata = DatasetMetadata(classes=classes or CLASSES)
     nodes = Nodes(cfg, metadata, INPUT_SHAPES)
     state_dict = {

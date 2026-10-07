@@ -288,13 +288,10 @@ def test_model_config_rejects_invalid_graph_and_names():
         )
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [(True, "auto"), (False, "off"), (None, "off"), ("off", "off")],
-)
-def test_node_distillation_reads_yaml_booleans(value: object, expected: str):
+@pytest.mark.parametrize("value", [True, False])
+def test_node_distillation_flag_has_no_losses(value: bool):
     node = NodeConfig.model_validate({"name": "Head", "distillation": value})
-    assert node.distillation == expected
+    assert node.distillation is value
     assert node.distillation_losses == []
 
 
@@ -306,14 +303,20 @@ def test_node_distillation_list_shares_names_with_losses():
                 {
                     "name": "Head",
                     "losses": [{"name": "CrossEntropyLoss", "alias": "kd"}],
-                    "distillation": [{"name": "LogitKDLoss", "alias": "kd"}],
+                    "distillation": [
+                        {
+                            "name": "LogitDistillationLoss",
+                            "alias": "kd",
+                            "teacher_node": "TeacherHead",
+                        }
+                    ],
                 }
             ],
         }
     )
-    node = model.nodes[0]
-    assert node.distillation_losses[0].identifier == "kd_0"
-    assert model.teacher == TeacherConfig(weights="teacher.ckpt", strict=True)
+    loss = model.nodes[0].distillation_losses[0]
+    assert loss.identifier == "kd_0"
+    assert loss.teacher_node == "TeacherHead"
 
     with pytest.raises(ValueError, match="contain a '/'"):
         ModelConfig.model_validate(
@@ -322,12 +325,40 @@ def test_node_distillation_list_shares_names_with_losses():
                     {
                         "name": "Head",
                         "distillation": [
-                            {"name": "LogitKDLoss", "alias": "a/b"}
+                            {"name": "LogitDistillationLoss", "alias": "a/b"}
                         ],
                     }
                 ]
             }
         )
+
+
+def test_model_dump_leaves_out_the_teacher():
+    model = ModelConfig.model_validate(
+        {"teacher": {"weights": "teacher.ckpt", "loss_weight": 0.5}}
+    )
+    assert model.teacher == TeacherConfig(
+        weights="teacher.ckpt", loss_weight=0.5
+    )
+    assert "teacher" not in model.model_dump()
+
+
+def test_predefined_model_sets_distillation_per_component():
+    head_loss = {
+        "name": "LogitDistillationLoss",
+        "params": {"temperature": 2.0},
+    }
+    backbone, head = DetectionModel(
+        variant="light",
+        use_neck=False,
+        distillation={"backbone": False, "head": [head_loss]},
+    ).nodes
+    assert backbone.distillation is False
+    assert [(loss.name, loss.params) for loss in head.distillation_losses] == [
+        ("LogitDistillationLoss", {"temperature": 2.0})
+    ]
+    neck = DetectionModel(variant="light").nodes[1]
+    assert neck.distillation is True
 
 
 def test_model_config_no_outputs_guard(monkeypatch: pytest.MonkeyPatch):

@@ -4,6 +4,7 @@ from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
+from luxonis_train.config import LossModuleConfig
 from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -86,7 +87,7 @@ class BiSeNetHead(BaseHead):
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
-    distillation_loss = {"name": "LogitKDLoss"}
+    distillation_loss = LossModuleConfig(name="LogitDistillationLoss")
 
     def __init__(self, intermediate_channels: int = 64, **kwargs):
         """Build the convolutions and the pixel shuffle upsampling.

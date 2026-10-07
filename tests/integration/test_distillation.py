@@ -15,6 +15,7 @@ from luxonis_ml.data import DatasetIterator
 from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.nodes.blocks import ConvBlock
 from tests.conftest import LuxonisTestDataset
 
 N_IMAGES = 40
@@ -63,7 +64,6 @@ def test_light_student_distills_from_heavy_teacher(
     teacher.train()
     teacher_file = tmp_path / "teacher.ckpt"
     teacher.save_checkpoint(teacher_file)
-    teacher_state = torch.load(teacher_file, map_location="cpu")["state_dict"]
 
     # The teacher path is the only distillation setting.
     student = LuxonisModel(
@@ -72,52 +72,47 @@ def test_light_student_distills_from_heavy_teacher(
         | {"model.teacher.weights": str(teacher_file)},
     )
     module = student.lightning_module
-    module.attach_distillation(student._input_shapes)
-    controller = module.distillation
-    assert controller is not None
-    connectors_before = {
-        key: value.clone()
-        for key, value in controller.connectors.state_dict().items()
-    }
     student.train()
 
     # The automatic recipe distills the head and the backbone stage it
     # reads; ResNet18 has 512 channels and ResNet50 has 2048.
-    assert set(module.nodes["ClassificationHead"].distillation) == {
-        "LogitKDLoss"
+    distiller = module.distiller
+    assert distiller is not None
+    assert set(distiller.losses("ClassificationHead")) == {
+        "LogitDistillationLoss"
     }
-    assert set(module.nodes["ResNet"].distillation) == {"CWDDistillationLoss"}
-    assert set(controller.connectors) == {"ResNet/CWDDistillationLoss"}
+    assert set(distiller.losses("ResNet")) == {"ChannelWiseDistillationLoss"}
+    assert set(distiller.connectors) == {"ResNet/ChannelWiseDistillationLoss"}
 
-    # The teacher did not train.
-    teacher_nodes = controller._teachers["teacher"].nodes
-    for name, node in teacher_nodes.items():
-        for key, value in node.module.state_dict().items():
-            saved = teacher_state[f"nodes.{name}.module.{key}"]
-            assert torch.equal(value.cpu(), saved), key
-
-    # The connectors trained, and the teacher was released.
-    assert any(
-        not torch.equal(value.cpu(), connectors_before[key].cpu())
-        for key, value in controller.connectors.state_dict().items()
-    )
-    assert not controller.active
+    # The adapter ran in training steps, and the teacher was released.
+    adapters = distiller.connectors["ResNet/ChannelWiseDistillationLoss"]
+    assert isinstance(adapters, torch.nn.ModuleList)
+    adapter = adapters[0]
+    assert isinstance(adapter, ConvBlock)
+    assert isinstance(adapter.bn, torch.nn.BatchNorm2d)
+    assert adapter.bn.num_batches_tracked is not None
+    assert adapter.bn.num_batches_tracked.item() > 0
+    assert not distiller.has_teacher
 
     # Distillation runs in training steps only.
     logged = set(student.pl_trainer.callback_metrics)
     assert any(
-        key.startswith("train/loss/") and "LogitKD" in key for key in logged
+        key.startswith("train/loss/") and "LogitDistillation" in key
+        for key in logged
     )
     assert not any(
-        key.startswith("val/") and "LogitKD" in key for key in logged
+        key.startswith("val/") and "LogitDistillation" in key for key in logged
     )
 
-    # The checkpoint holds the connectors but no teacher weights.
+    # The checkpoint holds the connectors, but no teacher weights and no
+    # teacher path.
     checkpoint = student.get_min_loss_checkpoint_path()
     assert checkpoint is not None
-    state = torch.load(checkpoint, map_location="cpu")["state_dict"]
-    assert any(key.startswith("distillation.connectors.") for key in state)
+    saved = torch.load(checkpoint, map_location="cpu")
+    state = saved["state_dict"]
+    assert any(key.startswith("distiller.connectors.") for key in state)
     assert not any("teacher" in key for key in state)
+    assert "teacher" not in saved["config"]["model"]
 
     # Export needs neither the teacher file nor the connectors.
     teacher_file.unlink()

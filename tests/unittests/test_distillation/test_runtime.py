@@ -1,22 +1,28 @@
-import copy
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import torch
 from torch import Tensor, nn
 
 from luxonis_train.attached_modules.losses import (
-    CWDDistillationLoss,
-    LogitKDLoss,
+    ChannelWiseDistillationLoss,
+    LogitDistillationLoss,
 )
 from luxonis_train.config import Config, TeacherConfig
-from luxonis_train.distillation.controller import build_controller
-from luxonis_train.distillation.recipe import resolve_recipe
-from luxonis_train.distillation.teacher import (
+from luxonis_train.lightning import LuxonisLightningModule
+from luxonis_train.lightning.distillation import (
+    Distiller,
+    ReleaseTeacherCallback,
+)
+from luxonis_train.lightning.distillation.recipe import (
+    match_nodes,
+    resolve_recipe,
+)
+from luxonis_train.lightning.distillation.teacher import (
     load_teacher_checkpoint,
     teacher_node_configs,
 )
-from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.training_plan import resolve_training_plan
 from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils import DatasetMetadata
@@ -29,6 +35,12 @@ from ._helpers import (
     save_teacher,
     student_nodes,
 )
+
+# A teacher whose nodes have other identifiers than the student nodes.
+RENAMED = {
+    "backbone": {"alias": "TeacherBackbone"},
+    "head": {"alias": "TeacherHead", "inputs": ["TeacherBackbone"]},
+}
 
 
 def recipe(
@@ -48,29 +60,64 @@ def recipe(
     }
 
 
-def test_recipe_distills_the_head_and_the_levels_it_reads(tmp_path: Path):
+def test_recipe_distills_the_head_and_its_feeder(tmp_path: Path):
     teacher, _ = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher)
     assert recipe(cfg, teacher) == {
-        "KDHead": ("LogitKDLoss", "KDHead", None),
-        # The head reads only the last of the two backbone levels.
-        "KDBackbone": ("CWDDistillationLoss", "KDBackbone", [1]),
+        "KDHead": ("LogitDistillationLoss", "KDHead", None),
+        "KDBackbone": ("ChannelWiseDistillationLoss", "KDBackbone", None),
     }
 
 
-def test_recipe_respects_off_and_explicit_lists(tmp_path: Path):
+def test_recipe_matches_by_task_and_graph_position(tmp_path: Path):
+    teacher, _ = save_teacher(tmp_path, **RENAMED)
+    cfg = make_config(4, teacher=teacher)
+    ckpt = load_teacher_checkpoint(TeacherConfig(weights=str(teacher)))
+    matches = match_nodes(student_nodes(cfg), teacher_node_configs(ckpt))
+    assert {
+        name: (m.teacher_node, m.reason) for name, m in matches.items()
+    } == {
+        "KDHead": ("TeacherHead", "same task"),
+        "KDBackbone": ("TeacherBackbone", "same graph position"),
+    }
+
+
+def test_recipe_distills_the_feeder_of_a_head_without_default(
+    tmp_path: Path,
+):
+    head = {"name": "KDPlainHead"}
+    teacher, _ = save_teacher(tmp_path, head=head)
+    cfg = make_config(4, teacher=teacher, head=head)
+    assert recipe(cfg, teacher) == {
+        "KDBackbone": ("ChannelWiseDistillationLoss", "KDBackbone", None),
+    }
+
+
+def test_recipe_respects_false_and_explicit_lists(tmp_path: Path):
     teacher, _ = save_teacher(tmp_path)
     cfg = make_config(
         4,
         teacher=teacher,
         backbone={"distillation": False},
         head={
-            "distillation": [
-                {"name": "LogitKDLoss", "alias": "kd", "params": {"dim": 1}}
-            ]
+            "distillation": [{"name": "LogitDistillationLoss", "alias": "kd"}]
         },
     )
-    assert recipe(cfg, teacher) == {"KDHead": ("LogitKDLoss", "KDHead", None)}
+    assert recipe(cfg, teacher) == {
+        "KDHead": ("LogitDistillationLoss", "KDHead", None)
+    }
+
+
+def test_recipe_raises_when_nothing_is_distilled(tmp_path: Path):
+    teacher, _ = save_teacher(tmp_path)
+    cfg = make_config(
+        4,
+        teacher=teacher,
+        backbone={"distillation": False},
+        head={"distillation": False},
+    )
+    with pytest.raises(ValueError, match="no node gets a distillation loss"):
+        recipe(cfg, teacher)
 
 
 def test_explicit_teacher_node_must_exist(tmp_path: Path):
@@ -80,7 +127,7 @@ def test_explicit_teacher_node_must_exist(tmp_path: Path):
         teacher=teacher,
         head={
             "distillation": [
-                {"name": "LogitKDLoss", "params": {"teacher_node": "Nope"}}
+                {"name": "LogitDistillationLoss", "teacher_node": "Nope"}
             ]
         },
     )
@@ -88,21 +135,25 @@ def test_explicit_teacher_node_must_exist(tmp_path: Path):
         recipe(cfg, teacher)
 
 
-def test_controller_attaches_losses_and_connectors(tmp_path: Path):
+def test_distiller_attaches_losses_and_connectors(tmp_path: Path):
     teacher, _ = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher)
-    nodes = student_nodes(cfg)
-    controller = build_controller(cfg, nodes, INPUT_SHAPES)
-    assert controller is not None
+    distiller = Distiller.from_config(cfg, student_nodes(cfg))
 
-    head_loss = nodes["KDHead"].distillation["LogitKDLoss"]
-    backbone_loss = nodes["KDBackbone"].distillation["CWDDistillationLoss"]
-    assert isinstance(head_loss, LogitKDLoss)
+    head_loss = distiller.losses("KDHead")["LogitDistillationLoss"]
+    backbone_loss = distiller.losses("KDBackbone")[
+        "ChannelWiseDistillationLoss"
+    ]
+    assert isinstance(head_loss, LogitDistillationLoss)
     assert head_loss.temperature == 4.0
-    assert isinstance(backbone_loss, CWDDistillationLoss)
-    # Student level 1 has 8 channels, teacher level 1 has 16.
-    assert list(controller.connectors) == ["KDBackbone/CWDDistillationLoss"]
-    adapters = controller.connectors["KDBackbone/CWDDistillationLoss"]
+    assert isinstance(backbone_loss, ChannelWiseDistillationLoss)
+    # The head reads the last of the two backbone levels.
+    assert backbone_loss.levels == [-1]
+    # Student level -1 has 8 channels, teacher level -1 has 16.
+    assert list(distiller.connectors) == [
+        "KDBackbone/ChannelWiseDistillationLoss"
+    ]
+    adapters = distiller.connectors["KDBackbone/ChannelWiseDistillationLoss"]
     assert isinstance(adapters, nn.ModuleList)
     block = adapters[0]
     assert isinstance(block, ConvBlock)
@@ -110,35 +161,31 @@ def test_controller_attaches_losses_and_connectors(tmp_path: Path):
     assert block.conv.out_channels == 16
 
 
-def test_teacher_is_frozen_unregistered_and_never_copied(tmp_path: Path):
+def test_teacher_is_frozen_and_unregistered(tmp_path: Path):
     teacher_file, _ = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher_file)
-    controller = build_controller(cfg, student_nodes(cfg), INPUT_SHAPES)
-    assert controller is not None
-    teacher = controller._teachers["teacher"]
+    distiller = Distiller.from_config(cfg, student_nodes(cfg))
+    teacher = distiller.teacher
 
     assert not any(p.requires_grad for p in teacher.parameters())
     teacher.train()
     assert not any(m.training for m in teacher.modules())
-    assert all(".teacher" not in key for key in controller.state_dict())
-    assert copy.deepcopy(controller)._teachers == {}
+    assert all("teacher" not in key for key in distiller.state_dict())
 
 
 def test_teacher_keeps_batch_norm_statistics(tmp_path: Path):
     teacher_file, _ = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher_file)
-    controller = build_controller(cfg, student_nodes(cfg), INPUT_SHAPES)
-    assert controller is not None
-    teacher = controller._teachers["teacher"]
-    backbone = teacher.nodes["KDBackbone"].module
+    distiller = Distiller.from_config(cfg, student_nodes(cfg))
+    backbone = distiller.teacher.nodes["KDBackbone"].module
     assert isinstance(backbone, KDBackbone)
     bn = backbone.stem[1]
     assert isinstance(bn, nn.BatchNorm2d)
     assert bn.running_mean is not None
     before = bn.running_mean.clone()
 
-    teacher.train()
-    controller.run_teachers({"image": torch.randn(2, 3, 32, 32) * 5 + 3})
+    distiller.teacher.train()
+    distiller.run_teacher({"image": torch.randn(2, 3, 32, 32) * 5 + 3})
 
     assert torch.equal(bn.running_mean, before)
 
@@ -146,18 +193,16 @@ def test_teacher_keeps_batch_norm_statistics(tmp_path: Path):
 def test_teacher_loads_the_checkpoint_weights(tmp_path: Path):
     teacher_file, reference = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher_file)
-    controller = build_controller(cfg, student_nodes(cfg), INPUT_SHAPES)
-    assert controller is not None
+    distiller = Distiller.from_config(cfg, student_nodes(cfg))
     image = torch.randn(2, 3, 32, 32)
 
-    outputs = controller.run_teachers({"image": image})
+    outputs = distiller.run_teacher({"image": image})
 
     for node in reference.values():
         node.eval()
     with torch.no_grad():
         features = reference["KDBackbone"].module.run([{"features": [image]}])
         logits = reference["KDHead"].module.run([features])
-    assert outputs is not None
     teacher_logits = outputs["KDHead"]["classification"]
     reference_logits = logits["classification"]
     assert isinstance(teacher_logits, Tensor)
@@ -170,12 +215,11 @@ def test_teacher_builds_only_the_matched_nodes(tmp_path: Path):
     cfg = make_config(
         4,
         teacher=teacher_file,
-        head={"distillation": "off"},
-        backbone={"distillation": [{"name": "CWDDistillationLoss"}]},
+        head={"distillation": False},
+        backbone={"distillation": [{"name": "ChannelWiseDistillationLoss"}]},
     )
-    controller = build_controller(cfg, student_nodes(cfg), INPUT_SHAPES)
-    assert controller is not None
-    assert list(controller._teachers["teacher"].nodes) == ["KDBackbone"]
+    distiller = Distiller.from_config(cfg, student_nodes(cfg))
+    assert list(distiller.teacher.nodes) == ["KDBackbone"]
 
 
 def test_classes_must_match(tmp_path: Path):
@@ -184,18 +228,42 @@ def test_classes_must_match(tmp_path: Path):
     )
     cfg = make_config(4, teacher=teacher_file)
     with pytest.raises(ValueError, match="same classes in the same order"):
-        build_controller(cfg, student_nodes(cfg), INPUT_SHAPES)
+        Distiller.from_config(cfg, student_nodes(cfg))
+
+
+def test_loss_weight_scales_every_distillation_loss(tmp_path: Path):
+    teacher_file, _ = save_teacher(tmp_path)
+    cfg = make_config(4, teacher=teacher_file)
+    half = cfg.model_copy(deep=True)
+    assert half.model.teacher is not None
+    half.model.teacher.loss_weight = 0.5
+    nodes = student_nodes(cfg)
+    image = {"image": torch.randn(2, 3, 32, 32)}
+    logits = nodes["KDHead"].module.run(
+        [nodes["KDBackbone"].module.run([{"features": [image["image"]]}])]
+    )
+
+    values = []
+    for config in (cfg, half):
+        distiller = Distiller.from_config(config, nodes)
+        teacher_outputs = distiller.run_teacher(image)
+        value = distiller.compute_losses(
+            "KDHead", logits, {}, teacher_outputs
+        )["LogitDistillationLoss"]
+        assert isinstance(value, Tensor)
+        values.append(value)
+
+    assert torch.isclose(values[1], 0.5 * values[0])
 
 
 def test_training_plan_claims_each_connector_once(tmp_path: Path):
     teacher, _ = save_teacher(tmp_path)
     cfg = make_config(4, teacher=teacher)
     nodes = student_nodes(cfg)
-    controller = build_controller(cfg, nodes, INPUT_SHAPES)
-    assert controller is not None
+    distiller = Distiller.from_config(cfg, nodes)
 
     plan = resolve_training_plan(
-        cfg, nodes, extra_modules={"distillation": controller.connectors}
+        cfg, nodes, extra_modules={"distiller": distiller.connectors}
     )
 
     claimed = [
@@ -204,18 +272,38 @@ def test_training_plan_claims_each_connector_once(tmp_path: Path):
         for group in inner.groups
         for parameter in group.parameters
     ]
-    connector_ids = {id(p) for p in controller.connectors.parameters()}
+    connector_ids = {id(p) for p in distiller.connectors.parameters()}
     assert connector_ids <= set(claimed)
     assert len(claimed) == len(set(claimed))
 
 
-def test_lightning_module_runs_distillation_only_in_training(tmp_path: Path):
-    teacher, _ = save_teacher(tmp_path)
-    cfg = make_config(4, teacher=teacher)
-    module = LuxonisLightningModule(
+def lightning_module(cfg: Config, tmp_path: Path) -> LuxonisLightningModule:
+    return LuxonisLightningModule(
         cfg, tmp_path, INPUT_SHAPES, DatasetMetadata(classes=CLASSES)
     )
-    module.attach_distillation(INPUT_SHAPES)
+
+
+def test_fit_setup_builds_the_distiller_and_other_stages_do_not(
+    tmp_path: Path,
+):
+    teacher, _ = save_teacher(tmp_path)
+    module = lightning_module(make_config(4, teacher=teacher), tmp_path)
+
+    module.setup("validate")
+    assert module.distiller is None
+    assert isinstance(module.configure_callbacks()[0], ReleaseTeacherCallback)
+
+    module.setup("fit")
+    distiller = module.distiller
+    assert distiller is not None
+    module.setup("fit")
+    assert module.distiller is distiller
+
+
+def test_lightning_module_runs_distillation_only_in_training(tmp_path: Path):
+    teacher, _ = save_teacher(tmp_path)
+    module = lightning_module(make_config(4, teacher=teacher), tmp_path)
+    module.setup("fit")
     inputs = {"image": torch.randn(2, 3, 32, 32)}
     labels = {"/classification": torch.eye(2)}
 
@@ -224,19 +312,43 @@ def test_lightning_module_runs_distillation_only_in_training(tmp_path: Path):
     module.eval()
     eval_losses = module.full_forward(inputs, labels).losses
 
-    assert set(train_losses["KDHead"]) == {"CrossEntropyLoss", "LogitKDLoss"}
-    assert set(train_losses["KDBackbone"]) == {"CWDDistillationLoss"}
+    assert set(train_losses["KDHead"]) == {
+        "CrossEntropyLoss",
+        "LogitDistillationLoss",
+    }
+    assert set(train_losses["KDBackbone"]) == {"ChannelWiseDistillationLoss"}
     assert set(eval_losses["KDHead"]) == {"CrossEntropyLoss"}
     assert "KDBackbone" not in eval_losses
     keys = list(module.state_dict())
-    assert any(key.startswith("distillation.connectors.") for key in keys)
+    assert any(key.startswith("distiller.connectors.") for key in keys)
     assert not any("teacher" in key for key in keys)
 
 
-def test_lightning_module_without_teacher_attaches_nothing(tmp_path: Path):
-    cfg = make_config(4)
-    module = LuxonisLightningModule(
-        cfg, tmp_path, INPUT_SHAPES, DatasetMetadata(classes=CLASSES)
+def test_released_distiller_stops_the_losses(tmp_path: Path):
+    teacher, _ = save_teacher(tmp_path)
+    module = lightning_module(make_config(4, teacher=teacher), tmp_path)
+    module.setup("fit")
+    distiller = module.distiller
+    assert distiller is not None
+
+    ReleaseTeacherCallback().on_train_end(cast(Any, None), module)
+    module.train()
+    losses = module.full_forward(
+        {"image": torch.randn(2, 3, 32, 32)}, {"/classification": torch.eye(2)}
+    ).losses
+
+    assert not distiller.has_teacher
+    assert set(losses) == {"KDHead"}
+    assert set(losses["KDHead"]) == {"CrossEntropyLoss"}
+    with pytest.raises(RuntimeError, match="released its teacher"):
+        distiller.run_teacher({"image": torch.zeros(1, 3, 32, 32)})
+
+
+def test_lightning_module_without_teacher_has_no_distiller(tmp_path: Path):
+    module = lightning_module(make_config(4), tmp_path)
+    module.setup("fit")
+    assert module.distiller is None
+    assert not any(
+        isinstance(callback, ReleaseTeacherCallback)
+        for callback in module.configure_callbacks()
     )
-    module.attach_distillation(INPUT_SHAPES)
-    assert module.distillation is None

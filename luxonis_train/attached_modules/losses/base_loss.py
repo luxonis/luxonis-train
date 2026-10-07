@@ -98,10 +98,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         return get_signature(self.forward)
 
     def run(
-        self,
-        inputs: Packet[Tensor],
-        labels: Labels,
-        teacher: Packet[Tensor] | None = None,
+        self, inputs: Packet[Tensor], labels: Labels
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         """Resolve the inputs of `forward` and apply the loss weight.
 
@@ -112,16 +109,13 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
             inputs: The output packet of the node.
             labels: The labels of the batch, keyed
                 ``<task_name>/<label>``.
-            teacher: The output packet of the matched teacher node. Only
-                distillation losses get it; their ``teacher*``
-                parameters read from it.
 
         Returns:
             The result of `forward`, with ``final_loss_weight`` applied
             to the main value. Sub-losses remain unscaled.
 
         """
-        loss = self(**self.get_parameters(inputs, labels, teacher))
+        loss = self(**self.get_parameters(inputs, labels))
         if isinstance(loss, Tensor):
             return loss * self.__final_loss_weight
         main_loss, sublosses = loss

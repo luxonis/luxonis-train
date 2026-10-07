@@ -41,7 +41,6 @@ from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.attached_modules.base_attached_module import (
     BaseAttachedModule,
 )
-from luxonis_train.attached_modules.losses import BaseDistillationLoss
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
@@ -151,12 +150,6 @@ class NodeWrapper(nn.Module):
     live in plain dictionaries, so the recursive methods of
     ``torch.nn.Module`` do not reach them.
 
-    Attributes:
-        distillation: The distillation losses of the node, keyed by
-            their identifier. The dictionary stays empty until
-            `LuxonisLightningModule.attach_distillation` fills it, so
-            only training with a teacher builds them.
-
     """
 
     def __init__(
@@ -203,7 +196,6 @@ class NodeWrapper(nn.Module):
         self.lr_after_unfreeze = lr_after_unfreeze
         self.finetuning = finetuning
         self.inputs = inputs or []
-        self.distillation: dict[str, BaseDistillationLoss] = {}
 
     @property
     def task_name(self) -> str:
@@ -232,8 +224,8 @@ class NodeWrapper(nn.Module):
         """Set the training mode of the node and its attached modules.
 
         ``torch.nn.Module.train`` reaches only the registered submodules,
-        so this override also sets the mode of every loss, distillation
-        loss, metric, and visualizer.
+        so this override also sets the mode of every loss, metric, and
+        visualizer.
 
         Args:
             mode: ``True`` for training mode, ``False`` for evaluation
@@ -245,7 +237,7 @@ class NodeWrapper(nn.Module):
         """
         super().train(mode)
         self.module.train(mode)
-        for loss in [*self.losses.values(), *self.distillation.values()]:
+        for loss in self.losses.values():
             loss.train(mode)
         for metric in self.metrics.values():
             metric.train(mode)
@@ -273,6 +265,8 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             empty dictionary.
         freeze_schedule: The freeze schedule of the nodes with
             ``freezing.active``.
+        input_shapes: Each loader input name mapped to its shape,
+            without the batch dimension.
         output_shapes: Each node identifier mapped to the shapes of its
             output packet, as the constructor recorded them on a batch
             of two.
@@ -319,6 +313,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         """
         self._cfg = cfg
         self.graph: dict[str, list[str]] = {}
+        self.input_shapes = input_shapes
         self.output_shapes: dict[str, Packet[Size]] = {}
         self._nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)

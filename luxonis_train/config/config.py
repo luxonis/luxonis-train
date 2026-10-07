@@ -143,6 +143,27 @@ class LossModuleConfig(AttachedModuleConfig):
         return self
 
 
+class DistillationLossConfig(LossModuleConfig):
+    """A loss in the ``distillation`` list of a node.
+
+    ``name`` is the class name of a registered distillation loss. See
+    `luxonis_train.attached_modules.losses.distillation`.
+
+    Attributes:
+        teacher_node: The identifier of the teacher node that the loss
+            reads. ``None`` reads the node that the trainer matches to
+            this node: the teacher node with the same identifier, else
+            the only teacher head of the same task, else the teacher
+            node at the same position in the graph.
+
+    Example:
+        >>> DistillationLossConfig(name="LogitDistillationLoss").teacher_node
+
+    """
+
+    teacher_node: str | None = None
+
+
 class MetricModuleConfig(AttachedModuleConfig):
     """A metric attached to a node.
 
@@ -563,17 +584,17 @@ class NodeConfig(ConfigItem):
         freezing: Whether this node trains, and when it starts.
         distillation: The knowledge-distillation losses of this node.
             They run only when ``model.teacher`` is set, and only in
-            training steps.
+            training steps. The field acts on this node only.
 
-            - ``"auto"``: the automatic recipe decides. A head with a
-              default distillation loss gets it, and a node that feeds a
-              distilled head gets feature distillation. Nothing happens
-              when the teacher has no node to match.
-            - ``"off"``: no distillation on this node. YAML ``off``,
-              ``false`` and ``null`` mean the same.
+            - ``true``, the default: the automatic recipe decides. A
+              head with a default distillation loss gets it, and a node
+              that feeds a matched head gets feature distillation. The
+              node gets nothing when the teacher has no node to match.
+            - ``false``: no distillation on this node.
             - A list: these losses replace the recipe for this node. The
-              entries have the schema of ``losses`` entries, and their
-              names must be unique together with ``losses``.
+              entries have the schema of ``losses`` entries, plus
+              ``teacher_node``. Their names must be unique together with
+              ``losses``.
 
     """
 
@@ -593,34 +614,19 @@ class NodeConfig(ConfigItem):
     visualizers: list[AttachedModuleConfig] = []
     finetuning: list[FinetuningConfig] = []
     freezing: FreezingConfig = Field(default_factory=FreezingConfig)
-    distillation: Literal["auto", "off"] | list[LossModuleConfig] = "auto"
-
-    @field_validator("distillation", mode="before")
-    @classmethod
-    def validate_distillation(cls, value: Any) -> Any:
-        """Read the YAML booleans that ``on`` and ``off`` parse to.
-
-        Args:
-            value: The raw value of the ``distillation`` field.
-
-        Returns:
-            ``"auto"`` for ``True``, ``"off"`` for ``False`` and
-            ``None``, otherwise ``value`` unchanged.
-
-        Example:
-            >>> NodeConfig(name="ResNet", distillation=False).distillation
-            'off'
-
-        """
-        if value is True:
-            return "auto"
-        if value is False or value is None:
-            return "off"
-        return value
+    distillation: bool | list[DistillationLossConfig] = True
 
     @property
-    def distillation_losses(self) -> list[LossModuleConfig]:
-        """The explicit distillation losses, or an empty list."""
+    def distillation_losses(self) -> list[DistillationLossConfig]:
+        """The explicit distillation losses, or an empty list.
+
+        Example:
+            >>> NodeConfig(
+            ...     name="ResNet", distillation=False
+            ... ).distillation_losses
+            []
+
+        """
         if isinstance(self.distillation, list):
             return self.distillation
         return []
@@ -710,6 +716,9 @@ class TeacherConfig(BaseModelExtraForbid):
             from the checkpoint without a missing or an unexpected key.
             ``False`` loads such a node with ``strict=False`` and logs
             the mismatch.
+        loss_weight: A factor on the ``weight`` of every distillation
+            loss. It sets the strength of the distillation against the
+            task losses, also for the losses of the automatic recipe.
 
     Example:
         >>> TeacherConfig(weights="teacher.ckpt").strict
@@ -719,6 +728,7 @@ class TeacherConfig(BaseModelExtraForbid):
 
     weights: str
     strict: bool = True
+    loss_weight: NonNegativeFloat = 1.0
 
 
 class ModelConfig(BaseModelExtraForbid):
@@ -743,7 +753,9 @@ class ModelConfig(BaseModelExtraForbid):
             that feed no other node.
         teacher: The teacher of knowledge distillation. ``None`` trains
             without one. Only training loads the teacher; export,
-            inference and tests never do.
+            inference and tests never do. ``model_dump`` leaves it out,
+            so a distilled model and its saved config do not need the
+            teacher afterwards.
 
     """
 
@@ -754,7 +766,7 @@ class ModelConfig(BaseModelExtraForbid):
     weights: Annotated[FilePath | None, Field(exclude=True)] = None
     nodes: list[NodeConfig] = []
     outputs: list[str] = []
-    teacher: TeacherConfig | None = None
+    teacher: Annotated[TeacherConfig | None, Field(exclude=True)] = None
 
     @field_validator("nodes", mode="before")
     @classmethod

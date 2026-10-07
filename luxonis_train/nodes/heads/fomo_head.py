@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from typing_extensions import override
 
+from luxonis_train.config import LossModuleConfig
 from luxonis_train.nodes.blocks.blocks import ConvBlock
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Task, Tasks
@@ -80,10 +81,9 @@ class FOMOHead(BaseHead):
 
     task: Task = Tasks.FOMO
     attach_index: int = 1
-    distillation_loss = {
-        "name": "LogitKDLoss",
-        "params": {"activation": "sigmoid"},
-    }
+    distillation_loss = LossModuleConfig(
+        name="LogitDistillationLoss", params={"activation": "sigmoid"}
+    )
     in_channels: int
 
     def __init__(

@@ -4,12 +4,31 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor
+from luxonis_ml.typing import Params
+from torch import Size, Tensor
+from typing_extensions import override
 
-from .base_distillation_loss import BaseDistillationLoss
+from luxonis_train.attached_modules.losses.bce_with_logits import (
+    BCEWithLogitsLoss,
+)
+from luxonis_train.attached_modules.losses.sigmoid_focal_loss import (
+    SigmoidFocalLoss,
+)
+from luxonis_train.attached_modules.losses.smooth_bce_with_logits import (
+    SmoothBCEWithLogitsLoss,
+)
+from luxonis_train.typing import Packet
+
+from .base_distillation_loss import BaseDistillationLoss, StudentContext
+
+_SIGMOID_LOSSES = (
+    BCEWithLogitsLoss,
+    SmoothBCEWithLogitsLoss,
+    SigmoidFocalLoss,
+)
 
 
-class LogitKDLoss(BaseDistillationLoss):
+class LogitDistillationLoss(BaseDistillationLoss):
     r"""Match the softened class distribution of a teacher head.
 
     The loss divides the student and the teacher logits by the
@@ -58,12 +77,13 @@ class LogitKDLoss(BaseDistillationLoss):
     Notes:
         ``"auto"`` picks ``"sigmoid"`` when ``dim`` has one class and
         ``"softmax"`` otherwise. A softmax over one class is always
-        ``1``, so it would give a loss of ``0``. Set ``"sigmoid"`` for a
-        multi-label head.
+        ``1``, so it would give a loss of ``0``. `derive_params` picks
+        ``"sigmoid"`` for a node that trains with a sigmoid loss, such
+        as a multi-label head with `BCEWithLogitsLoss`.
 
         The loss computes in ``float32``, also under mixed precision.
-        It raises ``RuntimeError`` when the two tensors have different
-        shapes.
+        `setup` raises ``ValueError`` when the student and the teacher
+        logits have different shapes.
 
     Example:
         The automatic recipe adds the loss to classification,
@@ -75,7 +95,7 @@ class LogitKDLoss(BaseDistillationLoss):
               losses:
                 - name: CrossEntropyLoss
               distillation:
-                - name: LogitKDLoss
+                - name: LogitDistillationLoss
                   params:
                     temperature: 4.0
 
@@ -116,6 +136,60 @@ class LogitKDLoss(BaseDistillationLoss):
         self.activation = activation
         self.dim = dim
 
+    @classmethod
+    @override
+    def derive_params(cls, student: StudentContext) -> Params:
+        """Use the sigmoid when the node trains with a sigmoid loss.
+
+        Args:
+            student: The student node of the loss.
+
+        Returns:
+            ``activation``, or nothing when no task loss of the node
+            applies a sigmoid.
+
+        Example:
+            >>> from luxonis_train.attached_modules.losses import (
+            ...     BCEWithLogitsLoss,
+            ... )
+            >>> context = StudentContext(
+            ...     losses={"bce": BCEWithLogitsLoss()}, levels_read=None
+            ... )
+            >>> LogitDistillationLoss.derive_params(context)
+            {'activation': 'sigmoid'}
+
+        """
+        if any(
+            isinstance(loss, _SIGMOID_LOSSES)
+            for loss in student.losses.values()
+        ):
+            return {"activation": "sigmoid"}
+        return {}
+
+    @override
+    def setup(
+        self, student_shapes: Packet[Size], teacher_shapes: Packet[Size]
+    ) -> None:
+        """Check that the student and the teacher logits match.
+
+        Args:
+            student_shapes: The output shapes of the node.
+            teacher_shapes: The output shapes of the teacher node.
+
+        Raises:
+            ValueError: When the teacher node gives no logits, or logits
+                of another shape.
+
+        """
+        super().setup(student_shapes, teacher_shapes)
+        key = self.task.main_output
+        if student_shapes[key] != teacher_shapes[key]:
+            raise ValueError(
+                f"'{self.name}' compares the student logits "
+                f"{student_shapes[key]} with the teacher logits "
+                f"{teacher_shapes[key]}, but the shapes differ."
+            )
+
     def forward(self, predictions: Tensor, teacher: Tensor) -> Tensor:
         """Compute the distillation loss of one batch.
 
@@ -134,22 +208,27 @@ class LogitKDLoss(BaseDistillationLoss):
 
             >>> import torch
             >>> logits = torch.tensor([[1.0, 0.0, -1.0]])
-            >>> LogitKDLoss(temperature=4.0)(logits, logits).item()
+            >>> LogitDistillationLoss(temperature=4.0)(logits, logits).item()
             0.0
 
             A higher temperature puts more weight on the classes that
             the teacher ranks low:
 
             >>> teacher = torch.tensor([[3.0, 0.0, -1.0]])
-            >>> round(LogitKDLoss()(logits, teacher).item(), 4)
+            >>> round(LogitDistillationLoss()(logits, teacher).item(), 4)
             0.2142
-            >>> round(LogitKDLoss(temperature=4.0)(logits, teacher).item(), 4)
+            >>> round(
+            ...     LogitDistillationLoss(temperature=4.0)(
+            ...         logits, teacher
+            ...     ).item(),
+            ...     4,
+            ... )
             0.4983
 
             One class uses the sigmoid, so the loss is not zero:
 
             >>> student, teacher = torch.tensor([[0.0]]), torch.tensor([[2.0]])
-            >>> round(LogitKDLoss()(student, teacher).item(), 4)
+            >>> round(LogitDistillationLoss()(student, teacher).item(), 4)
             0.3278
 
         """

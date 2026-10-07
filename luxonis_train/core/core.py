@@ -654,10 +654,6 @@ class LuxonisModel:
         failure, it uploads the log and the config to the run and
         finalizes the tracker.
 
-        With ``model.teacher`` set, the method loads the teacher before
-        the fit starts, through
-        `LuxonisLightningModule.attach_distillation`.
-
         The weights come from ``weights``, else from the constructor,
         else from ``model.weights`` of the config:
 
@@ -703,7 +699,6 @@ class LuxonisModel:
             self.lightning_module.load_checkpoint(weights)
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
-        self.lightning_module.attach_distillation(self._input_shapes)
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
@@ -1394,6 +1389,9 @@ class LuxonisModel:
             if a.name != "Normalize"
         ]
         cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
+        # `model_dump` leaves the teacher out, but every trial trains
+        # with it.
+        cfg.model.teacher = cfg_copy.model.teacher
         return cfg, curr_params
 
     @staticmethod

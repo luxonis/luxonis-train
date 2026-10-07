@@ -132,7 +132,7 @@ def test_example_is_a_valid_node_graph(cls_name: str, entries: list[dict]):
 
 
 def _attached(node: NodeConfig, place: str) -> list:
-    # `distillation` also takes the strings "auto" and "off".
+    # `distillation` also takes a boolean.
     if place == "distillation":
         return node.distillation_losses
     return getattr(node, place)

@@ -13,8 +13,8 @@
 - embeddings: the `pytorch-metric-learning
   <https://kevinmusgrave.github.io/pytorch-metric-learning/losses/>`_
   losses, wrapped by `EmbeddingLossWrapper`
-- knowledge distillation: `LogitKDLoss` and `CWDDistillationLoss`, in
-  the ``distillation`` list of a node
+- knowledge distillation: `LogitDistillationLoss` and
+  `ChannelWiseDistillationLoss`, in the ``distillation`` list of a node
 
 A config attaches a loss to a node in the ``losses`` list of the node.
 The ``Compatible with`` section of each loss lists the nodes that it
@@ -30,8 +30,8 @@ from .cross_entropy import CrossEntropyLoss
 from .ctc_loss import CTCLoss
 from .distillation import (
     BaseDistillationLoss,
-    CWDDistillationLoss,
-    LogitKDLoss,
+    ChannelWiseDistillationLoss,
+    LogitDistillationLoss,
 )
 from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .embedding_losses import EmbeddingLossWrapper
@@ -50,12 +50,12 @@ __all__ = [
     "BaseDistillationLoss",
     "BaseLoss",
     "CTCLoss",
-    "CWDDistillationLoss",
+    "ChannelWiseDistillationLoss",
     "CrossEntropyLoss",
     "EfficientKeypointBBoxLoss",
     "EmbeddingLossWrapper",
     "FOMOLocalizationLoss",
-    "LogitKDLoss",
+    "LogitDistillationLoss",
     "OHEMLoss",
     "PrecisionDFLDetectionLoss",
     "PrecisionDFLSegmentationLoss",

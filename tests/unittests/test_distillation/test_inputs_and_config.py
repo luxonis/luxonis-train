@@ -2,12 +2,12 @@ from typing import Any
 
 import pytest
 import torch
-from torch import Tensor
+from torch import Size, Tensor
 
 from luxonis_train.attached_modules.losses import BaseDistillationLoss
-from luxonis_train.config import Config, NodeConfig
+from luxonis_train.config import Config
 from luxonis_train.config.config import PreprocessingConfig
-from luxonis_train.distillation.teacher import InputAdapter
+from luxonis_train.lightning.distillation.teacher import InputAdapter
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 
@@ -24,82 +24,66 @@ class MainOutputLoss(BaseDistillationLoss, register=False):
         return (predictions - teacher).abs().mean()
 
 
+class InPlaceLoss(BaseDistillationLoss, register=False):
+    def forward(self, features: Tensor, teacher_features: Tensor) -> Tensor:
+        teacher_features.add_(1)
+        return (features - teacher_features).abs().mean()
+
+
 def test_teacher_parameters_read_the_teacher_packet():
     student: Packet[Tensor] = {"features": torch.zeros(2)}
     teacher: Packet[Tensor] = {"features": torch.ones(2)}
-    kwargs = FeatureLoss().get_parameters(student, {}, teacher)
-    # Teacher tensors carry no gradient, so they are not copied.
-    assert kwargs["teacher_features"] is teacher["features"]
-    assert kwargs["features"] is not student["features"]
     loss = FeatureLoss().run(student, {}, teacher)
     assert isinstance(loss, Tensor)
     assert loss.item() == 1
 
 
 def test_bare_teacher_parameter_reads_the_main_output():
-    packet: Packet[Tensor] = {"classification": torch.ones(2, 3)}
-    kwargs = MainOutputLoss().get_parameters(packet, {}, packet)
-    assert kwargs["teacher"] is packet["classification"]
+    student: Packet[Tensor] = {"classification": torch.zeros(2, 3)}
+    teacher: Packet[Tensor] = {"classification": torch.ones(2, 3)}
+    loss = MainOutputLoss().run(student, {}, teacher)
+    assert isinstance(loss, Tensor)
+    assert loss.item() == 1
 
 
-def test_missing_teacher_output_names_the_teacher():
-    student: Packet[Tensor] = {"features": torch.zeros(2)}
-    with pytest.raises(RuntimeError, match="teacher outputs"):
-        FeatureLoss().get_parameters(student, {}, {})
+def test_teacher_tensors_are_copies():
+    # A second loss on the same teacher node must see the original.
+    features = torch.ones(2)
+    InPlaceLoss().run({"features": torch.zeros(2)}, {}, {"features": features})
+    assert torch.equal(features, torch.ones(2))
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [(False, "off"), (None, "off"), (True, "auto"), ("auto", "auto")],
-)
-def test_node_distillation_reads_yaml_booleans(value: object, expected: str):
-    node = NodeConfig.model_validate({"name": "ResNet", "distillation": value})
-    assert node.distillation == expected
+def test_setup_names_a_missing_teacher_output():
+    shapes: Packet[Size] = {"features": Size([2, 4])}
+    with pytest.raises(ValueError, match="teacher output 'features'"):
+        FeatureLoss().setup(shapes, {"classification": Size([2, 3])})
 
 
-def config(nodes: list[dict[str, Any]], **model: Any) -> Config:
-    return Config.model_validate(
-        {"rich_logging": False, "model": {"nodes": nodes, **model}}
-    )
-
-
-def config_with_two_kd_losses() -> Config:
-    return config(
-        [
-            {"name": "ResNet"},
-            {
-                "name": "ClassificationHead",
-                "inputs": ["ResNet"],
-                "losses": [{"name": "CrossEntropyLoss", "alias": "kd"}],
-                "distillation": [{"name": "LogitKDLoss", "alias": "kd"}],
+def test_a_config_round_trip_drops_only_the_teacher():
+    cfg = Config.model_validate(
+        {
+            "rich_logging": False,
+            "model": {
+                "nodes": [
+                    {"name": "ResNet", "distillation": False},
+                    {
+                        "name": "ClassificationHead",
+                        "inputs": ["ResNet"],
+                        "distillation": [
+                            {
+                                "name": "LogitDistillationLoss",
+                                "teacher_node": "Head",
+                            }
+                        ],
+                    },
+                ],
+                "teacher": {"weights": "does/not/exist.ckpt"},
             },
-        ],
-        teacher={"weights": "does/not/exist.ckpt"},
+        }
     )
-
-
-def test_distillation_names_are_unique_together_with_losses():
-    head = config_with_two_kd_losses().model.nodes[1]
-    names = [
-        loss.identifier for loss in [*head.losses, *head.distillation_losses]
-    ]
-    assert len(set(names)) == 2
-
-
-def test_config_round_trip_keeps_the_distillation_fields():
-    cfg = config_with_two_kd_losses()
     reloaded = Config.model_validate(cfg.model_dump())
-    assert reloaded.model.teacher == cfg.model.teacher
+    assert reloaded.model.teacher is None
     assert reloaded.model.nodes == cfg.model.nodes
-
-
-def test_distillation_alias_rejects_slash():
-    node = {
-        "name": "ResNet",
-        "distillation": [{"name": "CWDDistillationLoss", "alias": "a/b"}],
-    }
-    with pytest.raises(ValueError, match="'/'"):
-        config([node])
 
 
 def preprocessing(**fields: Any) -> PreprocessingConfig:
