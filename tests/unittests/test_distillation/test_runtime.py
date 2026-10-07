@@ -3,7 +3,7 @@ from typing import Any, cast
 
 import pytest
 import torch
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 
 from luxonis_train.attached_modules.losses import (
     ChannelWiseDistillationLoss,
@@ -16,6 +16,7 @@ from luxonis_train.lightning.distillation import (
     ReleaseTeacherCallback,
 )
 from luxonis_train.lightning.distillation.recipe import (
+    levels_read,
     match_nodes,
     resolve_recipe,
 )
@@ -24,6 +25,7 @@ from luxonis_train.lightning.distillation.teacher import (
     teacher_node_configs,
 )
 from luxonis_train.lightning.training_plan import resolve_training_plan
+from luxonis_train.lightning.utils import Nodes
 from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils import DatasetMetadata
 
@@ -91,6 +93,51 @@ def test_recipe_distills_the_feeder_of_a_head_without_default(
     assert recipe(cfg, teacher) == {
         "KDBackbone": ("ChannelWiseDistillationLoss", "KDBackbone", None),
     }
+
+
+def detection_config(variant: str) -> Config:
+    # `weights: yolo`, the default, initializes the nodes without a
+    # download.
+    return Config.model_validate(
+        {
+            "rich_logging": False,
+            "model": {
+                "nodes": [
+                    {"name": "EfficientRep", "variant": variant},
+                    {
+                        "name": "RepPANNeck",
+                        "variant": variant,
+                        "inputs": ["EfficientRep"],
+                    },
+                    {
+                        "name": "EfficientBBoxHead",
+                        "inputs": ["RepPANNeck"],
+                        "losses": [{"name": "AdaptiveDetectionLoss"}],
+                    },
+                ],
+            },
+        }
+    )
+
+
+def test_recipe_distills_the_neck_of_a_detection_model():
+    cfg = detection_config("n")
+    nodes = Nodes(
+        cfg, DatasetMetadata(classes=CLASSES), {"image": Size([3, 64, 64])}
+    )
+    teacher_nodes = {
+        node.identifier: node for node in detection_config("l").model.nodes
+    }
+
+    entries = resolve_recipe(cfg, nodes, teacher_nodes)
+
+    # The detection head has no default loss, so only the neck that feeds
+    # it is distilled, on the three levels that the head reads.
+    assert [
+        (entry.student_node, entry.loss.name, entry.teacher_node)
+        for entry in entries
+    ] == [("RepPANNeck", "ChannelWiseDistillationLoss", "RepPANNeck")]
+    assert levels_read(nodes, "RepPANNeck") == [-3, -2, -1]
 
 
 def test_recipe_respects_false_and_explicit_lists(tmp_path: Path):
