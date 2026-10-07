@@ -1520,8 +1520,10 @@ class LuxonisModel:
         the mean and scale of ``exporter.mean_values`` and
         ``exporter.scale_values``, or of ``trainer.preprocessing.normalize``
         multiplied by 255 when that section is active. Each input also
-        carries the ``dai_type`` ``<color_space>888p``. The method
-        uploads the archive to ``archiver.upload_url`` when that is set,
+        carries the ``dai_type`` ``<color_space>888p`` and a
+        ``resize_mode`` of ``LETTERBOX`` when
+        ``trainer.preprocessing.keep_aspect_ratio`` is true, otherwise
+        ``STRETCH``. The method uploads the archive to ``archiver.upload_url`` when that is set,
         and to the run when ``archiver.upload_to_run`` is set.
 
         Args:
@@ -1586,6 +1588,11 @@ class LuxonisModel:
             "mean": mean_values,
             "scale": scale_values,
             "dai_type": f"{color_space}888p",
+            "resize_mode": (
+                "LETTERBOX"
+                if self.cfg_preprocessing.keep_aspect_ratio
+                else "STRETCH"
+            ),
         }
 
         inputs_dict = get_inputs(path)
