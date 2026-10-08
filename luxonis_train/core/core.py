@@ -27,6 +27,7 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.data.utils.cli_utils import print_info
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
+from luxonis_ml.nn_archive.config_building_blocks import PreprocessingBlock
 from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
 from torch import Tensor
@@ -1520,8 +1521,12 @@ class LuxonisModel:
         the mean and scale of ``exporter.mean_values`` and
         ``exporter.scale_values``, or of ``trainer.preprocessing.normalize``
         multiplied by 255 when that section is active. Each input also
-        carries the ``dai_type`` ``<color_space>888p``. The method
-        uploads the archive to ``archiver.upload_url`` when that is set,
+        carries the ``dai_type`` ``<color_space>888p`` and a
+        ``resize_mode`` of ``LETTERBOX`` when
+        ``trainer.preprocessing.keep_aspect_ratio`` is true, otherwise
+        ``STRETCH``, if the installed luxonis-ml archive schema supports
+        ``resize_mode``.
+        The method uploads the archive to ``archiver.upload_url`` when that is set,
         and to the run when ``archiver.upload_to_run`` is set.
 
         Args:
@@ -1575,18 +1580,8 @@ class LuxonisModel:
         executable_fname = path.name
         archive_name += path.suffix
 
-        mean, scale, color_space = get_preprocessing(
-            self.cfg_preprocessing, "Exporting to NN Archive"
-        )
-        scale_values = self.cfg.exporter.scale_values or scale
-        mean_values = self.cfg.exporter.mean_values or mean
-
         # TODO: keep preprocessing same for each input?
-        preprocessing = {
-            "mean": mean_values,
-            "scale": scale_values,
-            "dai_type": f"{color_space}888p",
-        }
+        preprocessing = self._build_archive_preprocessing()
 
         inputs_dict = get_inputs(path)
         for input_name, metadata in inputs_dict.items():
@@ -1645,6 +1640,23 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
+
+    def _build_archive_preprocessing(self) -> Params:
+        mean, scale, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Exporting to NN Archive"
+        )
+        preprocessing = {
+            "mean": self.cfg.exporter.mean_values or mean,
+            "scale": self.cfg.exporter.scale_values or scale,
+            "dai_type": f"{color_space}888p",
+        }
+        if "resize_mode" in PreprocessingBlock.model_fields:
+            preprocessing["resize_mode"] = (
+                "LETTERBOX"
+                if self.cfg_preprocessing.keep_aspect_ratio
+                else "STRETCH"
+            )
+        return preprocessing
 
     def convert(
         self,
