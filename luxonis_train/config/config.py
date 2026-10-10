@@ -143,6 +143,27 @@ class LossModuleConfig(AttachedModuleConfig):
         return self
 
 
+class DistillationLossConfig(LossModuleConfig):
+    """A loss in the ``distillation`` list of a node.
+
+    ``name`` is the class name of a registered distillation loss. See
+    `luxonis_train.attached_modules.losses.distillation`.
+
+    Attributes:
+        teacher_node: The identifier of the teacher node that the loss
+            reads. ``None`` reads the node that the trainer matches to
+            this node: the teacher node with the same identifier, else
+            the only teacher head of the same task, else the teacher
+            node at the same position in the graph.
+
+    Example:
+        >>> DistillationLossConfig(name="LogitDistillationLoss").teacher_node
+
+    """
+
+    teacher_node: str | None = None
+
+
 class MetricModuleConfig(AttachedModuleConfig):
     """A metric attached to a node.
 
@@ -561,6 +582,19 @@ class NodeConfig(ConfigItem):
         finetuning: The optimizer and scheduler overrides for this node.
             A single entry does not need the list.
         freezing: Whether this node trains, and when it starts.
+        distillation: The knowledge-distillation losses of this node.
+            They run only when ``model.teacher`` is set, and only in
+            training steps. The field acts on this node only.
+
+            - ``true``, the default: the automatic recipe decides. A
+              head with a default distillation loss gets it, and a node
+              that feeds a matched head gets feature distillation. The
+              node gets nothing when the teacher has no node to match.
+            - ``false``: no distillation on this node.
+            - A list: these losses replace the recipe for this node. The
+              entries have the schema of ``losses`` entries, plus
+              ``teacher_node``. Their names must be unique together with
+              ``losses``.
 
     """
 
@@ -580,6 +614,22 @@ class NodeConfig(ConfigItem):
     visualizers: list[AttachedModuleConfig] = []
     finetuning: list[FinetuningConfig] = []
     freezing: FreezingConfig = Field(default_factory=FreezingConfig)
+    distillation: bool | list[DistillationLossConfig] = True
+
+    @property
+    def distillation_losses(self) -> list[DistillationLossConfig]:
+        """The explicit distillation losses, or an empty list.
+
+        Example:
+            >>> NodeConfig(
+            ...     name="ResNet", distillation=False
+            ... ).distillation_losses
+            []
+
+        """
+        if isinstance(self.distillation, list):
+            return self.distillation
+        return []
 
     @field_validator("finetuning", mode="before")
     @classmethod
@@ -649,6 +699,38 @@ class PredefinedModelConfig(ConfigItem):
     include_visualizers: bool = True
 
 
+class TeacherConfig(BaseModelExtraForbid):
+    """The teacher of knowledge distillation.
+
+    The teacher is a trained luxonis-train model. Its checkpoint holds
+    the model config, the dataset metadata and the weights, so the
+    path is the only required field. The student trains with the
+    ``distillation`` losses of its nodes, and only the student is
+    exported.
+
+    Attributes:
+        weights: The path or the URL of the teacher checkpoint. It is
+            not checked at load time, so a config restored on another
+            machine still validates. Only training reads it.
+        strict: Every teacher node that the distillation uses must load
+            from the checkpoint without a missing or an unexpected key.
+            ``False`` loads such a node with ``strict=False`` and logs
+            the mismatch.
+        loss_weight: A factor on the ``weight`` of every distillation
+            loss. It sets the strength of the distillation against the
+            task losses, also for the losses of the automatic recipe.
+
+    Example:
+        >>> TeacherConfig(weights="teacher.ckpt").strict
+        True
+
+    """
+
+    weights: str
+    strict: bool = True
+    loss_weight: NonNegativeFloat = 1.0
+
+
 class ModelConfig(BaseModelExtraForbid):
     """The model graph, or the predefined model that generates one.
 
@@ -669,6 +751,11 @@ class ModelConfig(BaseModelExtraForbid):
         outputs: The identifiers of the nodes whose outputs the model
             returns. Left empty, `check_graph` fills it with the nodes
             that feed no other node.
+        teacher: The teacher of knowledge distillation. ``None`` trains
+            without one. Only training loads the teacher; export,
+            inference and tests never do. ``model_dump`` leaves it out,
+            so a distilled model and its saved config do not need the
+            teacher afterwards.
 
     """
 
@@ -679,6 +766,7 @@ class ModelConfig(BaseModelExtraForbid):
     weights: Annotated[FilePath | None, Field(exclude=True)] = None
     nodes: list[NodeConfig] = []
     outputs: list[str] = []
+    teacher: Annotated[TeacherConfig | None, Field(exclude=True)] = None
 
     @field_validator("nodes", mode="before")
     @classmethod
@@ -890,8 +978,9 @@ class ModelConfig(BaseModelExtraForbid):
             This instance, unchanged.
 
         Raises:
-            ValueError: When a node, a loss, a metric, or a visualizer
-                has a ``/`` in its ``name`` or ``alias``.
+            ValueError: When a node, a loss, a distillation loss, a
+                metric, or a visualizer has a ``/`` in its ``name`` or
+                ``alias``.
 
         """
         for node in self.nodes:
@@ -906,6 +995,8 @@ class ModelConfig(BaseModelExtraForbid):
 
         The check treats the losses, the metrics, and the visualizers
         of a node as three groups, each together with the node itself.
+        The ``distillation`` losses of a node belong to the group of
+        its losses, because both share the loss keys of the node.
         A module without an alias whose class name repeats an earlier
         identifier gets the alias ``<name>_<alias of the node>``. That
         alias reads ``<name>_None`` when the node has no alias. When an
@@ -918,7 +1009,9 @@ class ModelConfig(BaseModelExtraForbid):
 
         """
         for node in self.nodes:
-            self._make_node_module_names_unique(node, node.losses)
+            self._make_node_module_names_unique(
+                node, [*node.losses, *node.distillation_losses]
+            )
             self._make_node_module_names_unique(node, node.metrics)
             self._make_node_module_names_unique(node, node.visualizers)
         return self
@@ -927,7 +1020,13 @@ class ModelConfig(BaseModelExtraForbid):
     def _node_modules(
         node: NodeConfig,
     ) -> list[AttachedModuleConfig | NodeConfig]:
-        return [node, *node.losses, *node.metrics, *node.visualizers]
+        return [
+            node,
+            *node.losses,
+            *node.distillation_losses,
+            *node.metrics,
+            *node.visualizers,
+        ]
 
     @staticmethod
     def _validate_module_characters(

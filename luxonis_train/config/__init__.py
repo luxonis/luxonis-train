@@ -10,10 +10,12 @@ node graph from a few parameters.
 from .config import (
     AttachedModuleConfig,
     Config,
+    DistillationLossConfig,
     ExportConfig,
     LossModuleConfig,
     MetricModuleConfig,
     NodeConfig,
+    TeacherConfig,
     TrainerConfig,
 )
 
@@ -25,9 +27,11 @@ __all__ = [
     "AttachedModuleConfig",
     "BasePredefinedModel",
     "Config",
+    "DistillationLossConfig",
     "ExportConfig",
     "LossModuleConfig",
     "MetricModuleConfig",
     "NodeConfig",
+    "TeacherConfig",
     "TrainerConfig",
 ]

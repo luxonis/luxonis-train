@@ -22,7 +22,11 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
 )
-from luxonis_train.config.config import FinetuningConfig, FreezingConfig
+from luxonis_train.config.config import (
+    DistillationLossConfig,
+    FinetuningConfig,
+    FreezingConfig,
+)
 from luxonis_train.registry import MODELS
 from luxonis_train.variants import VariantBase, VariantMeta
 
@@ -319,6 +323,10 @@ class SimplePredefinedModel(BasePredefinedModel):
         per_class_metrics: bool | None = None,
         finetuning: dict[Literal["backbone", "neck", "head"], list[Params]]
         | None = None,
+        distillation: dict[
+            Literal["backbone", "neck", "head"], bool | list[Params]
+        ]
+        | None = None,
     ):
         """Initialize the model from the names of its components.
 
@@ -395,6 +403,10 @@ class SimplePredefinedModel(BasePredefinedModel):
                 drops the key and logs a warning.
             finetuning: The finetuning entries of each component. Each
                 dictionary becomes a `FinetuningConfig` of that node.
+            distillation: The ``distillation`` field of each component,
+                as `NodeConfig` describes it. A component without a key
+                keeps ``true``, the automatic recipe. It has an effect
+                only when ``model.teacher`` is set.
 
         Raises:
             ValueError: When ``main_metric`` is ``None`` and ``metrics``
@@ -418,6 +430,7 @@ class SimplePredefinedModel(BasePredefinedModel):
         self._head_params = head_params or {}
         self._head_variant = head_variant
         self._finetuning = finetuning or {}
+        self._distillation = distillation or {}
 
         self._task_name = task_name
         self._use_neck = use_neck
@@ -447,6 +460,15 @@ class SimplePredefinedModel(BasePredefinedModel):
             for params in self._finetuning.get(module, [])
         ]
 
+    def _get_distillation(
+        self, module: Literal["backbone", "neck", "head"]
+    ) -> bool | list[DistillationLossConfig]:
+        """Build the ``distillation`` field of one component."""
+        value = self._distillation.get(module, True)
+        if isinstance(value, bool):
+            return value
+        return [DistillationLossConfig.model_validate(loss) for loss in value]
+
     @property
     @override
     def nodes(self) -> list[NodeConfig]:
@@ -456,7 +478,8 @@ class SimplePredefinedModel(BasePredefinedModel):
         neck reads from the backbone. The head reads from the neck, or
         from the backbone when ``use_neck`` is ``False`` or ``neck`` is
         ``None``. Each config carries the ``params``, the ``variant``,
-        the ``freezing``, and the ``finetuning`` of its node. The head
+        the ``freezing``, the ``finetuning``, and the ``distillation``
+        of its node. The head
         also carries ``task_name``, the loss with weight ``1.0``, the
         metrics, the ``ConfusionMatrix`` metric when it is enabled, and
         the visualizer.
@@ -490,6 +513,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                 variant=self._backbone_variant,
                 freezing=self._get_freezing(self._backbone_params),
                 finetuning=self._get_finetuning("backbone"),
+                distillation=self._get_distillation("backbone"),
             )
         ]
         if self._neck is not None and self._use_neck:
@@ -501,6 +525,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                     inputs=[self._backbone],
                     freezing=self._get_freezing(self._neck_params),
                     finetuning=self._get_finetuning("neck"),
+                    distillation=self._get_distillation("neck"),
                 )
             )
         nodes.append(
@@ -543,6 +568,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                 if self._visualizer is not None
                 else [],
                 finetuning=self._get_finetuning("head"),
+                distillation=self._get_distillation("head"),
             )
         )
         return nodes

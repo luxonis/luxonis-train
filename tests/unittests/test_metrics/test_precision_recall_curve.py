@@ -596,6 +596,7 @@ def make_epoch_end_harness(
     return SimpleNamespace(
         _loss_accumulators={"val": {"loss": torch.tensor(0.0)}},
         nodes=DummyNodes({"head": node}),
+        distiller=None,
         cfg=cfg,
         trainer=SimpleNamespace(
             strategy=object(),

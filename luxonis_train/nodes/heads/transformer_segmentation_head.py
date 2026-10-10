@@ -7,6 +7,7 @@ from typing import Any
 import torch.nn.functional as F
 from torch import Size, Tensor, nn
 
+from luxonis_train.config import LossModuleConfig
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
@@ -86,6 +87,7 @@ class TransformerSegmentationHead(BaseHead):
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
+    distillation_loss = LossModuleConfig(name="LogitDistillationLoss")
 
     def __init__(self, **kwargs: Any):
         """Build the decoder and one projection for each feature map.

@@ -51,6 +51,7 @@ from luxonis_train.utils.checkpoint import (
     filter_checkpoint_state_dict,
 )
 
+from .distillation import Distiller, ReleaseTeacherCallback
 from .luxonis_output import LuxonisOutput
 from .utils import (
     LossAccumulator,
@@ -66,6 +67,8 @@ from .utils import (
     log_sequential_images,
     metric_artifact_image_name,
     mlflow_image_key,
+    node_inputs,
+    node_state_dict,
     postprocess_metrics,
 )
 
@@ -202,6 +205,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self._restore_validation_interval_after_first_epoch = False
         self._original_check_val_every_n_epoch: int | None = None
         self._training_plan: TrainingPlanRuntime | None = None
+        self.distiller: Distiller | None = None
 
     @override
     def load_state_dict(
@@ -225,8 +229,10 @@ class LuxonisLightningModule(pl.LightningModule):
           visualizer back at its node. Such a key starts with
           ``nodes.<node>.losses.``, ``nodes.<node>.metrics.``, or
           ``nodes.<node>.visualizers.`` and holds ``_node.``. The
-          method ignores the same keys in the result. It raises for
-          any other missing or unexpected key.
+          method ignores the same keys in the result, and the keys of
+          the `distiller`, so a run resumes with or without
+          ``model.teacher``. It raises for any other missing or
+          unexpected key.
 
         Args:
             state_dict: The parameters and the buffers to load, keyed by
@@ -259,12 +265,12 @@ class LuxonisLightningModule(pl.LightningModule):
             missing_keys = [
                 key
                 for key in incompatible.missing_keys
-                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+                if not _ignored_on_resume(key)
             ]
             unexpected_keys = [
                 key
                 for key in incompatible.unexpected_keys
-                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+                if not _ignored_on_resume(key)
             ]
 
             if missing_keys or unexpected_keys:
@@ -388,6 +394,12 @@ class LuxonisLightningModule(pl.LightningModule):
           the node runs on the outputs and the labels. While the module
           is in training mode, the method puts the loss in training
           mode first.
+        - In training mode, with ``compute_loss`` on, ``labels`` given,
+          and a `distiller` that holds a teacher, the teacher runs once
+          on the inputs before the nodes. Every distillation loss of a
+          node then runs on the outputs of the node, the labels, and
+          the outputs of its teacher node. Validation and test never
+          run the teacher.
         - With ``compute_metrics`` on and ``labels`` given, every
           metric of the node updates its state. The method does not
           return the metric values.
@@ -428,15 +440,24 @@ class LuxonisLightningModule(pl.LightningModule):
             labels = {k: v.to(self.device) for k, v in labels.items()}
         losses: _NodeLosses = defaultdict(dict)
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
+        teacher_outputs = (
+            self.distiller.run_teacher(inputs)
+            if self.distiller is not None
+            and self.distiller.has_teacher
+            and self.training
+            and compute_loss
+            and labels is not None
+            else None
+        )
 
         computed: dict[str, Packet[Tensor]] = {}
         for node_name, node, _, unprocessed in self.nodes.traverse():
             if node.module.export and node.module.remove_on_export:
                 continue
-            node_inputs = _node_inputs(node.inputs, computed, inputs)
-            outputs = node.module.run(node_inputs)
+            outputs = node.module.run(
+                node_inputs(node.inputs, computed, inputs)
+            )
             computed[node_name] = outputs
-            del node_inputs
 
             self._collect_node_results(
                 node,
@@ -446,6 +467,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 images,
                 losses,
                 visualizations,
+                teacher_outputs,
                 compute_loss=compute_loss,
                 compute_metrics=compute_metrics,
                 compute_visualizations=compute_visualizations,
@@ -715,12 +737,20 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def setup(self, stage: str) -> None:
-        """Make the first epoch validate when the config asks for it.
+        """Prepare a ``fit``: build the distiller, set the validation.
 
-        Lightning calls it at the start of every stage. The method acts
-        only when all of these hold:
+        Lightning calls it at the start of every stage, before it
+        restores a checkpoint and builds the optimizers. The method acts
+        only on the ``fit`` stage.
 
-        - The stage is ``fit``.
+        With ``cfg.model.teacher`` set, it builds the `distiller`,
+        unless the module holds one with a teacher. The connectors of
+        the distillation losses therefore exist when Lightning restores
+        a checkpoint and builds the optimizers. No other stage loads the
+        teacher.
+
+        Then it makes the first epoch validate when all of these hold:
+
         - ``cfg.trainer.run_validation_after_first_epoch`` is on.
         - The current epoch is 0.
         - ``trainer.check_val_every_n_epoch`` is set and above 1.
@@ -743,6 +773,17 @@ class LuxonisLightningModule(pl.LightningModule):
         if getattr(stage, "value", stage) != "fit":
             return
 
+        if self.cfg.model.teacher is not None and (
+            self.distiller is None or not self.distiller.has_teacher
+        ):
+            self.distiller = Distiller.from_config(self.cfg, self.nodes)
+
+        self._validate_first_epoch()
+
+    def _validate_first_epoch(self) -> None:
+        """Set the validation interval to 1 until the first
+        validation.
+        """
         if (
             not self.cfg.trainer.run_validation_after_first_epoch
             or self.trainer.current_epoch != 0
@@ -906,11 +947,19 @@ class LuxonisLightningModule(pl.LightningModule):
           ``cfg.trainer.accumulate_grad_batches`` is set and no
           callback of that class is present yet.
 
+        With ``cfg.model.teacher`` set, a `ReleaseTeacherCallback` comes
+        first, so the teacher is gone before the other callbacks run
+        their end-of-training work. Lightning calls this method before
+        `setup` builds the `distiller`, so the config decides.
+
         Returns:
             The callbacks, in that order.
 
         """
-        return self.nodes.build_callbacks(self.save_dir)
+        callbacks = self.nodes.build_callbacks(self.save_dir)
+        if self.cfg.model.teacher is not None:
+            callbacks.insert(0, ReleaseTeacherCallback())
+        return callbacks
 
     @override
     def configure_optimizers(
@@ -941,7 +990,12 @@ class LuxonisLightningModule(pl.LightningModule):
 
         """
         plan = resolve_training_plan(
-            self.cfg, self.nodes, self.training_strategy
+            self.cfg,
+            self.nodes,
+            self.training_strategy,
+            extra_modules={}
+            if self.distiller is None
+            else {"distiller": self.distiller.connectors},
         )
         runtime = build_training_plan(
             plan,
@@ -1052,7 +1106,7 @@ class LuxonisLightningModule(pl.LightningModule):
             self._load_node_checkpoint(
                 node_name,
                 node,
-                self._node_state_dict(node_name, state_dict, ver),
+                node_state_dict(state_dict, node_name, ver),
                 strict_weights_loading,
                 old_order,
                 new_order,
@@ -1365,6 +1419,7 @@ class LuxonisLightningModule(pl.LightningModule):
         images: Tensor | None,
         losses: _NodeLosses,
         visualizations: dict[str, dict[str, Tensor]],
+        teacher_outputs: dict[str, Packet[Tensor]] | None,
         *,
         compute_loss: bool,
         compute_metrics: bool,
@@ -1372,6 +1427,16 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> None:
         if compute_loss and node.losses and labels is not None:
             self._collect_losses(node, node_name, outputs, labels, losses)
+
+        if (
+            teacher_outputs is not None
+            and labels is not None
+            and self.distiller is not None
+        ):
+            for loss_name, value in self.distiller.compute_losses(
+                node_name, outputs, labels, teacher_outputs
+            ).items():
+                losses[node_name][loss_name] = value
 
         if compute_metrics and node.metrics and labels is not None:
             self._update_metrics(node, outputs, labels)
@@ -1430,18 +1495,6 @@ class LuxonisLightningModule(pl.LightningModule):
             )
             if not needed:
                 del computed[computed_name]
-
-    def _node_state_dict(
-        self, node_name: str, state_dict: dict[str, Tensor], ver: Version
-    ) -> dict[str, Tensor]:
-        prefix = (
-            f"nodes.{node_name}.{'module.' if ver >= Version(0, 4) else ''}"
-        )
-        return {
-            self._strip_state_prefix(k): v
-            for k, v in state_dict.items()
-            if k.startswith(prefix)
-        }
 
     def _load_node_checkpoint(
         self,
@@ -1640,17 +1693,6 @@ def _checkpoint_predefined_model(cfg: Config) -> dict[str, Any] | None:
     return dumped
 
 
-def _node_inputs(
-    input_names: list[str],
-    computed: dict[str, Packet[Tensor]],
-    inputs: dict[str, Tensor],
-) -> list[Packet[Tensor]]:
-    return [
-        computed[name] if name in computed else {"features": [inputs[name]]}
-        for name in input_names
-    ]
-
-
 def _output_order(
     outputs: dict[str, Packet[Tensor]],
 ) -> list[tuple[str, str, int]]:
@@ -1831,13 +1873,31 @@ def _evaluation_epochs(cfg: Config) -> tuple[set[int], int]:
     return val_eval_epochs, cfg.trainer.epochs
 
 
+def _ignored_on_resume(key: str) -> bool:
+    """Tell whether a strict resume may miss or add a key.
+
+    Example:
+        >>> _ignored_on_resume("distiller.connectors.ResNet/loss.0.weight")
+        True
+        >>> _ignored_on_resume("nodes.ResNet.module.weight")
+        False
+
+    """
+    return key.startswith("distiller.") or bool(
+        CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+    )
+
+
 def _loss_metric_keys(module: LuxonisLightningModule) -> set[str]:
     metric_keys: set[str] = set()
     for mode in ("train", "val", "test"):
         metric_keys.add(f"{mode}/loss")
         for node_name, node in module.nodes.items():
             formatted_node_name = module.nodes.formatted_name(node_name)
-            for loss_name in node.losses:
+            loss_names = [*node.losses]
+            if mode == "train" and module.distiller is not None:
+                loss_names += module.distiller.losses(node_name)
+            for loss_name in loss_names:
                 metric_keys.add(
                     f"{mode}/loss/{formatted_node_name}/{loss_name}"
                 )
