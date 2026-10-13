@@ -72,6 +72,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         class_order_per_task: dict[str, list[str]] | None = None,
         kpts_mapping_per_task: dict[str, list[int]] | None = None,
         return_sample_metadata: bool = False,
+        max_bbox_width: float = 1.0,
+        max_bbox_height: float = 1.0,
+        is_training: bool | None = None,
         **kwargs,
     ):
         """Initialize the dataset and the ``LuxonisLoader``.
@@ -127,6 +130,17 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 keypoint of its task. ``None`` keeps the original order.
             return_sample_metadata: Whether ``__getitem__`` returns the
                 sample metadata as a third element.
+            max_bbox_width: Maximum box width relative to its original
+                source image, in [0, 1]. Defaults to 1.0 (disabled).
+                Excludes the whole image group if any selected-task box
+                exceeds this limit, before resizing or augmentation, in
+                training loaders only. Boxes equal to the limit are retained.
+            max_bbox_height: Maximum box height relative to its original
+                source image, in [0, 1]. Defaults to 1.0 (disabled).
+                Uses the same image-group filtering as ``max_bbox_width``.
+            is_training: Whether this loader is used for training. The training
+                pipeline supplies its loader role, including for custom split
+                names. Direct callers default to training only for ["train"].
             **kwargs: Arguments for `BaseLoaderTorch`, such as ``view``,
                 ``height``, and ``width``. This loader needs ``view``,
                 and values other than ``None`` for ``height``,
@@ -136,6 +150,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             ValueError: If both ``dataset_dir`` and ``dataset_name`` are
                 ``None``, or if ``height``, ``width``, or
                 ``augmentation_config`` is ``None``.
+            ValueError: If a bounding-box size limit is outside [0, 1], or
+                no images remain after applying the limits.
             KeyError: If ``kpts_mapping_per_task`` has a task that is not
                 in the dataset, or a task without keypoint labels.
 
@@ -173,6 +189,11 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
+            max_bbox_width=max_bbox_width,
+            max_bbox_height=max_bbox_height,
+            is_training=(
+                self.view == ["train"] if is_training is None else is_training
+            ),
             seed=self.seed,
         )
 

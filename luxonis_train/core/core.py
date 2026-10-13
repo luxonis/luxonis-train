@@ -405,6 +405,9 @@ class LuxonisModel:
             "val": self.cfg.loader.val_view,
             "test": self.cfg.loader.test_view,
         }[view]
+        loader_params = dict(self.cfg.loader.params)
+        if issubclass(Loader, LuxonisLoaderTorch):
+            loader_params["is_training"] = view == "train"
         try:
             return Loader(
                 view=view_name,
@@ -415,7 +418,7 @@ class LuxonisModel:
                 color_space=self.cfg_preprocessing.color_space,
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
                 seed=self.cfg.trainer.seed,
-                **self.cfg.loader.params,  # type: ignore
+                **loader_params,
             )
         except Exception:
             if not self._allow_empty_dataset:

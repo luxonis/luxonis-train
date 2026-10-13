@@ -2469,6 +2469,7 @@ class Config(LuxonisConfig):
             cfg = LuxonisFileSystem.download(str(cfg), cache)
 
         if cfg is not None:
+            cfg = LuxonisConfig.load_data(cfg)
             cfg = upgrade_config(cfg)
 
         instance = super().get_config(cfg, overrides)
