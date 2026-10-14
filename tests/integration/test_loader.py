@@ -48,6 +48,7 @@ def test_splits(
         assert len(model.pytorch_loaders[key]) == exp_len
 
 
+@pytest.mark.gpu
 def test_parsing(opts: Params):
     opts |= {
         "loader.params.dataset_name": "parsed_coco_test",
@@ -62,6 +63,7 @@ def test_parsing(opts: Params):
     model.train()
 
 
+@pytest.mark.gpu
 def test_dummy_loader(opts: Params):
     config_file = "luxonis_train/configs/complex_model.yaml"
     opts = opts | {

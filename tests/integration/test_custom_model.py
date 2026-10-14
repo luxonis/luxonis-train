@@ -2,6 +2,7 @@ import json
 import tarfile
 from pathlib import Path
 
+import pytest
 import torch
 from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
@@ -14,6 +15,8 @@ from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
+
+pytestmark = pytest.mark.gpu
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):

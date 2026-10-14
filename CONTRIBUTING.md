@@ -124,6 +124,11 @@ This command will run all tests and generate HTML coverage report.
 > You can choose to run only the unit-tests or only the integration tests by adding `-m unit` or `-m integration` to the `pytest` command.
 
 > [!IMPORTANT]
+> Mark an integration test with `@pytest.mark.gpu` when it trains, tunes or quantizes a model.
+> CI runs these tests on the GPU runner, and all the other tests on a free CPU runner.
+> A test without the marker still passes on the CPU, but it no longer covers the GPU code of the training, such as mixed precision.
+
+> [!IMPORTANT]
 > If a new feature is added, a new test should be added to cover it.
 > The minimum overall test coverage for a PR to be merged is 90%.
 > The minimum coverage for new files is 80%.
@@ -135,6 +140,23 @@ Our GitHub Actions workflow is run when a new PR is opened.
 1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the [documentation](#documentation) must be built successfully.
 1. Next, the [type checking](#type-checking) is run.
 1. If all previous checks pass, the [tests](#tests) are run.
+
+The tests run in five suites, one job each.
+The GPU runner is billed by the minute, so only the suites that need a GPU run there:
+
+| Suite                                  | Tests                                                              | Runner          |
+| -------------------------------------- | ------------------------------------------------------------------ | --------------- |
+| `cpu`                                  | The unit tests, and the integration tests without the `gpu` marker | Free CPU runner |
+| `misc`                                 | The integration tests with the `gpu` marker                        | GPU runner      |
+| `predefined_light`, `predefined_heavy` | `test_predefined_models.py`, the light and the heavy variants      | GPU runner      |
+| `combinations`                         | `test_combinations.py`                                             | GPU runner      |
+
+Two rules keep the GPU suites from running when they cannot find anything new:
+
+- A pull request that changes only docstrings, comments, Markdown files or the settings of the linters and of the API docs runs the `cpu` suite only.
+  `scripts/only_docstrings_changed.py` decides this.
+- A draft pull request skips `predefined_heavy`.
+  The suite runs when you mark the pull request as ready for review.
 
 > [!TIP]
 > Review the GitHub Actions output if your PR fails.

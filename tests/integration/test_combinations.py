@@ -157,7 +157,30 @@ def test_combinations(
     with subtests.test("export"):
         model.export()
 
-    with subtests.test("archive"):
-        model.archive()
-
     model.finalize_run()
+
+
+def test_combinations_archive(
+    parking_lot_dataset: LuxonisDataset, opts: Params
+):
+    """Archive the model of `test_combinations` with one backbone.
+
+    The archive used to run for every backbone, and it took two thirds
+    of the time of the suite: it compresses the ONNX file of a model
+    with eight heads with xz, which is slow. The backbone does not
+    change what the archive tests. The archive reads the inputs and
+    the outputs from the ONNX file, and the head configs from the
+    heads. The backbone changes only the output shapes, not the code
+    that runs. The export, which the backbone does change, still runs
+    for every backbone in `test_combinations`.
+
+    EfficientRep is the backbone of the predefined detection models.
+    The test does not train, because the archive does not depend on
+    the weights.
+
+    """
+    opts |= {
+        "loader.params.dataset_name": parking_lot_dataset.identifier,
+    }
+    model = LuxonisModel(get_config("EfficientRep"), opts)
+    assert model.archive().exists()

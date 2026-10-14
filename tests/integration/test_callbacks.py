@@ -1,12 +1,15 @@
 import json
 from pathlib import Path
 
+import pytest
 import torch
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
 from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
+
+pytestmark = pytest.mark.gpu
 
 
 def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
