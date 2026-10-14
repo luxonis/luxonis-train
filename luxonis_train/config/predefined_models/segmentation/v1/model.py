@@ -19,11 +19,19 @@ class SegmentationModel(SimplePredefinedModel):
         - ``heavy``: 14 on RVC2, 48 on RVC4
 
     Notes:
+        With ``multilabel: true``, a pixel can have more than one class.
+        The loader keeps overlapping masks, the head and the auxiliary
+        head get the ``multilabel`` flag, and the attached modules follow
+        it: `OHEMLoss` uses `BCEWithLogitsLoss`, `JaccardIndex` and
+        `F1Score` use the ``"multilabel"`` task of ``torchmetrics``,
+        `ConfusionMatrix` gives one ``[2, 2]`` matrix for each class,
+        and `SegmentationVisualizer` draws every class with a positive
+        logit. The export gives one mask for each class.
+
         `JaccardIndex` and `F1Score` wrap ``torchmetrics`` and read a
-        ``task`` key from ``metrics_params``. Set it to ``"binary"`` for
-        one class and to ``"multiclass"`` otherwise. Without ``task``, a
-        metric takes ``"binary"`` for one class and ``"multiclass"``
-        otherwise, and logs a warning.
+        ``task`` key from ``metrics_params``. Without ``task``, a metric
+        takes ``"binary"`` for one class and ``"multiclass"`` otherwise,
+        and logs a warning.
 
         By default, the model attaches an auxiliary head to an earlier
         output of the backbone. The loss of the auxiliary head adds to
@@ -64,6 +72,7 @@ class SegmentationModel(SimplePredefinedModel):
         self,
         use_aux_head: bool = True,
         aux_head_params: Params | None = None,
+        multilabel: bool = False,
         **kwargs,
     ):
         """Initialize the model with its default components.
@@ -89,6 +98,10 @@ class SegmentationModel(SimplePredefinedModel):
                   value as ``remove_on_export`` of the auxiliary head.
                   Without the key, the value is ``True``.
 
+            multilabel: Whether a pixel can have more than one class.
+                ``True`` sets ``multilabel`` in ``head_params``. When
+                ``head_params`` sets ``multilabel``, the auxiliary head
+                gets it too, unless ``aux_head_params`` sets it.
             **kwargs: Keyword arguments for
                 `SimplePredefinedModel.__init__`.
 
@@ -117,6 +130,10 @@ class SegmentationModel(SimplePredefinedModel):
             self._aux_head_params["attach_index"] = -2
         if "aux_head" not in self._head_params:
             self._head_params["attach_index"] = -1
+        if multilabel:
+            self._head_params["multilabel"] = True
+        if self._head_params.get("multilabel"):
+            self._aux_head_params.setdefault("multilabel", True)
 
         remove_aux_on_export = self._aux_head_params.pop("use_aux_heads", True)
         if not isinstance(remove_aux_on_export, bool):

@@ -18,15 +18,19 @@ class ClassificationModel(SimplePredefinedModel):
         - ``heavy``: 5 on RVC2, 134 on RVC4
 
     Notes:
-        `F1Score`, `Accuracy`, and `Recall` wrap ``torchmetrics`` and
-        read a ``task`` key from ``metrics_params``. Set it to
-        ``"multilabel"`` when an image can carry more than one class.
-        Without ``task`` and ``num_labels``, a metric takes ``"binary"``
-        for one class and ``"multiclass"`` otherwise, and logs a warning.
+        With ``multilabel: true``, an image can have more than one
+        class. The head gets the ``multilabel`` flag, and the attached
+        modules follow it: `CrossEntropyLoss` computes the binary cross
+        entropy of each class, `F1Score`, `Accuracy`, and `Recall` use
+        the ``"multilabel"`` task of ``torchmetrics``, `ConfusionMatrix`
+        gives one ``[2, 2]`` matrix for each class, and
+        `ClassificationVisualizer` lists every class with a positive
+        logit.
 
-        `CrossEntropyLoss` reduces a multi-hot target to one class with
-        ``argmax``. For multi-label data, also set ``loss`` to a loss
-        such as `BCEWithLogitsLoss`.
+        `F1Score`, `Accuracy`, and `Recall` wrap ``torchmetrics`` and
+        read a ``task`` key from ``metrics_params``. Without ``task``
+        and ``num_labels``, a metric takes ``"binary"`` for one class
+        and ``"multiclass"`` otherwise, and logs a warning.
 
     Example:
         The ``model`` section of a config:
@@ -38,6 +42,7 @@ class ClassificationModel(SimplePredefinedModel):
                 name: ClassificationModel
                 params:
                   variant: light
+                  multilabel: true
 
     Components:
         - Nodes: `ResNet` -> `ClassificationHead`
@@ -58,7 +63,16 @@ class ClassificationModel(SimplePredefinedModel):
 
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, multilabel: bool = False, **kwargs):
+        """Initialize the model with its default components.
+
+        Args:
+            multilabel: Whether an image can have more than one class.
+                ``True`` sets ``multilabel`` in ``head_params``.
+            **kwargs: Keyword arguments for
+                `SimplePredefinedModel.__init__`.
+
+        """
         super().__init__(
             **{
                 "backbone": "ResNet",
@@ -71,6 +85,8 @@ class ClassificationModel(SimplePredefinedModel):
             }
             | kwargs
         )
+        if multilabel:
+            self._head_params["multilabel"] = True
 
     @staticmethod
     @override

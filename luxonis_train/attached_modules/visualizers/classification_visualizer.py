@@ -79,7 +79,7 @@ class ClassificationVisualizer(BaseVisualizer):
         font_scale: float | None = None,
         color: tuple[int, int, int] = (255, 0, 0),
         thickness: int = 2,
-        multilabel: bool = False,
+        multilabel: bool | None = None,
         **kwargs,
     ):
         """Initialize the visualizer and store the text and plot
@@ -103,11 +103,12 @@ class ClassificationVisualizer(BaseVisualizer):
                 font scale below ``1``, the thickness becomes ``1``.
                 Defaults to ``2``.
             multilabel: Whether the task is multi-label. When ``True``,
-                the text lists every class whose raw value is greater
-                than ``0.5``, and the plot shows sigmoid probabilities.
-                When ``False``, the text shows the class with the
-                highest value, and the plot shows softmax probabilities.
-                Defaults to ``False``.
+                the text lists every class whose value is above ``0``:
+                a positive logit, or a target of ``1``. The plot then
+                shows sigmoid probabilities. When ``False``, the text
+                shows the class with the highest value, and the plot
+                shows softmax probabilities. ``None`` takes the
+                ``multilabel`` flag of the head.
             **kwargs: Keyword arguments forwarded to `BaseVisualizer`,
                 such as ``scale`` and ``node``.
 
@@ -117,14 +118,16 @@ class ClassificationVisualizer(BaseVisualizer):
         self._font_scale = font_scale
         self._color = color
         self._thickness = thickness
-        self._multilabel = multilabel
+        self._multilabel = (
+            self.multilabel if multilabel is None else multilabel
+        )
 
     def _get_class_name(self, pred: Tensor) -> str:
         """Return the class name, or names, that ``pred`` selects.
 
         With ``multilabel``, joins the names of every class whose value
-        is greater than ``0.5`` with ``", "``. Otherwise returns the
-        name of the class with the highest value.
+        is above ``0`` with ``", "``. Otherwise returns the name of the
+        class with the highest value.
 
         Args:
             pred: Values of shape ``[n_classes]``.
@@ -134,7 +137,7 @@ class ClassificationVisualizer(BaseVisualizer):
 
         """
         if self._multilabel:
-            idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
+            idxs = (pred > 0).nonzero(as_tuple=True)[0].tolist()
             return ", ".join([self.classes.inverse[idx] for idx in idxs])
         return self.classes.inverse[int(pred.argmax().item())]
 

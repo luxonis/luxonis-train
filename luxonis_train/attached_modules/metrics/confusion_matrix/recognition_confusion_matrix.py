@@ -1,9 +1,11 @@
 """The confusion matrix for classification and segmentation."""
 
+import torch
 from torch import Tensor
 from torchmetrics.classification import (
     BinaryConfusionMatrix,
     MulticlassConfusionMatrix,
+    MultilabelConfusionMatrix,
 )
 from typing_extensions import override
 
@@ -83,7 +85,8 @@ class RecognitionConfusionMatrix(BaseMetric):
         """Initialize the metric and the wrapped matrix.
 
         The ``metric`` attribute holds the wrapped matrix. It is a
-        ``BinaryConfusionMatrix`` when the node has one class. Otherwise
+        ``BinaryConfusionMatrix`` when the node has one class, and a
+        ``MultilabelConfusionMatrix`` for a multi-label head. Otherwise
         it is a ``MulticlassConfusionMatrix`` with ``n_classes`` classes.
 
         Args:
@@ -94,6 +97,8 @@ class RecognitionConfusionMatrix(BaseMetric):
         super().__init__(**kwargs)
         if self.n_classes == 1:
             self.metric = BinaryConfusionMatrix()
+        elif self.multilabel:
+            self.metric = MultilabelConfusionMatrix(num_labels=self.n_classes)
         else:
             self.metric = MulticlassConfusionMatrix(num_classes=self.n_classes)
 
@@ -102,27 +107,29 @@ class RecognitionConfusionMatrix(BaseMetric):
         """Add the predictions and targets of one batch to the matrix.
 
         With more than one class, the method takes the ``argmax`` over
-        dimension ``1`` of both tensors. With one class, it passes both
-        tensors unchanged. The class docstring describes how the wrapped
-        matrix counts them.
+        dimension ``1`` of both tensors, unless the head is multi-label.
+        With one class or a multi-label head, it passes the predictions
+        unchanged and the targets as integers. The class docstring
+        describes how the wrapped matrix counts them.
 
         Args:
             predictions: The main output of the node, as logits of shape
                 ``[B, n_classes]`` for classification, or
                 ``[B, n_classes, H, W]`` for segmentation.
-            targets: One-hot labels of the same shape, the
-                ``classification`` or ``segmentation`` label of the
-                task. With one class, the values must be ``0`` or ``1``.
+            targets: One-hot labels of the same shape, or multi-hot
+                labels for a multi-label head, the ``classification`` or
+                ``segmentation`` label of the task. With one class or a
+                multi-label head, the values must be ``0`` or ``1``.
                 Other values make ``torchmetrics`` raise
                 ``RuntimeError``.
 
         """
-        if self.n_classes > 1:
+        if self.n_classes > 1 and not self.multilabel:
             self.metric.update(
                 predictions.argmax(dim=1), targets.argmax(dim=1)
             )
         else:
-            self.metric.update(predictions, targets)
+            self.metric.update(predictions, targets.int())
 
     @override
     def compute(self) -> dict[str, Tensor]:
@@ -137,6 +144,12 @@ class RecognitionConfusionMatrix(BaseMetric):
               are target classes and columns are predicted classes. The
               shape is ``[n_classes, n_classes]``, or ``[2, 2]`` for one
               class.
+
+            For a multi-label head, ``"mcc"`` is the mean of the binary
+            MCC of each class, and ``"confusion_matrix_<class>"`` holds
+            the ``[2, 2]`` matrix of each class in place of
+            ``"confusion_matrix"``. Index ``1`` means that the sample or
+            the pixel has the class.
 
         Example:
             The batch has three samples and two classes. The third
@@ -156,8 +169,35 @@ class RecognitionConfusionMatrix(BaseMetric):
             >>> result["mcc"].item()
             0.5
 
+            A multi-label head gets one matrix for each class:
+
+            >>> node = SimpleNamespace(
+            ...     task=None,
+            ...     n_classes=2,
+            ...     multilabel=True,
+            ...     classes={"cat": 0, "dog": 1},
+            ... )
+            >>> metric = RecognitionConfusionMatrix(node=node)
+            >>> logits = torch.tensor([[2.0, 3.0], [-1.0, 1.0]])
+            >>> metric.update(logits, torch.tensor([[1.0, 1.0], [0.0, 0.0]]))
+            >>> result = metric.compute()
+            >>> result["confusion_matrix_dog"].tolist()
+            [[0, 1], [0, 1]]
+            >>> result["mcc"].item()
+            0.5
+
         """
         cm = self.metric.compute()
+        if cm.ndim == 3:
+            return {
+                "mcc": torch.stack(
+                    [compute_mcc(c.float()) for c in cm]
+                ).mean(),
+                **{
+                    f"confusion_matrix_{name}": cm[i]
+                    for name, i in self.classes.items()
+                },
+            }
         mcc = compute_mcc(cm.float())
         return {"mcc": mcc, "confusion_matrix": cm}
 

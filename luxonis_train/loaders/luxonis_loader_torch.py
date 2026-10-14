@@ -67,6 +67,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         update_mode: Literal["all", "missing"] = "all",
         delete_existing: bool = True,
         filter_task_names: list[str] | None = None,
+        multilabel_tasks: list[str] | None = None,
         min_bbox_visibility: float = 0.0,
         bbox_area_threshold: float = 0.0004,
         class_order_per_task: dict[str, list[str]] | None = None,
@@ -112,6 +113,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names: The names of the tasks to load. ``None``
                 loads all tasks. A name that is not in the dataset makes
                 ``LuxonisLoader`` raise ``ValueError``.
+            multilabel_tasks: The tasks whose segmentation masks can
+                overlap, so a pixel can have more than one class. The
+                trainer sets it from the heads with ``multilabel``.
             min_bbox_visibility: The minimum fraction of a box that must
                 stay visible after the augmentations.
             bbox_area_threshold: The minimum area of a box, relative to
@@ -171,6 +175,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             color_space=self.color_space,
             update_mode=update_mode,
             filter_task_names=filter_task_names,
+            multilabel_tasks=multilabel_tasks,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
             seed=self.seed,

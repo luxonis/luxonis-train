@@ -125,13 +125,15 @@ class SegmentationVisualizer(BaseVisualizer):
         alpha: float,
         colors: list[Color],
         scale: float = 1.0,
+        multilabel: bool = False,
     ) -> Tensor:
         """Draw the predicted masks of a batch on copies of the canvas.
 
         For each image, `seg_output_to_bool` converts the logits to one
         boolean mask for each class. With more than one class, each pixel
-        gets the class with the highest logit. With one class, a pixel
-        gets the class when the sigmoid of its logit is at least ``0.5``.
+        gets the class with the highest logit. With one class or with
+        ``multilabel``, a pixel gets each class where the sigmoid of its
+        logit is at least ``0.5``.
         `potentially_upscale_masks` resizes the masks by ``scale``, and
         `draw_segmentation_targets` blends them into the image.
 
@@ -145,6 +147,7 @@ class SegmentationVisualizer(BaseVisualizer):
             colors: One color for each class, at least as many colors as
                 classes.
             scale: The factor that resizes the masks.
+            multilabel: Whether a pixel can have more than one class.
 
         Returns:
             A new tensor of the same shape as ``canvas``, with the masks
@@ -171,7 +174,7 @@ class SegmentationVisualizer(BaseVisualizer):
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             prediction = predictions[i]
-            mask = seg_output_to_bool(prediction)
+            mask = seg_output_to_bool(prediction, multilabel=multilabel)
             mask = potentially_upscale_masks(mask, scale)
             viz[i] = draw_segmentation_targets(
                 canvas[i].clone(), mask, alpha=alpha, colors=colors
@@ -273,6 +276,7 @@ class SegmentationVisualizer(BaseVisualizer):
             alpha=self._alpha,
             colors=colors,
             scale=self._scale,
+            multilabel=self.multilabel,
         )
         if target is None:
             return predictions_vis

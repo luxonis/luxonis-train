@@ -3,6 +3,7 @@
 from typing import Literal
 
 import torch
+import torch.nn.functional as F
 from loguru import logger
 from torch import Tensor, nn
 
@@ -17,11 +18,12 @@ class CrossEntropyLoss(BaseLoss):
     Inputs:
         - ``predictions`` (``Tensor``): ``[B, C, ...]`` logits
         - ``target`` (``Tensor``): ``[B, C, ...]`` one-hot or ``[B,
-          ...]`` class indices
+          ...]`` class indices, or ``[B, C, ...]`` multi-hot for a
+          multi-label head
 
     Outputs:
         - ``Tensor``: scalar, or ``[B, ...]`` when ``reduction`` is
-          ``"none"``
+          ``"none"``, ``[B, C, ...]`` for a multi-label head
 
     Formula:
         A one-hot target first becomes class indices through ``argmax``
@@ -42,6 +44,21 @@ class CrossEntropyLoss(BaseLoss):
         adds nothing. The ``"mean"`` reduction divides the sum of
         :math:`\ell` by the sum of :math:`w_t` over all elements that do
         not have this target.
+
+        On a multi-label head, a sample or a pixel can have more than
+        one class, so the loss is the binary cross entropy of each class
+        instead. For the logit :math:`x_c` and the multi-hot target
+        :math:`y_c` of class :math:`c`:
+
+        .. math::
+
+            \ell_c = -w_c \left(q_c \log \sigma(x_c)
+            + (1 - q_c) \log \left(1 - \sigma(x_c)\right)\right),
+            \qquad
+            q_c = (1 - \varepsilon) \, y_c + \frac{\varepsilon}{2}
+
+        The ``"mean"`` reduction takes the mean of :math:`\ell_c` over
+        all classes and elements. ``ignore_index`` has no effect.
 
     References:
         - Source: Wraps `torch.nn.CrossEntropyLoss
@@ -127,6 +144,12 @@ class CrossEntropyLoss(BaseLoss):
             label_smoothing=label_smoothing,
         )
         self._was_logged = False
+        if self.multilabel:
+            logger.info(
+                f"'{self.name}' is attached to the multi-label head "
+                f"'{self.node.name}'. It computes the binary cross "
+                "entropy of each class."
+            )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the cross entropy between logits and class targets.
@@ -138,7 +161,9 @@ class CrossEntropyLoss(BaseLoss):
         class notes describe. It then converts ``target`` to class
         indices with ``argmax`` over the class dimension. For a
         multi-hot target, ``argmax`` selects the first class with the
-        highest value.
+        highest value. On a multi-label head, the method instead
+        computes the binary cross entropy of each class, as the class
+        formula describes.
 
         Args:
             predictions: Logits of shape ``[B, C, ...]``, the main
@@ -150,7 +175,8 @@ class CrossEntropyLoss(BaseLoss):
 
         Returns:
             A scalar for the ``"mean"`` and ``"sum"`` reductions. For
-            ``"none"``, the loss of each element, of shape ``[B, ...]``.
+            ``"none"``, the loss of each element, of shape ``[B, ...]``,
+            or ``[B, C, ...]`` on a multi-label head.
 
         Raises:
             RuntimeError: When ``target`` has neither the number of
@@ -170,6 +196,8 @@ class CrossEntropyLoss(BaseLoss):
             0.1269
 
         """
+        if self.multilabel:
+            return self._binary_per_class(predictions, target)
         if predictions.ndim == target.ndim:
             ch_dim = 1 if predictions.ndim > 1 else 0
             if predictions.shape[ch_dim] == 1:
@@ -193,3 +221,26 @@ class CrossEntropyLoss(BaseLoss):
                 f"but is ({target.ndim})."
             )
         return self.criterion(predictions, target)
+
+    def _binary_per_class(self, predictions: Tensor, target: Tensor) -> Tensor:
+        """Compute the binary cross entropy of each class.
+
+        Example:
+            >>> import torch
+            >>> loss = CrossEntropyLoss(weight=[1.0, 2.0])
+            >>> logits = torch.zeros(1, 2, 1, 1)
+            >>> loss._binary_per_class(logits, torch.ones(1, 2, 1, 1))
+            tensor(1.0397)
+
+        """
+        weight = self.criterion.weight
+        if weight is not None:
+            weight = weight.view(-1, *[1] * (predictions.ndim - 2))
+        smoothing = self.criterion.label_smoothing
+        target = target.float() * (1 - smoothing) + smoothing / 2
+        return F.binary_cross_entropy_with_logits(
+            predictions,
+            target,
+            weight=weight,
+            reduction=self.criterion.reduction,
+        )

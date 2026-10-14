@@ -48,7 +48,8 @@ class OHEMLoss(BaseLoss):
 
     Notes:
         ``criterion="auto"`` selects `BCEWithLogitsLoss` for a node with
-        one class, and `CrossEntropyLoss` otherwise. The loss returns
+        one class or a multi-label head, and `CrossEntropyLoss`
+        otherwise. The loss returns
         ``nan`` when :math:`k = 0` and :math:`\ell_0 \leq \tau`, because
         the mean of no values is ``nan``. For an input without elements,
         it returns the empty tensor of the element losses.
@@ -97,8 +98,9 @@ class OHEMLoss(BaseLoss):
                 ``"CrossEntropyLoss"``. An unknown name raises
                 ``KeyError``. The method uses a `BaseLoss` subclass as
                 it is. ``"auto"`` selects ``"BCEWithLogitsLoss"`` when
-                the node has one class, and ``"CrossEntropyLoss"``
-                otherwise. The method then logs a warning about the
+                the node has one class or is a multi-label head, and
+                ``"CrossEntropyLoss"`` otherwise. For a node that is not
+                multi-label, the method then logs a warning about the
                 inferred task. Without a node, ``"auto"`` raises
                 ``ValueError``.
             ohem_ratio: The ratio :math:`r` that sets the number
@@ -117,7 +119,7 @@ class OHEMLoss(BaseLoss):
 
         if criterion == "auto":
             task = self._infer_torchmetrics_task(**kwargs)
-            if task == "binary":
+            if task in {"binary", "multilabel"}:
                 criterion = "BCEWithLogitsLoss"
             else:
                 criterion = "CrossEntropyLoss"

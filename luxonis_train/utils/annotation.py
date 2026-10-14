@@ -219,7 +219,9 @@ def _prepare_transformed(
         )
     if "segmentation" in required_labels:
         bin_mask = (
-            seg_output_to_bool(preds_for_image["segmentation"])
+            seg_output_to_bool(
+                preds_for_image["segmentation"], multilabel=head.multilabel
+            )
             .detach()
             .cpu()
             .float()
@@ -318,15 +320,18 @@ def _annotate_classification(
     transformed: _Transformed,
 ) -> DatasetIterator:
     assert "pred_classes" in transformed
-    yield {
-        "file": str(img_path),
-        "task_name": head.task_name,
-        "annotation": {
-            "class": head.classes.inverse[
-                int(transformed["pred_classes"].argmax())
-            ],
-        },
-    }
+    logits = transformed["pred_classes"]
+    if not head.multilabel:
+        class_ids = [int(logits.argmax())]
+    elif not (class_ids := np.flatnonzero(logits > 0).tolist()):
+        # Keep the image in the dataset when no class is predicted.
+        yield {"file": str(img_path), "task_name": head.task_name}
+    for class_id in class_ids:
+        yield {
+            "file": str(img_path),
+            "task_name": head.task_name,
+            "annotation": {"class": head.classes.inverse[class_id]},
+        }
 
 
 def _annotate_text(

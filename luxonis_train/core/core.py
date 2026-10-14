@@ -372,6 +372,7 @@ class LuxonisModel:
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
         self._maybe_filter_task_names(Loader)
+        self._set_multilabel_tasks(Loader)
 
         for view in ("train", "val", "test"):
             if (
@@ -396,6 +397,18 @@ class LuxonisModel:
             self.cfg.loader.params["filter_task_names"] = sorted(
                 model_tasks  # type: ignore
             )
+
+    def _set_multilabel_tasks(self, Loader: type) -> None:
+        """Pass the tasks of the multi-label heads to the loader."""
+        if not issubclass(Loader, LuxonisLoaderTorch):
+            return
+        tasks = {
+            node.task_name or ""
+            for node in self.cfg.model.head_nodes
+            if node.params.get("multilabel")
+        }
+        if tasks:
+            self.cfg.loader.params["multilabel_tasks"] = sorted(tasks)
 
     def _create_loader(
         self, view: View, Loader: type, loader_name: str

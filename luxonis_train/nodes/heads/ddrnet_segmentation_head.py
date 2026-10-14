@@ -250,10 +250,11 @@ class DDRNetSegmentationHead(BaseHead):
             Outside export mode, the logits of shape
             ``[B, n_classes, H, W]``. In export mode, an ``int32``
             tensor. It holds the class index with the highest logit for
-            each pixel, of shape ``[B, H, W]``. With ``n_classes == 1``,
-            it holds ``1`` where the logit is above ``0``, of shape
-            ``[B, 1, H, W]``. `BaseNode.run` puts the result under the
-            ``"segmentation"`` key.
+            each pixel, of shape ``[B, H, W]``. With ``n_classes == 1``
+            or a multi-label head, it holds ``1`` where the logit is
+            above ``0``, of shape ``[B, n_classes, H, W]``.
+            `BaseNode.run` puts the result under the ``"segmentation"``
+            key.
 
         Example:
             >>> import torch
@@ -278,7 +279,10 @@ class DDRNetSegmentationHead(BaseHead):
         x = self.conv2(x)
         x = self.upscale(x)
         if self.export:
-            x = x.argmax(dim=1) if self.n_classes > 1 else x > 0
+            if self.n_classes > 1 and not self.multilabel:
+                x = x.argmax(dim=1)
+            else:
+                x = x > 0
             return x.to(dtype=torch.int32)
         return x
 

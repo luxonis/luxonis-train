@@ -217,6 +217,17 @@ class BaseAttachedModule(
         return self.node.n_classes
 
     @property
+    def multilabel(self) -> bool:
+        """Whether the node is a multi-label head.
+
+        The value is the ``multilabel`` attribute of `node`, which
+        `BaseHead` sets. It is ``False`` without a node, and for a node
+        without the attribute.
+
+        """
+        return bool(getattr(self._node, "multilabel", False))
+
+    @property
     def original_in_shape(self) -> Size:
         """The shape of the model input image, ``[C, H, W]``.
 
@@ -420,15 +431,24 @@ class BaseAttachedModule(
         return origin in {Union, UnionType} and type(None) in args
 
     def _infer_torchmetrics_task(self, **kwargs) -> str:
+        """Return the ``torchmetrics`` task of the module.
+
+        A ``task`` argument wins. A multi-label node gives
+        ``"multilabel"``, or ``"binary"`` with one class. Otherwise the
+        task follows from ``num_classes``, from ``num_labels``, or from
+        the number of classes of the node, with a warning.
+
+        """
         task = kwargs.get("task")
+        if task is None and self.multilabel:
+            task = self._task_of_node("multilabel")
         if task is None:
             if "num_classes" in kwargs:
                 task = "binary" if kwargs["num_classes"] == 1 else "multiclass"
             elif "num_labels" in kwargs:
                 task = "multilabel"
             else:
-                with suppress(RuntimeError, ValueError):
-                    task = "binary" if self.n_classes == 1 else "multiclass"
+                task = self._task_of_node("multiclass")
             if task is not None:
                 logger.warning(
                     "Parameter 'task' was not specified for `TorchMetric` "
@@ -455,3 +475,11 @@ class BaseAttachedModule(
                 "or 'multilabel'."
             )
         return task
+
+    def _task_of_node(self, many: str) -> str | None:
+        """Return ``"binary"`` when the node has one class, ``many`` for
+        more classes, and ``None`` when the class count is unknown.
+        """
+        with suppress(RuntimeError, ValueError):
+            return "binary" if self.n_classes == 1 else many
+        return None

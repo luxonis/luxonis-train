@@ -16,7 +16,7 @@ from torch import Tensor
 
 from luxonis_train.config.config import PreprocessingConfig
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.tasks import Task
+from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils.annotation import default_annotate
 
@@ -31,6 +31,8 @@ class BaseHead(BaseNode):
     does not know.
 
     Attributes:
+        multilabel: Whether a sample or a pixel can have more than one
+            class. The constructor sets it.
         parser: The name of the parser that reads the outputs of the
             head in the exported model. `get_head_config` puts it into
             the NN Archive entry of the head. It is ``""`` in the base
@@ -42,6 +44,33 @@ class BaseHead(BaseNode):
 
     parser: str = ""
     task: Task
+
+    def __init__(self, *, multilabel: bool = False, **kwargs):
+        """Initialize the head.
+
+        Args:
+            multilabel: Whether a sample or a pixel can have more than
+                one class. Only a classification or a segmentation head
+                accepts ``True``. The losses, metrics, and visualizers
+                of the head read it. For a segmentation head, the loader
+                then keeps the overlapping masks of the task.
+            **kwargs: Keyword arguments for `BaseNode`.
+
+        Raises:
+            ValueError: When ``multilabel`` is ``True`` and the task of
+                the head is neither classification nor segmentation.
+
+        """
+        super().__init__(**kwargs)
+        if multilabel and self.task not in (
+            Tasks.CLASSIFICATION,
+            Tasks.SEGMENTATION,
+        ):
+            raise ValueError(
+                f"'{self.name}' cannot be multi-label. Only classification "
+                "and segmentation heads accept `multilabel: true`."
+            )
+        self.multilabel = multilabel
 
     def get_head_config(self) -> dict[str, Any]:
         """Return the entry of the head in the NN Archive config.
