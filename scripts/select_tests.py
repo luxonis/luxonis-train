@@ -1,37 +1,32 @@
-"""Select the GPU tests that the changes of a pull request can affect.
+"""Select the GPU tests that a pull request can affect.
 
-The CI keeps a test map for each GPU suite. For each test, the map lists
-the functions and the classes of the package that the test ran, as
-C{<file>::<qualified name>}. A run of a whole GPU suite writes its map
-with C{build}. On a pull request, C{select} compares the merge base and
-the head, and selects:
+A run of a whole GPU suite writes a test map with ``build``: for each
+test, the functions and the classes of the package that it ran, as
+``<file>::<qualified name>``. The test ``""`` holds the functions that ran
+outside of a test, such as in a data loader worker.
 
-  - for a changed function or method: the tests that ran it;
-  - for a change in the body of a class or a module, such as an
-    attribute, an import, or an added or removed method: the tests
-    that ran code of the file. When no test ran code of the file, it
-    selects every test, because a test can use a class without running
-    a line of its file. A package C{__init__.py} below
-    C{luxonis_train/} only imports, so it selects no test. The CPU
-    suite imports it;
-  - for a test file: its tests. For a test helper or test data: the
-    tests of the files that use it;
-  - for a config in C{luxonis_train/configs/}: the tests that name it.
+``select`` compares the merge base and the head without docstrings:
 
-Docstrings, comments and formatting select no test. Code that ran
-outside of a test, such as in a data loader worker, has no test name,
-so a change of it selects every test. So does a change of a file that
-the rules do not cover, such as a dependency or the workflow. A suite
-without a map runs in full when the package changes.
+  - a changed function selects the tests that ran it;
+  - a changed class or module body selects the tests that ran code of
+    the file, or every test when no test did. A ``__init__.py`` below
+    ``luxonis_train/`` selects none;
+  - a changed test file selects its tests, and a test helper or test
+    data selects the test files that name it;
+  - a changed config of ``luxonis_train/configs/`` selects the tests that
+    name it;
+  - a Markdown file selects none, and a function that ran outside of a
+    test or any other file selects every test.
+
+A suite without a map runs in full when the package changes.
 
 Usage:
 
-  - C{python scripts/select_tests.py build <suite> <coverage data file>}
-  - C{python scripts/select_tests.py select <base commit> <map directory>}
+  - ``python scripts/select_tests.py build <suite> <coverage data file>``
+  - ``python scripts/select_tests.py select <base commit> <map directory>``
 
-C{select} prints a JSON object. Its keys are the suites to run. Each
-value lists the tests and the test files to run, and an empty list runs
-the whole suite.
+``select`` prints the suites to run, each with its tests and test files.
+An empty list runs the whole suite.
 
 """
 
@@ -51,7 +46,6 @@ from only_docstrings_changed import (
 )
 
 GPU_SUITES = ("predefined_light", "predefined_heavy", "combinations", "misc")
-SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 TEST_FILES = Path("tests", "integration")
 
 Maps = dict[str, dict[str, set[str]]]
@@ -62,11 +56,9 @@ Scope = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
 def iter_scopes(
     node: ast.AST, prefix: str = ""
 ) -> Iterator[tuple[str, Scope]]:
-    """Yield the qualified name and the node of each function and
-    class.
-    """
+    """Yield each function and class with its qualified name."""
     for child in ast.iter_child_nodes(node):
-        if isinstance(child, SCOPES):
+        if isinstance(child, Scope):
             name = prefix + child.name
             yield name, child
             yield from iter_scopes(child, f"{name}.")
@@ -80,7 +72,7 @@ def own_code(node: ast.AST) -> str:
 
     class Hide(ast.NodeTransformer):
         def visit(self, node: ast.AST) -> ast.AST:
-            if node is not root and isinstance(node, SCOPES):
+            if node is not root and isinstance(node, Scope):
                 return ast.Expr(ast.Name(node.name, ast.Load()))
             return super().visit(node)
 
@@ -88,10 +80,10 @@ def own_code(node: ast.AST) -> str:
 
 
 def scope_codes(source: str) -> dict[str, tuple[str, str]]:
-    """Map each scope of C{source} to its kind and its own code.
+    """Map each scope of ``source`` to its kind and its own code.
 
-    The kind is C{def}, C{class} or C{module}, and the module is the
-    scope C{""}. A property and its setter share a name, so their codes
+    The kind is ``def``, ``class`` or ``module``, and the module is the
+    scope ``""``. A property and its setter share a name, so their codes
     are joined.
 
     """
@@ -114,7 +106,7 @@ def changed_scopes(before: str, after: str) -> dict[str, str]:
 
 
 def scope_at(source: str) -> Callable[[int], tuple[str, bool]]:
-    """Return a function that gives the scope of a line of C{source}.
+    """Return a function that gives the scope of a line of ``source``.
 
     The function also tells whether the line is in the body of a
     function. The other lines run when the module is imported.
@@ -130,6 +122,7 @@ def scope_at(source: str) -> Callable[[int], tuple[str, bool]]:
         inner = [r for r in ranges if r[0] <= line <= r[1]]
         if not inner:
             return "", False
+        # The innermost scope starts last.
         _, _, name, body = max(inner)
         return name, body is not None and line >= body
 
@@ -139,7 +132,7 @@ def scope_at(source: str) -> Callable[[int], tuple[str, bool]]:
 def build(suite: str, data_file: str) -> dict:
     """Read the per-test coverage contexts and write the test map.
 
-    The test C{""} lists the functions that ran outside of a test: in a
+    The test ``""`` lists the functions that ran outside of a test: in a
     data loader worker, which has no test context, or on import.
 
     """
@@ -169,7 +162,7 @@ def build(suite: str, data_file: str) -> dict:
 
 
 def tests_running(maps: Maps, scope: str) -> Picks:
-    """Select the tests that ran C{scope}, or a scope nested in it."""
+    """Select the tests that ran ``scope``, or a scope nested in it."""
     return {
         (suite, test)
         for suite, tests in maps.items()
@@ -179,7 +172,7 @@ def tests_running(maps: Maps, scope: str) -> Picks:
 
 
 def tests_in_file(maps: Maps, path: str) -> Picks:
-    """Select the tests that ran code of the file C{path}."""
+    """Select the tests that ran code of the file ``path``."""
     return {
         (suite, test)
         for suite, tests in maps.items()
@@ -193,8 +186,8 @@ def tests_for_changes(
 ) -> Picks | None:
     """Select the tests for the changed scopes of a package file.
 
-    Returns C{None} to select every test. This includes code that ran
-    outside of a test, because no test name covers it.
+    Returns ``None`` to select every test, also when a function that ran
+    outside of a test changed.
 
     """
     picks: Picks = set()
@@ -212,9 +205,7 @@ def tests_for_changes(
 
 
 def is_reexport_init(path: str) -> bool:
-    """Tell whether C{path} is an C{__init__.py} below the top
-    package.
-    """
+    """Tell whether ``path`` is the ``__init__.py`` of a subpackage."""
     return (
         path.endswith("/__init__.py") and path != "luxonis_train/__init__.py"
     )
@@ -223,8 +214,8 @@ def is_reexport_init(path: str) -> bool:
 def suites_of_test_file(path: Path) -> list[str]:
     """Name the GPU suites of a test file.
 
-    The rules follow C{pytest_collection_modifyitems} in
-    C{tests/conftest.py}.
+    The rules follow ``pytest_collection_modifyitems`` in
+    ``tests/conftest.py``.
 
     """
     if path.name == "test_predefined_models.py":
@@ -237,7 +228,7 @@ def suites_of_test_file(path: Path) -> list[str]:
 
 
 def files_using(text: str) -> Picks | None:
-    """Select the test files that contain C{text}, or every test."""
+    """Select the test files that contain ``text``, or every test."""
     picks = {
         (suite, str(file))
         for file in sorted(TEST_FILES.glob("test_*.py"))
@@ -261,7 +252,7 @@ def pick_source(status: str, path: str, base: str, maps: Maps) -> Picks | None:
 
 
 def pick_test_path(path: str) -> Picks | None:
-    """Select the tests for a changed file below C{tests/}."""
+    """Select the tests for a changed file below ``tests/``."""
     file = Path(path)
     if file.parts[:2] == ("tests", "unittests"):
         return set()
@@ -273,9 +264,7 @@ def pick_test_path(path: str) -> Picks | None:
 
 
 def pick_config(path: str, maps: Maps) -> Picks | None:
-    """Select the tests that name a config of
-    C{luxonis_train/configs/}.
-    """
+    """Select the tests that name a changed config."""
     stem = Path(path).stem
     picks = {
         (suite, test)
@@ -288,11 +277,7 @@ def pick_config(path: str, maps: Maps) -> Picks | None:
 
 
 def pick(status: str, path: str, base: str, maps: Maps) -> Picks | None:
-    """Select the tests for one changed file.
-
-    C{None} selects all.
-
-    """
+    """Select the tests for one changed file, or ``None`` for all."""
     if path.endswith(".md") or path in IGNORED or path.startswith("media/"):
         return set()
     if path.startswith(".github/") and path != ".github/workflows/ci.yaml":
@@ -311,7 +296,7 @@ def pick(status: str, path: str, base: str, maps: Maps) -> Picks | None:
 
 
 def load_maps(directory: Path) -> Maps:
-    """Read the test maps of the GPU suites from C{directory}."""
+    """Read the test maps of the GPU suites from ``directory``."""
     maps = {}
     for file in directory.glob("test-map-*.json"):
         content = json.loads(file.read_text())
@@ -322,7 +307,7 @@ def load_maps(directory: Path) -> Maps:
 
 
 def select(base: str, map_dir: str) -> dict[str, list[str]]:
-    """Select the GPU tests for the changes since C{base}."""
+    """Select the GPU tests for the changes since ``base``."""
     maps = load_maps(Path(map_dir))
     merge_base = git("merge-base", base, "HEAD").strip()
     changes = git("diff", "--name-status", "--no-renames", merge_base, "HEAD")
@@ -350,10 +335,10 @@ def select(base: str, map_dir: str) -> dict[str, list[str]]:
 
 
 def suite_arguments(picks: Picks, suite: str) -> list[str]:
-    """List the tests and the test files of C{suite} to run.
+    """List the tests and the test files of ``suite`` to run.
 
-    A test file already runs each of its tests, so its tests are left
-    out.
+    A test of a selected test file is left out, because the file runs
+    it.
 
     """
     args = {arg for s, arg in picks if s == suite}
