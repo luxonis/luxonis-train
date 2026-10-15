@@ -50,8 +50,8 @@ def is_bare_string(statement: ast.stmt) -> bool:
     )
 
 
-def code_of(source: str) -> str:
-    """Dump the syntax tree of C{source} without its docstrings.
+def parse_without_docstrings(source: str) -> ast.Module:
+    """Parse C{source} and drop its docstrings.
 
     A string literal that stands as a statement of its own has no
     effect, wherever it is. This covers the docstrings of attributes
@@ -68,7 +68,12 @@ def code_of(source: str) -> str:
                     field,
                     [s for s in statements if not is_bare_string(s)],
                 )
-    return ast.dump(tree)
+    return tree
+
+
+def code_of(source: str) -> str:
+    """Dump the syntax tree of C{source} without its docstrings."""
+    return ast.dump(parse_without_docstrings(source))
 
 
 def without_doc_tables(pyproject: str) -> list[str]:

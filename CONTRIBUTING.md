@@ -152,12 +152,17 @@ The GPU suites start only after the `cpu` suite passes, so that a failure it fin
 | `predefined_light`, `predefined_heavy` | `test_predefined_models.py`, the light and the heavy variants      | GPU runner      |
 | `combinations`                         | `test_combinations.py`                                             | GPU runner      |
 
-Two rules keep the GPU suites from running when they cannot find anything new:
+The GPU suites run only the tests that a pull request can affect:
 
 - A pull request that changes only docstrings, comments, Markdown files or the settings of the linters and of the API docs runs the `cpu` suite only.
   `scripts/only_docstrings_changed.py` decides this.
+- Any other push runs the GPU tests that ran the changed code.
+  For example, a change in `SegmentationHead.forward` runs only the tests whose models use it, and a change in `LuxonisModel.export` runs nearly every test.
+  `scripts/select_tests.py` describes the rules.
 - A draft pull request skips `predefined_heavy`.
-  The suite runs when you mark the pull request as ready for review.
+- When you open the pull request as ready for review, or mark it as ready, every GPU suite runs in full.
+  This run also records which test ran which code, for the selection of later pushes.
+  To run every suite at another time, start the workflow by hand.
 
 > [!TIP]
 > Review the GitHub Actions output if your PR fails.
