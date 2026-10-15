@@ -7,6 +7,8 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
+pytestmark = pytest.mark.gpu
+
 
 @pytest.fixture(autouse=True)
 def reset_deterministic_state() -> Generator[None]:

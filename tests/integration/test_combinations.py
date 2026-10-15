@@ -157,7 +157,23 @@ def test_combinations(
     with subtests.test("export"):
         model.export()
 
-    with subtests.test("archive"):
-        model.archive()
-
     model.finalize_run()
+
+
+def test_combinations_archive(
+    parking_lot_dataset: LuxonisDataset, opts: Params
+):
+    """Archive the model of `test_combinations` once.
+
+    The archive reads the inputs and the outputs from the ONNX file and
+    the head configs from the heads. The backbone changes only the
+    output shapes, so one backbone is enough. `test_combinations`
+    exports every backbone. The archive does not depend on the weights,
+    so the test does not train.
+
+    """
+    opts |= {
+        "loader.params.dataset_name": parking_lot_dataset.identifier,
+    }
+    model = LuxonisModel(get_config("EfficientRep"), opts)
+    assert model.archive().exists()

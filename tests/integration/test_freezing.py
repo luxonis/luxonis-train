@@ -6,6 +6,8 @@ from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train.core import LuxonisModel
 
+pytestmark = pytest.mark.gpu
+
 
 # The frozen head owns a parameter group for the whole run, so both
 # series are logged from the first epoch. Only the head's group is

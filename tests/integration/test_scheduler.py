@@ -6,6 +6,8 @@ from luxonis_ml.typing import Params, ParamValue
 
 from luxonis_train.core import LuxonisModel
 
+pytestmark = pytest.mark.gpu
+
 
 def sequential_scheduler() -> dict[str, Any]:
     return {

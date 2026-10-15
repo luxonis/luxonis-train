@@ -81,6 +81,7 @@ class XORHead(BaseHead):
         return self.model(x)
 
 
+@pytest.mark.gpu
 @pytest.mark.timeout(TIMEOUT)
 def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
     model = LuxonisModel(
@@ -329,6 +330,7 @@ def get_config(trainer_overrides: Params | None = None) -> Params:
     )
 
 
+@pytest.mark.gpu
 @pytest.mark.timeout(TIMEOUT)
 def test_mlflow_logging_with_first_epoch_validation(
     xor_dataset: LuxonisDataset, subtests: SubTests

@@ -53,6 +53,7 @@ on:
         description: "HubAI API key"
         required: true
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".python-version"
       - "pyproject.toml"
@@ -74,6 +75,42 @@ permissions:
   contents: read
 
 jobs:
+  # Selects the GPU suites. A change of the documentation only runs none
+  # (see scripts/only_docstrings_changed.py), and a draft skips the heavy one.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      gpu_suites: ${{ steps.plan.outputs.gpu_suites }}
+      code_changed: ${{ steps.plan.outputs.code_changed }}
+    steps:
+      - name: Checkout
+        if: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select the test suites
+        id: plan
+        env:
+          PULL_REQUEST: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
+          DRAFT: ${{ github.event.pull_request.draft == true }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          code_changed=true
+          gpu_suites='["predefined_light", "predefined_heavy", "combinations", "misc"]'
+          if [[ "$PULL_REQUEST" == true ]]; then
+            if python3 scripts/only_docstrings_changed.py "$BASE_SHA"; then
+              code_changed=false
+              gpu_suites='[]'
+            elif [[ "$DRAFT" == true ]]; then
+              gpu_suites='["predefined_light", "combinations", "misc"]'
+            fi
+          fi
+          echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
+          echo "gpu_suites=$gpu_suites" >> "$GITHUB_OUTPUT"
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:
@@ -286,16 +323,18 @@ jobs:
 
   tests:
     needs:
+      - plan
       - config-test
       - doctests
 
+    # The suites come from `pytest_collection_modifyitems` in tests/conftest.py.
     strategy:
       matrix:
-        suite: [unit, predefined_light, predefined_heavy, combinations, misc]
+        suite: [cpu]
 
-    runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
+    runs-on: ubuntu-latest
 
-    steps:
+    steps: &test-steps
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -363,10 +402,32 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
+  # Waits for the `cpu` suite, so that its failures cost no GPU time.
+  gpu-tests:
+    # GitHub appends the suite. A skipped job then shows "tests".
+    name: tests
+    needs:
+      - plan
+      - tests
+    if: ${{ needs.plan.outputs.gpu_suites != '[]' }}
+
+    strategy:
+      matrix:
+        suite: ${{ fromJSON(needs.plan.outputs.gpu_suites) }}
+
+    runs-on: ubuntu-t4-4core
+
+    steps: *test-steps
+
   # Coverage is uploaded once, after all the suites have finished. Uploading
   # each suite on its own makes Codecov report the partial runs as the total.
+  # For the same reason, a change of the documentation only uploads nothing.
   coverage:
-    needs: tests
+    needs:
+      - plan
+      - tests
+      - gpu-tests
+    if: ${{ needs.plan.outputs.code_changed == 'true' }}
     runs-on: ubuntu-latest
 
     permissions:
