@@ -415,7 +415,9 @@ jobs:
   # the `cpu` suite finds then costs no time on the GPU runner. The price
   # is a longer run: the `cpu` suite takes about 15 minutes.
   gpu-tests:
-    name: tests (${{ matrix.suite }})
+    # GitHub adds the suite, as in "tests (misc)". A skipped job shows
+    # "tests" instead of the raw expression of a name with the suite in it.
+    name: tests
     needs:
       - plan
       - tests
