@@ -76,17 +76,17 @@ permissions:
   contents: read
 
 jobs:
-  # The GPU runner is billed by the minute. This job selects the test
+  # The GPU runner is billed by the minute. This job selects the GPU test
   # suites, so that a pull request runs a GPU suite only when the suite
   # can find something new:
-  #   - a pull request that changes only the documentation runs the
-  #     CPU suite, see `scripts/only_docstrings_changed.py`;
+  #   - a pull request that changes only the documentation runs no GPU
+  #     suite, see `scripts/only_docstrings_changed.py`;
   #   - a draft pull request skips the heavy suite.
   # A dispatch and a call from another workflow run every suite.
   plan:
     runs-on: ubuntu-latest
     outputs:
-      suites: ${{ steps.plan.outputs.suites }}
+      gpu_suites: ${{ steps.plan.outputs.gpu_suites }}
       code_changed: ${{ steps.plan.outputs.code_changed }}
     steps:
       - name: Checkout
@@ -105,17 +105,17 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           code_changed=true
-          suites='["cpu", "predefined_light", "predefined_heavy", "combinations", "misc"]'
+          gpu_suites='["predefined_light", "predefined_heavy", "combinations", "misc"]'
           if [[ "$PULL_REQUEST" == true ]]; then
             if python3 scripts/only_docstrings_changed.py "$BASE_SHA"; then
               code_changed=false
-              suites='["cpu"]'
+              gpu_suites='[]'
             elif [[ "$DRAFT" == true ]]; then
-              suites='["cpu", "predefined_light", "combinations", "misc"]'
+              gpu_suites='["predefined_light", "combinations", "misc"]'
             fi
           fi
           echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
-          echo "suites=$suites" >> "$GITHUB_OUTPUT"
+          echo "gpu_suites=$gpu_suites" >> "$GITHUB_OUTPUT"
 
   pre-commit:
     runs-on: ubuntu-latest
@@ -338,11 +338,12 @@ jobs:
     # `pytest_collection_modifyitems` in `tests/conftest.py`.
     strategy:
       matrix:
-        suite: ${{ fromJSON(needs.plan.outputs.suites) }}
+        suite: [cpu]
 
-    runs-on: ${{ matrix.suite == 'cpu' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
+    runs-on: ubuntu-latest
 
-    steps:
+    # `gpu-tests` runs the same steps.
+    steps: &test-steps
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -410,6 +411,24 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
+  # The GPU suites start only after the `cpu` suite passes. A failure that
+  # the `cpu` suite finds then costs no time on the GPU runner. The price
+  # is a longer run: the `cpu` suite takes about 15 minutes.
+  gpu-tests:
+    name: tests (${{ matrix.suite }})
+    needs:
+      - plan
+      - tests
+    if: ${{ needs.plan.outputs.gpu_suites != '[]' }}
+
+    strategy:
+      matrix:
+        suite: ${{ fromJSON(needs.plan.outputs.gpu_suites) }}
+
+    runs-on: ubuntu-t4-4core
+
+    steps: *test-steps
+
   # Coverage is uploaded once, after all the suites have finished. Uploading
   # each suite on its own makes Codecov report the partial runs as the total.
   # For the same reason, a change of the documentation, which runs the CPU
@@ -418,6 +437,7 @@ jobs:
     needs:
       - plan
       - tests
+      - gpu-tests
     if: ${{ needs.plan.outputs.code_changed == 'true' }}
     runs-on: ubuntu-latest
 

@@ -142,7 +142,8 @@ Our GitHub Actions workflow is run when a new PR is opened.
 1. If all previous checks pass, the [tests](#tests) are run.
 
 The tests run in five suites, one job each.
-The GPU runner is billed by the minute, so only the suites that need a GPU run there:
+The GPU runner is billed by the minute, so only the suites that need a GPU run there.
+The GPU suites start only after the `cpu` suite passes, so that a failure it finds costs no time on the GPU runner:
 
 | Suite                                  | Tests                                                              | Runner          |
 | -------------------------------------- | ------------------------------------------------------------------ | --------------- |
