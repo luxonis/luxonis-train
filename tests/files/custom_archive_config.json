@@ -31,7 +31,8 @@
                     ],
                     "reverse_channels": null,
                     "interleaved_to_planar": null,
-                    "dai_type": "RGB888p"
+                    "dai_type": "RGB888p",
+                    "resize_mode": "LETTERBOX"
                 }
             }
         ],
