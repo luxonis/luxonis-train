@@ -163,20 +163,13 @@ def test_combinations(
 def test_combinations_archive(
     parking_lot_dataset: LuxonisDataset, opts: Params
 ):
-    """Archive the model of `test_combinations` with one backbone.
+    """Archive the model of `test_combinations` once.
 
-    The archive used to run for every backbone, and it took two thirds
-    of the time of the suite: it compresses the ONNX file of a model
-    with eight heads with xz, which is slow. The backbone does not
-    change what the archive tests. The archive reads the inputs and
-    the outputs from the ONNX file, and the head configs from the
-    heads. The backbone changes only the output shapes, not the code
-    that runs. The export, which the backbone does change, still runs
-    for every backbone in `test_combinations`.
-
-    EfficientRep is the backbone of the predefined detection models.
-    The test does not train, because the archive does not depend on
-    the weights.
+    The archive reads the inputs and the outputs from the ONNX file and
+    the head configs from the heads. The backbone changes only the
+    output shapes, so one backbone is enough. `test_combinations`
+    exports every backbone. The archive does not depend on the weights,
+    so the test does not train.
 
     """
     opts |= {

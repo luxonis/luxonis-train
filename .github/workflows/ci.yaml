@@ -53,7 +53,6 @@ on:
         description: "HubAI API key"
         required: true
   pull_request:
-    # `ready_for_review` runs the suites that a draft skips.
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".python-version"
@@ -76,13 +75,8 @@ permissions:
   contents: read
 
 jobs:
-  # The GPU runner is billed by the minute. This job selects the GPU test
-  # suites, so that a pull request runs a GPU suite only when the suite
-  # can find something new:
-  #   - a pull request that changes only the documentation runs no GPU
-  #     suite, see `scripts/only_docstrings_changed.py`;
-  #   - a draft pull request skips the heavy suite.
-  # A dispatch and a call from another workflow run every suite.
+  # Selects the GPU suites. A change of the documentation only runs none
+  # (see scripts/only_docstrings_changed.py), and a draft skips the heavy one.
   plan:
     runs-on: ubuntu-latest
     outputs:
@@ -93,7 +87,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -333,16 +327,13 @@ jobs:
       - config-test
       - doctests
 
-    # The `cpu` suite holds the unit tests and the integration tests
-    # that do not train, so it runs on a free runner. See
-    # `pytest_collection_modifyitems` in `tests/conftest.py`.
+    # The suites come from `pytest_collection_modifyitems` in tests/conftest.py.
     strategy:
       matrix:
         suite: [cpu]
 
     runs-on: ubuntu-latest
 
-    # `gpu-tests` runs the same steps.
     steps: &test-steps
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -411,12 +402,9 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
-  # The GPU suites start only after the `cpu` suite passes. A failure that
-  # the `cpu` suite finds then costs no time on the GPU runner. The price
-  # is a longer run: the `cpu` suite takes about 15 minutes.
+  # Waits for the `cpu` suite, so that its failures cost no GPU time.
   gpu-tests:
-    # GitHub adds the suite, as in "tests (misc)". A skipped job shows
-    # "tests" instead of the raw expression of a name with the suite in it.
+    # GitHub appends the suite. A skipped job then shows "tests".
     name: tests
     needs:
       - plan
@@ -433,8 +421,7 @@ jobs:
 
   # Coverage is uploaded once, after all the suites have finished. Uploading
   # each suite on its own makes Codecov report the partial runs as the total.
-  # For the same reason, a change of the documentation, which runs the CPU
-  # suite only, uploads nothing. It cannot change the coverage.
+  # For the same reason, a change of the documentation only uploads nothing.
   coverage:
     needs:
       - plan

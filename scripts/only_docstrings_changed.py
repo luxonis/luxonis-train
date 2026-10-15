@@ -1,26 +1,17 @@
-"""Tell whether the changes since a base commit touch only
-documentation.
+"""Tell whether a branch changes only its documentation.
 
-The CI runs the GPU test suites only when the code changes. The script
-exits with 0 when each changed file is one of these:
+Exit with 0 when each changed file is a Markdown file, ``.gitignore``,
+``.pre-commit-config.yaml``, ``pyproject.toml`` with changes in
+``DOC_TABLES`` only, or a Python file whose syntax tree without
+docstrings stays the same. Otherwise exit with 1 and name the file.
 
-  - a Python file whose syntax tree without docstrings stays the same.
-    Comments and formatting never reach the syntax tree;
-  - C{pyproject.toml} with changes in the tables of the linters and the
-    API docs only, see C{DOC_TABLES};
-  - a Markdown file, C{.gitignore} or C{.pre-commit-config.yaml}.
-
-Any other change, an added or a removed Python file included, exits
-with 1 and names the file.
-
-Usage: C{python scripts/only_docstrings_changed.py <base-commit>}
+Usage: ``python scripts/only_docstrings_changed.py <base-commit>``
 
 """
 
 import ast
 import subprocess
 import sys
-from collections.abc import Callable
 
 DOC_TABLES = (
     "tool.docformatter",
@@ -51,11 +42,10 @@ def is_bare_string(statement: ast.stmt) -> bool:
 
 
 def code_of(source: str) -> str:
-    """Dump the syntax tree of C{source} without its docstrings.
+    """Dump the syntax tree of ``source`` without its docstrings.
 
-    A string literal that stands as a statement of its own has no
-    effect, wherever it is. This covers the docstrings of attributes
-    too.
+    A string literal that stands as a statement has no effect, so the
+    docstrings of attributes go too.
 
     """
     tree = ast.parse(source)
@@ -72,11 +62,7 @@ def code_of(source: str) -> str:
 
 
 def without_doc_tables(pyproject: str) -> list[str]:
-    """Drop the tables of C{DOC_TABLES} from C{pyproject.toml}.
-
-    A table header always stands on a line of its own, at the start.
-
-    """
+    """Drop the tables of ``DOC_TABLES`` from ``pyproject.toml``."""
     kept = []
     keep = True
     for line in pyproject.splitlines():
@@ -94,7 +80,6 @@ def main(base: str) -> int:
         status, path = line.split("\t")
         if path.endswith(".md") or path in IGNORED:
             continue
-        compare: Callable[[str], object]
         if path == "pyproject.toml":
             compare = without_doc_tables
         elif path.endswith(".py"):

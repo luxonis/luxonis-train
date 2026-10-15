@@ -125,7 +125,7 @@ This command will run all tests and generate HTML coverage report.
 
 > [!IMPORTANT]
 > Mark an integration test with `@pytest.mark.gpu` when it trains, tunes or quantizes a model.
-> CI runs these tests on the GPU runner, and all the other tests on a free CPU runner.
+> CI runs these tests on the GPU runner and all the other tests on a CPU runner.
 > A test without the marker still passes on the CPU, but it no longer covers the GPU code of the training, such as mixed precision.
 
 > [!IMPORTANT]
@@ -142,15 +142,16 @@ Our GitHub Actions workflow is run when a new PR is opened.
 1. If all previous checks pass, the [tests](#tests) are run.
 
 The tests run in five suites, one job each.
-The GPU runner is billed by the minute, so only the suites that need a GPU run there.
-The GPU suites start only after the `cpu` suite passes, so that a failure it finds costs no time on the GPU runner:
+The GPU suites start only after the `cpu` suite passes, so that a failure there costs no GPU time:
 
-| Suite                                  | Tests                                                              | Runner          |
-| -------------------------------------- | ------------------------------------------------------------------ | --------------- |
-| `cpu`                                  | The unit tests, and the integration tests without the `gpu` marker | Free CPU runner |
-| `misc`                                 | The integration tests with the `gpu` marker                        | GPU runner      |
-| `predefined_light`, `predefined_heavy` | `test_predefined_models.py`, the light and the heavy variants      | GPU runner      |
-| `combinations`                         | `test_combinations.py`                                             | GPU runner      |
+| Suite                                  | Tests                                                              | Runner            |
+| -------------------------------------- | ------------------------------------------------------------------ | ----------------- |
+| `cpu`                                  | The unit tests, and the integration tests without the `gpu` marker | `ubuntu-latest`   |
+| `misc`                                 | The integration tests with the `gpu` marker                        | `ubuntu-t4-4core` |
+| `predefined_light`, `predefined_heavy` | `test_predefined_models.py`, the light and the heavy variants      | `ubuntu-t4-4core` |
+| `combinations`                         | `test_combinations.py`                                             | `ubuntu-t4-4core` |
+
+CI does not run `test_overfit_convergence.py`, which has its own `overfit_convergence` marker.
 
 Two rules keep the GPU suites from running when they cannot find anything new:
 

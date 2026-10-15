@@ -429,11 +429,8 @@ def current_opset() -> int:
 def pytest_collection_modifyitems(items: list[Function]):
     """Sort the tests into the CI suites, one marker for each suite.
 
-    The suite of an integration test outside the model suites depends on
-    the ``gpu`` marker. A test that trains, tunes or quantizes a model
-    carries it and goes to ``misc``, which runs on the GPU runner. Every
-    other test goes to ``cpu``, together with the unit tests, and runs
-    on a free runner.
+    An integration test outside the model suites goes to ``misc`` when
+    it has the ``gpu`` marker, and to ``cpu`` otherwise.
 
     """
     for item in items:
@@ -451,11 +448,9 @@ def pytest_collection_modifyitems(items: list[Function]):
         elif "test_overfit_convergence.py" in path:
             item.add_marker(pytest.mark.overfit_convergence)
             item.add_marker(pytest.mark.order(4))
-        elif item.get_closest_marker("gpu"):
-            item.add_marker(pytest.mark.misc)
-            item.add_marker(pytest.mark.order(1))
         else:
-            item.add_marker(pytest.mark.cpu)
+            gpu = item.get_closest_marker("gpu")
+            item.add_marker(pytest.mark.misc if gpu else pytest.mark.cpu)
             item.add_marker(pytest.mark.order(1))
 
 
@@ -463,8 +458,7 @@ def pytest_configure(config: Config):
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line(
         "markers",
-        "gpu: the test trains, tunes or quantizes a model, "
-        "so it belongs to the misc suite on the GPU runner",
+        "gpu: mark test as a test that trains, tunes or quantizes a model",
     )
     config.addinivalue_line(
         "markers", "cpu: mark test as a test of the CPU suite"
