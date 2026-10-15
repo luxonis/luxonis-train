@@ -365,8 +365,8 @@ class DDRNet(BaseNode):
             [(2, 64, 8, 8), (2, 128, 8, 8)]
 
         """
-        width_output = inputs.shape[-1] // 8
         height_output = inputs.shape[-2] // 8
+        width_output = inputs.shape[-1] // 8
 
         x = self.backbone.stem(inputs)
         x = self.backbone.layer1(x)
