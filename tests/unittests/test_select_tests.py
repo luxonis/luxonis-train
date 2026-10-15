@@ -94,7 +94,7 @@ def test_scope_of_a_line():
     assert scope(lines.index("SCALE = 2") + 1) == ("", False)
 
 
-def test_changed_function_selects_the_tests_that_ran_it_or_nested():
+def test_changed_method_selects_the_tests_that_ran_it():
     picks = select_tests.tests_for_changes(
         "luxonis_train/head.py", {"Head.forward": "def"}, MAPS
     )
@@ -137,4 +137,7 @@ def test_test_files_select_their_suites():
         "tests/integration/test_combinations.py"
     ) == {("combinations", "tests/integration/test_combinations.py")}
     assert select_tests.pick_test_path("tests/unittests/test_x.py") == set()
+
+
+def test_conftest_selects_every_test():
     assert select_tests.pick_test_path("tests/conftest.py") is None
