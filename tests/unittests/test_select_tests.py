@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 select_tests = importlib.import_module("select_tests")
 
@@ -150,6 +152,14 @@ def test_test_files_select_their_suites():
         "tests/integration/test_combinations.py"
     ) == {("combinations", "tests/integration/test_combinations.py")}
     assert select_tests.pick_test_path("tests/unittests/test_x.py") == set()
+
+
+def test_deleted_test_file_selects_no_test(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.chdir(tmp_path)
+    path = "tests/integration/test_combinations.py"
+    assert select_tests.pick_test_path(path) == set()
 
 
 def test_conftest_selects_every_test():

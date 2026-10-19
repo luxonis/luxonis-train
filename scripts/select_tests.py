@@ -215,14 +215,16 @@ def suites_of_test_file(path: Path) -> list[str]:
     """Name the GPU suites of a test file.
 
     The rules follow ``pytest_collection_modifyitems`` in
-    ``tests/conftest.py``.
+    ``tests/conftest.py``. A deleted file has no suite.
 
     """
+    if not path.exists():
+        return []
     if path.name == "test_predefined_models.py":
         return ["predefined_light", "predefined_heavy"]
     if path.name == "test_combinations.py":
         return ["combinations"]
-    if path.exists() and "pytest.mark.gpu" in path.read_text():
+    if "pytest.mark.gpu" in path.read_text():
         return ["misc"]
     return []
 
