@@ -125,6 +125,19 @@ def test_changed_reexport_init_selects_no_test():
     assert picks == set()
 
 
+def test_added_file_that_no_test_ran_selects_every_test():
+    picks = select_tests.pick_source("A", "luxonis_train/new.py", "", MAPS)
+    assert picks is None
+
+
+def test_added_file_selects_the_tests_that_ran_it():
+    picks = select_tests.pick_source("A", "luxonis_train/head.py", "", MAPS)
+    assert picks == {
+        ("misc", "tests/integration/test_a.py::test_forward"),
+        ("misc", "tests/integration/test_a.py::test_size"),
+    }
+
+
 def test_function_that_ran_outside_a_test_selects_every_test():
     picks = select_tests.tests_for_changes(
         "luxonis_train/loader.py", {"Loader.__getitem__": "def"}, MAPS

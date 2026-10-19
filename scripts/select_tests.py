@@ -8,9 +8,9 @@ outside of a test, such as in a data loader worker.
 ``select`` compares the merge base and the head without docstrings:
 
   - a changed function selects the tests that ran it;
-  - a changed class or module body selects the tests that ran code of
-    the file, or every test when no test did. A ``__init__.py`` below
-    ``luxonis_train/`` selects none;
+  - a changed class or module body, or an added or a deleted file,
+    selects the tests that ran code of the file, or every test when no
+    test did. A ``__init__.py`` below ``luxonis_train/`` selects none;
   - a changed test file selects its tests, and a test helper or test
     data selects the test files that name it;
   - a changed config of ``luxonis_train/configs/`` selects the tests that
@@ -240,8 +240,6 @@ def files_using(text: str) -> Picks | None:
 
 def pick_source(status: str, path: str, base: str, maps: Maps) -> Picks | None:
     """Select the tests for a changed Python file of the package."""
-    if status == "A":
-        return set()
     if status == "M":
         changes = changed_scopes(
             git("show", f"{base}:{path}"), git("show", f"HEAD:{path}")
