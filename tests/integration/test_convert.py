@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from hubai_sdk.errors import HubApiError
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
@@ -62,6 +63,8 @@ def test_convert_with_blobconverter(
 
 # TODO: reintroduce Hailo conversion when modelconv is released and hub-ai is updated accordingly
 # TODO: reintroduce RVC3 conversion when remote-side conversion issue is resolved
+# TODO: remove the xfail when the conversion on HubAI works again
+@pytest.mark.xfail(raises=HubApiError)
 @pytest.mark.parametrize("platform", ["rvc2", "rvc4"])
 def test_convert_with_hubai(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path, platform: str
