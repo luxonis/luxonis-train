@@ -77,10 +77,10 @@ permissions:
 
 jobs:
   # Selects the GPU tests. A change of the documentation only runs none
-  # (see scripts/only_docstrings_changed.py), and a draft skips the heavy
-  # suite. A push runs the tests that ran the changed code (see
-  # scripts/select_tests.py). A pull request that is opened as ready, or
-  # becomes ready, runs every suite in full, which writes the test maps.
+  # (see scripts/only_docstrings_changed.py). A draft skips the heavy suite
+  # and runs only the tests that ran the changed code (see
+  # scripts/select_tests.py). Any other run uses every suite in full, which
+  # writes the test maps.
   plan:
     runs-on: ubuntu-latest
     permissions:
@@ -90,7 +90,6 @@ jobs:
       gpu_suites: ${{ steps.plan.outputs.gpu_suites }}
       gpu_tests: ${{ steps.plan.outputs.gpu_tests }}
       code_changed: ${{ steps.plan.outputs.code_changed }}
-      selected: ${{ steps.plan.outputs.selected }}
     steps:
       - name: Checkout
         if: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
@@ -104,9 +103,10 @@ jobs:
         id: plan
         env:
           PULL_REQUEST: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
-          ACTION: ${{ github.event.action }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
           GH_TOKEN: ${{ github.token }}
         run: |
           code_changed=true
@@ -115,14 +115,19 @@ jobs:
             if python3 scripts/only_docstrings_changed.py "$BASE_SHA"; then
               code_changed=false
               gpu_tests='{}'
-            elif [[ "$ACTION" == synchronize || "$DRAFT" == true ]]; then
-              # The newest map of each suite, from a run of this repository.
+            elif [[ "$DRAFT" == true ]]; then
+              # The newest map of each suite, from a run of this repository:
+              # of this branch, else of the base branch, else of any branch.
               mkdir maps
               for suite in predefined_light predefined_heavy combinations misc; do
                 id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=test-map-$suite&per_page=100" \
                   --jq '[.artifacts[] | select(.expired | not)
                     | select(.workflow_run.head_repository_id == .workflow_run.repository_id)]
-                    | sort_by(.created_at) | last | .id // empty')
+                    | sort_by(.created_at)
+                    | (map(select(.workflow_run.head_branch == env.HEAD_REF)) | last)
+                      // (map(select(.workflow_run.head_branch == env.BASE_REF)) | last)
+                      // last
+                    | .id // empty')
                 if [[ -n "$id" ]]; then
                   gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > map.zip
                   unzip -q -o map.zip -d maps
@@ -131,12 +136,10 @@ jobs:
               gpu_tests=$(python3 scripts/select_tests.py select "$BASE_SHA" maps)
             fi
           fi
-          selected=$(jq -r 'if length == 4 and all(.[]; . == []) then "false" else "true" end' <<< "$gpu_tests")
           if [[ "$DRAFT" == true ]]; then
             gpu_tests=$(jq -c 'del(.predefined_heavy)' <<< "$gpu_tests")
           fi
           echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
-          echo "selected=$selected" >> "$GITHUB_OUTPUT"
           echo "gpu_tests=$(jq -c . <<< "$gpu_tests")" >> "$GITHUB_OUTPUT"
           echo "gpu_suites=$(jq -c keys <<< "$gpu_tests")" >> "$GITHUB_OUTPUT"
 
@@ -477,13 +480,14 @@ jobs:
 
   # Coverage is uploaded once, after all the suites have finished. Uploading
   # each suite on its own makes Codecov report the partial runs as the total.
-  # For the same reason, a run with selected GPU tests uploads nothing.
+  # For the same reason, a draft and a change of the documentation only
+  # upload nothing.
   coverage:
     needs:
       - plan
       - tests
       - gpu-tests
-    if: ${{ needs.plan.outputs.code_changed == 'true' && needs.plan.outputs.selected == 'false' }}
+    if: ${{ needs.plan.outputs.code_changed == 'true' && github.event.pull_request.draft != true }}
     runs-on: ubuntu-latest
 
     permissions:
