@@ -161,7 +161,9 @@ def test_combinations(
 
 
 def test_combinations_archive(
-    parking_lot_dataset: LuxonisDataset, opts: Params
+    parking_lot_dataset: LuxonisDataset,
+    opts: Params,
+    request: pytest.FixtureRequest,
 ):
     """Archive the model of `test_combinations` once.
 
@@ -172,6 +174,7 @@ def test_combinations_archive(
     so the test does not train.
 
     """
+    assert request.node.get_closest_marker("cpu") is not None
     opts |= {
         "loader.params.dataset_name": parking_lot_dataset.identifier,
     }

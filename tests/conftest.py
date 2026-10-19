@@ -442,7 +442,10 @@ def pytest_collection_modifyitems(items: list[Function]):
         elif "test_predefined_models.py" in path:
             item.add_marker(pytest.mark.predefined)
             item.add_marker(pytest.mark.order(2))
-        elif "test_combinations.py" in path:
+        elif (
+            "test_combinations.py" in path
+            and item.name != "test_combinations_archive"
+        ):
             item.add_marker(pytest.mark.combinations)
             item.add_marker(pytest.mark.order(3))
         elif "test_overfit_convergence.py" in path:
