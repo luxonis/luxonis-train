@@ -164,7 +164,7 @@ Three rules keep the GPU suites from running tests that cannot find anything new
 
 A pull request that is ready for review runs every GPU suite in full.
 This run also records which test ran which code, for the selection in drafts.
-To run every suite of a draft, start the workflow by hand.
+To run every suite of a draft, start the workflow by hand and set `train_ref` to the branch of the draft.
 
 > [!TIP]
 > Review the GitHub Actions output if your PR fails.
