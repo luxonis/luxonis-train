@@ -21,6 +21,7 @@ from typing_extensions import override
 
 from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.typing import Labels
+from luxonis_train.utils.keypoint_order import order_quad_keypoints
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
@@ -75,6 +76,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         max_bbox_width: float = 1.0,
         max_bbox_height: float = 1.0,
         is_training: bool | None = None,
+        keypoint_order: Literal["image_clockwise"] | None = None,
         **kwargs,
     ):
         """Initialize the dataset and the ``LuxonisLoader``.
@@ -128,6 +130,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 For a list ``m``, the keypoint at position ``j`` is the
                 original keypoint ``m[j]``. Each list must map every
                 keypoint of its task. ``None`` keeps the original order.
+            keypoint_order: ``None`` preserves the dataset order.
+                ``"image_clockwise"`` sorts each four-corner instance clockwise
+                after augmentation, starting at minimum pixel-space ``x + y``
+                (ties: smaller y, then x). This gives TL, TR, BR, BL for
+                axis-aligned rectangles. Applies to all keypoint tasks and
+                all views, preserving visibility with each corner. Requires
+                four known corner coordinates, including invisible corners;
+                missing placeholder coordinates cannot be reconstructed.
+                Cannot be combined with ``kpts_mapping_per_task``.
             return_sample_metadata: Whether ``__getitem__`` returns the
                 sample metadata as a third element.
             max_bbox_width: Maximum box width relative to its original
@@ -152,10 +163,21 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 ``augmentation_config`` is ``None``.
             ValueError: If a bounding-box size limit is outside [0, 1], or
                 no images remain after applying the limits.
+            ValueError: If ``keypoint_order`` is unsupported or is combined
+                with ``kpts_mapping_per_task``.
             KeyError: If ``kpts_mapping_per_task`` has a task that is not
                 in the dataset, or a task without keypoint labels.
 
         """
+        if keypoint_order not in (None, "image_clockwise"):
+            raise ValueError(
+                "keypoint_order must be None or 'image_clockwise'."
+            )
+        if keypoint_order is not None and kpts_mapping_per_task is not None:
+            raise ValueError(
+                "keypoint_order cannot be combined with kpts_mapping_per_task."
+            )
+        self.keypoint_order = keypoint_order
         super().__init__(**kwargs)
         self._return_sample_metadata = return_sample_metadata
         self.dataset = self._load_dataset(
@@ -279,8 +301,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         The ``LuxonisLoader`` reads the sample and applies the
         augmentations. Then the method changes the keypoint order with
-        ``kpts_mapping_per_task``, when it is set. It converts each array
-        to a ``torch.float32`` tensor, and moves the image channels
+        ``kpts_mapping_per_task`` or ``keypoint_order``, when set.
+        It converts each array to a ``torch.float32`` tensor, and moves
+        the image channels
         first. A string label becomes the character codes of its first
         string.
 
@@ -318,6 +341,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if self.kpts_mapping_per_task is not None:
             labels = self._remap_keypoints(labels)
 
+        if self.keypoint_order == "image_clockwise":
+            image_height, image_width = img[self.image_source].shape[:2]
+            labels = self._order_keypoints(labels, image_height, image_width)
+
         img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
         if len(img) == 1:
             img = next(iter(img.values()))
@@ -326,6 +353,22 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if self._return_sample_metadata:
             return img, tensor_labels, output.metadata
         return img, tensor_labels
+
+    def _order_keypoints(
+        self,
+        labels: dict[str, np.ndarray],
+        image_height: int,
+        image_width: int,
+    ) -> dict[str, np.ndarray]:
+        """Apply image-relative corner ordering to augmented NumPy
+        labels.
+        """
+        return {
+            key: order_quad_keypoints(value, image_height, image_width)
+            if key.rsplit("/", 1)[-1] == "keypoints"
+            else value
+            for key, value in labels.items()
+        }
 
     def _remap_keypoints(
         self, labels: dict[str, np.ndarray]

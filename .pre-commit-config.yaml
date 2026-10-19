@@ -20,6 +20,8 @@ repos:
     rev: v7.0.1
     hooks:
       - id: complexipy
+        # Rich prints Unicode status symbols even on Windows cp1252 consoles.
+        entry: python -X utf8 -m complexipy.main
         args: [--suggest-refactors]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit

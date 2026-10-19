@@ -970,7 +970,8 @@ def _get_visualization_item(
     For a loader that wraps a ``luxonis_ml`` loader, the sample comes
     from that inner loader. The images and the labels stay NumPy
     arrays. The function remaps the keypoints when the loader has a
-    keypoint mapping, and lists the tracked augmentations. It reads
+    keypoint mapping or image-relative order, and lists the tracked
+    augmentations. It reads
     any other loader directly: the image tensors become ``[H, W, C]``
     arrays, the label tensors become arrays, and the augmentation
     list is empty.
@@ -999,6 +1000,13 @@ def _get_visualization_item(
             and remap_keypoints is not None
         ):
             labels = remap_keypoints(labels)
+        order_keypoints = getattr(loader, "_order_keypoints", None)
+        if (
+            getattr(loader, "keypoint_order", None) == "image_clockwise"
+            and order_keypoints is not None
+        ):
+            height, width = images[loader.image_source].shape[:2]
+            labels = order_keypoints(labels, height, width)
         return (
             images,
             labels,
