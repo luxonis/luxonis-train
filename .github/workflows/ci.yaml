@@ -76,12 +76,19 @@ permissions:
   contents: read
 
 jobs:
-  # Selects the GPU suites. A change of the documentation only runs none
-  # (see scripts/only_docstrings_changed.py), and a draft skips the heavy one.
+  # Selects the GPU tests. A change of the documentation only runs none
+  # (see scripts/only_docstrings_changed.py). A draft skips the heavy suite
+  # and runs only the tests that ran the changed code (see
+  # scripts/select_tests.py). Any other run uses every suite in full, which
+  # writes the test maps.
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       gpu_suites: ${{ steps.plan.outputs.gpu_suites }}
+      gpu_tests: ${{ steps.plan.outputs.gpu_tests }}
       code_changed: ${{ steps.plan.outputs.code_changed }}
     steps:
       - name: Checkout
@@ -92,25 +99,49 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Select the test suites
+      - name: Select the GPU tests
         id: plan
         env:
           PULL_REQUEST: ${{ github.event_name == 'pull_request' && !inputs.train_ref }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           code_changed=true
-          gpu_suites='["predefined_light", "predefined_heavy", "combinations", "misc"]'
+          gpu_tests='{"predefined_light": [], "predefined_heavy": [], "combinations": [], "misc": []}'
           if [[ "$PULL_REQUEST" == true ]]; then
             if python3 scripts/only_docstrings_changed.py "$BASE_SHA"; then
               code_changed=false
-              gpu_suites='[]'
+              gpu_tests='{}'
             elif [[ "$DRAFT" == true ]]; then
-              gpu_suites='["predefined_light", "combinations", "misc"]'
+              # The newest map of each suite, from a run of this repository:
+              # of this branch, else of the base branch, else of any branch.
+              mkdir maps
+              for suite in predefined_light predefined_heavy combinations misc; do
+                id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=test-map-$suite&per_page=100" \
+                  --jq '[.artifacts[] | select(.expired | not)
+                    | select(.workflow_run.head_repository_id == .workflow_run.repository_id)]
+                    | sort_by(.created_at)
+                    | (map(select(.workflow_run.head_branch == env.HEAD_REF)) | last)
+                      // (map(select(.workflow_run.head_branch == env.BASE_REF)) | last)
+                      // last
+                    | .id // empty')
+                if [[ -n "$id" ]]; then
+                  gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > map.zip
+                  unzip -q -o map.zip -d maps
+                fi
+              done
+              gpu_tests=$(python3 scripts/select_tests.py select "$BASE_SHA" maps)
             fi
           fi
+          if [[ "$DRAFT" == true ]]; then
+            gpu_tests=$(jq -c 'del(.predefined_heavy)' <<< "$gpu_tests")
+          fi
           echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
-          echo "gpu_suites=$gpu_suites" >> "$GITHUB_OUTPUT"
+          echo "gpu_tests=$(jq -c . <<< "$gpu_tests")" >> "$GITHUB_OUTPUT"
+          echo "gpu_suites=$(jq -c keys <<< "$gpu_tests")" >> "$GITHUB_OUTPUT"
 
   pre-commit:
     runs-on: ubuntu-latest
@@ -374,13 +405,40 @@ jobs:
           token_format: access_token
 
       - name: Run pytest
+        id: pytest
         env:
           LUXONISML_BUCKET: luxonis-test-bucket
           SUITE: ${{ matrix.suite }}
+          GPU_TESTS: ${{ needs.plan.outputs.gpu_tests }}
           HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
+        run: |
+          args=(-x --cov "--cov-report=xml:coverage-$SUITE.xml"
+            "--junitxml=junit-$SUITE.xml" -o junit_family=legacy -m "$SUITE")
+          jq -r --arg suite "$SUITE" '.[$suite] // [] | .[]' <<< "$GPU_TESTS" > selected-tests.txt
+          if [[ -s selected-tests.txt ]]; then
+            args+=(@selected-tests.txt)
+          elif [[ "$SUITE" != cpu ]]; then
+            # The whole suite runs, so it records which test ran which code.
+            args+=(--cov-context=test)
+            echo "write_map=true" >> "$GITHUB_OUTPUT"
+          fi
+          uv run --no-sync pytest "${args[@]}"
+
+      - name: Write the test map
+        if: ${{ steps.pytest.outputs.write_map == 'true' }}
+        env:
+          SUITE: ${{ matrix.suite }}
         run: >-
-          uv run --no-sync pytest -x --cov --cov-report=xml:coverage-${SUITE}.xml
-          --junitxml=junit-${SUITE}.xml -o junit_family=legacy -m "${SUITE}"
+          uv run --no-sync python scripts/select_tests.py build "$SUITE" .coverage
+          > "test-map-$SUITE.json"
+
+      - name: Upload the test map
+        if: ${{ steps.pytest.outputs.write_map == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: test-map-${{ matrix.suite }}
+          path: test-map-${{ matrix.suite }}.json
+          retention-days: 90
 
       - name: Upload test results to Codecov
         if: ${{ always() }}
@@ -422,13 +480,14 @@ jobs:
 
   # Coverage is uploaded once, after all the suites have finished. Uploading
   # each suite on its own makes Codecov report the partial runs as the total.
-  # For the same reason, a change of the documentation only uploads nothing.
+  # For the same reason, a draft and a change of the documentation only
+  # upload nothing.
   coverage:
     needs:
       - plan
       - tests
       - gpu-tests
-    if: ${{ needs.plan.outputs.code_changed == 'true' }}
+    if: ${{ needs.plan.outputs.code_changed == 'true' && github.event.pull_request.draft != true }}
     runs-on: ubuntu-latest
 
     permissions:
