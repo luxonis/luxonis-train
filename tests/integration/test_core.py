@@ -13,6 +13,7 @@ from luxonis_ml.typing import Params, PathType
 from luxonis_train.core import LuxonisModel
 
 
+@pytest.mark.gpu
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Tuning not supported on Windows"
 )
@@ -76,6 +77,7 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
     )
 
 
+@pytest.mark.gpu
 def test_checkpoint(
     tmp_path: Path, opts: Params, coco_dataset: LuxonisDataset
 ):

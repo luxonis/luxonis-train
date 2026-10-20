@@ -124,6 +124,11 @@ This command will run all tests and generate HTML coverage report.
 > You can choose to run only the unit-tests or only the integration tests by adding `-m unit` or `-m integration` to the `pytest` command.
 
 > [!IMPORTANT]
+> Mark an integration test with `@pytest.mark.gpu` when it trains, tunes or quantizes a model.
+> CI runs these tests on the GPU runner and all the other tests on a CPU runner.
+> A test without the marker still passes on the CPU, but it no longer covers the GPU code of the training, such as mixed precision.
+
+> [!IMPORTANT]
 > If a new feature is added, a new test should be added to cover it.
 > The minimum overall test coverage for a PR to be merged is 90%.
 > The minimum coverage for new files is 80%.
@@ -135,6 +140,25 @@ Our GitHub Actions workflow is run when a new PR is opened.
 1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the [documentation](#documentation) must be built successfully.
 1. Next, the [type checking](#type-checking) is run.
 1. If all previous checks pass, the [tests](#tests) are run.
+
+The tests run in five suites, one job each.
+The GPU suites start only after the `cpu` suite passes, so that a failure there costs no GPU time:
+
+| Suite                                  | Tests                                                              | Runner            |
+| -------------------------------------- | ------------------------------------------------------------------ | ----------------- |
+| `cpu`                                  | The unit tests, and the integration tests without the `gpu` marker | `ubuntu-latest`   |
+| `misc`                                 | The integration tests with the `gpu` marker                        | `ubuntu-t4-4core` |
+| `predefined_light`, `predefined_heavy` | `test_predefined_models.py`, the light and the heavy variants      | `ubuntu-t4-4core` |
+| `combinations`                         | `test_combinations.py`                                             | `ubuntu-t4-4core` |
+
+CI does not run `test_overfit_convergence.py`, which has its own `overfit_convergence` marker.
+
+Two rules keep the GPU suites from running when they cannot find anything new:
+
+- A pull request that changes only docstrings, comments, Markdown files or the settings of the linters and of the API docs runs the `cpu` suite only.
+  `scripts/only_docstrings_changed.py` decides this.
+- A draft pull request skips `predefined_heavy`.
+  The suite runs when you mark the pull request as ready for review.
 
 > [!TIP]
 > Review the GitHub Actions output if your PR fails.

@@ -49,6 +49,7 @@ def _get_detection_light_train_opts(
     }
 
 
+@pytest.mark.gpu
 def test_resume_training_with_ema_does_not_crash(
     parking_lot_dataset: LuxonisDataset,
     strict_loading_original_ckpt: Path,
@@ -121,6 +122,7 @@ def test_training_with_unexpected_checkpoint_key_fails_when_strict(
         model.train(weights=strict_loading_modified_model_ckpt)
 
 
+@pytest.mark.gpu
 def test_training_with_unexpected_checkpoint_key_succeeds_when_not_strict(
     parking_lot_dataset: LuxonisDataset,
     strict_loading_modified_model_ckpt: Path,

@@ -34,6 +34,7 @@ def skip_if_no_aimet() -> None:
         pytest.skip("AIMET is not installed")
 
 
+@pytest.mark.gpu
 def test_cli_command_success(
     coco_dataset: LuxonisDataset,
     tmp_path: Path,

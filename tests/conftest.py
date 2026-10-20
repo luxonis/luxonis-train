@@ -427,27 +427,45 @@ def current_opset() -> int:
 
 
 def pytest_collection_modifyitems(items: list[Function]):
+    """Sort the tests into the CI suites, one marker for each suite.
+
+    An integration test outside the model suites goes to ``misc`` when
+    it has the ``gpu`` marker, and to ``cpu`` otherwise.
+
+    """
     for item in items:
         path = str(item.fspath)
         if "/unittests/" in path:
             item.add_marker(pytest.mark.unit)
+            item.add_marker(pytest.mark.cpu)
             item.add_marker(pytest.mark.order(0))
         elif "test_predefined_models.py" in path:
             item.add_marker(pytest.mark.predefined)
             item.add_marker(pytest.mark.order(2))
-        elif "test_combinations.py" in path:
+        elif (
+            "test_combinations.py" in path
+            and item.name != "test_combinations_archive"
+        ):
             item.add_marker(pytest.mark.combinations)
             item.add_marker(pytest.mark.order(3))
         elif "test_overfit_convergence.py" in path:
             item.add_marker(pytest.mark.overfit_convergence)
             item.add_marker(pytest.mark.order(4))
         else:
-            item.add_marker(pytest.mark.misc)
+            gpu = item.get_closest_marker("gpu")
+            item.add_marker(pytest.mark.misc if gpu else pytest.mark.cpu)
             item.add_marker(pytest.mark.order(1))
 
 
 def pytest_configure(config: Config):
     config.addinivalue_line("markers", "unit: mark test as a unit test")
+    config.addinivalue_line(
+        "markers",
+        "gpu: mark test as a test that trains, tunes or quantizes a model",
+    )
+    config.addinivalue_line(
+        "markers", "cpu: mark test as a test of the CPU suite"
+    )
     config.addinivalue_line(
         "markers", "predefined: mark test as a predefined model test"
     )
@@ -463,7 +481,8 @@ def pytest_configure(config: Config):
         "markers", "combinations: mark test as a combinations test"
     )
     config.addinivalue_line(
-        "markers", "misc: mark test as a miscellaneous test"
+        "markers",
+        "misc: mark test as a training test outside the model suites",
     )
     config.addinivalue_line(
         "markers",
