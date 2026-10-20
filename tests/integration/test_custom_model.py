@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import torch
+from luxonis_ml.nn_archive.config_building_blocks import PreprocessingBlock
 from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 from torch import Tensor, nn
@@ -143,6 +144,9 @@ def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
         correct_archive_config = json.loads(
             Path("tests/files/custom_archive_config.json").read_text()
         )
+        if "resize_mode" not in PreprocessingBlock.model_fields:
+            for input_config in correct_archive_config["model"]["inputs"]:
+                input_config["preprocessing"].pop("resize_mode", None)
         with tarfile.open(archive_path) as tar:
             extracted_cfg = tar.extractfile("config.json")
 
