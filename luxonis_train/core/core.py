@@ -249,11 +249,12 @@ class LuxonisModel:
 
         self._init_tracker_and_trainer()
         self._build_loaders()
-        self._build_pytorch_loaders()
 
         self._dataset_metadata = self._resolve_dataset_metadata(
             dataset_metadata
         )
+        self._align_loader_classes()
+        self._build_pytorch_loaders()
         logger.info(f"Dataset metadata: {self._dataset_metadata}")
         self._config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self._config_file)
@@ -524,6 +525,24 @@ class LuxonisModel:
             )
             return DatasetMetadata.from_loader(self.loaders["train"])
         return dataset_metadata
+
+    def _align_loader_classes(self) -> None:
+        """Keep loader labels consistent with restored model
+        metadata.
+        """
+        for view, loader in self.loaders.items():
+            if isinstance(loader, DummyLoader):
+                continue
+            source = loader.get_classes()
+            target = {}
+            for task in source:
+                target[task] = dict(self._dataset_metadata.classes(task))
+            if source != target:
+                loader.set_class_mapping(target)
+                logger.info(
+                    f"Aligned {view} loader class IDs with model classes "
+                    f"by name: {source} -> {target}"
+                )
 
     def _load_initial_weights(
         self, weights: PathType | dict[str, Any]

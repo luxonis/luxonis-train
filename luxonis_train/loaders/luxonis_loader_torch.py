@@ -14,6 +14,7 @@ import torch
 from loguru import logger
 from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
 from luxonis_ml.data.parsers import LuxonisParser
+from luxonis_ml.data.utils import split_task
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import Params
 from torch import Size, Tensor
@@ -180,6 +181,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         self.keypoint_order = keypoint_order
         super().__init__(**kwargs)
         self._return_sample_metadata = return_sample_metadata
+        self._class_mapping: dict[str, tuple[np.ndarray, int]] = {}
+        self._target_classes: dict[str, dict[str, int]] | None = None
         self.dataset = self._load_dataset(
             dataset_dir,
             dataset_name,
@@ -305,7 +308,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         It converts each array to a ``torch.float32`` tensor, and moves
         the image channels
         first. A string label becomes the character codes of its first
-        string.
+        string. Class labels are aligned with model metadata when
+        ``set_class_mapping`` has been called.
 
         Args:
             idx: The index of the sample.
@@ -349,10 +353,70 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if len(img) == 1:
             img = next(iter(img.values()))
 
-        tensor_labels = self.dict_numpy_to_torch(labels)
+        tensor_labels = self.dict_numpy_to_torch(self._remap_classes(labels))
         if self._return_sample_metadata:
             return img, tensor_labels, output.metadata
         return img, tensor_labels
+
+    @override
+    def set_class_mapping(self, classes: dict[str, dict[str, int]]) -> None:
+        """Map dataset classes to model classes by name after
+        augmentation.
+
+        The model may retain classes absent from this dataset. The LDF
+        and the augmentation engine keep their original class IDs.
+
+        """
+        mappings = {}
+        target_classes = {}
+        for task, source in self.loader._classes.items():
+            if task not in classes:
+                raise ValueError(
+                    f"Dataset task '{task}' is absent from model classes."
+                )
+            target = classes[task]
+            missing = source.keys() - target.keys()
+            if missing:
+                raise ValueError(
+                    f"Dataset classes {sorted(missing)} for task '{task}' "
+                    "are absent from model classes."
+                )
+            for mapping in (source, target):
+                if sorted(mapping.values()) != list(range(len(mapping))):
+                    raise ValueError(
+                        f"Class IDs for task '{task}' must be contiguous from zero."
+                    )
+            target_classes[task] = dict(target)
+            if source != target:
+                indices = np.empty(len(source), dtype=np.int64)
+                for name, source_id in source.items():
+                    indices[source_id] = target[name]
+                mappings[task] = (indices, len(target))
+        self._class_mapping = mappings
+        self._target_classes = target_classes
+
+    def _remap_classes(
+        self, labels: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
+        if not self._class_mapping:
+            return labels
+        remapped = dict(labels)
+        for key, value in labels.items():
+            task, task_type = split_task(key)
+            if task not in self._class_mapping:
+                continue
+            indices, n_classes = self._class_mapping[task]
+            if task_type == "boundingbox":
+                boxes = value.copy()
+                boxes[:, 0] = indices[value[:, 0].astype(np.int64)]
+                remapped[key] = boxes
+            elif task_type in {"classification", "segmentation"}:
+                expanded = np.zeros(
+                    (n_classes, *value.shape[1:]), dtype=value.dtype
+                )
+                expanded[indices] = value
+                remapped[key] = expanded
+        return remapped
 
     def _order_keypoints(
         self,
@@ -419,7 +483,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         The mapping comes from the ``LuxonisLoader``. With
         ``filter_task_names``, it has only those tasks. It has the class
-        order from ``class_order_per_task``.
+        order from ``class_order_per_task``, unless ``set_class_mapping``
+        has aligned it with model classes.
 
         The ``LuxonisLoader`` adds a ``"background"`` class with the ID
         ``0`` to a segmentation task when all of these are true:
@@ -437,6 +502,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             the task name.
 
         """
+        if self._target_classes is not None:
+            return self._target_classes
         return self.loader._classes
 
     @override
