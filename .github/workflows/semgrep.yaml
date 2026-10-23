@@ -8,4 +8,4 @@ permissions:
 
 jobs:
   semgrep:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-semgrep.yaml@1556182be18dd350dbeb5b07bc7282e17828b655
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-semgrep.yaml@cba38e437bd9fc2f1ef56dd1e2e5a1147ba0da2e
