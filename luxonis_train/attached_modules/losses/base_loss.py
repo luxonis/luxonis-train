@@ -4,6 +4,7 @@ from abc import abstractmethod
 from functools import cached_property
 from inspect import Parameter
 
+import torch
 from torch import Tensor
 from typeguard import typechecked
 
@@ -98,7 +99,11 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         return get_signature(self.forward)
 
     def run(
-        self, inputs: Packet[Tensor], labels: Labels
+        self,
+        inputs: Packet[Tensor],
+        labels: Labels,
+        *,
+        sample_weights: Tensor | None = None,
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         """Resolve the inputs of `forward` and apply the loss weight.
 
@@ -109,14 +114,41 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
             inputs: The output packet of the node.
             labels: The labels of the batch, keyed
                 ``<task_name>/<label>``.
+            sample_weights: Optional finite nonnegative multipliers of
+                shape ``[B]``. The concrete loss applies them before its
+                reductions; unsupported losses raise an error.
 
         Returns:
             The result of `forward`, with ``final_loss_weight`` applied
             to the main value. Sub-losses remain unscaled.
 
         """
-        loss = self(**self.get_parameters(inputs, labels))
+        parameters = self.get_parameters(inputs, labels)
+        if sample_weights is not None:
+            if "sample_weights" not in self._signature:
+                raise ValueError(
+                    f"{self.name} does not support sample_weights. "
+                    "Use a loss with explicit per-sample weighting support."
+                )
+            parameters["sample_weights"] = sample_weights
+        loss = self(**parameters)
         if isinstance(loss, Tensor):
             return loss * self.__final_loss_weight
         main_loss, sublosses = loss
         return main_loss * self.__final_loss_weight, sublosses
+
+    @staticmethod
+    def prepare_sample_weights(
+        sample_weights: Tensor | None, reference: Tensor
+    ) -> Tensor | None:
+        """Validate a batch weight vector and keep its arithmetic in FP32."""
+        if sample_weights is None:
+            return None
+        if sample_weights.ndim != 1 or len(sample_weights) != len(reference):
+            raise ValueError("sample_weights must have shape [batch_size]")
+        weights = sample_weights.detach().to(
+            device=reference.device, dtype=torch.float32
+        )
+        if not torch.isfinite(weights).all() or (weights < 0).any():
+            raise ValueError("sample_weights must be finite and nonnegative")
+        return weights

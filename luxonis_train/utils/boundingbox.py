@@ -585,6 +585,7 @@ def compute_iou_loss(
     iou_type: IoUType = "giou",
     bbox_format: BBoxFormatType = "xyxy",
     reduction: Literal["sum", "mean"] = "mean",
+    sample_weights: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
     r"""Compute the IoU loss between predicted boxes and target boxes.
 
@@ -619,6 +620,9 @@ def compute_iou_loss(
         iou_type: The IoU variant. See `bbox_iou`.
         bbox_format: The format of both sets of boxes.
         reduction: The reduction of the losses of the pairs.
+        sample_weights: Optional per-image multipliers of shape ``[B]``
+            for batched boxes. They scale pair losses while preserving
+            the unweighted score normalizer.
 
     Returns:
         The scalar loss, and the detached IoU of each used pair, clamped
@@ -662,6 +666,7 @@ def compute_iou_loss(
         iou_type,
         bbox_format,
         reduction,
+        sample_weights,
     )
 
     return loss_iou, iou.detach().clamp(0)
@@ -914,9 +919,15 @@ def _positive_iou_loss(
     iou_type: IoUType,
     bbox_format: BBoxFormatType,
     reduction: Literal["sum", "mean"],
+    sample_weights: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
     bbox_mask = _bbox_mask(pred_bboxes, mask_positive)
     bbox_weight = _bbox_weight(target_scores, mask_positive)
+    if sample_weights is not None:
+        anchor_weights = sample_weights[:, None].expand(pred_bboxes.shape[:2])
+        if mask_positive is not None:
+            anchor_weights = anchor_weights[mask_positive]
+        bbox_weight = bbox_weight * anchor_weights.reshape(-1, 1)
     iou = bbox_iou(
         torch.masked_select(pred_bboxes, bbox_mask).reshape([-1, 4]),
         torch.masked_select(target_bboxes, bbox_mask).reshape([-1, 4]),

@@ -215,6 +215,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         keypoints_raw: Tensor,
         target_boundingbox: Tensor,
         target_keypoints: Tensor,
+        sample_weights: Tensor | None = None,
     ) -> tuple[Tensor, dict[str, Tensor]]:
         """Assign the anchors to the instances and compute the loss.
 
@@ -250,16 +251,21 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
                 of ``target_boundingbox``. Each row holds the batch
                 index, then the normalized ``x`` and ``y`` and the
                 visibility of each keypoint.
+            sample_weights: Optional per-image multipliers of shape ``[B]``.
+                They scale classification, IoU, keypoint regression, and
+                visibility numerators, preserving the original normalizers.
 
         Returns:
             The total loss as a scalar, and the sub-losses ``"class"``,
             ``"iou"``, ``"regression"``, and ``"visibility"``. The
             sub-losses are the detached terms without their factors.
-            When no anchor is positive, the total loss and the two
-            keypoint sub-losses are ``nan``.
+            Without positive anchors the keypoint terms are zero.
 
         """
         self._init_parameters(features)
+        sample_weights = self.prepare_sample_weights(
+            sample_weights, class_scores
+        )
 
         device = keypoints_raw.device
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
@@ -332,6 +338,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         )
         gt_kpts = selected_keypoints[mask_positive]
         keypoints_raw = keypoints_raw[mask_positive]
+        positive_weights = (
+            sample_weights[:, None].expand_as(mask_positive)[mask_positive]
+            if sample_weights is not None
+            else None
+        )
         assigned_bboxes = assigned_bboxes / self.stride_tensor
 
         area = (
@@ -351,21 +362,32 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         ).pow(2)
         e = d / ((2 * sigmas).pow(2) * ((area.view(-1, 1) + 1e-9) * 2))
         mask = (gt_kpts[..., 2] > 0).float()
-        regression_loss = (
-            ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
-        ).mean()
+        regression_terms = ((1 - torch.exp(-e)) * mask).sum(dim=1) / (
+            mask.sum(dim=1) + 1e-9
+        )
+        if positive_weights is not None:
+            regression_terms = regression_terms * positive_weights
+        regression_loss = regression_terms.sum() / max(
+            regression_terms.numel(), 1
+        )
 
-        visibility_loss = F.binary_cross_entropy_with_logits(
+        visibility_terms = F.binary_cross_entropy_with_logits(
             keypoints_raw[..., 2],
             mask,
             pos_weight=self._pos_weight.clone().to(device),
+            reduction="none",
+        )
+        if positive_weights is not None:
+            visibility_terms = visibility_terms * positive_weights[:, None]
+        visibility_loss = visibility_terms.sum() / max(
+            visibility_terms.numel(), 1
         )
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            class_scores, assigned_scores, one_hot_label
+            class_scores, assigned_scores, one_hot_label, sample_weights
         )
 
         if assigned_scores.sum() > 1:
@@ -379,6 +401,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             reduction="sum",
             iou_type=self._iou_type,
             bbox_format="xyxy",
+            sample_weights=sample_weights,
         )[0]
 
         loss = (

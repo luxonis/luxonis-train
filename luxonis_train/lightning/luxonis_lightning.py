@@ -21,6 +21,7 @@ from lightning.pytorch.utilities.types import (
 )
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
+from luxonis_ml.data.utils import SourceDatasetWeighting
 from luxonis_ml.typing import PathType
 from packaging import version
 from semver import Version
@@ -41,6 +42,7 @@ from luxonis_train.lightning.training_plan import (
     build_training_plan,
     resolve_training_plan,
 )
+from luxonis_train.loaders.base_loader import LuxonisLoaderTorchBatch
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks.reparameterizable import Reparameterizable
 from luxonis_train.registry import _INTERNAL
@@ -372,6 +374,7 @@ class LuxonisLightningModule(pl.LightningModule):
         compute_loss: bool = True,
         compute_metrics: bool = False,
         compute_visualizations: bool = False,
+        sample_weights: Tensor | None = None,
     ) -> LuxonisOutput:
         """Run every node of the graph and collect its results.
 
@@ -409,6 +412,8 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_loss: Whether to run the losses.
             compute_metrics: Whether to update the metrics.
             compute_visualizations: Whether to run the visualizers.
+            sample_weights: Optional per-image loss multipliers of shape
+                ``[B]``. Metrics and visualizations never use these weights.
 
         Returns:
             ``outputs`` holds the packet of every output node that ran,
@@ -449,6 +454,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 compute_loss=compute_loss,
                 compute_metrics=compute_metrics,
                 compute_visualizations=compute_visualizations,
+                sample_weights=sample_weights,
             )
             self._drop_unused_outputs(computed, unprocessed)
 
@@ -586,7 +592,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return Path(save_path)
 
     def compute_training_loss(
-        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+        self, train_batch: LuxonisLoaderTorchBatch
     ) -> Tensor:
         """Run one training batch and return its total loss.
 
@@ -605,7 +611,27 @@ class LuxonisLightningModule(pl.LightningModule):
             ValueError: When no node produced a loss.
 
         """
-        outputs = self.full_forward(*train_batch)
+        sample_weights = None
+        if self.cfg.trainer.source_dataset_weights:
+            if len(train_batch) != 3:
+                raise ValueError(
+                    "source_dataset_weights requires sample metadata from "
+                    "the training loader (return_sample_metadata=True)"
+                )
+            weighting = SourceDatasetWeighting(
+                self.cfg.trainer.source_dataset_weights
+            )
+            sample_weights = torch.tensor(
+                [weighting(metadata) for metadata in train_batch[2]],
+                dtype=torch.float32,
+                device=self.device,
+            )
+        if sample_weights is None:
+            outputs = self.full_forward(train_batch[0], train_batch[1])
+        else:
+            outputs = self.full_forward(
+                train_batch[0], train_batch[1], sample_weights=sample_weights
+            )
         if not outputs.losses:
             raise ValueError("Losses are empty, check if you defined any loss")
 
@@ -614,9 +640,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return loss
 
     @override
-    def training_step(
-        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
-    ) -> Tensor:
+    def training_step(self, train_batch: LuxonisLoaderTorchBatch) -> Tensor:
         """Run one batch of the training loop.
 
         Lightning calls it once for every batch of the training loader
@@ -633,7 +657,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def validation_step(
-        self, val_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+        self, val_batch: LuxonisLoaderTorchBatch
     ) -> dict[str, Tensor]:
         """Run one batch of the validation loop.
 
@@ -658,11 +682,11 @@ class LuxonisLightningModule(pl.LightningModule):
             ``cfg.trainer.log_sub_losses`` is on.
 
         """
-        return self._evaluation_step("val", *val_batch)
+        return self._evaluation_step("val", val_batch[0], val_batch[1])
 
     @override
     def test_step(
-        self, test_batch: tuple[dict[str, Tensor] | Tensor, Labels]
+        self, test_batch: LuxonisLoaderTorchBatch
     ) -> dict[str, Tensor]:
         """Run one batch of the test loop.
 
@@ -678,7 +702,7 @@ class LuxonisLightningModule(pl.LightningModule):
             `validation_step`.
 
         """
-        return self._evaluation_step("test", *test_batch)
+        return self._evaluation_step("test", test_batch[0], test_batch[1])
 
     @override
     def predict_step(
@@ -1368,9 +1392,12 @@ class LuxonisLightningModule(pl.LightningModule):
         compute_loss: bool,
         compute_metrics: bool,
         compute_visualizations: bool,
+        sample_weights: Tensor | None = None,
     ) -> None:
         if compute_loss and node.losses and labels is not None:
-            self._collect_losses(node, node_name, outputs, labels, losses)
+            self._collect_losses(
+                node, node_name, outputs, labels, losses, sample_weights
+            )
 
         if compute_metrics and node.metrics and labels is not None:
             self._update_metrics(node, outputs, labels)
@@ -1387,12 +1414,18 @@ class LuxonisLightningModule(pl.LightningModule):
         outputs: Packet[Tensor],
         labels: Labels,
         losses: _NodeLosses,
+        sample_weights: Tensor | None = None,
     ) -> None:
         for loss_name, loss in node.losses.items():
             loss.to(self.device)
             if self.training:
                 loss.train()
-            losses[node_name][loss_name] = loss.run(outputs, labels)
+            if sample_weights is None:
+                losses[node_name][loss_name] = loss.run(outputs, labels)
+            else:
+                losses[node_name][loss_name] = loss.run(
+                    outputs, labels, sample_weights=sample_weights
+                )
 
     def _update_metrics(
         self, node: NodeWrapper, outputs: Packet[Tensor], labels: Labels

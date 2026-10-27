@@ -179,7 +179,10 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
     def forward(
-        self, features: list[Tensor], target: Tensor
+        self,
+        features: list[Tensor],
+        target: Tensor,
+        sample_weights: Tensor | None = None,
     ) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute the detection loss of one batch.
 
@@ -202,6 +205,8 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 are ``xywh`` normalized to ``[0, 1]``, with ``x`` and
                 ``y`` at the top-left corner. The ``boundingbox`` label
                 of the task.
+            sample_weights: Optional per-image multipliers of shape ``[B]``.
+                The assigned-score normalizer remains unweighted.
 
         Returns:
             The scalar weighted total loss, and a dictionary that maps
@@ -212,6 +217,9 @@ class PrecisionDFLDetectionLoss(BaseLoss):
 
         """
         self._init_parameters(features)
+        sample_weights = self.prepare_sample_weights(
+            sample_weights, features[0]
+        )
         batch_size = features[0].shape[0]
         pred_distri, pred_scores = torch.cat(
             [xi.view(batch_size, self.node.no, -1) for xi in features], 2
@@ -240,9 +248,10 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         assigned_bboxes /= self._stride_tensor
 
         max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
-        loss_cls = (
-            self.bce(pred_scores, assigned_scores)
-        ).sum() / max_assigned_scores_sum
+        class_loss = self.bce(pred_scores, assigned_scores)
+        if sample_weights is not None:
+            class_loss = class_loss * sample_weights[:, None, None]
+        loss_cls = class_loss.sum() / max_assigned_scores_sum
         if mask_positive.sum():
             loss_iou, loss_dfl = self.bbox_loss(
                 pred_distri,
@@ -252,6 +261,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 assigned_scores,
                 max_assigned_scores_sum,
                 mask_positive,
+                sample_weights=sample_weights,
             )
         else:
             loss_iou = torch.tensor(0.0).to(pred_distri.device)
@@ -389,6 +399,7 @@ class BBoxLoss(nn.Module):
         scores: Tensor,
         total_score: Tensor,
         fg_mask: Tensor,
+        sample_weights: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         r"""Compute the CIoU term and the DFL term.
 
@@ -412,6 +423,8 @@ class BBoxLoss(nn.Module):
                 number.
             fg_mask: Boolean mask of the positive anchors, of shape
                 ``[B, N]``.
+            sample_weights: Optional per-image multipliers of shape ``[B]``.
+                They scale both numerators without changing ``total_score``.
 
         Returns:
             The scalar CIoU term and the scalar DFL term. Without a DFL
@@ -436,6 +449,14 @@ class BBoxLoss(nn.Module):
 
         """
         score_weights = scores.sum(dim=-1)[fg_mask].unsqueeze(dim=-1)
+        if sample_weights is not None:
+            sample_weights = BaseLoss.prepare_sample_weights(
+                sample_weights, pred_bboxes
+            )
+            positive_weights = sample_weights[:, None].expand_as(fg_mask)[
+                fg_mask
+            ]
+            score_weights = score_weights * positive_weights.unsqueeze(-1)
 
         iou_vals = bbox_iou(
             pred_bboxes[fg_mask],

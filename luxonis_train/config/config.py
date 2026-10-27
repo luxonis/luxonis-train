@@ -1500,6 +1500,12 @@ class TrainerConfig(BaseModelExtraForbid):
             element by element.
         use_weighted_sampler: Not implemented. ``True`` raises
             ``NotImplementedError`` when the loaders are built.
+        source_dataset_weights: Training loss multipliers keyed by the
+            record's ``sample_metadata['source_dataset']``. Missing and
+            unlisted sources use 1.0. Empty disables weighting. Mixed
+            augmentations use the mean contributor weight. Validation and
+            test losses and metrics are unweighted. Losses must explicitly
+            accept ``sample_weights``.
         epochs: How many epochs to train.
         overfit_batches: Train and validate on this many batches only.
 
@@ -1575,6 +1581,10 @@ class TrainerConfig(BaseModelExtraForbid):
     gradient_clip_val: NonNegativeFloat | None = None
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
+    source_dataset_weights: dict[
+        Annotated[str, Field(min_length=1)],
+        Annotated[float, Field(ge=0, allow_inf_nan=False)],
+    ] = {}
     epochs: PositiveInt = 100
     overfit_batches: NonNegativeInt = 0
     resume_training: bool = False

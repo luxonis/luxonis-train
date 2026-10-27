@@ -503,6 +503,39 @@ tensorboard --logdir output/tensorboard_logs
 
 Open the provided URL to visualize training metrics.
 
+### Per-source loss weights
+
+Use the record-level `sample_metadata.source_dataset` field to scale each
+training sample's loss contribution:
+
+```yaml
+trainer:
+  source_dataset_weights:
+    real_v1: 2.0
+    real_v3: 2.0
+    D4_BARCODE_RNC: 0.5
+    synth_v2: 0.0
+```
+
+Missing or unlisted sources use `1.0`; an empty mapping disables weighting.
+Weights must be finite and nonnegative. `LuxonisLoaderTorch` automatically
+returns training metadata when weighting is enabled. Custom loaders must return
+`(inputs, labels, sample_metadata)` and preserve that metadata during collation.
+
+Weights multiply each sample's loss terms before reduction, including background
+classification. Existing normalizers remain unweighted: setting every weight
+to `2.0` doubles the loss and its gradients. A zero weight removes that sample's
+direct loss contribution. It does not change sampling or batch normalization.
+For Mosaic, MixUp, and CutMix, the whole augmented sample uses the arithmetic
+mean of its contributor weights; this does not estimate object or pixel areas.
+Validation and test losses and metrics remain unweighted.
+
+Supported built-in losses are `AdaptiveDetectionLoss`, `PrecisionDFLDetectionLoss`,
+and `EfficientKeypointBBoxLoss`. Custom losses opt in by accepting
+`sample_weights: Tensor | None = None` in `forward` and applying the `[B]` vector
+before reduction. Unsupported losses raise an error when weights are supplied.
+Use a LuxonisML version that provides `luxonis_ml.data.utils.SourceDatasetWeighting`.
+
 <a name="testing"></a>
 
 ## ✍ Testing

@@ -3,7 +3,8 @@
 `LuxonisLoaderTorchOutput` is the type of one sample. It is a pair of
 the input and the labels. The input is an image of shape ``[C, H, W]``,
 or a dictionary that maps each input name to its image. The labels map
-each ``"<task_name>/<label>"`` key to a tensor.
+each ``"<task_name>/<label>"`` key to a tensor. Samples may include a third
+element containing record metadata; collation retains it as a list of dicts.
 
 """
 
@@ -16,6 +17,7 @@ import numpy.typing as npt
 import torch
 from luxonis_ml.data import Category
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
@@ -25,7 +27,14 @@ from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor] | Tensor, Labels]
+LuxonisLoaderTorchOutput = (
+    tuple[dict[str, Tensor] | Tensor, Labels]
+    | tuple[dict[str, Tensor] | Tensor, Labels, Params]
+)
+LuxonisLoaderTorchBatch = (
+    tuple[dict[str, Tensor] | Tensor, Labels]
+    | tuple[dict[str, Tensor] | Tensor, Labels, list[Params]]
+)
 
 MIXED_INPUT_TYPES_ERROR = (
     "All samples in a batch must have the same input type. "
@@ -442,7 +451,7 @@ class BaseLoaderTorch(
     def collate_fn(
         self,
         batch: list[LuxonisLoaderTorchOutput],
-    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
+    ) -> LuxonisLoaderTorchBatch:
         """Merge a list of samples into one batch.
 
         The method stacks the inputs along a new first dimension. For
@@ -469,7 +478,8 @@ class BaseLoaderTorch(
 
         Returns:
             The batched input and the batched labels, with the keys of
-            the first sample.
+            the first sample. When samples include metadata, a third
+            element holds the metadata dictionaries in batch order.
 
         Raises:
             TypeError: If the batch mixes tensor inputs and dictionary
@@ -478,7 +488,9 @@ class BaseLoaderTorch(
         """
         inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...]
         labels: tuple[Labels, ...]
-        inputs, labels = zip(*batch, strict=True)
+        if len({len(sample) for sample in batch}) != 1:
+            raise ValueError("Cannot mix samples with and without metadata")
+        inputs, labels = zip(*(sample[:2] for sample in batch), strict=True)
 
         out_inputs = self._collate_inputs(inputs)
         out_labels = {
@@ -487,6 +499,12 @@ class BaseLoaderTorch(
             )
             for task in labels[0]
         }
+        if len(batch[0]) == 3:
+            return (
+                out_inputs,
+                out_labels,
+                [sample[2] for sample in batch if len(sample) == 3],
+            )
         return out_inputs, out_labels
 
     @staticmethod

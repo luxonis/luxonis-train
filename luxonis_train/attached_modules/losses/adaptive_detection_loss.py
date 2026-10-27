@@ -211,6 +211,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         class_scores: Tensor,
         distributions: Tensor,
         target: Tensor,
+        sample_weights: Tensor | None = None,
     ) -> tuple[Tensor, dict[str, Tensor]]:
         """Assign the anchors to the target boxes and compute the loss.
 
@@ -235,6 +236,8 @@ class AdaptiveDetectionLoss(BaseLoss):
                 row holds the batch index, the class, and the normalized
                 ``x``, ``y``, ``w``, and ``h`` of one box. ``x`` and
                 ``y`` give the top-left corner.
+            sample_weights: Optional per-image multipliers of shape ``[B]``.
+                Normalization uses the original, unweighted target scores.
 
         Returns:
             The total loss as a scalar, and the sub-losses ``"class"``
@@ -243,6 +246,9 @@ class AdaptiveDetectionLoss(BaseLoss):
 
         """
         batch_size = class_scores.shape[0]
+        sample_weights = self.prepare_sample_weights(
+            sample_weights, class_scores
+        )
 
         self._init_parameters(features)
 
@@ -269,7 +275,7 @@ class AdaptiveDetectionLoss(BaseLoss):
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            class_scores, assigned_scores, one_hot_label
+            class_scores, assigned_scores, one_hot_label, sample_weights
         )
 
         if assigned_scores.sum() > 1:
@@ -283,6 +289,7 @@ class AdaptiveDetectionLoss(BaseLoss):
             reduction="sum",
             iou_type=self._iou_type,
             bbox_format="xyxy",
+            sample_weights=sample_weights,
         )[0]
 
         loss = (
@@ -471,7 +478,11 @@ class VarifocalLoss(nn.Module):
         self._per_class_weights = per_class_weights
 
     def forward(
-        self, pred_score: Tensor, target_score: Tensor, label: Tensor
+        self,
+        pred_score: Tensor,
+        target_score: Tensor,
+        label: Tensor,
+        sample_weights: Tensor | None = None,
     ) -> Tensor:
         """Compute the varifocal loss, summed over all elements.
 
@@ -488,6 +499,7 @@ class VarifocalLoss(nn.Module):
                 class, and ``0`` to the other classes.
             label: One-hot labels of the same shape. A background anchor
                 has only zeros.
+            sample_weights: Optional per-image multipliers of shape ``[B]``.
 
         Returns:
             The loss summed over all elements, as a scalar.
@@ -512,4 +524,7 @@ class VarifocalLoss(nn.Module):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )
-        return (ce_loss * weight).sum()
+        loss = ce_loss * weight
+        if sample_weights is not None:
+            loss = loss * sample_weights[:, None, None]
+        return loss.sum()

@@ -409,6 +409,8 @@ class LuxonisModel:
         loader_params = dict(self.cfg.loader.params)
         if issubclass(Loader, LuxonisLoaderTorch):
             loader_params["is_training"] = view == "train"
+            if view == "train" and self.cfg.trainer.source_dataset_weights:
+                loader_params["return_sample_metadata"] = True
         try:
             return Loader(
                 view=view_name,
