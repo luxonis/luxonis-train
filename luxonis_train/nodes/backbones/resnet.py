@@ -39,7 +39,9 @@ class ResNet(BaseNode):
         ``width_per_group``, and ``replace_stride_with_dilation`` accept
         values other than their defaults only for the depths ``"50"``,
         ``"101"``, and ``"152"``. The node keeps the unused ``avgpool``
-        and ``fc`` layers of the ``torchvision`` model.
+        and ``fc`` layers of the ``torchvision`` model. The unused ``fc``
+        parameters are frozen so they do not participate in DDP gradient
+        reduction. Their checkpoint keys remain unchanged.
 
     Variants:
         - ``"18"``:
@@ -149,6 +151,7 @@ class ResNet(BaseNode):
             width_per_group=width_per_group,
             replace_stride_with_dilation=replace_stride_with_dilation,
         )
+        self.backbone.fc.requires_grad_(False)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         """Run the stem and the four residual stages.
