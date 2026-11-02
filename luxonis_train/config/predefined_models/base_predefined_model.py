@@ -138,6 +138,18 @@ class PredefinedModelMeta(VariantMeta):
             registry[f"{family}:latest"] = model_cls
         return new_class
 
+    def __init__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, Any],
+        register: bool = True,
+        register_name: str | None = None,
+        registry: Registry | None = None,
+    ) -> None:
+        """Keep the parent metaclass from registering a second time."""
+        super().__init__(name, bases, attrs, register=False, registry=registry)
+
 
 class BasePredefinedModel(
     VariantBase, metaclass=PredefinedModelMeta, registry=MODELS, register=False
