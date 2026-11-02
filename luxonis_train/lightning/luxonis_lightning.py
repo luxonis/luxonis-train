@@ -1024,8 +1024,11 @@ class LuxonisLightningModule(pl.LightningModule):
 
         if isinstance(ckpt, str | Path):
             ckpt = cast(
-                dict[str, Any], torch.load(ckpt, map_location=self.device)
-            )  # nosemgrep
+                dict[str, Any],
+                torch.load(  # nosemgrep: pickles-in-pytorch
+                    ckpt, map_location=self.device, weights_only=True
+                ),
+            )
 
         if "state_dict" not in ckpt:
             raise ValueError("Checkpoint does not contain state_dict.")

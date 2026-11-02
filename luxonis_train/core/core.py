@@ -290,7 +290,9 @@ class LuxonisModel:
                 raise RuntimeError(
                     f"Failed to download weights from {weights}."
                 )
-            ckpt = torch.load(downloaded, map_location="cpu")  # nosemgrep
+            ckpt = torch.load(  # nosemgrep: pickles-in-pytorch
+                downloaded, map_location="cpu", weights_only=True
+            )
             return downloaded, ckpt
         raise ValueError(  # pragma: no cover
             f"Invalid type for weights: {type(weights)}. Expected str or dict."
@@ -625,11 +627,13 @@ class LuxonisModel:
                 a fit, a test, or a prediction.
 
         """
-        with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
-            checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
-            ckpt = torch.load(checkpoint_path, map_location="cpu")
-            checkpoint_path.unlink(missing_ok=True)
-        return ckpt
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            checkpoint_path = self.save_checkpoint(
+                Path(tmp_dir) / "checkpoint.ckpt", weights_only
+            )
+            return torch.load(  # nosemgrep: pickles-in-pytorch
+                checkpoint_path, map_location="cpu", weights_only=True
+            )
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"

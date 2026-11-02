@@ -122,7 +122,7 @@ class UploadCheckpoint(pl.Callback):
                 Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
             )
             try:
-                torch.save(  # nosemgrep
+                torch.save(  # nosemgrep: pickles-in-pytorch
                     upload_checkpoint, temp_filename
                 )
                 module.logger.upload_artifact(temp_filename, typ="weights")
