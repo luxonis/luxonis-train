@@ -4,6 +4,7 @@ from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
+from luxonis_train.config import LossModuleConfig
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
@@ -69,6 +70,9 @@ class ClassificationHead(BaseHead):
     in_channels: int
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
+    distillation_loss = LossModuleConfig(
+        name="LogitDistillationLoss", params={"temperature": 4.0}
+    )
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
         """Build the pooling, the dropout, and the linear layer.

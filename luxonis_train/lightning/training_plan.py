@@ -700,6 +700,7 @@ def resolve_training_plan(
     cfg: Config,
     nodes: "Nodes",
     strategy: "BaseTrainingStrategy | None" = None,
+    extra_modules: Mapping[str, nn.Module] | None = None,
 ) -> TrainingPlan:
     """Resolve the parameter rules of a model into a `TrainingPlan`.
 
@@ -722,6 +723,10 @@ def resolve_training_plan(
        plan.
     3. The default rule. It claims every parameter that is left, with
        the base optimizer and scheduler.
+    4. The default rule again, for ``extra_modules``, after all nodes.
+       The parameters of each module join the shared ``default`` group
+       under the name of the module, so a frozen node never shares a
+       group with them.
 
     Without a strategy, the default rule runs for each node directly
     after the ``finetuning`` entries of that node. With a strategy, the
@@ -764,6 +769,9 @@ def resolve_training_plan(
             ``module``, ``finetuning``, and ``unfreeze_after`` of each
             `NodeWrapper`.
         strategy: The training strategy, or ``None``.
+        extra_modules: Trainable modules outside the nodes, keyed by an
+            owner name, such as the connectors of the distillation
+            losses. A parameter that a node already claimed is skipped.
 
     Returns:
         The plan.
@@ -805,6 +813,9 @@ def resolve_training_plan(
         for node in nodes.values():
             scope = _tail_scope(node, per_node=False)
             builder.claim(tail, node.name, node.module, scope)
+
+    for owner, module in (extra_modules or {}).items():
+        builder.claim(tail, owner, module, _SHARED)
 
     return builder.finish()
 

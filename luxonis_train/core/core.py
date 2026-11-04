@@ -1390,6 +1390,9 @@ class LuxonisModel:
             if a.name != "Normalize"
         ]
         cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
+        # `model_dump` leaves the teacher out, but every trial trains
+        # with it.
+        cfg.model.teacher = cfg_copy.model.teacher
         return cfg, curr_params
 
     @staticmethod

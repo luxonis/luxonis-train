@@ -10,7 +10,7 @@ the tracker.
 """
 
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -32,6 +32,7 @@ from lightning.pytorch.callbacks import (
 from loguru import logger
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import Registry, traverse_graph
+from semver import Version
 from torch import Size, Tensor, nn
 from typing_extensions import override
 
@@ -264,6 +265,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             empty dictionary.
         freeze_schedule: The freeze schedule of the nodes with
             ``freezing.active``.
+        input_shapes: Each loader input name mapped to its shape,
+            without the batch dimension.
+        output_shapes: Each node identifier mapped to the shapes of its
+            output packet, as the constructor recorded them on a batch
+            of two.
 
     """
 
@@ -307,6 +313,8 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         """
         self._cfg = cfg
         self.graph: dict[str, list[str]] = {}
+        self.input_shapes = input_shapes
+        self.output_shapes: dict[str, Packet[Size]] = {}
         self._nodes: dict[str, NodeWrapper] = {}
         self.main_metric = get_main_metric(cfg)
 
@@ -388,6 +396,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             node_outputs = node.module.run(node_dummy_inputs)
 
             dummy_inputs[node_name] = node_outputs
+            self.output_shapes[node_name] = to_shape_packet(node_outputs)
             self._nodes[node_name] = node
 
         super().__init__(self._nodes)
@@ -1270,6 +1279,69 @@ def compute_visualization_buffer(
             leftovers[node_name] = node_buf
 
     return leftovers or None
+
+
+def node_inputs(
+    input_names: list[str],
+    computed: dict[str, Packet[Tensor]],
+    inputs: dict[str, Tensor],
+) -> list[Packet[Tensor]]:
+    """Collect the input packets of a node during a forward pass.
+
+    Args:
+        input_names: The `NodeWrapper.inputs` of the node: node
+            identifiers and loader input names.
+        computed: The output packets of the nodes that already ran,
+            keyed by node identifier.
+        inputs: The loader inputs, keyed by input name.
+
+    Returns:
+        One packet for each name. A loader input becomes
+        ``{"features": [tensor]}``.
+
+    """
+    return [
+        computed[name] if name in computed else {"features": [inputs[name]]}
+        for name in input_names
+    ]
+
+
+def node_state_dict(
+    state_dict: Mapping[str, Tensor], node_name: str, version: Version
+) -> dict[str, Tensor]:
+    """Select the weights of one node from a model state dict.
+
+    A checkpoint of version 0.4 or later keys a node as
+    ``nodes.<node>.module.``, an older one as ``nodes.<node>.``.
+
+    Args:
+        state_dict: The state dict of a `LuxonisLightningModule`
+            checkpoint.
+        node_name: The identifier of the node.
+        version: The luxonis-train version that wrote the checkpoint.
+
+    Returns:
+        The weights of the node, keyed without the prefix.
+
+    Example:
+        >>> import torch
+        >>> from semver import Version
+        >>> weights = {
+        ...     "nodes.ResNet.module.conv.weight": torch.zeros(1),
+        ...     "nodes.Head.module.fc.bias": torch.zeros(1),
+        ... }
+        >>> list(node_state_dict(weights, "ResNet", Version(0, 5, 0)))
+        ['conv.weight']
+
+    """
+    prefix = (
+        f"nodes.{node_name}.{'module.' if version >= Version(0, 4) else ''}"
+    )
+    return {
+        key[len(prefix) :]: value
+        for key, value in state_dict.items()
+        if key.startswith(prefix)
+    }
 
 
 def get_model_execution_order(

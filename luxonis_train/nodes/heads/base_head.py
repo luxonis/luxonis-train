@@ -8,13 +8,13 @@ the head.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from luxonis_ml.data import DatasetIterator
 from luxonis_ml.typing import Params
 from torch import Tensor
 
-from luxonis_train.config.config import PreprocessingConfig
+from luxonis_train.config.config import LossModuleConfig, PreprocessingConfig
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Task
 from luxonis_train.typing import Packet
@@ -37,11 +37,15 @@ class BaseHead(BaseNode):
             class.
         task: The task of the head. It gives the key of the main output
             and the labels that the head needs.
+        distillation_loss: The distillation loss that the automatic
+            recipe gives the head when the teacher has a matching head.
+            ``None``, the default, gives the head none.
 
     """
 
     parser: str = ""
     task: Task
+    distillation_loss: ClassVar[LossModuleConfig | None] = None
 
     def get_head_config(self) -> dict[str, Any]:
         """Return the entry of the head in the NN Archive config.
