@@ -68,15 +68,40 @@ def _update(metric: MeanAveragePrecisionKeypoints, image: int) -> None:
     metric.update([pred_kpts], [pred_boxes], target_kpts, target_boxes)
 
 
+def _reference(class_metrics: bool) -> tuple[Tensor, dict[str, Tensor]]:
+    metric = _metric(class_metrics)
+    for image in range(6):
+        _update(metric, image)
+    return metric.compute()
+
+
+def _check_epoch(
+    metric: MeanAveragePrecisionKeypoints,
+    images: range,
+    expected: tuple[Tensor, dict[str, Tensor]],
+) -> None:
+    for image in images:
+        _update(metric, image)
+    local_shapes = {
+        name: [tensor.shape for tensor in getattr(metric, name)]
+        for name in metric._defaults
+    }
+    actual = metric.compute()
+    torch.testing.assert_close(actual[0], expected[0])
+    assert actual[1].keys() == expected[1].keys()
+    for name in expected[1]:
+        torch.testing.assert_close(actual[1][name], expected[1][name])
+    # Computing restores local states; reset permits a new epoch.
+    for name, shapes in local_shapes.items():
+        assert [tensor.shape for tensor in getattr(metric, name)] == shapes
+    metric.reset()
+    assert all(getattr(metric, name) == [] for name in metric._defaults)
+
+
 def _distributed_worker(rank: int, rendezvous: str) -> None:
     torch.set_num_threads(1)
     # Build the reference before distributed initialization so it cannot sync.
-    references = []
-    for per_class in (False, True):
-        reference = _metric(per_class)
-        for image in range(6):
-            _update(reference, image)
-        references.append(reference.compute())
+    references = [_reference(per_class) for per_class in (False, True)]
 
     dist.init_process_group(
         "gloo",
@@ -89,26 +114,7 @@ def _distributed_worker(rank: int, rendezvous: str) -> None:
         for per_class, expected in zip((False, True), references, strict=True):
             metric = _metric(per_class)
             for _ in range(2):
-                for image in range(rank * 3, (rank + 1) * 3):
-                    _update(metric, image)
-                local_shapes = {
-                    name: [t.shape for t in getattr(metric, name)]
-                    for name in metric._defaults
-                }
-                actual = metric.compute()
-                torch.testing.assert_close(actual[0], expected[0])
-                assert actual[1].keys() == expected[1].keys()
-                for name in expected[1]:
-                    torch.testing.assert_close(
-                        actual[1][name], expected[1][name]
-                    )
-                # Computing restores local states; reset permits a new epoch.
-                for name, shapes in local_shapes.items():
-                    assert [t.shape for t in getattr(metric, name)] == shapes
-                metric.reset()
-                assert all(
-                    getattr(metric, name) == [] for name in metric._defaults
-                )
+                _check_epoch(metric, range(rank * 3, (rank + 1) * 3), expected)
     finally:
         dist.destroy_process_group()
 

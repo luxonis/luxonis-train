@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 import torch
 
+from luxonis_train.attached_modules.losses import CrossEntropyLoss
 from luxonis_train.core import LuxonisModel
 from luxonis_train.loaders import LuxonisLoaderTorch
 from luxonis_train.utils.dataset_metadata import DatasetMetadata
@@ -108,3 +109,56 @@ def test_getitem_emits_remapped_labels():
         labels["objects/classification"], torch.tensor([0.0, 1.0])
     )
     assert labels["objects/boundingbox"][0, 0] == 1
+
+
+@pytest.mark.parametrize("background_index", [0, 1])
+@pytest.mark.parametrize("empty", [False, True])
+def test_segmentation_mapping_preserves_implicit_background(
+    background_index: int, empty: bool
+):
+    loader = _loader({"objects": {"cat": 0}})
+    loader.set_class_mapping(
+        {
+            "objects": {
+                "cat": 1 - background_index,
+                "background": background_index,
+            }
+        }
+    )
+    mask = np.array([[[1, 0], [0, 1]]], dtype=np.float32)
+    if empty:
+        mask.fill(0)
+    original = mask.copy()
+    remapped = loader._remap_classes({"objects/segmentation": mask})[
+        "objects/segmentation"
+    ]
+    expected = np.empty_like(remapped)
+    expected[background_index] = 1 - mask[0]
+    expected[1 - background_index] = mask[0]
+    np.testing.assert_array_equal(remapped, expected)
+    np.testing.assert_array_equal(mask, original)
+    target = torch.from_numpy(expected).unsqueeze(0)
+    predictions = target * 20 - 10
+    torch.testing.assert_close(
+        CrossEntropyLoss()(
+            predictions, torch.from_numpy(remapped).unsqueeze(0)
+        ),
+        torch.tensor(0.0),
+    )
+
+
+def test_classification_mapping_does_not_invent_background_labels():
+    loader = _loader({"objects": {"cat": 0}})
+    loader.set_class_mapping({"objects": {"cat": 0, "background": 1}})
+    remapped = loader._remap_classes({"objects/classification": np.array([0])})
+    np.testing.assert_array_equal(remapped["objects/classification"], [0, 0])
+
+
+def test_segmentation_mapping_preserves_explicit_background():
+    loader = _loader({"objects": {"background": 0, "cat": 1}})
+    loader.set_class_mapping({"objects": {"cat": 0, "background": 1}})
+    mask = np.array([[[1, 0, 0]], [[0, 1, 0]]], dtype=np.float32)
+    remapped = loader._remap_classes({"objects/segmentation": mask})
+    np.testing.assert_array_equal(
+        remapped["objects/segmentation"], mask[[1, 0]]
+    )

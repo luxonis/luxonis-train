@@ -317,6 +317,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         The model may retain classes absent from this dataset. The LDF
         and the augmentation engine keep their original class IDs.
+        Segmentation masks with implicit background gain an explicit
+        background channel when the model's classes include it.
 
         """
         mappings = {}
@@ -357,18 +359,34 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             task, task_type = split_task(key)
             if task not in self._class_mapping:
                 continue
-            indices, n_classes = self._class_mapping[task]
+            indices, _ = self._class_mapping[task]
             if task_type == "boundingbox":
                 boxes = value.copy()
                 boxes[:, 0] = indices[value[:, 0].astype(np.int64)]
                 remapped[key] = boxes
             elif task_type in {"classification", "segmentation"}:
-                expanded = np.zeros(
-                    (n_classes, *value.shape[1:]), dtype=value.dtype
+                remapped[key] = self._remap_class_channels(
+                    task, value, is_segmentation=task_type == "segmentation"
                 )
-                expanded[indices] = value
-                remapped[key] = expanded
         return remapped
+
+    def _remap_class_channels(
+        self, task: str, value: np.ndarray, *, is_segmentation: bool
+    ) -> np.ndarray:
+        """Map class channels and preserve implicit segmentation
+        background.
+        """
+        indices, n_classes = self._class_mapping[task]
+        expanded = np.zeros((n_classes, *value.shape[1:]), dtype=value.dtype)
+        expanded[indices] = value
+        target = self.get_classes()[task]
+        if (
+            is_segmentation
+            and "background" not in self.loader._classes[task]
+            and "background" in target
+        ):
+            expanded[target["background"]] = ~np.any(value, axis=0)
+        return expanded
 
     def _remap_keypoints(
         self, labels: dict[str, np.ndarray]
