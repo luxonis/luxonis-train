@@ -1211,12 +1211,9 @@ def compute_visualization_buffer(
 ) -> dict[str, dict[str, Tensor]] | None:
     """Collect the images of a batch that the balanced logger skipped.
 
-    The buffer is a list of batches. Its fill level is the batch
-    dimension of the first buffered entry only, not the sum over all
-    entries. When that level reaches ``max_log_images``, the function
-    collects nothing more. Otherwise the function takes, from every
-    visualization, the samples whose indices are not in
-    ``logged_idxs``, up to ``max_log_images`` minus the fill level.
+    Count samples across all buffered batches and keep at most
+    ``max_log_images`` per visualization. Buffered images are detached
+    and stored on CPU to avoid retaining GPU memory between batches.
 
     Args:
         seq_buffer: The batches buffered so far. Each entry has the
@@ -1230,7 +1227,7 @@ def compute_visualization_buffer(
 
     Returns:
         The skipped samples, with the structure of ``visualizations``.
-        ``None`` when the first buffered entry is full, or when the
+        ``None`` when the buffer is full, or when the
         balanced logger took every sample of the batch.
 
     Example:
@@ -1243,12 +1240,10 @@ def compute_visualization_buffer(
         True
 
     """
-    if seq_buffer:
-        first_map = seq_buffer[0]
-        first_tensor = next(iter(next(iter(first_map.values())).values()))
-        buf_count = first_tensor.shape[0]
-    else:
-        buf_count = 0
+    buf_count = sum(
+        next(iter(next(iter(batch.values())).values())).shape[0]
+        for batch in seq_buffer
+    )
 
     if buf_count >= max_log_images:
         return None
@@ -1265,11 +1260,23 @@ def compute_visualization_buffer(
     for node_name, viz_map in visualizations.items():
         node_buf: dict[str, Tensor] = {}
         for viz_name, tensor in viz_map.items():
-            node_buf[viz_name] = tensor[free_ix][:rem]
+            node_buf[viz_name] = tensor[free_ix[:rem]].detach().cpu()
         if node_buf:
             leftovers[node_name] = node_buf
 
     return leftovers or None
+
+
+def _capture_training_modes(model: nn.Module) -> dict[nn.Module, bool]:
+    """Capture registered modules and the node's attached modules."""
+    modules = list(model.modules())
+    for module in model.modules():
+        if not isinstance(module, NodeWrapper):
+            continue
+        for group in (module.losses, module.metrics, module.visualizers):
+            for attached in group.values():
+                modules.extend(attached.modules())
+    return {module: module.training for module in modules}
 
 
 def get_model_execution_order(
@@ -1284,7 +1291,8 @@ def get_model_execution_order(
     `LuxonisLightningModule.load_checkpoint` uses it to map the weights
     of an older checkpoint onto a changed module layout.
 
-    **The function leaves the model in evaluation mode.**
+    The original training modes are restored and hooks are removed even
+    if the forward pass fails.
 
     Args:
         model: The model. Its ``nodes.loader_input_shapes`` gives the
@@ -1298,25 +1306,28 @@ def get_model_execution_order(
     """
     order = []
     handles = []
-    model.eval()
+    training_modes = _capture_training_modes(model)
+    try:
+        model.eval()
+        for name, module in model.named_modules():
+            if list(module.parameters()) and not list(module.children()):
+                handle = module.register_forward_hook(
+                    lambda mod, inp, out, n=name: order.append(n)
+                )
+                handles.append(handle)
 
-    for name, module in model.named_modules():
-        if list(module.parameters()) and not list(module.children()):
-            handle = module.register_forward_hook(
-                lambda mod, inp, out, n=name: order.append(n)
-            )
-            handles.append(handle)
-
-    with torch.no_grad():
-        dummy_inputs = {
-            input_name: torch.zeros(2, *shape, device=model.device)
-            for shapes in model.nodes.loader_input_shapes.values()
-            for input_name, shape in shapes.items()
-        }
-        model(dummy_inputs)
-
-    for handle in handles:
-        handle.remove()
+        with torch.no_grad():
+            dummy_inputs = {
+                input_name: torch.zeros(2, *shape, device=model.device)
+                for shapes in model.nodes.loader_input_shapes.values()
+                for input_name, shape in shapes.items()
+            }
+            model(dummy_inputs)
+    finally:
+        for handle in handles:
+            handle.remove()
+        for module, training in training_modes.items():
+            module.training = training
 
     return order
 
