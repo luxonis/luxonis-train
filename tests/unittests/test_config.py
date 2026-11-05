@@ -974,6 +974,21 @@ def test_predefined_metaclass_keys_and_aliases_shipped_models():
     assert "BasePredefinedModel" not in MODELS._module_dict
 
 
+def test_predefined_metaclass_skips_abstract_and_unregistered_models(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(MODELS, "_module_dict", dict(MODELS._module_dict))
+    before = dict(MODELS._module_dict)
+
+    class AbstractPreset(SimplePredefinedModel):
+        pass
+
+    class UnregisteredPreset(DetectionModel, register=False):
+        pass
+
+    assert MODELS._module_dict == before
+
+
 def test_predefined_metaclass_infers_version_from_namespace(
     monkeypatch: pytest.MonkeyPatch,
 ):
