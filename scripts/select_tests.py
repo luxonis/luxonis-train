@@ -154,7 +154,7 @@ def build(suite: str, data_file: str) -> dict:
                 # pytest-cov names a context `<test id>|<phase>`.
                 test = context.partition("|")[0]
                 if test or in_body:
-                    tests[test].add(f"{path}::{name}")
+                    tests[test].add(f"{path.as_posix()}::{name}")
     return {
         "suite": suite,
         "tests": {test: sorted(s) for test, s in sorted(tests.items())},
@@ -355,5 +355,5 @@ def main(command: str, *args: str) -> None:
         print(json.dumps(select(*args)))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main(*sys.argv[1:])
