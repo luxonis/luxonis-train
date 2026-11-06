@@ -153,12 +153,18 @@ The GPU suites start only after the `cpu` suite passes, so that a failure there 
 
 CI does not run `test_overfit_convergence.py`, which has its own `overfit_convergence` marker.
 
-Two rules keep the GPU suites from running when they cannot find anything new:
+Three rules keep the GPU suites from running tests that cannot find anything new:
 
 - A pull request that changes only docstrings, comments, Markdown files or the settings of the linters and of the API docs runs the `cpu` suite only.
   `scripts/only_docstrings_changed.py` decides this.
 - A draft pull request skips `predefined_heavy`.
-  The suite runs when you mark the pull request as ready for review.
+- A draft pull request runs only the GPU tests that ran the changed code.
+  For example, a change in `SegmentationHead.forward` runs only the tests whose models use it, and a change in `LuxonisModel.export` runs nearly every test.
+  `scripts/select_tests.py` describes the rules.
+
+A pull request that is ready for review runs every GPU suite in full.
+This run also records which test ran which code, for the selection in drafts.
+To run every suite of a draft, start the workflow by hand and set `train_ref` to the branch of the draft.
 
 > [!TIP]
 > Review the GitHub Actions output if your PR fails.
