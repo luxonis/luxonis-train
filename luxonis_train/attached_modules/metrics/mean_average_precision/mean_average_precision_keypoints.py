@@ -99,14 +99,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
     ]
 
-    pred_bboxes: Annotated[list[Tensor], MetricState()]
-    pred_scores: Annotated[list[Tensor], MetricState()]
-    pred_classes: Annotated[list[Tensor], MetricState()]
-    pred_keypoints: Annotated[list[Tensor], MetricState()]
+    # Preserve per-image boundaries when gathering detections across ranks.
+    pred_bboxes: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
+    pred_scores: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
+    pred_classes: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
+    pred_keypoints: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
 
-    target_bboxes: Annotated[list[Tensor], MetricState()]
-    target_classes: Annotated[list[Tensor], MetricState()]
-    target_keypoints: Annotated[list[Tensor], MetricState()]
+    target_bboxes: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
+    target_classes: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
+    target_keypoints: Annotated[list[Tensor], MetricState(dist_reduce_fx=None)]
 
     @typechecked
     def __init__(

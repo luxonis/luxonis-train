@@ -299,6 +299,21 @@ class BaseLoaderTorch(
         """
         return None
 
+    def set_class_mapping(self, classes: dict[str, dict[str, int]]) -> None:
+        """Align emitted labels with model class IDs without changing
+        data.
+
+        Loaders must override this method to support a different class
+        order or a subset of the model's classes.
+
+        """
+        if self.get_classes() != classes:
+            raise NotImplementedError(
+                f"{type(self).__name__} cannot align dataset classes with "
+                "model classes. Implement `set_class_mapping` to remap "
+                "labels by class name."
+            )
+
     def get_metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
