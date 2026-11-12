@@ -43,12 +43,6 @@ on:
         type: string
         default: main
     secrets:
-      GOOGLE_APPLICATION_CREDENTIALS:
-        description: >-
-          Deprecated and unused. CI authenticates to GCP with Workload
-          Identity Federation. Kept optional until luxonis-ml stops passing
-          it, then removed.
-        required: false
       CODECOV_TOKEN:
         description: "Codecov upload token"
         required: true
