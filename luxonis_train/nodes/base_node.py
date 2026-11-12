@@ -690,10 +690,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         copies a remote file into the local cache first. When the
         download fails, the method logs a warning and leaves the weights
         unchanged. The method reads the file with ``torch.load`` on the
-        CPU and with ``weights_only=False``. **Load only trusted files**,
-        because the file can run code when it loads. After the load, the
-        method logs an info message through the standard ``logging``
-        module.
+        CPU and with ``weights_only=True``. The load then makes only
+        tensors, primitive types, ``pathlib`` paths and containers of
+        them, and it does not run code from the file. After the load,
+        the method logs an info message through the standard
+        ``logging`` module.
 
         Args:
             ckpt: A state dictionary, or the local path or URL of a
@@ -710,6 +711,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             ValueError: When ``ckpt`` is ``None`` and the node does not
                 override `get_weights_url`, or when the URL uses
                 ``{variant}`` and no variant built the node.
+            pickle.UnpicklingError: When the file holds an object that
+                ``weights_only=True`` does not load.
 
         """
         if isinstance(ckpt, dict) and not ckpt:
@@ -730,8 +733,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             local_path = safe_download(ckpt)
             if local_path:
                 # Load on the CPU. Lightning moves the node to the device.
-                state_dict = torch.load(  # nosemgrep
-                    local_path, weights_only=False, map_location="cpu"
+                state_dict = torch.load(  # nosemgrep: pickles-in-pytorch
+                    local_path, weights_only=True, map_location="cpu"
                 )["state_dict"]
             else:
                 logger.warning(
