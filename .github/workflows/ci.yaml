@@ -43,9 +43,6 @@ on:
         type: string
         default: main
     secrets:
-      GOOGLE_APPLICATION_CREDENTIALS:
-        description: "GCP service-account JSON"
-        required: true
       CODECOV_TOKEN:
         description: "Codecov upload token"
         required: true
@@ -335,6 +332,11 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    # `id-token: write` lets the GCP auth step get a GitHub OIDC token.
+    permissions:
+      contents: read
+      id-token: write
+
     steps: &test-steps
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -368,7 +370,8 @@ jobs:
         id: google-auth
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          workload_identity_provider: projects/644916086121/locations/global/workloadIdentityPools/github-actions/providers/luxonis
+          service_account: ml-ci-github@easyml-394818.iam.gserviceaccount.com
           create_credentials_file: true
           export_environment_variables: true
           token_format: access_token
@@ -417,6 +420,10 @@ jobs:
         suite: ${{ fromJSON(needs.plan.outputs.gpu_suites) }}
 
     runs-on: ubuntu-t4-4core
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps: *test-steps
 
