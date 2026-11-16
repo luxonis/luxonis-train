@@ -173,7 +173,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         dist_sync_fn: Callable = gather_all_tensors,
         process_group: Any = None,
     ) -> None:
-        """Preserve image boundaries while gathering distributed detections."""
+        """Preserve image boundaries while gathering distributed
+        detections.
+        """
         sync_per_image_states(self, dist_sync_fn, process_group)
 
     @override

@@ -25,7 +25,9 @@ def _loader(source: dict[str, dict[str, int]]) -> LuxonisLoaderTorch:
 def test_metadata_includes_background_required_by_another_view(
     extra_background_view: str, monkeypatch: pytest.MonkeyPatch
 ):
-    """Reserve a real output for background before constructing a new model."""
+    """Reserve a real output for background before constructing a new
+    model.
+    """
     source = {"objects": {"cat": 0, "dog": 1}}
     loaders = {view: _loader(source) for view in ("train", "val", "test")}
     loaders[extra_background_view] = _loader(
@@ -56,7 +58,9 @@ def test_metadata_includes_background_required_by_another_view(
 
 
 def test_fixed_metadata_does_not_silently_gain_background():
-    """Keep checkpoint output counts fixed and reject unrepresentable labels."""
+    """Keep checkpoint output counts fixed and reject unrepresentable
+    labels.
+    """
     metadata = DatasetMetadata(classes={"objects": {"cat": 0, "dog": 1}})
     model = LuxonisModel.__new__(LuxonisModel)
     model.loaders = cast(
@@ -82,7 +86,9 @@ def test_test_weights_class_contract(
     different_classes: bool,
     tmp_path: Path,
 ):
-    """Check class contracts before loading weights or starting evaluation."""
+    """Check class contracts before loading weights or starting
+    evaluation.
+    """
     model = LuxonisModel.__new__(LuxonisModel)
     model._weights = None
     model._weights_provided_in_config = False

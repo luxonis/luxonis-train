@@ -511,38 +511,15 @@ class LuxonisModel:
     def _resolve_dataset_metadata(
         self, dataset_metadata: DatasetMetadata | None
     ) -> DatasetMetadata:
-        """Resolve model metadata, including background needed by any view.
+        """Resolve model metadata, including background needed by any
+        view.
 
         Only loader-derived metadata may gain classes. Explicit or
         checkpoint metadata defines an existing model's output contract.
+
         """
         if dataset_metadata is None:
-            dataset_metadata = DatasetMetadata.from_loader(
-                self.loaders["train"]
-            )
-            classes = dataset_metadata.dump()["classes"]
-            for loader in self.loaders.values():
-                if isinstance(loader, DummyLoader):
-                    continue
-                for task, source in loader.get_classes().items():
-                    target = classes.get(task)
-                    if (
-                        target is not None
-                        and "background" in source
-                        and "background" not in target
-                        and source.keys() - target.keys() == {"background"}
-                    ):
-                        classes[task] = {
-                            "background": 0,
-                            **{
-                                name: index + 1
-                                for name, index in target.items()
-                            },
-                        }
-            return DatasetMetadata(
-                **(dataset_metadata.dump() | {"classes": classes}),
-                loader=self.loaders["train"],
-            )
+            return self._dataset_metadata_from_loaders()
         if isinstance(self.loaders["train"], DummyLoader) and set(
             self.cfg.loader.params.keys()
         ).intersection({"class_names", "n_classes", "n_keypoints"}):
@@ -554,13 +531,41 @@ class LuxonisModel:
             return DatasetMetadata.from_loader(self.loaders["train"])
         return dataset_metadata
 
+    def _dataset_metadata_from_loaders(self) -> DatasetMetadata:
+        """Include background required by any view in new model
+        metadata.
+        """
+        dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
+        classes = dataset_metadata.dump()["classes"]
+        for loader in self.loaders.values():
+            if isinstance(loader, DummyLoader):
+                continue
+            for task, source in loader.get_classes().items():
+                target = classes.get(task)
+                if (
+                    target is not None
+                    and "background" in source
+                    and "background" not in target
+                    and source.keys() - target.keys() == {"background"}
+                ):
+                    classes[task] = {
+                        "background": 0,
+                        **{name: index + 1 for name, index in target.items()},
+                    }
+        return DatasetMetadata(
+            **(dataset_metadata.dump() | {"classes": classes}),
+            loader=self.loaders["train"],
+        )
+
     def _resolve_test_weights(
         self, weights: PathType | dict[str, Any] | None
     ) -> dict[str, Any] | None:
-        """Load test weights and reject a different model class contract.
+        """Load test weights and reject a different model class
+        contract.
 
         Temporary weight replacement does not rebuild nodes or metrics.
         Legacy checkpoints without class metadata retain their behavior.
+
         """
         if weights is None:
             return None

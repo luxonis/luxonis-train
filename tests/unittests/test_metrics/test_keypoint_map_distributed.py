@@ -119,7 +119,9 @@ def _distributed_worker(rank: int, rendezvous: str) -> None:
         calls = []
 
         def gather(tensor: Tensor, group: Any = None) -> list[Tensor]:
-            """Record gather invocations while using the real Gloo backend."""
+            """Record gather invocations while using the real Gloo
+            backend.
+            """
             calls.append(tensor.shape)
             return gather_all_tensors(tensor, group=group)
 
