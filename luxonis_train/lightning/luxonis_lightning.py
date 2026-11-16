@@ -146,7 +146,7 @@ class LuxonisLightningModule(pl.LightningModule):
         - It builds the nodes and their attached modules.
         - It builds the training strategy.
         - It loads the checkpoint that ``cfg.model.weights`` names, when
-          there is one. That load leaves the module in evaluation mode.
+          there is one, preserving the module's training modes.
         - It saves the versions of ``luxonis_train`` and ``luxonis_ml``
           as hyperparameters.
 
@@ -874,8 +874,8 @@ class LuxonisLightningModule(pl.LightningModule):
           inherited from the loaded checkpoint. Without either, the
           method removes the key.
 
-        The execution order comes from a forward pass on zero inputs,
-        which leaves the module in evaluation mode.
+        The execution order comes from a forward pass on zero inputs
+        that preserves the module's training modes.
 
         Args:
             checkpoint: The checkpoint dictionary that Lightning is
@@ -1004,8 +1004,7 @@ class LuxonisLightningModule(pl.LightningModule):
           log message reports it.
 
         The method runs a forward pass on zero inputs to record the
-        execution order of the model, which leaves the module in
-        evaluation mode.
+        execution order of the model, preserving its training modes.
 
         Args:
             ckpt: A path to a checkpoint file, or a loaded checkpoint
