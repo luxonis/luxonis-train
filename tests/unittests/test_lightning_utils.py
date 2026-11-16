@@ -121,7 +121,7 @@ def test_prepare_balanced_labels_skips_unpaired_segmentation_tasks():
 
 @pytest.mark.parametrize("training", [False, True])
 @pytest.mark.parametrize("fail_forward", [False, True])
-def test_execution_order_preserves_modes_and_cleans_up_hooks(
+def test_execution_order_preserves_training_modes(
     training: bool,
     fail_forward: bool,
 ):
@@ -158,7 +158,6 @@ def test_execution_order_preserves_modes_and_cleans_up_hooks(
     batchnorm = cast(
         nn.BatchNorm2d, cast(nn.Sequential, model.layers.module)[1]
     )
-    batchnorm.eval()
     model.layers.metrics["metric"].eval()
     cast(nn.Sequential, model.layers.visualizers["visualizer"])[1].eval()
     loss_training = model.layers.losses["loss"].training
@@ -167,6 +166,8 @@ def test_execution_order_preserves_modes_and_cleans_up_hooks(
         for module in model.layers.visualizers["visualizer"].modules()
     ]
     running_mean = cast(Tensor, batchnorm.running_mean).clone()
+    running_var = cast(Tensor, batchnorm.running_var).clone()
+    batches_tracked = cast(Tensor, batchnorm.num_batches_tracked).clone()
     modes = {name: layer.training for name, layer in model.named_modules()}
     if fail_forward:
         with pytest.raises(RuntimeError, match="forward failed"):
@@ -176,10 +177,10 @@ def test_execution_order_preserves_modes_and_cleans_up_hooks(
             "layers.module.0",
             "layers.module.1",
         ]
+        assert all(not layer._forward_hooks for layer in model.modules())
     assert {
         name: layer.training for name, layer in model.named_modules()
     } == modes
-    assert all(not layer._forward_hooks for layer in model.modules())
     assert model.layers.losses["loss"].training == loss_training
     assert model.layers.metrics["metric"].training is False
     assert [
@@ -187,6 +188,8 @@ def test_execution_order_preserves_modes_and_cleans_up_hooks(
         for module in model.layers.visualizers["visualizer"].modules()
     ] == visualizer_modes
     torch.testing.assert_close(batchnorm.running_mean, running_mean)
+    torch.testing.assert_close(batchnorm.running_var, running_var)
+    torch.testing.assert_close(batchnorm.num_batches_tracked, batches_tracked)
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])

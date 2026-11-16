@@ -1291,8 +1291,8 @@ def get_model_execution_order(
     `LuxonisLightningModule.load_checkpoint` uses it to map the weights
     of an older checkpoint onto a changed module layout.
 
-    The original training modes are restored and hooks are removed even
-    if the forward pass fails.
+    The original training modes are restored even if the forward pass
+    fails. Hooks are removed after a successful forward pass.
 
     Args:
         model: The model. Its ``nodes.loader_input_shapes`` gives the
@@ -1324,10 +1324,11 @@ def get_model_execution_order(
             }
             model(dummy_inputs)
     finally:
-        for handle in handles:
-            handle.remove()
         for module, training in training_modes.items():
             module.training = training
+
+    for handle in handles:
+        handle.remove()
 
     return order
 

@@ -2,16 +2,21 @@
 similarity instead of IoU.
 """
 
-from typing import Annotated, Literal
+from collections.abc import Callable
+from typing import Annotated, Any, Literal
 
 import torch
 from faster_coco_eval.core import COCO, COCOeval_faster
 from torch import Tensor
+from torchmetrics.utilities.distributed import gather_all_tensors
 from torchvision.ops import box_convert
 from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric, MetricState
+from luxonis_train.attached_modules.metrics.distributed import (
+    sync_per_image_states,
+)
 from luxonis_train.attached_modules.metrics.mean_average_precision.utils import (
     add_f1_metrics,
     postprocess_metrics,
@@ -161,6 +166,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self._max_dets = max_dets
         self._box_format = box_format
         self._class_metrics = class_metrics
+
+    @override
+    def _sync_dist(
+        self,
+        dist_sync_fn: Callable = gather_all_tensors,
+        process_group: Any = None,
+    ) -> None:
+        """Preserve image boundaries while gathering distributed detections."""
+        sync_per_image_states(self, dist_sync_fn, process_group)
 
     @override
     def update(

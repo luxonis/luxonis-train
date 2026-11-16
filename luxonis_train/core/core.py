@@ -190,7 +190,8 @@ class LuxonisModel:
             dataset_metadata: The dataset metadata to use. ``None``
                 reads the ``dataset_metadata`` key of the ``weights``
                 checkpoint, and otherwise builds the metadata from the
-                train loader. The metadata of a `DummyLoader` train
+                train loader, including background required by other
+                views. The metadata of a `DummyLoader` train
                 loader wins over both sources when ``loader.params``
                 holds ``class_names``, ``n_classes``, or
                 ``n_keypoints``. That case logs a warning.
@@ -510,8 +511,38 @@ class LuxonisModel:
     def _resolve_dataset_metadata(
         self, dataset_metadata: DatasetMetadata | None
     ) -> DatasetMetadata:
+        """Resolve model metadata, including background needed by any view.
+
+        Only loader-derived metadata may gain classes. Explicit or
+        checkpoint metadata defines an existing model's output contract.
+        """
         if dataset_metadata is None:
-            return DatasetMetadata.from_loader(self.loaders["train"])
+            dataset_metadata = DatasetMetadata.from_loader(
+                self.loaders["train"]
+            )
+            classes = dataset_metadata.dump()["classes"]
+            for loader in self.loaders.values():
+                if isinstance(loader, DummyLoader):
+                    continue
+                for task, source in loader.get_classes().items():
+                    target = classes.get(task)
+                    if (
+                        target is not None
+                        and "background" in source
+                        and "background" not in target
+                        and source.keys() - target.keys() == {"background"}
+                    ):
+                        classes[task] = {
+                            "background": 0,
+                            **{
+                                name: index + 1
+                                for name, index in target.items()
+                            },
+                        }
+            return DatasetMetadata(
+                **(dataset_metadata.dump() | {"classes": classes}),
+                loader=self.loaders["train"],
+            )
         if isinstance(self.loaders["train"], DummyLoader) and set(
             self.cfg.loader.params.keys()
         ).intersection({"class_names", "n_classes", "n_keypoints"}):
@@ -522,6 +553,30 @@ class LuxonisModel:
             )
             return DatasetMetadata.from_loader(self.loaders["train"])
         return dataset_metadata
+
+    def _resolve_test_weights(
+        self, weights: PathType | dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        """Load test weights and reject a different model class contract.
+
+        Temporary weight replacement does not rebuild nodes or metrics.
+        Legacy checkpoints without class metadata retain their behavior.
+        """
+        if weights is None:
+            return None
+        _, checkpoint = self._normalize_weights_and_load_ckpt(weights)
+        metadata = checkpoint.get("dataset_metadata")
+        if (
+            metadata is not None
+            and "classes" in metadata
+            and metadata["classes"] != self._dataset_metadata.dump()["classes"]
+        ):
+            raise ValueError(
+                "Test checkpoint classes differ from the model class mapping. "
+                "Construct a new LuxonisModel(weights=...) with this checkpoint "
+                "to rebuild the model and align loader labels with its classes."
+            )
+        return checkpoint
 
     def _align_loader_classes(self) -> None:
         """Keep loader labels consistent with restored model
@@ -975,6 +1030,8 @@ class LuxonisModel:
         module for the test and restores the previous weights
         afterwards. It runs ``Trainer.test`` with the PyTorch loader of
         ``view`` and returns the values logged in that epoch.
+        Checkpoints with a different class mapping are rejected before
+        loading weights; construct a new model to test those checkpoints.
 
         Args:
             new_thread: When ``True``, run the test in a daemon thread,
@@ -1012,7 +1069,8 @@ class LuxonisModel:
         def _run_test() -> Mapping[str, float]:
             status = "success"
             try:
-                with replace_weights(self.lightning_module, weights):
+                test_weights = self._resolve_test_weights(weights)
+                with replace_weights(self.lightning_module, test_weights):
                     return self.pl_trainer.test(self.lightning_module, loader)[
                         0
                     ]

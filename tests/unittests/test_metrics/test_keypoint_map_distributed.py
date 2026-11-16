@@ -1,11 +1,13 @@
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch import Size, Tensor
+from torchmetrics.utilities.distributed import gather_all_tensors
 
 from luxonis_train.attached_modules.metrics.mean_average_precision import (
     MeanAveragePrecisionKeypoints,
@@ -21,7 +23,9 @@ class _KeypointNode(BaseNode, register=False):
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-def _metric(class_metrics: bool) -> MeanAveragePrecisionKeypoints:
+def _metric(
+    class_metrics: bool, **kwargs: Any
+) -> MeanAveragePrecisionKeypoints:
     return MeanAveragePrecisionKeypoints(
         sigmas=[0.04] * 4,
         class_metrics=class_metrics,
@@ -33,6 +37,7 @@ def _metric(class_metrics: bool) -> MeanAveragePrecisionKeypoints:
             ),
             original_in_shape=Size([3, 200, 200]),
         ),
+        **kwargs,
     )
 
 
@@ -111,10 +116,43 @@ def _distributed_worker(rank: int, rendezvous: str) -> None:
         timeout=timedelta(seconds=60),
     )
     try:
+        calls = []
+
+        def gather(tensor: Tensor, group: Any = None) -> list[Tensor]:
+            """Record gather invocations while using the real Gloo backend."""
+            calls.append(tensor.shape)
+            return gather_all_tensors(tensor, group=group)
+
         for per_class, expected in zip((False, True), references, strict=True):
-            metric = _metric(per_class)
-            for _ in range(2):
-                _check_epoch(metric, range(rank * 3, (rank + 1) * 3), expected)
+            metric = _metric(per_class, dist_sync_fn=gather)
+            shards = (
+                (range(3), range(3, 6)),
+                (range(1), range(1, 6)),
+                (range(6), range(0)),
+            )
+            for pair in shards:
+                calls.clear()
+                _check_epoch(metric, pair[rank], expected)
+                assert len(calls) == 2 * len(metric._defaults)
+
+            # A rank with images containing no detections still retains
+            # the empty per-image tensors, even if its peer has no images.
+            if rank == 0:
+                _update(metric, 5)
+            metric.sync()
+            assert all(
+                len(getattr(metric, name)) == 1
+                and getattr(metric, name)[0].shape[0] == 0
+                for name in metric._defaults
+            )
+            metric.unsync()
+            metric.reset()
+            # No updates on any rank must also participate safely.
+            metric.sync()
+            assert all(
+                getattr(metric, name) == [] for name in metric._defaults
+            )
+            metric.unsync()
     finally:
         dist.destroy_process_group()
 
