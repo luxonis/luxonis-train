@@ -183,3 +183,46 @@ def test_workflow_plan(
         assert tests == {suite: [] for suite in suites}
     if failure:
         assert "::warning::" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("suite", "has_builder"),
+    [("cpu", True), ("misc", True), ("misc", False)],
+)
+def test_full_run_with_an_older_train_ref(
+    tmp_path: Path, suite: str, has_builder: bool
+):
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yaml").read_text())
+    shell = next(
+        step["run"]
+        for step in workflow["jobs"]["tests"]["steps"]
+        if step.get("id") == "pytest"
+    )
+    if has_builder:
+        (tmp_path / "scripts").mkdir()
+        (tmp_path / "scripts/select_tests.py").touch()
+    output = tmp_path / "output"
+    output.touch()
+    # Record the command without installing training dependencies. A full
+    # test run must still execute when an older checkout has no map builder.
+    stub = "uv() { printf '%s\\n' \"$@\" > arguments; }\n"
+    bash = shutil.which("bash")
+    assert bash is not None
+    subprocess.run(
+        [bash, "-e", "-o", "pipefail", "-c", stub + shell],
+        cwd=tmp_path,
+        env=dict(
+            os.environ,
+            SUITE=suite,
+            GPU_TESTS="{}",
+            GITHUB_OUTPUT=str(output),
+        ),
+        check=True,
+        capture_output=True,
+    )
+    arguments = (tmp_path / "arguments").read_text().splitlines()
+    assert arguments[:3] == ["run", "--no-sync", "pytest"]
+    assert arguments[arguments.index("-m") + 1] == suite
+    write_map = suite != "cpu" and has_builder
+    assert ("--cov-context=test" in arguments) == write_map
+    assert output.read_text() == ("write_map=true\n" if write_map else "")

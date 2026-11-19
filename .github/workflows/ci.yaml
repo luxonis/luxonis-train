@@ -429,8 +429,9 @@ jobs:
           if [[ -s selected-tests.txt ]]; then
             uv run --no-sync python scripts/run_selected_tests.py selected-tests.txt "${args[@]}"
           else
-            if [[ "$SUITE" != cpu ]]; then
+            if [[ "$SUITE" != cpu && -f scripts/select_tests.py ]]; then
               # The whole suite runs, so it records which test ran which code.
+              # Older train_ref revisions can run without the map builder.
               args+=(--cov-context=test)
               echo "write_map=true" >> "$GITHUB_OUTPUT"
             fi
