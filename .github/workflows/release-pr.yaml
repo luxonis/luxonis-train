@@ -13,10 +13,11 @@ permissions:
 
 jobs:
   release-pr:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@cdfb00741162eb84ea9575881d412e420203e66f
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-pr.yaml@af658176eefa1e1c912d6292f86980ac03536ffc
     with:
+      app-client-id: ${{ vars.ML_BOT_APP_CLIENT_ID }}
       version: ${{ inputs.version }}
       version-file: luxonis_train/__init__.py
       project-name: LuxonisTrain
     secrets:
-      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
+      APP_PRIVATE_KEY: ${{ secrets.ML_BOT_APP_PRIVATE_KEY }}

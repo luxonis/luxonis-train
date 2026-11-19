@@ -10,9 +10,10 @@ permissions:
 
 jobs:
   update-python-dependencies:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-dependencies-update.yaml@1556182be18dd350dbeb5b07bc7282e17828b655
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-dependencies-update.yaml@af658176eefa1e1c912d6292f86980ac03536ffc
     with:
+      app-client-id: ${{ vars.ML_BOT_APP_CLIENT_ID }}
       export-script: scripts/export_requirements.sh
       uv-version: "0.11.28"
     secrets:
-      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
+      APP_PRIVATE_KEY: ${{ secrets.ML_BOT_APP_PRIVATE_KEY }}
