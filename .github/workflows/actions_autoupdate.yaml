@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   update-github-actions:
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-actions-update.yaml@1556182be18dd350dbeb5b07bc7282e17828b655
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-actions-update.yaml@af658176eefa1e1c912d6292f86980ac03536ffc
+    with:
+      app-client-id: ${{ vars.ML_BOT_APP_CLIENT_ID }}
     secrets:
-      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
+      APP_PRIVATE_KEY: ${{ secrets.ML_BOT_APP_PRIVATE_KEY }}
