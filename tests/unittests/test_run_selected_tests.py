@@ -11,6 +11,9 @@ pytest_plugins = ["pytester"]
 
 @pytest.fixture
 def suite(pytester: pytest.Pytester) -> pytest.Pytester:
+    # CI puts pytester projects below tests/tmp. Give them their own root
+    # and configuration instead of inheriting our test IDs and basetemp.
+    pytester.makeini("[pytest]\n")
     pytester.makeconftest(
         '"""Markers for the synthetic suite."""\n'
         "def pytest_configure(config):\n"
