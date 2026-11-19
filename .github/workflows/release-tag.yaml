@@ -13,8 +13,9 @@ jobs:
     if: >-
       github.event.pull_request.merged &&
       startsWith(github.event.pull_request.head.ref, 'release/')
-    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@cdfb00741162eb84ea9575881d412e420203e66f
+    uses: luxonis/luxonis-ml/.github/workflows/reusable-release-tag.yaml@af658176eefa1e1c912d6292f86980ac03536ffc
     with:
+      app-client-id: ${{ vars.ML_BOT_APP_CLIENT_ID }}
       version-file: luxonis_train/__init__.py
     secrets:
-      WORKFLOW_SECRET: ${{ secrets.WORKFLOW_SECRET }}
+      APP_PRIVATE_KEY: ${{ secrets.ML_BOT_APP_PRIVATE_KEY }}
