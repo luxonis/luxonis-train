@@ -7,10 +7,11 @@ outside of a test, such as in a data loader worker.
 
 ``select`` compares the merge base and the head without docstrings:
 
-  - a changed function selects the tests that ran it;
+  - a changed function selects the tests that ran it, or every test if
+    it has no mapping;
   - a changed class or module body, or an added or a deleted file,
     selects the tests that ran code of the file, or every test when no
-    test did. A ``__init__.py`` below ``luxonis_train/`` selects none;
+    test did;
   - a changed test file selects its tests, and a test helper or test
     data selects the test files that name it;
   - a changed config of ``luxonis_train/configs/`` selects the tests that
@@ -143,7 +144,7 @@ def build(suite: str, data_file: str) -> dict:
     root = Path.cwd()
     tests = defaultdict(set)
     for measured in data.measured_files():
-        path = Path(measured)
+        path = Path(measured).resolve()
         if not path.is_relative_to(root / "luxonis_train"):
             continue
         path = path.relative_to(root)
@@ -193,22 +194,15 @@ def tests_for_changes(
     picks: Picks = set()
     for name, kind in changes.items():
         if kind == "def":
-            picks |= tests_running(maps, f"{path}::{name}")
-            continue
-        users = tests_in_file(maps, path)
-        if not users and not is_reexport_init(path):
+            users = tests_running(maps, f"{path}::{name}")
+        else:
+            users = tests_in_file(maps, path)
+        if not users:
             return None
         picks |= users
     if any(not test for _, test in picks):
         return None
     return picks
-
-
-def is_reexport_init(path: str) -> bool:
-    """Tell whether ``path`` is the ``__init__.py`` of a subpackage."""
-    return (
-        path.endswith("/__init__.py") and path != "luxonis_train/__init__.py"
-    )
 
 
 def suites_of_test_file(path: Path) -> list[str]:
@@ -224,6 +218,8 @@ def suites_of_test_file(path: Path) -> list[str]:
         return ["predefined_light", "predefined_heavy"]
     if path.name == "test_combinations.py":
         return ["combinations"]
+    if path.name == "test_overfit_convergence.py":
+        return []
     if "pytest.mark.gpu" in path.read_text():
         return ["misc"]
     return []
@@ -296,14 +292,33 @@ def pick(status: str, path: str, base: str, maps: Maps) -> Picks | None:
 
 
 def load_maps(directory: Path) -> Maps:
-    """Read the test maps of the GPU suites from ``directory``."""
+    """Read usable maps, treating broken artifacts as missing maps."""
     maps = {}
     for file in directory.glob("test-map-*.json"):
-        content = json.loads(file.read_text())
-        maps[content["suite"]] = {
-            test: set(scopes) for test, scopes in content["tests"].items()
-        }
+        try:
+            content = json.loads(file.read_text())
+            suite = content["suite"]
+            tests = content["tests"]
+        except (OSError, ValueError, KeyError, TypeError):
+            print(f"Ignoring unusable test map: {file}", file=sys.stderr)
+            continue
+        if suite in GPU_SUITES and valid_tests(tests):
+            maps[suite] = {test: set(scopes) for test, scopes in tests.items()}
+        else:
+            print(f"Ignoring unusable test map: {file}", file=sys.stderr)
     return maps
+
+
+def valid_tests(tests: object) -> bool:
+    """Check the test-to-scopes structure before trusting an
+    artifact.
+    """
+    return isinstance(tests, dict) and all(
+        isinstance(test, str)
+        and isinstance(scopes, list)
+        and all(isinstance(scope, str) for scope in scopes)
+        for test, scopes in tests.items()
+    )
 
 
 def select(base: str, map_dir: str) -> dict[str, list[str]]:

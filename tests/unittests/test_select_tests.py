@@ -124,11 +124,20 @@ def test_changed_class_that_no_test_ran_selects_every_test():
     assert picks is None
 
 
-def test_changed_reexport_init_selects_no_test():
+def test_changed_reexport_init_without_a_map_selects_every_test():
     picks = select_tests.tests_for_changes(
         "luxonis_train/nodes/__init__.py", {"": "module"}, MAPS
     )
-    assert picks == set()
+    assert picks is None
+
+
+def test_changed_function_without_a_map_selects_every_test():
+    assert (
+        select_tests.tests_for_changes(
+            "luxonis_train/head.py", {"Head.new_method": "def"}, MAPS
+        )
+        is None
+    )
 
 
 def test_added_file_that_no_test_ran_selects_every_test():
@@ -192,8 +201,9 @@ def test_git_wrapper(
     ]
 
 
+@pytest.mark.parametrize("relative", [False, True])
 def test_build_reads_coverage_contexts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
 ):
     package = tmp_path / "luxonis_train"
     package.mkdir()
@@ -212,10 +222,13 @@ def test_build_reads_coverage_contexts(
 
         def measured_files(self) -> set[str]:
             assert self.loaded
-            return {str(source), str(outside)}
+            return {
+                str(path.relative_to(tmp_path) if relative else path)
+                for path in (source, outside)
+            }
 
         def contexts_by_lineno(self, measured: str) -> dict[int, set[str]]:
-            if measured == str(outside):
+            if Path(measured).name == outside.name:
                 return {1: {"tests/test_outside.py::test_value|run"}}
             return {
                 1: {"", "tests/test_module.py::test_run|run"},
@@ -244,6 +257,8 @@ def test_test_file_suite_detection(tmp_path: Path):
     misc.write_text("pytest.mark.gpu\n")
     cpu = tmp_path / "test_cpu.py"
     cpu.write_text("")
+    overfit = tmp_path / "test_overfit_convergence.py"
+    overfit.write_text("pytest.mark.gpu\n")
 
     assert select_tests.suites_of_test_file(predefined) == [
         "predefined_light",
@@ -251,6 +266,7 @@ def test_test_file_suite_detection(tmp_path: Path):
     ]
     assert select_tests.suites_of_test_file(misc) == ["misc"]
     assert select_tests.suites_of_test_file(cpu) == []
+    assert select_tests.suites_of_test_file(overfit) == []
 
 
 def test_test_helpers_select_files_that_use_them(
@@ -382,6 +398,24 @@ def test_load_maps(tmp_path: Path):
             "tests/test_a.py::test_a": {"package.py::run"},
         }
     }
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "not json",
+        "null",
+        "[]",
+        "{}",
+        '{"suite": "unknown", "tests": {}}',
+        '{"suite": "misc", "tests": []}',
+        '{"suite": "misc", "tests": {"test": "not a scope list"}}',
+        '{"suite": "misc", "tests": {"test": [null]}}',
+    ],
+)
+def test_broken_maps_are_treated_as_missing(tmp_path: Path, content: str):
+    (tmp_path / "test-map-misc.json").write_text(content)
+    assert select_tests.load_maps(tmp_path) == {}
 
 
 def test_select_returns_every_suite_for_an_unmapped_change(

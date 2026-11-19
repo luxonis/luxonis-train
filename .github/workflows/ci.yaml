@@ -117,17 +117,25 @@ jobs:
               # of this branch, else of the base branch, else of any branch.
               mkdir maps
               for suite in predefined_light predefined_heavy combinations misc; do
-                id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=test-map-$suite&per_page=100" \
-                  --jq '[.artifacts[] | select(.expired | not)
+                if ! artifacts=$(gh api --paginate --slurp \
+                  "repos/$GITHUB_REPOSITORY/actions/artifacts?name=test-map-$suite&per_page=100"); then
+                  echo "::warning::Could not list the $suite test maps; using the full suite when needed."
+                  continue
+                fi
+                id=$(jq -r '[.[].artifacts[] | select(.expired | not)
                     | select(.workflow_run.head_repository_id == .workflow_run.repository_id)]
                     | sort_by(.created_at)
-                    | (map(select(.workflow_run.head_branch == env.HEAD_REF)) | last)
+                    | ((map(select(.workflow_run.head_branch == env.HEAD_REF)) | last)
                       // (map(select(.workflow_run.head_branch == env.BASE_REF)) | last)
-                      // last
-                    | .id // empty')
+                      // last)
+                    | .id // empty' <<< "$artifacts")
                 if [[ -n "$id" ]]; then
-                  gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > map.zip
-                  unzip -q -o map.zip -d maps
+                  map="maps/test-map-$suite.json"
+                  if ! { gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > map.zip \
+                    && unzip -p map.zip "test-map-$suite.json" > "$map"; }; then
+                    rm -f "$map"
+                    echo "::warning::Could not download the $suite test map; using the full suite when needed."
+                  fi
                 fi
               done
               gpu_tests=$(python3 scripts/select_tests.py select "$BASE_SHA" maps)
@@ -419,13 +427,15 @@ jobs:
             "--junitxml=junit-$SUITE.xml" -o junit_family=legacy -m "$SUITE")
           jq -r --arg suite "$SUITE" '.[$suite] // [] | .[]' <<< "$GPU_TESTS" > selected-tests.txt
           if [[ -s selected-tests.txt ]]; then
-            args+=(@selected-tests.txt)
-          elif [[ "$SUITE" != cpu ]]; then
-            # The whole suite runs, so it records which test ran which code.
-            args+=(--cov-context=test)
-            echo "write_map=true" >> "$GITHUB_OUTPUT"
+            uv run --no-sync python scripts/run_selected_tests.py selected-tests.txt "${args[@]}"
+          else
+            if [[ "$SUITE" != cpu ]]; then
+              # The whole suite runs, so it records which test ran which code.
+              args+=(--cov-context=test)
+              echo "write_map=true" >> "$GITHUB_OUTPUT"
+            fi
+            uv run --no-sync pytest "${args[@]}"
           fi
-          uv run --no-sync pytest "${args[@]}"
 
       - name: Write the test map
         if: ${{ steps.pytest.outputs.write_map == 'true' }}
