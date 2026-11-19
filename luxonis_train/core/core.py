@@ -2126,7 +2126,7 @@ class LuxonisModel:
         ptq_test = quant_eval_trainer.test(model, self.val_loader)[0]
 
         optimizer, scheduler = self._resolve_qat_optimizer_scheduler(
-            optimizer, scheduler, sim, cfg
+            optimizer, scheduler, model, cfg
         )
 
         model = quantization_aware_training(
@@ -2274,14 +2274,14 @@ class LuxonisModel:
     def _resolve_qat_optimizer_scheduler(
         optimizer: Optimizer | None,
         scheduler: LRScheduler | None,
-        sim: "QuantizationSimModel",
+        model: LuxonisLightningModule,
         cfg: AIMETConfig,
     ) -> tuple[Optimizer, LRScheduler]:
         if optimizer is None:
             optimizer = from_registry(
                 OPTIMIZERS,
                 cfg.optimizer.name,
-                params=sim.model.parameters(),
+                params=model.parameters(),
                 **cfg.optimizer.params,
             )
         if scheduler is None:
